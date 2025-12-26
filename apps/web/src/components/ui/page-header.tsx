@@ -10,7 +10,7 @@ interface PageHeaderProps {
 
 export function PageHeader({ title, subtitle, backHref, action }: PageHeaderProps) {
   return (
-    <div className="bg-base-100 border-b border-base-300 px-4 py-4 lg:px-8 sticky top-0 z-20 md:top-16">
+    <div className="bg-base-100 border-b border-base-300 px-4 py-4 lg:px-8 sticky top-[64px] md:top-16 z-30">
       <div className="flex items-center gap-4">
         {backHref && (
           <Link href={backHref} className="btn btn-ghost btn-sm btn-circle">

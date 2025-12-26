@@ -437,7 +437,7 @@ export default function AuditoriaPage() {
       />
 
       {/* Progress */}
-      <div className="px-4 py-3 bg-base-100 border-b border-base-300 sticky top-[72px] md:top-[136px] z-10">
+      <div className="px-4 py-3 bg-base-100 border-b border-base-300 sticky top-[64px] md:top-[136px] z-20">
         <div className="flex items-center justify-between mb-2">
           <span className="text-sm font-medium">Progresso</span>
           <span className="text-sm text-base-content/60">

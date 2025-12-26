@@ -34,7 +34,7 @@ export function Navbar() {
   return (
     <>
       {/* Top Navbar - Desktop */}
-      <div className="navbar bg-base-100 border-b border-base-300 px-4 lg:px-8 hidden md:flex">
+      <div className="navbar bg-base-100 border-b border-base-300 px-4 lg:px-8 hidden md:flex sticky top-0 z-40">
         <div className="flex-1">
           <Link href="/dashboard" className="flex items-center gap-2">
             <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
@@ -92,7 +92,7 @@ export function Navbar() {
       </div>
 
       {/* Mobile Header */}
-      <div className="navbar bg-base-100 border-b border-base-300 px-4 md:hidden safe-top">
+      <div className="navbar bg-base-100 border-b border-base-300 px-4 md:hidden safe-top sticky top-0 z-40">
         <div className="flex-1">
           <Link href="/dashboard" className="flex items-center gap-2">
             <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">

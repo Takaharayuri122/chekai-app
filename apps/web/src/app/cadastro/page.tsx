@@ -50,11 +50,36 @@ export default function CadastroPage() {
         telefone: data.telefone,
         senha: data.senha,
       });
-      setToken(response.accessToken || response.access_token || '');
-      setUsuario(response.usuario);
-      router.push('/dashboard');
-    } catch {
-      setError('Erro ao criar conta. Tente novamente.');
+      
+      if (response?.accessToken || response?.access_token) {
+        setToken(response.accessToken || response.access_token || '');
+        if (response.usuario) {
+          setUsuario(response.usuario);
+        }
+        router.push('/dashboard');
+      } else {
+        setError('Resposta inválida do servidor. Tente fazer login manualmente.');
+      }
+    } catch (error: any) {
+      console.error('Erro ao cadastrar:', error);
+      let errorMessage = 'Erro ao criar conta. Verifique os dados e tente novamente.';
+      
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.response?.data?.data?.message) {
+        errorMessage = error.response.data.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      // Mensagens específicas por código de erro
+      if (error.response?.status === 409) {
+        errorMessage = 'Este e-mail já está cadastrado. Tente fazer login.';
+      } else if (error.response?.status === 400) {
+        errorMessage = 'Dados inválidos. Verifique as informações e tente novamente.';
+      }
+      
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }

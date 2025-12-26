@@ -68,7 +68,18 @@ export const authService = {
   },
 
   async cadastrar(data: CriarUsuarioRequest): Promise<LoginResponse> {
-    await api.post('/usuarios', data);
+    // Cria o usuário
+    const criarResponse = await api.post('/usuarios', data);
+    
+    // Verifica se a criação foi bem-sucedida
+    if (criarResponse.status !== 201 && criarResponse.status !== 200) {
+      throw new Error('Erro ao criar usuário');
+    }
+    
+    // Aguarda um pouco para garantir que o usuário foi criado no banco
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    
+    // Faz login automaticamente
     return this.login(data.email, data.senha);
   },
 

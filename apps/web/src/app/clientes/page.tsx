@@ -127,7 +127,7 @@ export default function ClientesPage() {
             title="Nenhum cliente cadastrado"
             description="Cadastre seu primeiro cliente para começar."
             actionLabel="Cadastrar Cliente"
-            actionHref="#"
+            actionOnClick={() => setShowModal(true)}
           />
         ) : (
           <div className="space-y-3">

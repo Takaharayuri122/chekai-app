@@ -7,6 +7,7 @@ interface EmptyStateProps {
   description: string;
   actionLabel?: string;
   actionHref?: string;
+  actionOnClick?: () => void;
 }
 
 export function EmptyState({ 
@@ -14,7 +15,8 @@ export function EmptyState({
   title, 
   description, 
   actionLabel, 
-  actionHref 
+  actionHref,
+  actionOnClick
 }: EmptyStateProps) {
   return (
     <div className="card bg-base-100 shadow-sm border border-base-300">
@@ -28,6 +30,11 @@ export function EmptyState({
           <Link href={actionHref} className="btn btn-primary btn-sm mt-4">
             {actionLabel}
           </Link>
+        )}
+        {actionLabel && actionOnClick && (
+          <button onClick={actionOnClick} className="btn btn-primary btn-sm mt-4">
+            {actionLabel}
+          </button>
         )}
       </div>
     </div>
