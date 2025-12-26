@@ -1,11 +1,20 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-interface Usuario {
+export enum PerfilUsuario {
+  MASTER = 'master',
+  ANALISTA = 'analista',
+  AUDITOR = 'auditor',
+  EMPRESA = 'empresa',
+}
+
+export interface Usuario {
   id: string;
   nome: string;
   email: string;
-  perfil: string;
+  perfil: PerfilUsuario;
+  analistaId?: string;
+  tenantId?: string;
 }
 
 interface AuthState {
@@ -14,11 +23,15 @@ interface AuthState {
   isAuthenticated: boolean;
   setAuth: (token: string, usuario: Usuario) => void;
   logout: () => void;
+  isMaster: () => boolean;
+  isAnalista: () => boolean;
+  isAuditor: () => boolean;
+  isEmpresa: () => boolean;
 }
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       token: null,
       usuario: null,
       isAuthenticated: false,
@@ -29,6 +42,22 @@ export const useAuthStore = create<AuthState>()(
       logout: () => {
         localStorage.removeItem('token');
         set({ token: null, usuario: null, isAuthenticated: false });
+      },
+      isMaster: () => {
+        const { usuario } = get();
+        return usuario?.perfil === PerfilUsuario.MASTER;
+      },
+      isAnalista: () => {
+        const { usuario } = get();
+        return usuario?.perfil === PerfilUsuario.ANALISTA;
+      },
+      isAuditor: () => {
+        const { usuario } = get();
+        return usuario?.perfil === PerfilUsuario.AUDITOR;
+      },
+      isEmpresa: () => {
+        const { usuario } = get();
+        return usuario?.perfil === PerfilUsuario.EMPRESA;
       },
     }),
     {

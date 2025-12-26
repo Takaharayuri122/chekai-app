@@ -2,6 +2,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { UsuarioService } from '../usuario/usuario.service';
+import { PerfilUsuario } from '../usuario/entities/usuario.entity';
 import { LoginDto, LoginResponse } from './dto/login.dto';
 
 /**
@@ -42,6 +43,8 @@ export class AuthService {
         nome: usuario.nome,
         email: usuario.email,
         perfil: usuario.perfil,
+        analistaId: usuario.analistaId,
+        tenantId: usuario.tenantId,
       },
     };
   }
@@ -49,7 +52,7 @@ export class AuthService {
   /**
    * Valida o token JWT e retorna o payload.
    */
-  async validateToken(token: string): Promise<{ sub: string; email: string; perfil: string }> {
+  async validateToken(token: string): Promise<{ sub: string; email: string; perfil: PerfilUsuario }> {
     try {
       return this.jwtService.verify(token);
     } catch {

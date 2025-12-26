@@ -1,16 +1,10 @@
-import { Controller, Post, Body, Get, UseGuards, Request } from '@nestjs/common';
+import { Controller, Post, Body, Get, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { LoginDto, LoginResponse } from './dto/login.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
-
-interface AuthenticatedRequest {
-  user: {
-    id: string;
-    email: string;
-    perfil: string;
-  };
-}
+import { CurrentUser } from '../../core/decorators/current-user.decorator';
+import { PerfilUsuario } from '../usuario/entities/usuario.entity';
 
 /**
  * Controller para autenticação de usuários.
@@ -34,8 +28,10 @@ export class AuthController {
   @ApiOperation({ summary: 'Retorna dados do usuário autenticado' })
   @ApiResponse({ status: 200, description: 'Dados do usuário' })
   @ApiResponse({ status: 401, description: 'Não autorizado' })
-  async me(@Request() req: AuthenticatedRequest): Promise<{ id: string; email: string; perfil: string }> {
-    return req.user;
+  async me(
+    @CurrentUser() usuario: { id: string; email: string; perfil: PerfilUsuario; analistaId?: string; tenantId?: string },
+  ): Promise<{ id: string; email: string; perfil: PerfilUsuario; analistaId?: string; tenantId?: string }> {
+    return usuario;
   }
 
   @Get('test')

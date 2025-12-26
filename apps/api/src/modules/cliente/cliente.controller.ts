@@ -21,6 +21,10 @@ import { CriarClienteDto } from './dto/criar-cliente.dto';
 import { CriarUnidadeDto } from './dto/criar-unidade.dto';
 import { CriarUnidadeParaClienteDto } from './dto/criar-unidade-para-cliente.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../../core/guards/roles.guard';
+import { Roles } from '../../core/decorators/roles.decorator';
+import { CurrentUser } from '../../core/decorators/current-user.decorator';
+import { PerfilUsuario } from '../usuario/entities/usuario.entity';
 import { Cliente } from './entities/cliente.entity';
 import { Unidade } from './entities/unidade.entity';
 import { PaginatedResult } from '../../shared/types/pagination.interface';
@@ -36,10 +40,16 @@ export class ClienteController {
   constructor(private readonly clienteService: ClienteService) {}
 
   @Post()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(PerfilUsuario.MASTER, PerfilUsuario.ANALISTA)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Cria um novo cliente' })
   @ApiResponse({ status: 201, description: 'Cliente criado com sucesso' })
-  async criarCliente(@Body() dto: CriarClienteDto): Promise<Cliente> {
-    return this.clienteService.criarCliente(dto);
+  async criarCliente(
+    @Body() dto: CriarClienteDto,
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario },
+  ): Promise<Cliente> {
+    return this.clienteService.criarCliente(dto, usuario);
   }
 
   @Get()
@@ -48,8 +58,9 @@ export class ClienteController {
   async listarClientes(
     @Query('page') page = 1,
     @Query('limit') limit = 10,
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario },
   ): Promise<PaginatedResult<Cliente>> {
-    return this.clienteService.listarClientes({ page, limit });
+    return this.clienteService.listarClientes({ page, limit }, usuario);
   }
 
   @Get(':id')

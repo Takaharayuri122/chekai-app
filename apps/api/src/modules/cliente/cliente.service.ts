@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   ConflictException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -9,6 +10,7 @@ import { Cliente } from './entities/cliente.entity';
 import { Unidade } from './entities/unidade.entity';
 import { CriarClienteDto } from './dto/criar-cliente.dto';
 import { CriarUnidadeDto } from './dto/criar-unidade.dto';
+import { PerfilUsuario } from '../usuario/entities/usuario.entity';
 import {
   PaginationParams,
   PaginatedResult,
@@ -30,22 +32,39 @@ export class ClienteService {
   /**
    * Cria um novo cliente.
    */
-  async criarCliente(dto: CriarClienteDto): Promise<Cliente> {
+  async criarCliente(
+    dto: CriarClienteDto,
+    usuarioAutenticado?: { id: string; perfil: PerfilUsuario },
+  ): Promise<Cliente> {
+    if (usuarioAutenticado && usuarioAutenticado.perfil !== PerfilUsuario.MASTER && usuarioAutenticado.perfil !== PerfilUsuario.ANALISTA) {
+      throw new ForbiddenException('Apenas Master e Analista podem criar clientes');
+    }
     const clienteExistente = await this.clienteRepository.findOne({
       where: { cnpj: dto.cnpj },
     });
     if (clienteExistente) {
       throw new ConflictException('CNPJ já cadastrado');
     }
-    const cliente = this.clienteRepository.create(dto);
+    const cliente = this.clienteRepository.create({
+      ...dto,
+      analistaId: usuarioAutenticado?.perfil === PerfilUsuario.ANALISTA ? usuarioAutenticado.id : undefined,
+    });
     return this.clienteRepository.save(cliente);
   }
 
   /**
-   * Lista todos os clientes com paginação.
+   * Lista todos os clientes com paginação, filtrados por tenant.
    */
-  async listarClientes(params: PaginationParams): Promise<PaginatedResult<Cliente>> {
+  async listarClientes(
+    params: PaginationParams,
+    usuarioAutenticado?: { id: string; perfil: PerfilUsuario },
+  ): Promise<PaginatedResult<Cliente>> {
+    let where: any = {};
+    if (usuarioAutenticado && usuarioAutenticado.perfil === PerfilUsuario.ANALISTA) {
+      where = { analistaId: usuarioAutenticado.id };
+    }
     const [items, total] = await this.clienteRepository.findAndCount({
+      where,
       skip: (params.page - 1) * params.limit,
       take: params.limit,
       order: { criadoEm: 'DESC' },
@@ -55,15 +74,21 @@ export class ClienteService {
   }
 
   /**
-   * Busca um cliente pelo ID.
+   * Busca um cliente pelo ID, verificando permissões de acesso.
    */
-  async buscarClientePorId(id: string): Promise<Cliente> {
+  async buscarClientePorId(
+    id: string,
+    usuarioAutenticado?: { id: string; perfil: PerfilUsuario },
+  ): Promise<Cliente> {
     const cliente = await this.clienteRepository.findOne({
       where: { id },
       relations: ['unidades'],
     });
     if (!cliente) {
       throw new NotFoundException('Cliente não encontrado');
+    }
+    if (usuarioAutenticado && usuarioAutenticado.perfil === PerfilUsuario.ANALISTA && cliente.analistaId !== usuarioAutenticado.id) {
+      throw new ForbiddenException('Acesso negado a este cliente');
     }
     return cliente;
   }

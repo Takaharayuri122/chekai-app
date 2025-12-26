@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -9,6 +10,7 @@ import { Auditoria, StatusAuditoria } from './entities/auditoria.entity';
 import { AuditoriaItem, RespostaItem } from './entities/auditoria-item.entity';
 import { Foto } from './entities/foto.entity';
 import { ChecklistService } from '../checklist/checklist.service';
+import { PerfilUsuario } from '../usuario/entities/usuario.entity';
 import {
   IniciarAuditoriaDto,
   ResponderItemDto,
@@ -42,7 +44,7 @@ export class AuditoriaService {
     consultorId: string,
     dto: IniciarAuditoriaDto,
   ): Promise<Auditoria> {
-    const template = await this.checklistService.buscarTemplatePorId(dto.templateId);
+    const template = await this.checklistService.buscarTemplatePorId(dto.templateId, { id: consultorId, perfil: PerfilUsuario.AUDITOR });
     const auditoria = this.auditoriaRepository.create({
       consultorId,
       unidadeId: dto.unidadeId,
@@ -67,26 +69,43 @@ export class AuditoriaService {
   }
 
   /**
-   * Lista auditorias do consultor.
+   * Lista auditorias, filtradas por perfil do usuário autenticado.
    */
-  async listarAuditoriasPorConsultor(
-    consultorId: string,
+  async listarAuditorias(
     params: PaginationParams,
+    usuarioAutenticado: { id: string; perfil: PerfilUsuario; analistaId?: string },
   ): Promise<PaginatedResult<Auditoria>> {
-    const [items, total] = await this.auditoriaRepository.findAndCount({
-      where: { consultorId },
-      skip: (params.page - 1) * params.limit,
-      take: params.limit,
-      order: { criadoEm: 'DESC' },
-      relations: ['unidade', 'unidade.cliente', 'template'],
-    });
+    let where: any = {};
+    if (usuarioAutenticado.perfil === PerfilUsuario.AUDITOR) {
+      where = { consultorId: usuarioAutenticado.id };
+    } else if (usuarioAutenticado.perfil === PerfilUsuario.ANALISTA) {
+      where = { consultor: { analistaId: usuarioAutenticado.id } };
+    }
+    const queryBuilder = this.auditoriaRepository.createQueryBuilder('auditoria')
+      .leftJoinAndSelect('auditoria.unidade', 'unidade')
+      .leftJoinAndSelect('unidade.cliente', 'cliente')
+      .leftJoinAndSelect('auditoria.template', 'template')
+      .leftJoinAndSelect('auditoria.consultor', 'consultor');
+    if (usuarioAutenticado.perfil === PerfilUsuario.AUDITOR) {
+      queryBuilder.where('auditoria.consultorId = :consultorId', { consultorId: usuarioAutenticado.id });
+    } else if (usuarioAutenticado.perfil === PerfilUsuario.ANALISTA) {
+      queryBuilder.where('consultor.analistaId = :analistaId', { analistaId: usuarioAutenticado.id });
+    }
+    const [items, total] = await queryBuilder
+      .skip((params.page - 1) * params.limit)
+      .take(params.limit)
+      .orderBy('auditoria.criadoEm', 'DESC')
+      .getManyAndCount();
     return createPaginatedResult(items, total, params.page, params.limit);
   }
 
   /**
-   * Busca uma auditoria pelo ID.
+   * Busca uma auditoria pelo ID, verificando permissões de acesso.
    */
-  async buscarAuditoriaPorId(id: string): Promise<Auditoria> {
+  async buscarAuditoriaPorId(
+    id: string,
+    usuarioAutenticado?: { id: string; perfil: PerfilUsuario; analistaId?: string },
+  ): Promise<Auditoria> {
     const auditoria = await this.auditoriaRepository.findOne({
       where: { id },
       relations: [
@@ -101,6 +120,14 @@ export class AuditoriaService {
     });
     if (!auditoria) {
       throw new NotFoundException('Auditoria não encontrada');
+    }
+    if (usuarioAutenticado) {
+      if (usuarioAutenticado.perfil === PerfilUsuario.AUDITOR && auditoria.consultorId !== usuarioAutenticado.id) {
+        throw new ForbiddenException('Acesso negado a esta auditoria');
+      }
+      if (usuarioAutenticado.perfil === PerfilUsuario.ANALISTA && auditoria.consultor.analistaId !== usuarioAutenticado.id) {
+        throw new ForbiddenException('Acesso negado a esta auditoria');
+      }
     }
     return auditoria;
   }

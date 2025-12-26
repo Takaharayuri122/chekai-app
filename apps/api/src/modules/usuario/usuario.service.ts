@@ -2,11 +2,12 @@ import {
   Injectable,
   NotFoundException,
   ConflictException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
-import { Usuario } from './entities/usuario.entity';
+import { Usuario, PerfilUsuario } from './entities/usuario.entity';
 import { CriarUsuarioDto } from './dto/criar-usuario.dto';
 import { AtualizarUsuarioDto } from './dto/atualizar-usuario.dto';
 import {
@@ -28,29 +29,65 @@ export class UsuarioService {
   /**
    * Cria um novo usuário no sistema.
    */
-  async criar(dto: CriarUsuarioDto): Promise<Usuario> {
+  async criar(dto: CriarUsuarioDto, usuarioCriador?: { id: string; perfil: PerfilUsuario }): Promise<Usuario> {
     const usuarioExistente = await this.usuarioRepository.findOne({
       where: { email: dto.email },
     });
     if (usuarioExistente) {
       throw new ConflictException('E-mail já cadastrado');
     }
+    if (usuarioCriador) {
+      if (usuarioCriador.perfil === PerfilUsuario.ANALISTA && dto.perfil === PerfilUsuario.AUDITOR) {
+        dto.analistaId = usuarioCriador.id;
+      } else if (usuarioCriador.perfil !== PerfilUsuario.MASTER) {
+        throw new ForbiddenException('Apenas Master pode criar usuários com este perfil');
+      }
+    }
+    if (dto.perfil === PerfilUsuario.ANALISTA) {
+      dto.analistaId = undefined;
+    }
     const senhaHash = await bcrypt.hash(dto.senha, 10);
     const usuario = this.usuarioRepository.create({
-      ...dto,
+      nome: dto.nome,
+      email: dto.email,
       senhaHash,
+      perfil: dto.perfil || PerfilUsuario.ANALISTA,
+      telefone: dto.telefone || null,
+      analistaId: dto.analistaId ? dto.analistaId : null,
+      tenantId: null,
     });
-    return this.usuarioRepository.save(usuario);
+    const savedUsuario = await this.usuarioRepository.save(usuario);
+    if (savedUsuario.perfil === PerfilUsuario.ANALISTA) {
+      savedUsuario.tenantId = savedUsuario.id;
+      return this.usuarioRepository.save(savedUsuario);
+    }
+    return savedUsuario;
   }
 
   /**
-   * Lista todos os usuários com paginação.
+   * Lista todos os usuários com paginação, filtrados por perfil do usuário autenticado.
    */
-  async listar(params: PaginationParams): Promise<PaginatedResult<Usuario>> {
+  async listar(
+    params: PaginationParams,
+    usuarioAutenticado?: { id: string; perfil: PerfilUsuario; analistaId?: string },
+  ): Promise<PaginatedResult<Usuario>> {
+    let where: any = {};
+    if (usuarioAutenticado) {
+      if (usuarioAutenticado.perfil === PerfilUsuario.ANALISTA) {
+        where = [
+          { id: usuarioAutenticado.id },
+          { analistaId: usuarioAutenticado.id },
+        ];
+      } else if (usuarioAutenticado.perfil === PerfilUsuario.AUDITOR) {
+        where = { id: usuarioAutenticado.id };
+      }
+    }
     const [items, total] = await this.usuarioRepository.findAndCount({
+      where,
       skip: (params.page - 1) * params.limit,
       take: params.limit,
       order: { criadoEm: 'DESC' },
+      relations: ['analista'],
     });
     return createPaginatedResult(items, total, params.page, params.limit);
   }
@@ -72,7 +109,7 @@ export class UsuarioService {
   async buscarPorEmail(email: string): Promise<Usuario | null> {
     return this.usuarioRepository.findOne({
       where: { email },
-      select: ['id', 'nome', 'email', 'senhaHash', 'perfil', 'ativo'],
+      select: ['id', 'nome', 'email', 'senhaHash', 'perfil', 'ativo', 'analistaId', 'tenantId'],
     });
   }
 

@@ -5,15 +5,18 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   OneToMany,
+  ManyToOne,
+  JoinColumn,
 } from 'typeorm';
 
 /**
  * Enum para perfis de usuário no sistema.
  */
 export enum PerfilUsuario {
-  ADMIN = 'admin',
-  CONSULTOR = 'consultor',
-  CLIENTE = 'cliente',
+  MASTER = 'master',
+  ANALISTA = 'analista',
+  AUDITOR = 'auditor',
+  EMPRESA = 'empresa',
 }
 
 /**
@@ -36,7 +39,7 @@ export class Usuario {
   @Column({
     type: 'enum',
     enum: PerfilUsuario,
-    default: PerfilUsuario.CONSULTOR,
+    default: PerfilUsuario.ANALISTA,
   })
   perfil: PerfilUsuario;
 
@@ -45,6 +48,19 @@ export class Usuario {
 
   @Column({ length: 20, nullable: true })
   telefone: string;
+
+  @ManyToOne(() => Usuario, { nullable: true })
+  @JoinColumn({ name: 'analista_id' })
+  analista: Usuario;
+
+  @Column({ name: 'analista_id', type: 'uuid', nullable: true })
+  analistaId: string | null;
+
+  @Column({ name: 'tenant_id', type: 'uuid', nullable: true })
+  tenantId: string | null;
+
+  @OneToMany(() => Usuario, (usuario) => usuario.analista)
+  auditores: Usuario[];
 
   @CreateDateColumn()
   criadoEm: Date;

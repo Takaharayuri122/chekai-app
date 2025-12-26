@@ -5,10 +5,13 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   OneToMany,
+  ManyToOne,
+  JoinColumn,
 } from 'typeorm';
 import { TemplateItem } from './template-item.entity';
 import { ChecklistGrupo } from './checklist-grupo.entity';
 import { TipoAtividade } from '../../cliente/entities/cliente.entity';
+import { Usuario } from '../../usuario/entities/usuario.entity';
 
 /**
  * Entidade que representa um template de checklist.
@@ -36,6 +39,13 @@ export class ChecklistTemplate {
 
   @Column({ default: true })
   ativo: boolean;
+
+  @ManyToOne(() => Usuario, { nullable: true })
+  @JoinColumn({ name: 'analista_id' })
+  analista: Usuario;
+
+  @Column({ name: 'analista_id', nullable: true })
+  analistaId: string;
 
   @OneToMany(() => TemplateItem, (item) => item.template)
   itens: TemplateItem[];

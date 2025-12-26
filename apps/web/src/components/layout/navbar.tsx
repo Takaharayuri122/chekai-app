@@ -13,24 +13,32 @@ import {
   Home,
   FileText,
 } from 'lucide-react';
-import { useAuthStore } from '@/lib/store';
+import { useAuthStore, PerfilUsuario } from '@/lib/store';
 
-const navItems = [
-  { href: '/dashboard', label: 'Início', icon: Home },
-  { href: '/auditoria/nova', label: 'Nova', icon: Plus },
-  { href: '/clientes', label: 'Clientes', icon: Building2 },
-  { href: '/templates', label: 'Templates', icon: FileText },
-  { href: '/auditorias', label: 'Auditorias', icon: ClipboardCheck },
+const allNavItems = [
+  { href: '/dashboard', label: 'Início', icon: Home, roles: [PerfilUsuario.MASTER, PerfilUsuario.ANALISTA, PerfilUsuario.AUDITOR, PerfilUsuario.EMPRESA] },
+  { href: '/auditoria/nova', label: 'Nova', icon: Plus, roles: [PerfilUsuario.AUDITOR] },
+  { href: '/clientes', label: 'Clientes', icon: Building2, roles: [PerfilUsuario.MASTER, PerfilUsuario.ANALISTA] },
+  { href: '/templates', label: 'Templates', icon: FileText, roles: [PerfilUsuario.MASTER, PerfilUsuario.ANALISTA] },
+  { href: '/auditorias', label: 'Auditorias', icon: ClipboardCheck, roles: [PerfilUsuario.MASTER, PerfilUsuario.ANALISTA, PerfilUsuario.AUDITOR] },
+  { href: '/usuarios', label: 'Usuários', icon: User, roles: [PerfilUsuario.MASTER] },
 ];
 
 export function Navbar() {
   const pathname = usePathname();
-  const { usuario, logout } = useAuthStore();
+  const { usuario, logout, isMaster, isAnalista, isAuditor } = useAuthStore();
 
   const handleLogout = () => {
     logout();
     window.location.href = '/';
   };
+
+  const getNavItems = () => {
+    if (!usuario) return [];
+    return allNavItems.filter((item) => item.roles.includes(usuario.perfil));
+  };
+
+  const navItems = getNavItems();
 
   return (
     <>
@@ -41,8 +49,8 @@ export function Navbar() {
             <Image
               src="/images/logo-large.png"
               alt="ChekAI"
-              width={280}
-              height={74}
+              width={180}
+              height={30}
               className="h-12 w-auto w-[150px] h-auto"
               priority
             />
@@ -85,6 +93,14 @@ export function Navbar() {
                   Meu Perfil
                 </Link>
               </li>
+              {isMaster() && (
+                <li>
+                  <Link href="/usuarios">
+                    <User className="w-4 h-4" />
+                    Usuários
+                  </Link>
+                </li>
+              )}
               <li>
                 <button onClick={handleLogout} className="text-error">
                   <LogOut className="w-4 h-4" />
@@ -105,7 +121,7 @@ export function Navbar() {
               alt="ChekAI"
               width={280}
               height={74}
-              className="h-10 w-auto min-w-[200px]"
+              className="h-10 w-auto w-[100px]"
               priority
             />
           </Link>

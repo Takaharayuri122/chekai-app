@@ -5,6 +5,7 @@ import {
   IsOptional,
   IsString,
   MinLength,
+  IsUUID,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { PerfilUsuario } from '../entities/usuario.entity';
@@ -32,11 +33,19 @@ export class CriarUsuarioDto {
   @ApiPropertyOptional({
     description: 'Perfil do usuário',
     enum: PerfilUsuario,
-    default: PerfilUsuario.CONSULTOR,
+    default: PerfilUsuario.ANALISTA,
   })
   @IsEnum(PerfilUsuario, { message: 'Perfil inválido' })
   @IsOptional()
   perfil?: PerfilUsuario;
+
+  @ApiPropertyOptional({
+    description: 'ID do Analista ao qual o Auditor está vinculado (apenas para perfil AUDITOR)',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+  })
+  @IsUUID('4', { message: 'ID do analista inválido' })
+  @IsOptional()
+  analistaId?: string;
 
   @ApiPropertyOptional({ description: 'Telefone do usuário', example: '11999998888' })
   @IsString()

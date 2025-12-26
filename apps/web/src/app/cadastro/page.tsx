@@ -27,7 +27,7 @@ type CadastroFormData = z.infer<typeof cadastroSchema>;
 
 export default function CadastroPage() {
   const router = useRouter();
-  const { setToken, setUsuario } = useAuthStore();
+  const { setAuth } = useAuthStore();
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -53,9 +53,9 @@ export default function CadastroPage() {
       });
       
       if (response?.accessToken || response?.access_token) {
-        setToken(response.accessToken || response.access_token || '');
+        const token = response.accessToken || response.access_token || '';
         if (response.usuario) {
-          setUsuario(response.usuario);
+          setAuth(token, response.usuario);
         }
         router.push('/dashboard');
       } else {

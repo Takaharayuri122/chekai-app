@@ -1,5 +1,6 @@
 import { IsEmail, IsNotEmpty, IsString } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { PerfilUsuario } from '../../usuario/entities/usuario.entity';
 
 /**
  * DTO para requisição de login.
@@ -25,7 +26,9 @@ export interface LoginResponse {
     id: string;
     nome: string;
     email: string;
-    perfil: string;
+    perfil: PerfilUsuario;
+    analistaId?: string;
+    tenantId?: string;
   };
 }
 

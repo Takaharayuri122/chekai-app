@@ -3,11 +3,12 @@ import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
 import { UsuarioService } from '../../usuario/usuario.service';
+import { PerfilUsuario } from '../../usuario/entities/usuario.entity';
 
 interface JwtPayload {
   sub: string;
   email: string;
-  perfil: string;
+  perfil: PerfilUsuario;
 }
 
 /**
@@ -26,7 +27,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  async validate(payload: JwtPayload): Promise<{ id: string; email: string; perfil: string }> {
+  async validate(payload: JwtPayload): Promise<{ id: string; email: string; perfil: PerfilUsuario; analistaId?: string; tenantId?: string }> {
     const usuario = await this.usuarioService.buscarPorId(payload.sub);
     if (!usuario || !usuario.ativo) {
       throw new UnauthorizedException('Usuário inválido ou inativo');
@@ -35,6 +36,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       id: payload.sub,
       email: payload.email,
       perfil: payload.perfil,
+      analistaId: usuario.analistaId,
+      tenantId: usuario.tenantId,
     };
   }
 }

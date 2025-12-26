@@ -30,13 +30,13 @@ import {
   FinalizarAuditoriaDto,
 } from './dto/criar-auditoria.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../../core/guards/roles.guard';
+import { Roles } from '../../core/decorators/roles.decorator';
+import { CurrentUser } from '../../core/decorators/current-user.decorator';
+import { PerfilUsuario } from '../usuario/entities/usuario.entity';
 import { Auditoria } from './entities/auditoria.entity';
 import { AuditoriaItem } from './entities/auditoria-item.entity';
 import { PaginatedResult } from '../../shared/types/pagination.interface';
-
-interface AuthenticatedRequest {
-  user: { id: string; email: string; perfil: string };
-}
 
 /**
  * Controller para gestão de auditorias.
@@ -49,27 +49,31 @@ export class AuditoriaController {
   constructor(private readonly auditoriaService: AuditoriaService) {}
 
   @Post()
+  @UseGuards(RolesGuard)
+  @Roles(PerfilUsuario.AUDITOR)
   @ApiOperation({ summary: 'Inicia uma nova auditoria' })
   @ApiResponse({ status: 201, description: 'Auditoria iniciada' })
   async iniciarAuditoria(
-    @Request() req: AuthenticatedRequest,
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario },
     @Body() dto: IniciarAuditoriaDto,
   ): Promise<Auditoria> {
-    return this.auditoriaService.iniciarAuditoria(req.user.id, dto);
+    return this.auditoriaService.iniciarAuditoria(usuario.id, dto);
   }
 
   @Get()
-  @ApiOperation({ summary: 'Lista auditorias do consultor' })
+  @UseGuards(RolesGuard)
+  @Roles(PerfilUsuario.MASTER, PerfilUsuario.ANALISTA, PerfilUsuario.AUDITOR)
+  @ApiOperation({ summary: 'Lista auditorias' })
   @ApiResponse({ status: 200, description: 'Lista de auditorias' })
   async listarAuditorias(
-    @Request() req: AuthenticatedRequest,
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; analistaId?: string },
     @Query('page') page = 1,
     @Query('limit') limit = 10,
   ): Promise<PaginatedResult<Auditoria>> {
-    return this.auditoriaService.listarAuditoriasPorConsultor(req.user.id, {
-      page,
-      limit,
-    });
+    return this.auditoriaService.listarAuditorias(
+      { page, limit },
+      usuario,
+    );
   }
 
   @Get(':id')
@@ -77,8 +81,9 @@ export class AuditoriaController {
   @ApiResponse({ status: 200, description: 'Auditoria encontrada' })
   async buscarAuditoriaPorId(
     @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; analistaId?: string },
   ): Promise<Auditoria> {
-    return this.auditoriaService.buscarAuditoriaPorId(id);
+    return this.auditoriaService.buscarAuditoriaPorId(id, usuario);
   }
 
   @Put(':id/itens/:itemId')

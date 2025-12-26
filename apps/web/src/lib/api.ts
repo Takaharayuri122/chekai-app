@@ -46,8 +46,17 @@ export interface LoginResponse {
     id: string;
     nome: string;
     email: string;
-    perfil: string;
+    perfil: PerfilUsuario;
+    analistaId?: string;
+    tenantId?: string;
   };
+}
+
+export enum PerfilUsuario {
+  MASTER = 'master',
+  ANALISTA = 'analista',
+  AUDITOR = 'auditor',
+  EMPRESA = 'empresa',
 }
 
 export interface CriarUsuarioRequest {
@@ -55,6 +64,8 @@ export interface CriarUsuarioRequest {
   email: string;
   senha: string;
   telefone?: string;
+  perfil?: PerfilUsuario;
+  analistaId?: string;
 }
 
 export const authService = {
@@ -86,6 +97,53 @@ export const authService = {
   async me(): Promise<{ id: string; email: string; perfil: string }> {
     const response = await api.get('/auth/me');
     return response.data.data;
+  },
+};
+
+export interface Usuario {
+  id: string;
+  nome: string;
+  email: string;
+  perfil: PerfilUsuario;
+  telefone?: string;
+  ativo: boolean;
+  analistaId?: string;
+  tenantId?: string;
+  criadoEm: string;
+  atualizadoEm: string;
+}
+
+export interface PaginatedResult<T> {
+  items: T[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export const usuarioService = {
+  async listar(page = 1, limit = 10): Promise<PaginatedResult<Usuario>> {
+    const response = await api.get('/usuarios', { params: { page, limit } });
+    return response.data.data;
+  },
+
+  async buscarPorId(id: string): Promise<Usuario> {
+    const response = await api.get(`/usuarios/${id}`);
+    return response.data.data;
+  },
+
+  async criar(data: CriarUsuarioRequest): Promise<Usuario> {
+    const response = await api.post('/usuarios', data);
+    return response.data.data;
+  },
+
+  async atualizar(id: string, data: Partial<CriarUsuarioRequest>): Promise<Usuario> {
+    const response = await api.put(`/usuarios/${id}`, data);
+    return response.data.data;
+  },
+
+  async remover(id: string): Promise<void> {
+    await api.delete(`/usuarios/${id}`);
   },
 };
 

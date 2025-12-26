@@ -5,8 +5,11 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   OneToMany,
+  ManyToOne,
+  JoinColumn,
 } from 'typeorm';
 import { Unidade } from './unidade.entity';
+import { Usuario } from '../../usuario/entities/usuario.entity';
 
 /**
  * Enum para tipos de atividade do cliente.
@@ -58,6 +61,13 @@ export class Cliente {
 
   @Column({ default: true })
   ativo: boolean;
+
+  @ManyToOne(() => Usuario, { nullable: true })
+  @JoinColumn({ name: 'analista_id' })
+  analista: Usuario;
+
+  @Column({ name: 'analista_id', nullable: true })
+  analistaId: string;
 
   @OneToMany(() => Unidade, (unidade) => unidade.cliente)
   unidades: Unidade[];

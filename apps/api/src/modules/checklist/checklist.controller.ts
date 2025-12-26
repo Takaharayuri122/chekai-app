@@ -31,6 +31,10 @@ import {
 } from './dto/criar-checklist-template.dto';
 import { ImportarMokiDto, ImportacaoPreview, ImportacaoResultado } from './dto/importar-moki.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../../core/guards/roles.guard';
+import { Roles } from '../../core/decorators/roles.decorator';
+import { CurrentUser } from '../../core/decorators/current-user.decorator';
+import { PerfilUsuario } from '../usuario/entities/usuario.entity';
 import { ChecklistTemplate } from './entities/checklist-template.entity';
 import { TemplateItem } from './entities/template-item.entity';
 import { ChecklistGrupo } from './entities/checklist-grupo.entity';
@@ -51,10 +55,15 @@ export class ChecklistController {
   ) {}
 
   @Post('templates')
+  @UseGuards(RolesGuard)
+  @Roles(PerfilUsuario.MASTER, PerfilUsuario.ANALISTA)
   @ApiOperation({ summary: 'Cria um novo template de checklist' })
   @ApiResponse({ status: 201, description: 'Template criado com sucesso' })
-  async criarTemplate(@Body() dto: CriarChecklistTemplateDto): Promise<ChecklistTemplate> {
-    return this.checklistService.criarTemplate(dto);
+  async criarTemplate(
+    @Body() dto: CriarChecklistTemplateDto,
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario },
+  ): Promise<ChecklistTemplate> {
+    return this.checklistService.criarTemplate(dto, usuario);
   }
 
   @Get('templates')
@@ -63,8 +72,9 @@ export class ChecklistController {
   async listarTemplates(
     @Query('page') page = 1,
     @Query('limit') limit = 10,
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario },
   ): Promise<PaginatedResult<ChecklistTemplate>> {
-    return this.checklistService.listarTemplates({ page, limit });
+    return this.checklistService.listarTemplates({ page, limit }, usuario);
   }
 
   @Get('templates/tipo/:tipo')
@@ -81,8 +91,9 @@ export class ChecklistController {
   @ApiResponse({ status: 200, description: 'Template encontrado' })
   async buscarTemplatePorId(
     @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario },
   ): Promise<ChecklistTemplate> {
-    return this.checklistService.buscarTemplatePorId(id);
+    return this.checklistService.buscarTemplatePorId(id, usuario);
   }
 
   @Put('templates/:id')

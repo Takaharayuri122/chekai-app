@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ChecklistTemplate } from './entities/checklist-template.entity';
@@ -10,6 +10,7 @@ import {
   CriarChecklistGrupoDto,
 } from './dto/criar-checklist-template.dto';
 import { TipoAtividade } from '../cliente/entities/cliente.entity';
+import { PerfilUsuario } from '../usuario/entities/usuario.entity';
 import {
   PaginationParams,
   PaginatedResult,
@@ -33,12 +34,19 @@ export class ChecklistService {
   /**
    * Cria um novo template de checklist.
    */
-  async criarTemplate(dto: CriarChecklistTemplateDto): Promise<ChecklistTemplate> {
+  async criarTemplate(
+    dto: CriarChecklistTemplateDto,
+    usuarioAutenticado?: { id: string; perfil: PerfilUsuario },
+  ): Promise<ChecklistTemplate> {
+    if (usuarioAutenticado && usuarioAutenticado.perfil !== PerfilUsuario.MASTER && usuarioAutenticado.perfil !== PerfilUsuario.ANALISTA) {
+      throw new ForbiddenException('Apenas Master e Analista podem criar templates');
+    }
     const template = this.templateRepository.create({
       nome: dto.nome,
       descricao: dto.descricao,
       tipoAtividade: dto.tipoAtividade,
       versao: dto.versao,
+      analistaId: usuarioAutenticado?.perfil === PerfilUsuario.ANALISTA ? usuarioAutenticado.id : undefined,
     });
     const savedTemplate = await this.templateRepository.save(template);
     if (dto.itens && dto.itens.length > 0) {
@@ -55,11 +63,18 @@ export class ChecklistService {
   }
 
   /**
-   * Lista todos os templates de checklist.
+   * Lista todos os templates de checklist, filtrados por tenant.
    */
-  async listarTemplates(params: PaginationParams): Promise<PaginatedResult<ChecklistTemplate>> {
+  async listarTemplates(
+    params: PaginationParams,
+    usuarioAutenticado?: { id: string; perfil: PerfilUsuario },
+  ): Promise<PaginatedResult<ChecklistTemplate>> {
+    let where: any = { ativo: true };
+    if (usuarioAutenticado && usuarioAutenticado.perfil === PerfilUsuario.ANALISTA) {
+      where = { ...where, analistaId: usuarioAutenticado.id };
+    }
     const [items, total] = await this.templateRepository.findAndCount({
-      where: { ativo: true },
+      where,
       relations: ['itens'],
       skip: (params.page - 1) * params.limit,
       take: params.limit,
@@ -91,15 +106,21 @@ export class ChecklistService {
   }
 
   /**
-   * Busca um template pelo ID com todos os itens e grupos.
+   * Busca um template pelo ID com todos os itens e grupos, verificando permissões.
    */
-  async buscarTemplatePorId(id: string): Promise<ChecklistTemplate> {
+  async buscarTemplatePorId(
+    id: string,
+    usuarioAutenticado?: { id: string; perfil: PerfilUsuario },
+  ): Promise<ChecklistTemplate> {
     const template = await this.templateRepository.findOne({
       where: { id },
       relations: ['itens', 'itens.grupo', 'grupos'],
     });
     if (!template) {
       throw new NotFoundException('Template não encontrado');
+    }
+    if (usuarioAutenticado && usuarioAutenticado.perfil === PerfilUsuario.ANALISTA && template.analistaId !== usuarioAutenticado.id) {
+      throw new ForbiddenException('Acesso negado a este template');
     }
     if (template.itens) {
       template.itens = template.itens.filter((i) => i.ativo !== false);
