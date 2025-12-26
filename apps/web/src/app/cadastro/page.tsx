@@ -105,7 +105,7 @@ export default function CadastroPage() {
               </Link>
               <h1 className="text-2xl font-bold text-base-content">Criar conta</h1>
               <p className="text-sm text-base-content/60 mt-1">
-                Comece a usar o Meta App gratuitamente
+                Comece a usar o ChekAI gratuitamente
               </p>
             </div>
 

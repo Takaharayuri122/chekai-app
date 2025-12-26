@@ -62,7 +62,7 @@ export default function HomePage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
-              className="text-4xl lg:text-6xl font-bold text-base-content mb-6"
+              className="text-4xl lg:text-6xl font-bold text-base-content mb-6 font-display"
             >
               Consultoria em{' '}
               <span className="text-primary">Segurança de Alimentos</span>
@@ -136,8 +136,8 @@ export default function HomePage() {
         <div className="max-w-4xl mx-auto">
           <div className="card bg-primary text-primary-content">
             <div className="card-body p-8 lg:p-12">
-              <h2 className="text-2xl lg:text-3xl font-bold mb-8 text-center">
-                Por que usar o Meta App?
+              <h2 className="text-2xl lg:text-3xl font-bold mb-8 text-center font-display">
+                Por que usar o ChekAI?
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {benefits.map((benefit, index) => (
@@ -164,7 +164,7 @@ export default function HomePage() {
           <div className="w-6 h-6 bg-primary rounded flex items-center justify-center">
             <ClipboardCheck className="w-4 h-4 text-primary-content" />
           </div>
-          <span className="font-semibold text-base-content">Meta App</span>
+          <span className="font-semibold text-base-content font-display">ChekAI</span>
         </div>
         <p className="text-sm text-base-content/60">
           POC - Evobit © {new Date().getFullYear()}

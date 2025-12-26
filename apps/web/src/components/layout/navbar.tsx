@@ -40,7 +40,7 @@ export function Navbar() {
             <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
               <ClipboardCheck className="w-5 h-5 text-primary-content" />
             </div>
-            <span className="text-xl font-bold text-base-content">Meta App</span>
+            <span className="text-xl font-bold text-base-content font-display">ChekAI</span>
           </Link>
         </div>
 
@@ -98,7 +98,7 @@ export function Navbar() {
             <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
               <ClipboardCheck className="w-5 h-5 text-primary-content" />
             </div>
-            <span className="text-lg font-bold">Meta App</span>
+            <span className="text-lg font-bold font-display">ChekAI</span>
           </Link>
         </div>
         <div className="flex-none">

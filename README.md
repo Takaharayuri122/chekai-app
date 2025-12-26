@@ -1,6 +1,6 @@
-# Meta App - Consultoria em Segurança de Alimentos com IA
+# ChekAI - Consultoria em Segurança de Alimentos com IA
 
-POC de aplicativo web mobile-first para consultoria em segurança de alimentos, utilizando IA (DeepSeek) para análise de imagens e geração de textos técnicos via RAG.
+Aplicativo web mobile-first para consultoria em segurança de alimentos, utilizando IA (DeepSeek) para análise de imagens e geração de textos técnicos via RAG.
 
 ## Stack Tecnológica
 

@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { Inter } from 'next/font/google';
+import { Inter, Montserrat } from 'next/font/google';
 import './globals.css';
 
 const inter = Inter({
@@ -8,14 +8,20 @@ const inter = Inter({
   display: 'swap',
 });
 
+const montserrat = Montserrat({
+  subsets: ['latin'],
+  variable: '--font-montserrat',
+  display: 'swap',
+});
+
 export const metadata: Metadata = {
-  title: 'Meta App - Consultoria em Segurança de Alimentos',
+  title: 'ChekAI - Consultoria em Segurança de Alimentos',
   description: 'Aplicativo para auditorias e consultorias em segurança de alimentos com IA',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'Meta App',
+    title: 'ChekAI',
   },
 };
 
@@ -24,7 +30,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
-  themeColor: '#059669',
+  themeColor: '#00B8A9',
 };
 
 export default function RootLayout({
@@ -34,7 +40,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR" data-theme="light">
-      <body className={`${inter.variable} font-sans antialiased bg-base-200 min-h-screen`}>
+      <body className={`${inter.variable} ${montserrat.variable} font-sans antialiased bg-base-200 min-h-screen`}>
         {children}
       </body>
     </html>

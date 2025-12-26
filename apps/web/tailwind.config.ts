@@ -10,7 +10,8 @@ const config: Config = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        sans: ['var(--font-inter)', 'system-ui', 'sans-serif'],
+        display: ['var(--font-montserrat)', 'system-ui', 'sans-serif'],
       },
     },
   },
@@ -19,18 +20,18 @@ const config: Config = {
     themes: [
       {
         light: {
-          'primary': '#059669',          // Emerald 600
+          'primary': '#00B8A9',          // Teal Inovação
           'primary-content': '#ffffff',
           'secondary': '#0891b2',         // Cyan 600
           'secondary-content': '#ffffff',
           'accent': '#f59e0b',            // Amber 500
           'accent-content': '#ffffff',
-          'neutral': '#1f2937',           // Gray 800
-          'neutral-content': '#f9fafb',
-          'base-100': '#ffffff',
-          'base-200': '#f9fafb',          // Gray 50
-          'base-300': '#f3f4f6',          // Gray 100
-          'base-content': '#1f2937',
+          'neutral': '#1B2A4A',           // Navy Confiança
+          'neutral-content': '#ffffff',
+          'base-100': '#FFFFFF',          // Branco Puro
+          'base-200': '#F4F7FA',            // Cinza Suporte
+          'base-300': '#E5E9F0',          // Cinza mais escuro para bordas
+          'base-content': '#1B2A4A',      // Navy Confiança para textos
           'info': '#3b82f6',              // Blue 500
           'info-content': '#ffffff',
           'success': '#10b981',           // Emerald 500

@@ -76,27 +76,27 @@ export default function LegislacoesPage() {
   );
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900">
+    <main className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
       {/* Header */}
-      <header className="bg-slate-800/60 backdrop-blur-xl border-b border-indigo-500/20 px-6 py-4 sticky top-0 z-40">
+      <header className="bg-slate-800/60 backdrop-blur-xl border-b border-primary/20 px-6 py-4 sticky top-0 z-40">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button
               onClick={() => router.push('/dashboard')}
               className="p-2 hover:bg-slate-700/50 rounded-xl transition-colors"
             >
-              <ChevronLeft className="w-5 h-5 text-indigo-300" />
+              <ChevronLeft className="w-5 h-5 text-primary" />
             </button>
             <div>
-              <h1 className="text-xl font-bold text-white">Legislações</h1>
-              <p className="text-sm text-indigo-300/70">
+              <h1 className="text-xl font-bold text-white font-display">Legislações</h1>
+              <p className="text-sm text-primary/70">
                 {legislacoes.length} cadastradas • Base RAG
               </p>
             </div>
           </div>
           <Link
             href="/legislacoes/nova"
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-medium shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 transition-all"
+            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-primary to-primary/80 text-white rounded-xl font-medium shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all"
           >
             <Plus className="w-4 h-4" />
             Nova
@@ -111,13 +111,13 @@ export default function LegislacoesPage() {
           animate={{ opacity: 1, y: 0 }}
           className="relative"
         >
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-indigo-400" />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-primary-400" />
           <input
             type="text"
             placeholder="Buscar por título, número, órgão..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-12 pr-4 py-3 bg-slate-800/50 backdrop-blur-sm border border-indigo-500/20 rounded-xl text-white placeholder-indigo-300/50 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all"
+            className="w-full pl-12 pr-4 py-3 bg-slate-800/50 backdrop-blur-sm border border-primary-500/20 rounded-xl text-white placeholder-indigo-300/50 focus:border-primary-500 focus:ring-2 focus:ring-indigo-500/20 transition-all"
           />
         </motion.div>
 
@@ -126,15 +126,15 @@ export default function LegislacoesPage() {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="bg-gradient-to-r from-indigo-600/20 to-purple-600/20 border border-indigo-500/30 rounded-2xl p-4"
+          className="bg-gradient-to-r from-primary-600/20 to-primary-600/20 border border-primary-500/30 rounded-2xl p-4"
         >
           <div className="flex items-start gap-3">
-            <div className="w-10 h-10 bg-indigo-500/20 rounded-xl flex items-center justify-center flex-shrink-0">
-              <Layers className="w-5 h-5 text-indigo-400" />
+            <div className="w-10 h-10 bg-primary-500/20 rounded-xl flex items-center justify-center flex-shrink-0">
+              <Layers className="w-5 h-5 text-primary-400" />
             </div>
             <div>
               <h3 className="font-medium text-white mb-1">Base de Conhecimento RAG</h3>
-              <p className="text-sm text-indigo-200/70">
+              <p className="text-sm text-primary-200/70">
                 As legislações cadastradas aqui alimentam o sistema de IA para gerar 
                 recomendações e textos técnicos baseados nas normas vigentes.
               </p>
@@ -145,28 +145,28 @@ export default function LegislacoesPage() {
         {/* Lista de Legislações */}
         {isLoading ? (
           <div className="flex items-center justify-center py-20">
-            <div className="w-10 h-10 border-3 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+            <div className="w-10 h-10 border-3 border-primary-500 border-t-transparent rounded-full animate-spin" />
           </div>
         ) : legislacoesFiltradas.length === 0 ? (
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-slate-800/40 rounded-2xl border border-indigo-500/20 p-12 text-center backdrop-blur-sm"
+            className="bg-slate-800/40 rounded-2xl border border-primary-500/20 p-12 text-center backdrop-blur-sm"
           >
-            <div className="w-20 h-20 bg-indigo-500/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <Scale className="w-10 h-10 text-indigo-400" />
+            <div className="w-20 h-20 bg-primary-500/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <Scale className="w-10 h-10 text-primary-400" />
             </div>
             <h3 className="text-lg font-semibold text-white mb-2">
               Nenhuma legislação encontrada
             </h3>
-            <p className="text-indigo-300/70 mb-6">
+            <p className="text-primary-300/70 mb-6">
               {searchTerm
                 ? 'Tente buscar com outros termos'
                 : 'Adicione legislações para alimentar a base de conhecimento'}
             </p>
             <Link
               href="/legislacoes/nova"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-medium"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-primary-600 to-primary-600 text-white rounded-xl font-medium"
             >
               <Plus className="w-4 h-4" />
               Adicionar Legislação
@@ -180,11 +180,11 @@ export default function LegislacoesPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.05 }}
-                className="bg-slate-800/40 rounded-2xl border border-indigo-500/20 p-5 backdrop-blur-sm hover:border-indigo-500/40 transition-all group"
+                className="bg-slate-800/40 rounded-2xl border border-primary-500/20 p-5 backdrop-blur-sm hover:border-primary-500/40 transition-all group"
               >
                 <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 bg-gradient-to-br from-indigo-500/20 to-purple-500/20 rounded-xl flex items-center justify-center flex-shrink-0">
-                    <Scale className="w-6 h-6 text-indigo-400" />
+                  <div className="w-12 h-12 bg-gradient-to-br from-primary-500/20 to-primary-500/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <Scale className="w-6 h-6 text-primary-400" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">
@@ -192,7 +192,7 @@ export default function LegislacoesPage() {
                         <h3 className="font-semibold text-white truncate">
                           {TIPO_LEGISLACAO_LABELS[leg.tipo]} {leg.numero}/{leg.ano}
                         </h3>
-                        <p className="text-sm text-indigo-200/70 line-clamp-2">
+                        <p className="text-sm text-primary-200/70 line-clamp-2">
                           {leg.titulo}
                         </p>
                       </div>
@@ -201,13 +201,13 @@ export default function LegislacoesPage() {
                           onClick={() => setMenuAberto(menuAberto === leg.id ? null : leg.id)}
                           className="p-2 hover:bg-slate-700/50 rounded-lg transition-colors"
                         >
-                          <MoreVertical className="w-4 h-4 text-indigo-300" />
+                          <MoreVertical className="w-4 h-4 text-primary-300" />
                         </button>
                         {menuAberto === leg.id && (
-                          <div className="absolute right-0 top-full mt-1 bg-slate-800 rounded-xl border border-indigo-500/20 shadow-xl py-2 min-w-[160px] z-50">
+                          <div className="absolute right-0 top-full mt-1 bg-slate-800 rounded-xl border border-primary-500/20 shadow-xl py-2 min-w-[160px] z-50">
                             <Link
                               href={`/legislacoes/${leg.id}`}
-                              className="flex items-center gap-3 px-4 py-2 hover:bg-slate-700/50 text-indigo-200"
+                              className="flex items-center gap-3 px-4 py-2 hover:bg-slate-700/50 text-primary-200"
                             >
                               <Edit className="w-4 h-4" />
                               Editar
@@ -217,7 +217,7 @@ export default function LegislacoesPage() {
                                 href={leg.linkOficial}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="flex items-center gap-3 px-4 py-2 hover:bg-slate-700/50 text-indigo-200"
+                                className="flex items-center gap-3 px-4 py-2 hover:bg-slate-700/50 text-primary-200"
                               >
                                 <ExternalLink className="w-4 h-4" />
                                 Abrir Link
@@ -235,16 +235,16 @@ export default function LegislacoesPage() {
                       </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-3 mt-3 text-sm">
-                      <span className="px-2 py-1 bg-indigo-500/20 text-indigo-300 text-xs font-medium rounded-lg">
+                      <span className="px-2 py-1 bg-primary-500/20 text-primary-300 text-xs font-medium rounded-lg">
                         {TIPO_LEGISLACAO_LABELS[leg.tipo]}
                       </span>
                       {leg.orgaoEmissor && (
-                        <span className="text-indigo-300/60">
+                        <span className="text-primary-300/60">
                           {leg.orgaoEmissor}
                         </span>
                       )}
                       {leg.chunks && leg.chunks.length > 0 && (
-                        <span className="flex items-center gap-1 text-emerald-400/80">
+                        <span className="flex items-center gap-1 text-primary">
                           <Layers className="w-3.5 h-3.5" />
                           {leg.chunks.length} chunks
                         </span>
@@ -253,9 +253,9 @@ export default function LegislacoesPage() {
                   </div>
                   <Link
                     href={`/legislacoes/${leg.id}`}
-                    className="p-2 hover:bg-indigo-500/10 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                    className="p-2 hover:bg-primary-500/10 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
                   >
-                    <ChevronRight className="w-5 h-5 text-indigo-400" />
+                    <ChevronRight className="w-5 h-5 text-primary-400" />
                   </Link>
                 </div>
               </motion.div>
@@ -265,32 +265,32 @@ export default function LegislacoesPage() {
       </div>
 
       {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-slate-800/90 backdrop-blur-xl border-t border-indigo-500/20 px-6 py-3 z-50">
+      <nav className="fixed bottom-0 left-0 right-0 bg-slate-800/90 backdrop-blur-xl border-t border-primary-500/20 px-6 py-3 z-50">
         <div className="flex items-center justify-around max-w-md mx-auto">
           <Link
             href="/dashboard"
-            className="flex flex-col items-center gap-1 text-indigo-300/60 hover:text-indigo-300 transition-colors"
+            className="flex flex-col items-center gap-1 text-primary-300/60 hover:text-primary-300 transition-colors"
           >
             <ClipboardCheck className="w-6 h-6" />
             <span className="text-xs">Início</span>
           </Link>
           <Link
             href="/clientes"
-            className="flex flex-col items-center gap-1 text-indigo-300/60 hover:text-indigo-300 transition-colors"
+            className="flex flex-col items-center gap-1 text-primary-300/60 hover:text-primary-300 transition-colors"
           >
             <Building2 className="w-6 h-6" />
             <span className="text-xs">Clientes</span>
           </Link>
           <Link
             href="/legislacoes"
-            className="flex flex-col items-center gap-1 text-indigo-400"
+            className="flex flex-col items-center gap-1 text-primary-400"
           >
             <Scale className="w-6 h-6" />
             <span className="text-xs font-medium">Legislações</span>
           </Link>
           <Link
             href="/templates"
-            className="flex flex-col items-center gap-1 text-indigo-300/60 hover:text-indigo-300 transition-colors"
+            className="flex flex-col items-center gap-1 text-primary-300/60 hover:text-primary-300 transition-colors"
           >
             <FileText className="w-6 h-6" />
             <span className="text-xs">Templates</span>

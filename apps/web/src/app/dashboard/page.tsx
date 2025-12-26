@@ -157,7 +157,7 @@ export default function DashboardPage() {
             <EmptyState
               icon={ClipboardCheck}
               title="Nenhuma auditoria ainda"
-              description="Inicie sua primeira auditoria para começar a usar o Meta App."
+              description="Inicie sua primeira auditoria para começar a usar o ChekAI."
               actionLabel="Iniciar Auditoria"
               actionHref="/auditoria/nova"
             />
