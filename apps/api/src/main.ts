@@ -11,7 +11,23 @@ async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
 
   app.enableCors({
-    origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+    origin: (origin, callback) => {
+      const allowedOrigins = [
+        'http://localhost:3000',
+        'http://localhost:3001',
+        process.env.CORS_ORIGIN,
+      ].filter(Boolean);
+      // Permite requisições sem origin (apps mobile, Postman, etc.)
+      if (!origin) {
+        return callback(null, true);
+      }
+      // Permite IPs de rede local (192.168.x.x, 10.x.x.x, 172.16-31.x.x)
+      const isLocalNetwork = /^http:\/\/(192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+)(:\d+)?$/.test(origin);
+      if (allowedOrigins.includes(origin) || isLocalNetwork) {
+        return callback(null, true);
+      }
+      return callback(new Error('Origem não permitida pelo CORS'), false);
+    },
     credentials: true,
   });
 

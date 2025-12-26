@@ -161,6 +161,17 @@ export class AuditoriaService {
   }
 
   /**
+   * Remove uma foto de um item da auditoria.
+   */
+  async removerFoto(fotoId: string): Promise<void> {
+    const foto = await this.fotoRepository.findOne({ where: { id: fotoId } });
+    if (!foto) {
+      throw new NotFoundException('Foto não encontrada');
+    }
+    await this.fotoRepository.remove(foto);
+  }
+
+  /**
    * Finaliza uma auditoria.
    */
   async finalizarAuditoria(

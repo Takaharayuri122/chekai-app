@@ -3,7 +3,12 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ChecklistTemplate } from './entities/checklist-template.entity';
 import { TemplateItem } from './entities/template-item.entity';
-import { CriarChecklistTemplateDto, CriarTemplateItemDto } from './dto/criar-checklist-template.dto';
+import { ChecklistGrupo } from './entities/checklist-grupo.entity';
+import {
+  CriarChecklistTemplateDto,
+  CriarTemplateItemDto,
+  CriarChecklistGrupoDto,
+} from './dto/criar-checklist-template.dto';
 import { TipoAtividade } from '../cliente/entities/cliente.entity';
 import {
   PaginationParams,
@@ -21,6 +26,8 @@ export class ChecklistService {
     private readonly templateRepository: Repository<ChecklistTemplate>,
     @InjectRepository(TemplateItem)
     private readonly itemRepository: Repository<TemplateItem>,
+    @InjectRepository(ChecklistGrupo)
+    private readonly grupoRepository: Repository<ChecklistGrupo>,
   ) {}
 
   /**
@@ -72,18 +79,23 @@ export class ChecklistService {
   }
 
   /**
-   * Busca um template pelo ID com todos os itens.
+   * Busca um template pelo ID com todos os itens e grupos.
    */
   async buscarTemplatePorId(id: string): Promise<ChecklistTemplate> {
     const template = await this.templateRepository.findOne({
       where: { id },
-      relations: ['itens'],
+      relations: ['itens', 'itens.grupo', 'grupos'],
     });
     if (!template) {
       throw new NotFoundException('Template não encontrado');
     }
     if (template.itens) {
+      template.itens = template.itens.filter((i) => i.ativo !== false);
       template.itens.sort((a, b) => a.ordem - b.ordem);
+    }
+    if (template.grupos) {
+      template.grupos = template.grupos.filter((g) => g.ativo !== false);
+      template.grupos.sort((a, b) => a.ordem - b.ordem);
     }
     return template;
   }
@@ -154,6 +166,69 @@ export class ChecklistService {
     }
     item.ativo = false;
     await this.itemRepository.save(item);
+  }
+
+  /**
+   * Lista os grupos de um template.
+   */
+  async listarGrupos(templateId: string): Promise<ChecklistGrupo[]> {
+    await this.buscarTemplatePorId(templateId);
+    return this.grupoRepository.find({
+      where: { templateId, ativo: true },
+      order: { ordem: 'ASC' },
+    });
+  }
+
+  /**
+   * Adiciona um grupo a um template.
+   */
+  async adicionarGrupo(templateId: string, dto: CriarChecklistGrupoDto): Promise<ChecklistGrupo> {
+    await this.buscarTemplatePorId(templateId);
+    const maxOrdem = await this.grupoRepository
+      .createQueryBuilder('grupo')
+      .where('grupo.template_id = :templateId', { templateId })
+      .select('MAX(grupo.ordem)', 'max')
+      .getRawOne();
+    const grupo = this.grupoRepository.create({
+      ...dto,
+      templateId,
+      ordem: dto.ordem ?? (maxOrdem?.max ?? 0) + 1,
+    });
+    return this.grupoRepository.save(grupo);
+  }
+
+  /**
+   * Atualiza um grupo do template.
+   */
+  async atualizarGrupo(grupoId: string, dto: Partial<CriarChecklistGrupoDto>): Promise<ChecklistGrupo> {
+    const grupo = await this.grupoRepository.findOne({ where: { id: grupoId } });
+    if (!grupo) {
+      throw new NotFoundException('Grupo não encontrado');
+    }
+    Object.assign(grupo, dto);
+    return this.grupoRepository.save(grupo);
+  }
+
+  /**
+   * Remove um grupo (soft delete).
+   */
+  async removerGrupo(grupoId: string): Promise<void> {
+    const grupo = await this.grupoRepository.findOne({ where: { id: grupoId } });
+    if (!grupo) {
+      throw new NotFoundException('Grupo não encontrado');
+    }
+    grupo.ativo = false;
+    await this.grupoRepository.save(grupo);
+  }
+
+  /**
+   * Reordena os grupos de um template.
+   */
+  async reordenarGrupos(templateId: string, grupoIds: string[]): Promise<void> {
+    await this.buscarTemplatePorId(templateId);
+    for (let i = 0; i < grupoIds.length; i++) {
+      await this.grupoRepository.update(grupoIds[i], { ordem: i });
+    }
   }
 }
 

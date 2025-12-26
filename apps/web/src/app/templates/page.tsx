@@ -12,6 +12,7 @@ import {
   List,
   AlertTriangle,
   Loader2,
+  Upload,
 } from 'lucide-react';
 import { AppLayout, PageHeader, EmptyState } from '@/components';
 import {
@@ -137,13 +138,22 @@ export default function TemplatesPage() {
         title="Templates"
         subtitle="Modelos de checklist para auditorias"
         action={
-          <button
-            onClick={() => setShowModal(true)}
-            className="btn btn-primary btn-sm gap-1"
-          >
-            <Plus className="w-4 h-4" />
-            Novo
-          </button>
+          <div className="flex gap-2">
+            <Link
+              href="/templates/importar"
+              className="btn btn-ghost btn-sm gap-1"
+            >
+              <Upload className="w-4 h-4" />
+              Importar
+            </Link>
+            <button
+              onClick={() => setShowModal(true)}
+              className="btn btn-primary btn-sm gap-1"
+            >
+              <Plus className="w-4 h-4" />
+              Novo
+            </button>
+          </div>
         }
       />
 

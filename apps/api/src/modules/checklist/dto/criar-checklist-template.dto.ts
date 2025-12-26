@@ -75,6 +75,36 @@ export class CriarTemplateItemDto {
   @IsBoolean()
   @IsOptional()
   usarRespostasPersonalizadas?: boolean;
+
+  @ApiPropertyOptional({ description: 'ID do grupo ao qual o item pertence' })
+  @IsString()
+  @IsOptional()
+  grupoId?: string;
+
+  @ApiPropertyOptional({ description: 'Seção dentro do grupo', example: 'ÁREA DE LAVAGEM' })
+  @IsString()
+  @IsOptional()
+  secao?: string;
+}
+
+/**
+ * DTO para criar um grupo de checklist.
+ */
+export class CriarChecklistGrupoDto {
+  @ApiProperty({ description: 'Nome do grupo', example: 'ESTRUTURA' })
+  @IsString()
+  @IsNotEmpty()
+  nome: string;
+
+  @ApiPropertyOptional({ description: 'Descrição do grupo' })
+  @IsString()
+  @IsOptional()
+  descricao?: string;
+
+  @ApiPropertyOptional({ description: 'Ordem de exibição', example: 1 })
+  @IsNumber()
+  @IsOptional()
+  ordem?: number;
 }
 
 /**

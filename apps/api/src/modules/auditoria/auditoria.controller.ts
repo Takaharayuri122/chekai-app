@@ -3,18 +3,25 @@ import {
   Get,
   Post,
   Put,
+  Delete,
   Body,
   Param,
   Query,
   UseGuards,
   ParseUUIDPipe,
   Request,
+  UseInterceptors,
+  UploadedFile,
+  BadRequestException,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import {
   ApiTags,
   ApiOperation,
   ApiResponse,
   ApiBearerAuth,
+  ApiConsumes,
+  ApiBody,
 } from '@nestjs/swagger';
 import { AuditoriaService } from './auditoria.service';
 import {
@@ -88,12 +95,47 @@ export class AuditoriaController {
   @Post(':id/itens/:itemId/fotos')
   @ApiOperation({ summary: 'Adiciona uma foto ao item' })
   @ApiResponse({ status: 201, description: 'Foto adicionada' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: { type: 'string', format: 'binary' },
+        latitude: { type: 'number' },
+        longitude: { type: 'number' },
+      },
+    },
+  })
+  @UseInterceptors(FileInterceptor('file'))
   async adicionarFoto(
     @Param('itemId', ParseUUIDPipe) itemId: string,
-    @Body() fotoData: { url: string; latitude?: number; longitude?: number },
-  ): Promise<{ id: string }> {
-    const foto = await this.auditoriaService.adicionarFoto(itemId, fotoData);
-    return { id: foto.id };
+    @UploadedFile() file: Express.Multer.File,
+    @Body() body: { latitude?: string; longitude?: string },
+  ): Promise<{ id: string; url: string }> {
+    if (!file) {
+      throw new BadRequestException('Arquivo de imagem é obrigatório');
+    }
+    // Converte para base64 data URL para armazenamento
+    const mimeType = file.mimetype || 'image/jpeg';
+    const base64 = file.buffer.toString('base64');
+    const dataUrl = `data:${mimeType};base64,${base64}`;
+    const foto = await this.auditoriaService.adicionarFoto(itemId, {
+      url: dataUrl,
+      nomeOriginal: file.originalname,
+      latitude: body.latitude ? parseFloat(body.latitude) : undefined,
+      longitude: body.longitude ? parseFloat(body.longitude) : undefined,
+    });
+    return { id: foto.id, url: dataUrl };
+  }
+
+  @Delete(':id/itens/:itemId/fotos/:fotoId')
+  @ApiOperation({ summary: 'Remove uma foto do item' })
+  @ApiResponse({ status: 200, description: 'Foto removida' })
+  async removerFoto(
+    @Param('fotoId', ParseUUIDPipe) fotoId: string,
+  ): Promise<{ success: boolean }> {
+    await this.auditoriaService.removerFoto(fotoId);
+    return { success: true };
   }
 
   @Put(':id/finalizar')

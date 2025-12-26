@@ -16,7 +16,7 @@ export class Foto {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ length: 500 })
+  @Column({ type: 'text' })
   url: string;
 
   @Column({ length: 255, nullable: true })

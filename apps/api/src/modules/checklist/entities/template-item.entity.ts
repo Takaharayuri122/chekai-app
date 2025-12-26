@@ -8,6 +8,7 @@ import {
   JoinColumn,
 } from 'typeorm';
 import { ChecklistTemplate } from './checklist-template.entity';
+import { ChecklistGrupo } from './checklist-grupo.entity';
 
 /**
  * Enum para categorias de itens do checklist.
@@ -92,6 +93,16 @@ export class TemplateItem {
 
   @Column({ name: 'template_id' })
   templateId: string;
+
+  @ManyToOne(() => ChecklistGrupo, (grupo) => grupo.itens, { nullable: true })
+  @JoinColumn({ name: 'grupo_id' })
+  grupo: ChecklistGrupo;
+
+  @Column({ name: 'grupo_id', nullable: true })
+  grupoId: string;
+
+  @Column({ length: 255, nullable: true })
+  secao: string;
 
   @CreateDateColumn()
   criadoEm: Date;

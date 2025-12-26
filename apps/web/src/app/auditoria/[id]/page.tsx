@@ -63,6 +63,7 @@ export default function AuditoriaPage() {
   const [finalizando, setFinalizando] = useState(false);
   const [showFinalModal, setShowFinalModal] = useState(false);
   const [observacoesGerais, setObservacoesGerais] = useState('');
+  const [erroFinalizar, setErroFinalizar] = useState('');
 
   // Modal de foto + IA
   const [itemModal, setItemModal] = useState<ItemModalState | null>(null);
@@ -128,8 +129,7 @@ export default function AuditoriaPage() {
 
   const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !itemModal) return;
-    const totalFotos = itemModal.fotos.length + (itemModal.item.fotos?.length || 0) - itemModal.fotos.filter((f) => f.isExisting).length;
+    if (!file || !itemModal || !auditoria) return;
     if (itemModal.fotos.length >= MAX_FOTOS_POR_ITEM) {
       alert(`Máximo de ${MAX_FOTOS_POR_ITEM} fotos por item`);
       return;
@@ -139,18 +139,78 @@ export default function AuditoriaPage() {
     const fotoIndex = itemModal.fotos.length;
     setItemModal((prev) => prev ? { ...prev, fotos: [...prev.fotos, novaFoto] } : null);
     try {
+      // Salva a foto automaticamente no backend
+      const fotoSalva = await auditoriaService.adicionarFoto(
+        auditoria.id,
+        itemModal.item.id,
+        file
+      );
+      // Analisa a imagem com IA
       const analise = await iaService.analisarImagemChecklist(
         file,
         itemModal.item.templateItem.pergunta,
         itemModal.item.templateItem.categoria || 'geral',
         auditoria?.template?.tipoAtividade || 'serviço de alimentação'
       );
+      // Atualiza o estado com a foto salva e a análise
       setItemModal((prev) => {
         if (!prev) return null;
         const fotosAtualizadas = [...prev.fotos];
-        fotosAtualizadas[fotoIndex] = { ...fotosAtualizadas[fotoIndex], analiseIa: analise, isAnalyzing: false };
-        return { ...prev, fotos: fotosAtualizadas };
+        fotosAtualizadas[fotoIndex] = { 
+          ...fotosAtualizadas[fotoIndex], 
+          id: fotoSalva.id,
+          preview: fotoSalva.url || preview,
+          analiseIa: analise, 
+          isAnalyzing: false,
+          isExisting: true, // Marca como existente pois já foi salva
+        };
+        
+        // Adiciona a descrição da IA como sugestão no campo de complemento
+        // Só adiciona se o campo estiver vazio ou se for a primeira foto
+        let novoComplemento = prev.complemento;
+        if (analise.descricaoIa && !prev.complemento) {
+          novoComplemento = analise.descricaoIa;
+        } else if (analise.descricaoIa && prev.complemento && !prev.complemento.includes(analise.descricaoIa)) {
+          // Se já tiver texto, adiciona a nova descrição como complemento
+          novoComplemento = prev.complemento + '\n\n' + analise.descricaoIa;
+        }
+        
+        return { 
+          ...prev, 
+          fotos: fotosAtualizadas,
+          complemento: novoComplemento,
+          descricaoIaExistente: analise.descricaoIa,
+        };
       });
+      // Atualiza o estado global da auditoria com a nova foto
+      setAuditoria((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          itens: prev.itens.map((item) =>
+            item.id === itemModal.item.id
+              ? {
+                  ...item,
+                  fotos: [...(item.fotos || []), { id: fotoSalva.id, url: fotoSalva.url }],
+                }
+              : item
+          ),
+        };
+      });
+      // Atualiza o item com a análise da IA automaticamente
+      await auditoriaService.responderItem(
+        auditoria.id,
+        itemModal.item.id,
+        itemModal.item.resposta || 'nao_avaliado',
+        {
+          descricaoIa: analise.descricaoIa,
+          descricaoNaoConformidade: analise.tipoNaoConformidade !== 'Nenhuma identificada' 
+            ? analise.tipoNaoConformidade 
+            : undefined,
+          referenciaLegal: analise.referenciaLegal,
+          planoAcaoSugerido: analise.sugestoes?.join('\n'),
+        }
+      );
     } catch {
       setItemModal((prev) => {
         if (!prev) return null;
@@ -162,70 +222,68 @@ export default function AuditoriaPage() {
     if (e.target) e.target.value = '';
   };
 
-  const handleRemoveFoto = (index: number) => {
+  const handleRemoveFoto = async (index: number) => {
+    if (!itemModal || !auditoria) return;
+    
+    const fotoParaRemover = itemModal.fotos[index];
+    
+    // Remove do estado local imediatamente
     setItemModal((prev) => {
       if (!prev) return null;
       const fotosAtualizadas = prev.fotos.filter((_, i) => i !== index);
       return { ...prev, fotos: fotosAtualizadas };
     });
+
+    // Se a foto já foi salva no backend (tem id), deleta
+    if (fotoParaRemover.id && fotoParaRemover.isExisting) {
+      try {
+        await auditoriaService.removerFoto(auditoria.id, itemModal.item.id, fotoParaRemover.id);
+        
+        // Atualiza o estado global também
+        setAuditoria((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            itens: prev.itens.map((item) =>
+              item.id === itemModal.item.id
+                ? {
+                    ...item,
+                    fotos: (item.fotos || []).filter((f) => f.id !== fotoParaRemover.id),
+                  }
+                : item
+            ),
+          };
+        });
+      } catch {
+        // Se falhar, restaura a foto no estado
+        setItemModal((prev) => {
+          if (!prev) return null;
+          const fotosAtualizadas = [...prev.fotos];
+          fotosAtualizadas.splice(index, 0, fotoParaRemover);
+          return { ...prev, fotos: fotosAtualizadas };
+        });
+      }
+    }
   };
 
   const handleSaveItemModal = async () => {
     if (!itemModal || !auditoria) return;
     setItemModal((prev) => prev ? { ...prev, isSaving: true } : null);
-    // Preserva a resposta atual do item, ou usa a atual se não tiver
+    // Preserva a resposta atual do item
     const respostaAtual = itemModal.item.resposta || 'nao_avaliado';
-    // Consolida análises de novas fotos (não existentes)
-    const novasFotosComAnalise = itemModal.fotos.filter((f) => !f.isExisting && f.analiseIa);
-    const analisesIa = novasFotosComAnalise.map((f) => f.analiseIa!);
-    // Se houver novas análises, adiciona à descrição existente
-    let descricaoIaConsolidada = itemModal.descricaoIaExistente || itemModal.item.descricaoIa || '';
-    if (analisesIa.length > 0) {
-      const novasDescricoes = analisesIa.map((a, i) => `[Nova Foto ${i + 1}] ${a.descricaoIa}`).join('\n\n');
-      descricaoIaConsolidada = descricaoIaConsolidada
-        ? `${descricaoIaConsolidada}\n\n${novasDescricoes}`
-        : novasDescricoes;
-    }
-    const tiposNaoConformidade = [...new Set(analisesIa.map((a) => a.tipoNaoConformidade).filter((t) => t !== 'Nenhuma identificada'))];
-    const descricaoNaoConformidade = tiposNaoConformidade.length > 0
-      ? tiposNaoConformidade.join(', ')
-      : itemModal.item.descricaoNaoConformidade;
-    const referenciasLegais = [...new Set(analisesIa.map((a) => a.referenciaLegal).filter(Boolean))];
-    let referenciaLegal = itemModal.item.referenciaLegal || '';
-    if (referenciasLegais.length > 0) {
-      const novasRefs = referenciasLegais.filter((r) => !referenciaLegal.includes(r));
-      if (novasRefs.length > 0) {
-        referenciaLegal = referenciaLegal ? `${referenciaLegal}; ${novasRefs.join('; ')}` : novasRefs.join('; ');
-      }
-    }
-    const todasSugestoes = analisesIa.flatMap((a) => a.sugestoes || []);
-    const sugestoesUnicas = [...new Set(todasSugestoes)];
-    let planoAcaoSugerido = itemModal.item.planoAcaoSugerido || '';
-    if (sugestoesUnicas.length > 0) {
-      const existentes = planoAcaoSugerido.split('\n');
-      const novasSugestoes = sugestoesUnicas.filter((s) => !existentes.includes(s));
-      if (novasSugestoes.length > 0) {
-        planoAcaoSugerido = planoAcaoSugerido ? `${planoAcaoSugerido}\n${novasSugestoes.join('\n')}` : novasSugestoes.join('\n');
-      }
-    }
     try {
+      // Salva apenas os dados complementares (complemento e observação)
+      // As fotos e análises da IA já foram salvas automaticamente durante o upload
       await auditoriaService.responderItem(
         auditoria.id,
         itemModal.item.id,
         respostaAtual,
         {
-          descricaoIa: descricaoIaConsolidada,
-          descricaoNaoConformidade,
           complementoDescricao: itemModal.complemento,
           observacao: itemModal.observacao,
-          referenciaLegal,
-          planoAcaoSugerido,
         }
       );
-      // Apenas adiciona as novas fotos (não as existentes)
-      const novasFotos = itemModal.fotos
-        .filter((f) => !f.isExisting && f.file)
-        .map((f, i) => ({ id: `new-${Date.now()}-${i}`, url: f.preview }));
+      // Atualiza o estado local
       setAuditoria((prev) => {
         if (!prev) return prev;
         return {
@@ -234,12 +292,8 @@ export default function AuditoriaPage() {
             item.id === itemModal.item.id
               ? {
                   ...item,
-                  descricaoIa: descricaoIaConsolidada || item.descricaoIa,
-                  descricaoNaoConformidade: descricaoNaoConformidade || item.descricaoNaoConformidade,
                   complementoDescricao: itemModal.complemento,
                   observacao: itemModal.observacao,
-                  referenciaLegal: referenciaLegal || item.referenciaLegal,
-                  fotos: [...(item.fotos || []), ...novasFotos],
                 }
               : item
           ),
@@ -294,11 +348,25 @@ export default function AuditoriaPage() {
   const handleFinalizar = async () => {
     if (!auditoria) return;
     setFinalizando(true);
+    setErroFinalizar('');
     try {
       await auditoriaService.finalizar(auditoria.id, observacoesGerais);
       setShowFinalModal(false);
       router.push('/dashboard');
-    } catch {
+    } catch (error: unknown) {
+      let mensagem = 'Erro ao finalizar auditoria';
+      if (error && typeof error === 'object') {
+        const axiosError = error as { response?: { data?: { message?: string | string[] } } };
+        const apiMessage = axiosError.response?.data?.message;
+        if (Array.isArray(apiMessage)) {
+          mensagem = apiMessage.join(', ');
+        } else if (typeof apiMessage === 'string') {
+          mensagem = apiMessage;
+        } else if (error instanceof Error) {
+          mensagem = error.message;
+        }
+      }
+      setErroFinalizar(mensagem);
       setFinalizando(false);
     }
   };
@@ -836,6 +904,18 @@ export default function AuditoriaPage() {
             <p className="py-4 text-base-content/60">
               Adicione observações gerais sobre a auditoria (opcional).
             </p>
+            {erroFinalizar && (
+              <div className="alert alert-error mb-4">
+                <AlertTriangle className="w-5 h-5" />
+                <span>{erroFinalizar}</span>
+                <button 
+                  onClick={() => setErroFinalizar('')} 
+                  className="btn btn-ghost btn-sm btn-circle"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            )}
             <textarea
               className="textarea textarea-bordered w-full"
               placeholder="Observações gerais..."
@@ -844,7 +924,7 @@ export default function AuditoriaPage() {
               onChange={(e) => setObservacoesGerais(e.target.value)}
             ></textarea>
             <div className="modal-action">
-              <button className="btn btn-ghost" onClick={() => setShowFinalModal(false)}>
+              <button className="btn btn-ghost" onClick={() => { setShowFinalModal(false); setErroFinalizar(''); }}>
                 Cancelar
               </button>
               <button className="btn btn-primary" onClick={handleFinalizar} disabled={finalizando}>
@@ -859,7 +939,7 @@ export default function AuditoriaPage() {
               </button>
             </div>
           </div>
-          <div className="modal-backdrop" onClick={() => setShowFinalModal(false)}></div>
+          <div className="modal-backdrop" onClick={() => { setShowFinalModal(false); setErroFinalizar(''); }}></div>
         </div>
       )}
     </AppLayout>

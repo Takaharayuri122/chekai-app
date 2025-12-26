@@ -269,6 +269,21 @@ export const CRITICIDADE_COLORS: Record<CriticidadeItem, string> = {
   [CriticidadeItem.CRITICA]: 'bg-red-100 text-red-800',
 };
 
+/**
+ * Grupo de perguntas dentro de um checklist.
+ */
+export interface ChecklistGrupo {
+  id: string;
+  nome: string;
+  descricao?: string;
+  ordem: number;
+  ativo: boolean;
+  templateId: string;
+  itens?: TemplateItem[];
+  criadoEm: string;
+  atualizadoEm: string;
+}
+
 export interface ChecklistTemplate {
   id: string;
   nome: string;
@@ -277,6 +292,7 @@ export interface ChecklistTemplate {
   versao: string;
   ativo: boolean;
   itens: TemplateItem[];
+  grupos: ChecklistGrupo[];
   criadoEm: string;
   atualizadoEm: string;
 }
@@ -294,6 +310,9 @@ export interface TemplateItem {
   obrigatorio: boolean;
   opcoesResposta?: string[];
   usarRespostasPersonalizadas: boolean;
+  grupoId?: string;
+  grupo?: ChecklistGrupo;
+  secao?: string;
   ativo: boolean;
 }
 
@@ -319,6 +338,46 @@ export interface CriarTemplateItemRequest {
   obrigatorio?: boolean;
   opcoesResposta?: string[];
   usarRespostasPersonalizadas?: boolean;
+  grupoId?: string;
+  secao?: string;
+}
+
+export interface CriarGrupoRequest {
+  nome: string;
+  descricao?: string;
+  ordem?: number;
+}
+
+/**
+ * Preview de importação do Moki.
+ */
+export interface ImportacaoPreview {
+  nomeOriginal: string;
+  dataExportacao: string;
+  grupos: ImportacaoGrupoPreview[];
+  totalPerguntas: number;
+  totalGrupos: number;
+}
+
+export interface ImportacaoGrupoPreview {
+  nome: string;
+  secoes: string[];
+  perguntas: number;
+}
+
+export interface ImportacaoResultado {
+  templateId: string;
+  nomeTemplate: string;
+  gruposCriados: number;
+  itensCriados: number;
+  avisos: string[];
+}
+
+export interface ImportarMokiRequest {
+  nomeTemplate: string;
+  descricao?: string;
+  tipoAtividade?: TipoAtividade;
+  versao?: string;
 }
 
 export interface CriarTemplateRequest {
@@ -371,6 +430,51 @@ export const checklistService = {
 
   async removerItem(itemId: string): Promise<void> {
     await api.delete(`/checklists/itens/${itemId}`);
+  },
+
+  async listarGrupos(templateId: string): Promise<ChecklistGrupo[]> {
+    const response = await api.get(`/checklists/templates/${templateId}/grupos`);
+    return response.data.data;
+  },
+
+  async adicionarGrupo(templateId: string, data: CriarGrupoRequest): Promise<ChecklistGrupo> {
+    const response = await api.post(`/checklists/templates/${templateId}/grupos`, data);
+    return response.data.data;
+  },
+
+  async atualizarGrupo(grupoId: string, data: Partial<CriarGrupoRequest>): Promise<ChecklistGrupo> {
+    const response = await api.put(`/checklists/grupos/${grupoId}`, data);
+    return response.data.data;
+  },
+
+  async removerGrupo(grupoId: string): Promise<void> {
+    await api.delete(`/checklists/grupos/${grupoId}`);
+  },
+
+  async reordenarGrupos(templateId: string, grupoIds: string[]): Promise<void> {
+    await api.put(`/checklists/templates/${templateId}/grupos/reordenar`, grupoIds);
+  },
+
+  async previewImportacaoMoki(file: File): Promise<ImportacaoPreview> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await api.post('/checklists/importar/moki/preview', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data.data;
+  },
+
+  async importarMoki(file: File, data: ImportarMokiRequest): Promise<ImportacaoResultado> {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('nomeTemplate', data.nomeTemplate);
+    if (data.descricao) formData.append('descricao', data.descricao);
+    if (data.tipoAtividade) formData.append('tipoAtividade', data.tipoAtividade);
+    if (data.versao) formData.append('versao', data.versao);
+    const response = await api.post('/checklists/importar/moki', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data.data;
   },
 };
 
@@ -451,6 +555,30 @@ export const auditoriaService = {
       observacoesGerais,
     });
     return response.data.data;
+  },
+
+  async adicionarFoto(
+    auditoriaId: string,
+    itemId: string,
+    file: File,
+    dados?: { latitude?: number; longitude?: number }
+  ): Promise<{ id: string; url: string }> {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (dados?.latitude) formData.append('latitude', dados.latitude.toString());
+    if (dados?.longitude) formData.append('longitude', dados.longitude.toString());
+    const response = await api.post(`/auditorias/${auditoriaId}/itens/${itemId}/fotos`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data.data;
+  },
+
+  async removerFoto(
+    auditoriaId: string,
+    itemId: string,
+    fotoId: string
+  ): Promise<void> {
+    await api.delete(`/auditorias/${auditoriaId}/itens/${itemId}/fotos/${fotoId}`);
   },
 };
 

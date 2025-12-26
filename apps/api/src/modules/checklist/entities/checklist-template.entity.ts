@@ -7,6 +7,7 @@ import {
   OneToMany,
 } from 'typeorm';
 import { TemplateItem } from './template-item.entity';
+import { ChecklistGrupo } from './checklist-grupo.entity';
 import { TipoAtividade } from '../../cliente/entities/cliente.entity';
 
 /**
@@ -38,6 +39,9 @@ export class ChecklistTemplate {
 
   @OneToMany(() => TemplateItem, (item) => item.template)
   itens: TemplateItem[];
+
+  @OneToMany(() => ChecklistGrupo, (grupo) => grupo.template)
+  grupos: ChecklistGrupo[];
 
   @CreateDateColumn()
   criadoEm: Date;

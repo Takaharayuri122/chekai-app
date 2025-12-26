@@ -9,18 +9,31 @@ import {
   Query,
   UseGuards,
   ParseUUIDPipe,
+  UseInterceptors,
+  UploadedFile,
+  BadRequestException,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import {
   ApiTags,
   ApiOperation,
   ApiResponse,
   ApiBearerAuth,
+  ApiConsumes,
+  ApiBody,
 } from '@nestjs/swagger';
 import { ChecklistService } from './checklist.service';
-import { CriarChecklistTemplateDto, CriarTemplateItemDto } from './dto/criar-checklist-template.dto';
+import { MokiImportService } from './moki-import.service';
+import {
+  CriarChecklistTemplateDto,
+  CriarTemplateItemDto,
+  CriarChecklistGrupoDto,
+} from './dto/criar-checklist-template.dto';
+import { ImportarMokiDto, ImportacaoPreview, ImportacaoResultado } from './dto/importar-moki.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { ChecklistTemplate } from './entities/checklist-template.entity';
 import { TemplateItem } from './entities/template-item.entity';
+import { ChecklistGrupo } from './entities/checklist-grupo.entity';
 import { TipoAtividade } from '../cliente/entities/cliente.entity';
 import { PaginatedResult } from '../../shared/types/pagination.interface';
 
@@ -32,7 +45,10 @@ import { PaginatedResult } from '../../shared/types/pagination.interface';
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class ChecklistController {
-  constructor(private readonly checklistService: ChecklistService) {}
+  constructor(
+    private readonly checklistService: ChecklistService,
+    private readonly mokiImportService: MokiImportService,
+  ) {}
 
   @Post('templates')
   @ApiOperation({ summary: 'Cria um novo template de checklist' })
@@ -111,6 +127,97 @@ export class ChecklistController {
   @ApiResponse({ status: 200, description: 'Item removido' })
   async removerItem(@Param('itemId', ParseUUIDPipe) itemId: string): Promise<void> {
     return this.checklistService.removerItem(itemId);
+  }
+
+  @Get('templates/:templateId/grupos')
+  @ApiOperation({ summary: 'Lista os grupos de um template' })
+  @ApiResponse({ status: 200, description: 'Lista de grupos' })
+  async listarGrupos(
+    @Param('templateId', ParseUUIDPipe) templateId: string,
+  ): Promise<ChecklistGrupo[]> {
+    return this.checklistService.listarGrupos(templateId);
+  }
+
+  @Post('templates/:templateId/grupos')
+  @ApiOperation({ summary: 'Adiciona um grupo ao template' })
+  @ApiResponse({ status: 201, description: 'Grupo adicionado' })
+  async adicionarGrupo(
+    @Param('templateId', ParseUUIDPipe) templateId: string,
+    @Body() dto: CriarChecklistGrupoDto,
+  ): Promise<ChecklistGrupo> {
+    return this.checklistService.adicionarGrupo(templateId, dto);
+  }
+
+  @Put('grupos/:grupoId')
+  @ApiOperation({ summary: 'Atualiza um grupo do template' })
+  @ApiResponse({ status: 200, description: 'Grupo atualizado' })
+  async atualizarGrupo(
+    @Param('grupoId', ParseUUIDPipe) grupoId: string,
+    @Body() dto: Partial<CriarChecklistGrupoDto>,
+  ): Promise<ChecklistGrupo> {
+    return this.checklistService.atualizarGrupo(grupoId, dto);
+  }
+
+  @Delete('grupos/:grupoId')
+  @ApiOperation({ summary: 'Remove um grupo do template' })
+  @ApiResponse({ status: 200, description: 'Grupo removido' })
+  async removerGrupo(@Param('grupoId', ParseUUIDPipe) grupoId: string): Promise<void> {
+    return this.checklistService.removerGrupo(grupoId);
+  }
+
+  @Put('templates/:templateId/grupos/reordenar')
+  @ApiOperation({ summary: 'Reordena os grupos de um template' })
+  @ApiResponse({ status: 200, description: 'Grupos reordenados' })
+  async reordenarGrupos(
+    @Param('templateId', ParseUUIDPipe) templateId: string,
+    @Body() grupoIds: string[],
+  ): Promise<void> {
+    return this.checklistService.reordenarGrupos(templateId, grupoIds);
+  }
+
+  @Post('importar/moki/preview')
+  @ApiOperation({ summary: 'Faz preview de um arquivo CSV do Moki' })
+  @ApiResponse({ status: 200, description: 'Preview da importação' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: { type: 'string', format: 'binary' },
+      },
+    },
+  })
+  @UseInterceptors(FileInterceptor('file'))
+  async previewImportacaoMoki(
+    @UploadedFile() file: Express.Multer.File,
+  ): Promise<ImportacaoPreview> {
+    if (!file) {
+      throw new BadRequestException('Arquivo não enviado');
+    }
+    if (!file.originalname.endsWith('.csv')) {
+      throw new BadRequestException('O arquivo deve ser um CSV');
+    }
+    const csvContent = file.buffer.toString('utf-8');
+    return this.mokiImportService.preview(csvContent);
+  }
+
+  @Post('importar/moki')
+  @ApiOperation({ summary: 'Importa um arquivo CSV do Moki' })
+  @ApiResponse({ status: 201, description: 'Template importado com sucesso' })
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(FileInterceptor('file'))
+  async importarMoki(
+    @UploadedFile() file: Express.Multer.File,
+    @Body() dto: ImportarMokiDto,
+  ): Promise<ImportacaoResultado> {
+    if (!file) {
+      throw new BadRequestException('Arquivo não enviado');
+    }
+    if (!file.originalname.endsWith('.csv')) {
+      throw new BadRequestException('O arquivo deve ser um CSV');
+    }
+    const csvContent = file.buffer.toString('utf-8');
+    return this.mokiImportService.importar(csvContent, dto);
   }
 }
 
