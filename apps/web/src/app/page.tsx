@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { motion } from 'framer-motion';
 import {
   ClipboardCheck,
@@ -160,11 +161,14 @@ export default function HomePage() {
 
       {/* Footer */}
       <footer className="px-4 py-8 text-center border-t border-base-300">
-        <div className="flex items-center justify-center gap-2 mb-2">
-          <div className="w-6 h-6 bg-primary rounded flex items-center justify-center">
-            <ClipboardCheck className="w-4 h-4 text-primary-content" />
-          </div>
-          <span className="font-semibold text-base-content font-display">ChekAI</span>
+        <div className="flex items-center justify-center mb-2">
+          <Image
+            src="/images/logo-large.png"
+            alt="ChekAI"
+            width={280}
+            height={74}
+            className="h-auto w-full max-w-[280px]"
+          />
         </div>
         <p className="text-sm text-base-content/60">
           POC - Evobit © {new Date().getFullYear()}

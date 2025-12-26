@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import {
   ClipboardCheck,
@@ -37,10 +38,14 @@ export function Navbar() {
       <div className="navbar bg-base-100 border-b border-base-300 px-4 lg:px-8 hidden md:flex sticky top-0 z-40">
         <div className="flex-1">
           <Link href="/dashboard" className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-              <ClipboardCheck className="w-5 h-5 text-primary-content" />
-            </div>
-            <span className="text-xl font-bold text-base-content font-display">ChekAI</span>
+            <Image
+              src="/images/logo-large.png"
+              alt="ChekAI"
+              width={280}
+              height={74}
+              className="h-12 w-auto w-[150px] h-auto"
+              priority
+            />
           </Link>
         </div>
 
@@ -95,10 +100,14 @@ export function Navbar() {
       <div className="navbar bg-base-100 border-b border-base-300 px-4 md:hidden safe-top sticky top-0 z-40">
         <div className="flex-1">
           <Link href="/dashboard" className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-              <ClipboardCheck className="w-5 h-5 text-primary-content" />
-            </div>
-            <span className="text-lg font-bold font-display">ChekAI</span>
+            <Image
+              src="/images/logo-large.png"
+              alt="ChekAI"
+              width={280}
+              height={74}
+              className="h-10 w-auto min-w-[200px]"
+              priority
+            />
           </Link>
         </div>
         <div className="flex-none">

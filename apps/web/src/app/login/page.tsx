@@ -3,11 +3,12 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { motion } from 'framer-motion';
-import { ClipboardCheck, Mail, Lock, Eye, EyeOff, ArrowLeft } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, ArrowLeft } from 'lucide-react';
 import { authService } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
 
@@ -59,14 +60,17 @@ export default function LoginPage() {
           <div className="card-body p-8">
             {/* Logo */}
             <div className="text-center mb-6">
-              <Link href="/" className="inline-block">
-                <div className="flex items-center justify-center gap-2 mb-4">
-                  <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center">
-                    <ClipboardCheck className="w-7 h-7 text-primary-content" />
-                  </div>
-                </div>
+              <Link href="/" className="inline-block mb-4">
+                <Image
+                  src="/images/logo-large.png"
+                  alt="ChekAI"
+                  width={280}
+                  height={74}
+                  className="h-auto w-full max-w-[280px] mx-auto"
+                  priority
+                />
               </Link>
-              <h1 className="text-2xl font-bold text-base-content">Bem-vindo de volta</h1>
+              <h1 className="text-2xl font-bold text-base-content font-display">Bem-vindo de volta</h1>
               <p className="text-sm text-base-content/60 mt-1">
                 Entre para continuar suas auditorias
               </p>
