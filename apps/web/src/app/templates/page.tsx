@@ -77,8 +77,8 @@ export default function TemplatesPage() {
     if (!templateForm.nome) return;
     setSaving(true);
     try {
-      await checklistService.criarTemplate(templateForm);
-      await carregarTemplates();
+      const novoTemplate = await checklistService.criarTemplate(templateForm);
+      setTemplates((prevTemplates) => [novoTemplate, ...prevTemplates]);
       setShowModal(false);
       setTemplateForm({
         nome: '',
@@ -101,8 +101,17 @@ export default function TemplatesPage() {
         ...itemForm,
         opcoesResposta: itemForm.usarRespostasPersonalizadas ? itemForm.opcoesResposta : undefined,
       };
-      await checklistService.adicionarItem(showItemModal, dadosItem);
-      await carregarTemplates();
+      const novoItem = await checklistService.adicionarItem(showItemModal, dadosItem);
+      setTemplates((prevTemplates) =>
+        prevTemplates.map((template) =>
+          template.id === showItemModal
+            ? {
+                ...template,
+                itens: [...(template.itens || []), novoItem],
+              }
+            : template
+        )
+      );
       setShowItemModal(null);
       setItemForm({
         pergunta: '',
@@ -206,7 +215,7 @@ export default function TemplatesPage() {
                         </span>
                         <span className="badge badge-ghost badge-sm">
                           <List className="w-3 h-3 mr-1" />
-                          {template.itens?.length || 0} itens
+                          {template.itens?.filter((i) => i.ativo !== false).length || 0} itens
                         </span>
                         <span className="text-xs text-base-content/50">
                           v{template.versao}

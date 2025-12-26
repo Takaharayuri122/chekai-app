@@ -160,11 +160,26 @@ export default function EditarTemplatePage() {
     setSaving(true);
     try {
       if (editingGrupo) {
-        await checklistService.atualizarGrupo(editingGrupo.id, grupoForm);
+        const grupoAtualizado = await checklistService.atualizarGrupo(editingGrupo.id, grupoForm);
+        setTemplate((prevTemplate) => {
+          if (!prevTemplate) return prevTemplate;
+          return {
+            ...prevTemplate,
+            grupos: (prevTemplate.grupos || []).map((grupo) =>
+              grupo.id === editingGrupo.id ? grupoAtualizado : grupo
+            ),
+          };
+        });
       } else {
-        await checklistService.adicionarGrupo(templateId, grupoForm);
+        const novoGrupo = await checklistService.adicionarGrupo(templateId, grupoForm);
+        setTemplate((prevTemplate) => {
+          if (!prevTemplate) return prevTemplate;
+          return {
+            ...prevTemplate,
+            grupos: [...(prevTemplate.grupos || []), novoGrupo],
+          };
+        });
       }
-      await loadTemplate();
       setShowGrupoModal(false);
       resetGrupoForm();
     } catch {
@@ -178,7 +193,16 @@ export default function EditarTemplatePage() {
     if (!confirm('Tem certeza que deseja remover este grupo? Os itens serão desvinculados.')) return;
     try {
       await checklistService.removerGrupo(grupoId);
-      await loadTemplate();
+      setTemplate((prevTemplate) => {
+        if (!prevTemplate) return prevTemplate;
+        return {
+          ...prevTemplate,
+          grupos: (prevTemplate.grupos || []).filter((grupo) => grupo.id !== grupoId),
+          itens: (prevTemplate.itens || []).map((item) =>
+            item.grupoId === grupoId ? { ...item, grupoId: undefined } : item
+          ),
+        };
+      });
     } catch {
       setErro('Erro ao remover grupo');
     }
@@ -260,11 +284,26 @@ export default function EditarTemplatePage() {
         secao: itemForm.secao || undefined,
       };
       if (editingItem) {
-        await checklistService.atualizarItem(editingItem.id, dadosItem);
+        const itemAtualizado = await checklistService.atualizarItem(editingItem.id, dadosItem);
+        setTemplate((prevTemplate) => {
+          if (!prevTemplate) return prevTemplate;
+          return {
+            ...prevTemplate,
+            itens: (prevTemplate.itens || []).map((item) =>
+              item.id === editingItem.id ? itemAtualizado : item
+            ),
+          };
+        });
       } else {
-        await checklistService.adicionarItem(templateId, dadosItem);
+        const novoItem = await checklistService.adicionarItem(templateId, dadosItem);
+        setTemplate((prevTemplate) => {
+          if (!prevTemplate) return prevTemplate;
+          return {
+            ...prevTemplate,
+            itens: [...(prevTemplate.itens || []), novoItem],
+          };
+        });
       }
-      await loadTemplate();
       setShowItemModal(false);
       resetItemForm();
     } catch {
@@ -278,7 +317,13 @@ export default function EditarTemplatePage() {
     if (!confirm('Tem certeza que deseja remover este item?')) return;
     try {
       await checklistService.removerItem(itemId);
-      await loadTemplate();
+      setTemplate((prevTemplate) => {
+        if (!prevTemplate) return prevTemplate;
+        return {
+          ...prevTemplate,
+          itens: (prevTemplate.itens || []).filter((item) => item.id !== itemId),
+        };
+      });
     } catch {
       setErro('Erro ao remover item');
     }

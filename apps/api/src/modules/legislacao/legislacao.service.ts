@@ -1,8 +1,9 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource } from 'typeorm';
+import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
+import { SupabaseService } from '../supabase/supabase.service';
 import { Legislacao, TipoLegislacao } from './entities/legislacao.entity';
 import { LegislacaoChunk } from './entities/legislacao-chunk.entity';
 
@@ -36,7 +37,7 @@ export class LegislacaoService {
     private readonly legislacaoRepository: Repository<Legislacao>,
     @InjectRepository(LegislacaoChunk)
     private readonly chunkRepository: Repository<LegislacaoChunk>,
-    private readonly dataSource: DataSource,
+    private readonly supabaseService: SupabaseService,
     private readonly configService: ConfigService,
   ) {
     this.openai = new OpenAI({
@@ -175,36 +176,40 @@ export class LegislacaoService {
   }
 
   /**
-   * Busca chunks similares usando busca vetorial.
+   * Busca chunks similares usando busca vetorial via Supabase RPC.
+   * Requer que a função buscar_chunks_similares esteja criada no Supabase.
+   * Execute o script: scripts/supabase-busca-vetorial-function.sql
    */
   async buscarChunksSimilares(
     query: string,
     limite = 5,
   ): Promise<BuscaSimilarResult[]> {
     const queryEmbedding = await this.gerarEmbedding(query);
-    const embeddingStr = `[${queryEmbedding.join(',')}]`;
-    const results = await this.dataSource.query(
-      `
-      SELECT 
-        c.id,
-        c.conteudo,
-        c.artigo,
-        c.inciso,
-        c.paragrafo,
-        l.tipo,
-        l.numero,
-        l.ano,
-        l.titulo,
-        1 - (c.embedding <=> $1::vector) as similaridade
-      FROM legislacao_chunks c
-      JOIN legislacoes l ON l.id = c.legislacao_id
-      WHERE l.ativo = true
-      ORDER BY c.embedding <=> $1::vector
-      LIMIT $2
-    `,
-      [embeddingStr, limite],
-    );
-    return results.map((row: {
+    const supabase = this.supabaseService.getClient();
+    // Chama a função stored procedure via RPC
+    const { data, error } = await supabase.rpc('buscar_chunks_similares', {
+      query_embedding: queryEmbedding,
+      match_limit: limite,
+    });
+    if (error) {
+      if (error.code === '42883' || error.message.includes('function')) {
+        throw new Error(
+          'Função buscar_chunks_similares não encontrada. Execute o script scripts/supabase-busca-vetorial-function.sql no SQL Editor do Supabase.',
+        );
+      }
+      throw new Error(`Erro ao buscar chunks similares: ${error.message}`);
+    }
+    return this.mapearResultadosBusca(data || []);
+  }
+
+  /**
+   * Mapeia os resultados da busca para o formato esperado.
+   */
+  private mapearResultadosBusca(data: any[]): BuscaSimilarResult[] {
+    if (!data || data.length === 0) {
+      return [];
+    }
+    return data.map((row: {
       id: string;
       conteudo: string;
       artigo: string;

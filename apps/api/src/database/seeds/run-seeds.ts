@@ -3,15 +3,31 @@ import { config } from 'dotenv';
 
 config();
 
-const dataSource = new DataSource({
-  type: 'postgres',
-  host: process.env.DB_HOST || 'localhost',
-  port: parseInt(process.env.DB_PORT || '5432'),
-  username: process.env.DB_USERNAME || 'postgres',
-  password: process.env.DB_PASSWORD || 'postgres',
-  database: process.env.DB_DATABASE || 'meta_app',
-  synchronize: false,
-});
+/**
+ * Cria configuração do DataSource usando connection string do Supabase.
+ */
+function createDataSourceConfig() {
+  const databaseUrl = process.env.DATABASE_URL;
+  if (!databaseUrl) {
+    throw new Error('DATABASE_URL é obrigatória. Configure no arquivo .env');
+  }
+  // Parse da connection string do Supabase
+  const url = new URL(databaseUrl);
+  return {
+    type: 'postgres' as const,
+    host: url.hostname,
+    port: parseInt(url.port || '5432'),
+    username: url.username,
+    password: url.password,
+    database: url.pathname.substring(1), // Remove a barra inicial
+    synchronize: false,
+    ssl: {
+      rejectUnauthorized: false,
+    },
+  };
+}
+
+const dataSource = new DataSource(createDataSourceConfig());
 
 async function runSeeds(): Promise<void> {
   await dataSource.initialize();

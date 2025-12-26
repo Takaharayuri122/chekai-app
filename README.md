@@ -8,7 +8,7 @@ POC de aplicativo web mobile-first para consultoria em segurança de alimentos, 
 |--------|------------|
 | Frontend | Next.js 15 + TailwindCSS |
 | Backend | NestJS + TypeORM |
-| Banco de Dados | PostgreSQL + pgvector |
+| Banco de Dados | Supabase (PostgreSQL + pgvector nativo) |
 | IA Texto/RAG | DeepSeek-V3 |
 | IA Imagem | DeepSeek-VL2 |
 | Embeddings | OpenAI text-embedding-3-small |
@@ -40,14 +40,13 @@ meta-app/
 │       └── package.json
 │
 ├── scripts/                    # Scripts de inicialização
-├── docker-compose.yml          # PostgreSQL + pgvector
 └── package.json                # Monorepo config
 ```
 
 ## Pré-requisitos
 
 - Node.js 20+
-- Docker e Docker Compose
+- Conta Supabase
 - Conta DeepSeek API
 - Conta OpenAI (para embeddings)
 
@@ -61,19 +60,38 @@ npm install
 
 ### 2. Configurar variáveis de ambiente
 
-Crie o arquivo `apps/api/.env`:
+1. Crie um projeto no [Supabase](https://app.supabase.com)
+2. **Habilite a extensão `pgvector`**:
+   - Vá em **SQL Editor** no painel do Supabase
+   - Execute: `CREATE EXTENSION IF NOT EXISTS vector;`
+3. **Obtenha as credenciais do Supabase**:
+   - **SUPABASE_URL**: Vá em **Settings > API** > "Project URL"
+   - **SUPABASE_SERVICE_ROLE_KEY**: Vá em **Settings > API** > "service_role" (secret key)
+   - **DATABASE_URL**: Vá em **Settings > Database** > "Connection string" (Connection pooling)
+4. **Crie a função stored procedure para busca vetorial**:
+   - Vá em **SQL Editor**
+   - Execute o conteúdo do arquivo `scripts/supabase-busca-vetorial-function.sql`
+   - Ou veja o arquivo `MIGRACAO_SUPABASE_SDK.md` para mais detalhes
+
+Crie o arquivo `apps/api/.env` (copie de `apps/api/env.example`):
+
+```bash
+cp apps/api/env.example apps/api/.env
+```
+
+Edite `apps/api/.env` e configure:
 
 ```env
 # Ambiente
 NODE_ENV=development
 PORT=3001
 
-# Banco de Dados
-DB_HOST=localhost
-DB_PORT=5432
-DB_USERNAME=postgres
-DB_PASSWORD=postgres
-DB_DATABASE=meta_app
+# Supabase SDK
+SUPABASE_URL=https://[SEU_PROJECT].supabase.co
+SUPABASE_SERVICE_ROLE_KEY=sua-service-role-key-aqui
+
+# Banco de Dados - Supabase (para TypeORM)
+DATABASE_URL=postgresql://postgres:[SEU_PASSWORD]@[SEU_PROJECT].supabase.co:5432/postgres
 
 # JWT
 JWT_SECRET=sua-chave-secreta-muito-segura-aqui
@@ -90,23 +108,24 @@ OPENAI_API_KEY=sua-api-key-openai
 CORS_ORIGIN=http://localhost:3000
 ```
 
+**⚠️ IMPORTANTE**: A `SUPABASE_SERVICE_ROLE_KEY` tem privilégios administrativos. Nunca exponha no frontend!
+
 Crie o arquivo `apps/web/.env.local`:
 
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:3001/api
 ```
 
-### 3. Iniciar banco de dados
+### 3. Executar migrações (automático no dev)
 
-```bash
-docker-compose up -d
-```
+O TypeORM está configurado com `synchronize: true` em desenvolvimento, então as tabelas são criadas automaticamente na primeira execução.
 
-### 4. Executar migrações (automático no dev)
+**Importante**: 
+- Certifique-se de que a extensão `pgvector` está habilitada no Supabase
+- Certifique-se de que a função `buscar_chunks_similares` foi criada (veja passo 2.4)
+- Veja `MIGRACAO_SUPABASE_SDK.md` para mais detalhes sobre o uso do SDK do Supabase
 
-O TypeORM está configurado com `synchronize: true` em desenvolvimento.
-
-### 5. Iniciar aplicação
+### 4. Iniciar aplicação
 
 ```bash
 # Iniciar API e Web simultaneamente

@@ -9,6 +9,7 @@ import { AuditoriaModule } from './modules/auditoria/auditoria.module';
 import { LegislacaoModule } from './modules/legislacao/legislacao.module';
 import { IaModule } from './modules/ia/ia.module';
 import { CoreModule } from './core/core.module';
+import { SupabaseModule } from './modules/supabase/supabase.module';
 
 /**
  * Módulo principal da aplicação.
@@ -20,19 +21,32 @@ import { CoreModule } from './core/core.module';
       isGlobal: true,
       envFilePath: '.env',
     }),
+    SupabaseModule,
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => ({
-        type: 'postgres',
-        host: configService.get<string>('DB_HOST', 'localhost'),
-        port: configService.get<number>('DB_PORT', 5432),
-        username: configService.get<string>('DB_USERNAME', 'postgres'),
-        password: configService.get<string>('DB_PASSWORD', 'postgres'),
-        database: configService.get<string>('DB_DATABASE', 'meta_app'),
-        entities: [__dirname + '/**/*.entity{.ts,.js}'],
-        synchronize: configService.get<string>('NODE_ENV') !== 'production',
-        logging: configService.get<string>('NODE_ENV') === 'development',
-      }),
+      useFactory: (configService: ConfigService) => {
+        const databaseUrl = configService.get<string>('DATABASE_URL');
+        if (!databaseUrl) {
+          throw new Error('DATABASE_URL é obrigatória. Configure no arquivo .env');
+        }
+        // Parse da connection string do Supabase
+        // Formato: postgresql://user:password@host:port/database
+        const url = new URL(databaseUrl);
+        return {
+          type: 'postgres',
+          host: url.hostname,
+          port: parseInt(url.port || '5432'),
+          username: url.username,
+          password: url.password,
+          database: url.pathname.substring(1), // Remove a barra inicial
+          entities: [__dirname + '/**/*.entity{.ts,.js}'],
+          synchronize: configService.get<string>('NODE_ENV') !== 'production',
+          logging: configService.get<string>('NODE_ENV') === 'development',
+          ssl: {
+            rejectUnauthorized: false,
+          },
+        };
+      },
       inject: [ConfigService],
     }),
     CoreModule,

@@ -60,9 +60,15 @@ export class ChecklistService {
   async listarTemplates(params: PaginationParams): Promise<PaginatedResult<ChecklistTemplate>> {
     const [items, total] = await this.templateRepository.findAndCount({
       where: { ativo: true },
+      relations: ['itens'],
       skip: (params.page - 1) * params.limit,
       take: params.limit,
       order: { criadoEm: 'DESC' },
+    });
+    items.forEach((template) => {
+      if (template.itens) {
+        template.itens = template.itens.filter((i) => i.ativo !== false);
+      }
     });
     return createPaginatedResult(items, total, params.page, params.limit);
   }
@@ -71,11 +77,17 @@ export class ChecklistService {
    * Lista templates por tipo de atividade.
    */
   async listarTemplatesPorTipo(tipoAtividade: TipoAtividade): Promise<ChecklistTemplate[]> {
-    return this.templateRepository.find({
+    const templates = await this.templateRepository.find({
       where: { tipoAtividade, ativo: true },
       relations: ['itens'],
       order: { nome: 'ASC' },
     });
+    templates.forEach((template) => {
+      if (template.itens) {
+        template.itens = template.itens.filter((i) => i.ativo !== false);
+      }
+    });
+    return templates;
   }
 
   /**
