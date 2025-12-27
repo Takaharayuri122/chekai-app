@@ -25,6 +25,7 @@ import {
   Legislacao,
   TIPO_LEGISLACAO_LABELS,
 } from '@/lib/api';
+import { toastService } from '@/lib/toast';
 
 /**
  * Página de listagem de legislações.
@@ -42,8 +43,8 @@ export default function LegislacoesPage() {
       setIsLoading(true);
       const data = await legislacaoService.listar();
       setLegislacoes(data);
-    } catch {
-      // Erro silencioso
+    } catch (error) {
+      // Erro já é tratado pelo interceptor
     } finally {
       setIsLoading(false);
     }
@@ -61,9 +62,10 @@ export default function LegislacoesPage() {
     if (!confirm('Tem certeza que deseja remover esta legislação?')) return;
     try {
       await legislacaoService.remover(id);
+      toastService.success('Legislação removida com sucesso!');
       loadLegislacoes();
-    } catch {
-      alert('Erro ao remover legislação');
+    } catch (error) {
+      // Erro já é tratado pelo interceptor
     }
     setMenuAberto(null);
   };

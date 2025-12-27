@@ -43,8 +43,8 @@ export class AuthService {
         nome: usuario.nome,
         email: usuario.email,
         perfil: usuario.perfil,
-        analistaId: usuario.analistaId,
-        tenantId: usuario.tenantId,
+        analistaId: usuario.analistaId ?? undefined,
+        tenantId: usuario.tenantId ?? undefined,
       },
     };
   }

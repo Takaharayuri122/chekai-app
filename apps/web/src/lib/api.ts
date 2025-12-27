@@ -1,4 +1,5 @@
 import axios, { AxiosError } from 'axios';
+import { toastService } from './toast';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 
@@ -23,13 +24,84 @@ api.interceptors.request.use((config) => {
 // Interceptor para tratar erros
 api.interceptors.response.use(
   (response) => response,
-  (error: AxiosError) => {
+  (error: AxiosError<{ message?: string | string[]; statusCode?: number; error?: string }>) => {
+    // Não exibir toast para erros 401 (redirecionamento automático)
     if (error.response?.status === 401) {
       if (typeof window !== 'undefined') {
         localStorage.removeItem('token');
         window.location.href = '/login';
       }
+      return Promise.reject(error);
     }
+
+    // Extrair mensagem de erro do backend
+    let errorMessage: string | null = null;
+    
+    if (error.response?.data) {
+      const data = error.response.data;
+      
+      // Debug: log temporário para verificar estrutura do erro
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Erro da API:', {
+          status: error.response.status,
+          data: data,
+          message: data.message,
+          error: data.error,
+        });
+      }
+      
+      // Tentar extrair mensagem de diferentes formatos
+      if (data.message) {
+        // Se a mensagem for um array, juntar todas com vírgula ou pegar a primeira
+        if (Array.isArray(data.message)) {
+          errorMessage = data.message.length > 0 
+            ? (data.message.length === 1 ? data.message[0] : data.message.join(', '))
+            : null;
+        } else if (typeof data.message === 'string') {
+          errorMessage = data.message;
+        }
+      } else if (data.error) {
+        // Alguns erros do NestJS retornam 'error' ao invés de 'message'
+        if (typeof data.error === 'string') {
+          errorMessage = data.error;
+        } else if (Array.isArray(data.error)) {
+          errorMessage = data.error.length > 0 
+            ? (data.error.length === 1 ? data.error[0] : data.error.join(', '))
+            : null;
+        }
+      } else if (typeof data === 'string') {
+        // Se o data for uma string diretamente
+        errorMessage = data;
+      }
+    } else if (error.message) {
+      // Se não houver resposta do servidor, pode ser erro de rede
+      if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+        errorMessage = 'Tempo de conexão expirado. Tente novamente.';
+      } else if (error.message.includes('Network Error')) {
+        errorMessage = 'Erro de conexão. Verifique sua internet.';
+      } else {
+        errorMessage = error.message;
+      }
+    }
+
+    // Exibir toast de erro apenas se não for 401
+    if (typeof window !== 'undefined' && error.response?.status !== 401) {
+      // Se conseguimos extrair uma mensagem, usar ela
+      if (errorMessage) {
+        toastService.error(errorMessage);
+      } else {
+        // Se não conseguimos extrair a mensagem, exibir uma genérica baseada no status
+        const statusMessages: Record<number, string> = {
+          400: 'Dados inválidos. Verifique os campos preenchidos.',
+          403: 'Acesso negado.',
+          404: 'Recurso não encontrado.',
+          500: 'Erro interno do servidor. Tente novamente mais tarde.',
+        };
+        const statusMessage = statusMessages[error.response?.status || 0] || 'Ocorreu um erro inesperado';
+        toastService.error(statusMessage);
+      }
+    }
+
     return Promise.reject(error);
   }
 );

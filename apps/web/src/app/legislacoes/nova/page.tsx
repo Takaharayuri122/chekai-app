@@ -20,6 +20,7 @@ import {
   TIPO_LEGISLACAO_LABELS,
   CriarLegislacaoRequest,
 } from '@/lib/api';
+import { toastService } from '@/lib/toast';
 
 /**
  * Página de criação de nova legislação.
@@ -46,15 +47,16 @@ export default function NovaLegislacaoPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.numero || !formData.titulo) {
-      alert('Preencha os campos obrigatórios');
+      toastService.warning('Preencha os campos obrigatórios');
       return;
     }
     try {
       setIsLoading(true);
       const legislacao = await legislacaoService.criar(formData);
+      toastService.success('Legislação criada com sucesso!');
       router.push(`/legislacoes/${legislacao.id}`);
-    } catch {
-      alert('Erro ao criar legislação');
+    } catch (error) {
+      // Erro já é tratado pelo interceptor
     } finally {
       setIsLoading(false);
     }

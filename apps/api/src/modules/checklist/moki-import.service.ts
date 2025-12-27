@@ -5,6 +5,7 @@ import { ChecklistTemplate } from './entities/checklist-template.entity';
 import { ChecklistGrupo } from './entities/checklist-grupo.entity';
 import { TemplateItem, CategoriaItem, CriticidadeItem } from './entities/template-item.entity';
 import { TipoAtividade } from '../cliente/entities/cliente.entity';
+import { PerfilUsuario } from '../usuario/entities/usuario.entity';
 import {
   ImportarMokiDto,
   MokiCsvRow,
@@ -165,7 +166,11 @@ export class MokiImportService {
   /**
    * Importa um checklist do Moki.
    */
-  async importar(csvContent: string, dto: ImportarMokiDto): Promise<ImportacaoResultado> {
+  async importar(
+    csvContent: string,
+    dto: ImportarMokiDto,
+    usuarioAutenticado?: { id: string; perfil: PerfilUsuario },
+  ): Promise<ImportacaoResultado> {
     const rows = this.parseCsv(csvContent);
     
     if (rows.length === 0) {
@@ -180,6 +185,7 @@ export class MokiImportService {
       descricao: dto.descricao,
       tipoAtividade: dto.tipoAtividade || TipoAtividade.OUTRO,
       versao: dto.versao || '1.0',
+      analistaId: usuarioAutenticado?.perfil === PerfilUsuario.ANALISTA ? usuarioAutenticado.id : undefined,
     });
     const savedTemplate = await this.templateRepository.save(template);
     

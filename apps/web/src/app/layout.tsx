@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { Inter, Montserrat } from 'next/font/google';
+import { Toaster } from 'react-hot-toast';
 import './globals.css';
 
 const inter = Inter({
@@ -42,6 +43,16 @@ export default function RootLayout({
     <html lang="pt-BR" data-theme="light">
       <body className={`${inter.variable} ${montserrat.variable} font-sans antialiased bg-base-200 min-h-screen`}>
         {children}
+        <Toaster
+          position="bottom-right"
+          toastOptions={{
+            duration: 4000,
+            style: {
+              borderRadius: '0.5rem',
+              padding: '1rem',
+            },
+          }}
+        />
       </body>
     </html>
   );

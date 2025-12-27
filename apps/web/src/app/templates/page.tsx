@@ -27,6 +27,7 @@ import {
   CriarTemplateRequest,
   CriarTemplateItemRequest,
 } from '@/lib/api';
+import { toastService } from '@/lib/toast';
 
 /**
  * Página de listagem e gerenciamento de templates de checklist.
@@ -66,8 +67,8 @@ export default function TemplatesPage() {
     try {
       const response = await checklistService.listarTemplates();
       setTemplates(response.items || []);
-    } catch {
-      // Erro silencioso
+    } catch (error) {
+      // Erro já é tratado pelo interceptor
     } finally {
       setLoading(false);
     }
@@ -78,6 +79,7 @@ export default function TemplatesPage() {
     setSaving(true);
     try {
       const novoTemplate = await checklistService.criarTemplate(templateForm);
+      toastService.success('Template criado com sucesso!');
       setTemplates((prevTemplates) => [novoTemplate, ...prevTemplates]);
       setShowModal(false);
       setTemplateForm({
@@ -86,8 +88,8 @@ export default function TemplatesPage() {
         tipoAtividade: TipoAtividade.OUTRO,
         versao: '1.0',
       });
-    } catch {
-      // Erro silencioso
+    } catch (error) {
+      // Erro já é tratado pelo interceptor
     } finally {
       setSaving(false);
     }
@@ -112,6 +114,7 @@ export default function TemplatesPage() {
             : template
         )
       );
+      toastService.success('Item adicionado com sucesso!');
       setShowItemModal(null);
       setItemForm({
         pergunta: '',
@@ -124,8 +127,8 @@ export default function TemplatesPage() {
         opcoesResposta: [],
         usarRespostasPersonalizadas: false,
       });
-    } catch {
-      // Erro silencioso
+    } catch (error) {
+      // Erro já é tratado pelo interceptor
     } finally {
       setSaving(false);
     }
@@ -166,7 +169,7 @@ export default function TemplatesPage() {
         }
       />
 
-      <div className="px-4 py-4 lg:px-8 space-y-4 max-w-3xl mx-auto">
+      <div className="px-4 py-4 lg:px-8 space-y-4">
         {loading ? (
           <div className="card bg-base-100 shadow-sm border border-base-300">
             <div className="card-body items-center py-12">

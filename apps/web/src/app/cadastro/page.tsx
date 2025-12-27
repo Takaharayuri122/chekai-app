@@ -11,6 +11,7 @@ import { motion } from 'framer-motion';
 import { Mail, Lock, User, Phone, Eye, EyeOff, ArrowLeft } from 'lucide-react';
 import { authService } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
+import { toastService } from '@/lib/toast';
 
 const cadastroSchema = z.object({
   nome: z.string().min(3, 'O nome deve ter pelo menos 3 caracteres'),
@@ -57,12 +58,13 @@ export default function CadastroPage() {
         if (response.usuario) {
           setAuth(token, response.usuario);
         }
+        toastService.success('Conta criada com sucesso!');
         router.push('/dashboard');
       } else {
         setError('Resposta inválida do servidor. Tente fazer login manualmente.');
       }
     } catch (error: any) {
-      console.error('Erro ao cadastrar:', error);
+      // Erro já é tratado pelo interceptor
       let errorMessage = 'Erro ao criar conta. Verifique os dados e tente novamente.';
       
       if (error.response?.data?.message) {

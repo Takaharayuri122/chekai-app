@@ -220,6 +220,7 @@ export class ChecklistController {
   async importarMoki(
     @UploadedFile() file: Express.Multer.File,
     @Body() dto: ImportarMokiDto,
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario },
   ): Promise<ImportacaoResultado> {
     if (!file) {
       throw new BadRequestException('Arquivo não enviado');
@@ -228,7 +229,7 @@ export class ChecklistController {
       throw new BadRequestException('O arquivo deve ser um CSV');
     }
     const csvContent = file.buffer.toString('utf-8');
-    return this.mokiImportService.importar(csvContent, dto);
+    return this.mokiImportService.importar(csvContent, dto, usuario);
   }
 }
 

@@ -24,6 +24,7 @@ import {
   CriarUsuarioRequest,
 } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
+import { toastService } from '@/lib/toast';
 
 const PERFIL_LABELS: Record<PerfilUsuario, string> = {
   [PerfilUsuario.MASTER]: 'Master',
@@ -75,8 +76,8 @@ export default function UsuariosPage() {
       // Carregar analistas para o select
       const analistasResponse = await usuarioService.listar(1, 100, PerfilUsuario.ANALISTA);
       setAnalistas(analistasResponse.items || []);
-    } catch {
-      // Erro silencioso
+    } catch (error) {
+      // Erro já é tratado pelo interceptor
     } finally {
       setLoading(false);
     }
@@ -96,13 +97,15 @@ export default function UsuariosPage() {
       
       if (editingUsuario) {
         await usuarioService.atualizar(editingUsuario.id, dadosParaEnviar);
+        toastService.success('Usuário atualizado com sucesso!');
       } else {
         await usuarioService.criar(dadosParaEnviar);
+        toastService.success('Usuário criado com sucesso!');
       }
       await carregarUsuarios();
       handleFecharModal();
-    } catch {
-      // Erro silencioso
+    } catch (error) {
+      // Erro já é tratado pelo interceptor
     } finally {
       setSaving(false);
     }
@@ -138,9 +141,10 @@ export default function UsuariosPage() {
 
     try {
       await usuarioService.remover(id);
+      toastService.success('Usuário removido com sucesso!');
       await carregarUsuarios();
-    } catch {
-      // Erro silencioso
+    } catch (error) {
+      // Erro já é tratado pelo interceptor
     }
   };
 

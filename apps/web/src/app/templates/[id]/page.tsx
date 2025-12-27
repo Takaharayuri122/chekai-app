@@ -19,6 +19,23 @@ import {
   ChevronDown,
   ChevronUp,
 } from 'lucide-react';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { AppLayout } from '@/components';
 import {
   checklistService,
@@ -35,6 +52,7 @@ import {
   CriarGrupoRequest,
   RESPOSTAS_PADRAO,
 } from '@/lib/api';
+import { toastService } from '@/lib/toast';
 
 interface ItemFormData extends CriarTemplateItemRequest {
   id?: string;
@@ -48,6 +66,93 @@ const RESPOSTAS_PERSONALIZADAS_SUGESTOES = [
   'Em Adequação',
   'Necessita Melhoria',
 ];
+
+/**
+ * Função auxiliar para obter a classe do badge de criticidade
+ */
+const getCriticidadeBadge = (criticidade: CriticidadeItem) => {
+  const colors: Record<CriticidadeItem, string> = {
+    [CriticidadeItem.BAIXA]: 'badge-info',
+    [CriticidadeItem.MEDIA]: 'badge-warning',
+    [CriticidadeItem.ALTA]: 'badge-error',
+    [CriticidadeItem.CRITICA]: 'badge-error badge-outline',
+  };
+  return colors[criticidade] || 'badge-ghost';
+};
+
+/**
+ * Componente de item sortable para drag and drop
+ */
+interface SortableItemProps {
+  item: TemplateItem;
+  index: number;
+  onEdit: (item: TemplateItem) => void;
+  onRemove: (itemId: string) => void;
+}
+
+function SortableItem({ item, index, onEdit, onRemove }: SortableItemProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: item.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="flex items-start gap-3 p-3 bg-base-100 rounded-lg border border-base-200 group hover:border-primary/30 transition-colors cursor-pointer"
+      onClick={() => onEdit(item)}
+    >
+      <div
+        {...attributes}
+        {...listeners}
+        className="cursor-grab active:cursor-grabbing text-base-content/40 hover:text-base-content/60 transition-colors"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <GripVertical className="w-5 h-5" />
+      </div>
+      <span className="text-sm font-bold text-base-content/40 min-w-[24px]">{index + 1}.</span>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm">{item.pergunta}</p>
+        <div className="flex flex-wrap items-center gap-1 mt-1">
+          <span className="badge badge-ghost badge-xs">{CATEGORIA_ITEM_LABELS[item.categoria]}</span>
+          <span className={`badge badge-xs ${getCriticidadeBadge(item.criticidade)}`}>
+            {CRITICIDADE_LABELS[item.criticidade]}
+          </span>
+          {item.legislacaoReferencia && (
+            <span className="text-xs text-base-content/50">{item.legislacaoReferencia}</span>
+          )}
+          {item.usarRespostasPersonalizadas && (
+            <span className="badge badge-secondary badge-xs gap-1">
+              <Settings className="w-3 h-3" />Pers.
+            </span>
+          )}
+        </div>
+      </div>
+      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onRemove(item.id);
+          }}
+          className="btn btn-ghost btn-xs text-error"
+        >
+          <Trash2 className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
+  );
+}
 
 /**
  * Página para editar um template existente com suporte a grupos e seções.
@@ -96,6 +201,90 @@ export default function EditarTemplatePage() {
   });
   const [novaOpcaoResposta, setNovaOpcaoResposta] = useState('');
 
+  // Sensores para drag and drop
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  // Função para lidar com o fim do drag
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (!over || active.id === over.id || !template) {
+      return;
+    }
+
+    const activeId = active.id as string;
+    const overId = over.id as string;
+
+    // Encontrar os itens que foram movidos
+    const activeItem = template.itens?.find((item) => item.id === activeId);
+    const overItem = template.itens?.find((item) => item.id === overId);
+
+    if (!activeItem || !overItem) {
+      return;
+    }
+
+    // Verificar se os itens estão no mesmo grupo (ou ambos sem grupo)
+    if (activeItem.grupoId !== overItem.grupoId) {
+      toastService.warning('Não é possível mover itens entre grupos diferentes');
+      return;
+    }
+
+    // Filtrar itens do mesmo grupo (ou sem grupo se ambos não tiverem grupo)
+    const itensDoGrupo = template.itens
+      ?.filter((item) => {
+        if (activeItem.grupoId) {
+          return item.grupoId === activeItem.grupoId && item.ativo !== false;
+        }
+        return !item.grupoId && item.ativo !== false;
+      })
+      .sort((a, b) => a.ordem - b.ordem) || [];
+
+    // Encontrar índices
+    const oldIndex = itensDoGrupo.findIndex((item) => item.id === activeId);
+    const newIndex = itensDoGrupo.findIndex((item) => item.id === overId);
+
+    if (oldIndex === -1 || newIndex === -1) {
+      return;
+    }
+
+    // Reordenar localmente
+    const novosItens = arrayMove(itensDoGrupo, oldIndex, newIndex);
+
+    // Atualizar estado local imediatamente
+    setTemplate((prevTemplate) => {
+      if (!prevTemplate) return prevTemplate;
+      return {
+        ...prevTemplate,
+        itens: (prevTemplate.itens || []).map((item) => {
+          const novoItem = novosItens.find((ni) => ni.id === item.id);
+          if (novoItem) {
+            const novoIndex = novosItens.indexOf(novoItem);
+            return { ...item, ordem: novoIndex };
+          }
+          return item;
+        }),
+      };
+    });
+
+    // Atualizar ordem no backend
+    try {
+      const atualizacoes = novosItens.map((item, index) =>
+        checklistService.atualizarItem(item.id, { ordem: index })
+      );
+      await Promise.all(atualizacoes);
+      toastService.success('Ordem dos itens atualizada!');
+    } catch (error) {
+      // Erro já é tratado pelo interceptor
+      // Reverter mudança local em caso de erro
+      loadTemplate();
+    }
+  };
+
   const loadTemplate = useCallback(async () => {
     try {
       setLoading(true);
@@ -124,15 +313,16 @@ export default function EditarTemplatePage() {
 
   const handleSalvar = async () => {
     if (!formData.nome.trim()) {
-      setErro('O nome do template é obrigatório');
+      toastService.warning('O nome do template é obrigatório');
       return;
     }
     setSaving(true);
     try {
       await checklistService.atualizarTemplate(templateId, formData);
+      toastService.success('Template atualizado com sucesso!');
       router.push('/templates');
-    } catch {
-      setErro('Erro ao salvar template');
+    } catch (error) {
+      // Erro já é tratado pelo interceptor
     } finally {
       setSaving(false);
     }
@@ -180,10 +370,11 @@ export default function EditarTemplatePage() {
           };
         });
       }
+      toastService.success(editingGrupo ? 'Grupo atualizado com sucesso!' : 'Grupo criado com sucesso!');
       setShowGrupoModal(false);
       resetGrupoForm();
-    } catch {
-      setErro('Erro ao salvar grupo');
+    } catch (error) {
+      // Erro já é tratado pelo interceptor
     } finally {
       setSaving(false);
     }
@@ -193,6 +384,7 @@ export default function EditarTemplatePage() {
     if (!confirm('Tem certeza que deseja remover este grupo? Os itens serão desvinculados.')) return;
     try {
       await checklistService.removerGrupo(grupoId);
+      toastService.success('Grupo removido com sucesso!');
       setTemplate((prevTemplate) => {
         if (!prevTemplate) return prevTemplate;
         return {
@@ -203,8 +395,8 @@ export default function EditarTemplatePage() {
           ),
         };
       });
-    } catch {
-      setErro('Erro ao remover grupo');
+    } catch (error) {
+      // Erro já é tratado pelo interceptor
     }
   };
 
@@ -304,10 +496,11 @@ export default function EditarTemplatePage() {
           };
         });
       }
+      toastService.success(editingItem ? 'Item atualizado com sucesso!' : 'Item adicionado com sucesso!');
       setShowItemModal(false);
       resetItemForm();
-    } catch {
-      setErro('Erro ao salvar item');
+    } catch (error) {
+      // Erro já é tratado pelo interceptor
     } finally {
       setSaving(false);
     }
@@ -317,6 +510,7 @@ export default function EditarTemplatePage() {
     if (!confirm('Tem certeza que deseja remover este item?')) return;
     try {
       await checklistService.removerItem(itemId);
+      toastService.success('Item removido com sucesso!');
       setTemplate((prevTemplate) => {
         if (!prevTemplate) return prevTemplate;
         return {
@@ -324,8 +518,8 @@ export default function EditarTemplatePage() {
           itens: (prevTemplate.itens || []).filter((item) => item.id !== itemId),
         };
       });
-    } catch {
-      setErro('Erro ao remover item');
+    } catch (error) {
+      // Erro já é tratado pelo interceptor
     }
   };
 
@@ -352,16 +546,6 @@ export default function EditarTemplatePage() {
       ...itemForm,
       opcoesResposta: [...(itemForm.opcoesResposta || []), sugestao],
     });
-  };
-
-  const getCriticidadeBadge = (criticidade: CriticidadeItem) => {
-    const colors: Record<CriticidadeItem, string> = {
-      [CriticidadeItem.BAIXA]: 'badge-info',
-      [CriticidadeItem.MEDIA]: 'badge-warning',
-      [CriticidadeItem.ALTA]: 'badge-error',
-      [CriticidadeItem.CRITICA]: 'badge-error badge-outline',
-    };
-    return colors[criticidade] || 'badge-ghost';
   };
 
   // Organizar itens por grupo
@@ -542,49 +726,49 @@ export default function EditarTemplatePage() {
                   {/* Itens do Grupo */}
                   {expandedGrupos.has(grupo.id) && (
                     <div className="p-3 space-y-2">
-                      {Object.entries(getItensPorSecao(getItensPorGrupo(grupo.id))).map(([secao, itens]) => (
-                        <div key={secao || 'sem-secao'}>
-                          {secao && (
-                            <div className="flex items-center gap-2 py-2 mb-2 border-b border-base-200">
-                              <span className="text-sm font-medium text-secondary">{secao}</span>
-                            </div>
-                          )}
-                          {itens.sort((a, b) => a.ordem - b.ordem).map((item, idx) => (
-                            <div
-                              key={item.id}
-                              className="flex items-start gap-3 p-3 bg-base-100 rounded-lg border border-base-200 group hover:border-primary/30 transition-colors cursor-pointer"
-                              onClick={() => handleAbrirModalEditarItem(item)}
-                            >
-                              <span className="text-sm font-bold text-base-content/40 min-w-[24px]">{idx + 1}.</span>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm">{item.pergunta}</p>
-                                <div className="flex flex-wrap items-center gap-1 mt-1">
-                                  <span className="badge badge-ghost badge-xs">{CATEGORIA_ITEM_LABELS[item.categoria]}</span>
-                                  <span className={`badge badge-xs ${getCriticidadeBadge(item.criticidade)}`}>
-                                    {CRITICIDADE_LABELS[item.criticidade]}
-                                  </span>
-                                  {item.legislacaoReferencia && (
-                                    <span className="text-xs text-base-content/50">{item.legislacaoReferencia}</span>
-                                  )}
-                                  {item.usarRespostasPersonalizadas && (
-                                    <span className="badge badge-secondary badge-xs gap-1">
-                                      <Settings className="w-3 h-3" />Pers.
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button onClick={(e) => { e.stopPropagation(); handleRemoverItem(item.id); }} className="btn btn-ghost btn-xs text-error">
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                              </div>
-                            </div>
-                          ))}
-                          {itens.length === 0 && (
-                            <p className="text-sm text-base-content/50 py-2">Nenhuma pergunta nesta seção</p>
-                          )}
-                        </div>
-                      ))}
+                      <DndContext
+                        sensors={sensors}
+                        collisionDetection={closestCenter}
+                        onDragEnd={handleDragEnd}
+                      >
+                        {(() => {
+                          const todosItensDoGrupo = getItensPorGrupo(grupo.id).sort((a, b) => a.ordem - b.ordem);
+                          const itemIds = todosItensDoGrupo.map((item) => item.id);
+
+                          return (
+                            <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
+                              {Object.entries(getItensPorSecao(todosItensDoGrupo)).map(([secao, itens]) => {
+                                const itensOrdenados = [...itens].sort((a, b) => a.ordem - b.ordem);
+
+                                return (
+                                  <div key={secao || 'sem-secao'}>
+                                    {secao && (
+                                      <div className="flex items-center gap-2 py-2 mb-2 border-b border-base-200">
+                                        <span className="text-sm font-medium text-secondary">{secao}</span>
+                                      </div>
+                                    )}
+                                    {itensOrdenados.map((item) => {
+                                      const globalIndex = todosItensDoGrupo.findIndex((i) => i.id === item.id);
+                                      return (
+                                        <SortableItem
+                                          key={item.id}
+                                          item={item}
+                                          index={globalIndex}
+                                          onEdit={handleAbrirModalEditarItem}
+                                          onRemove={handleRemoverItem}
+                                        />
+                                      );
+                                    })}
+                                    {itens.length === 0 && (
+                                      <p className="text-sm text-base-content/50 py-2">Nenhuma pergunta nesta seção</p>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </SortableContext>
+                          );
+                        })()}
+                      </DndContext>
                       {getItensPorGrupo(grupo.id).length === 0 && (
                         <p className="text-sm text-base-content/50 py-4 text-center">Nenhuma pergunta neste grupo</p>
                       )}
@@ -608,27 +792,30 @@ export default function EditarTemplatePage() {
                     <span className="badge badge-warning">{getItensSemGrupo().length}</span>
                   </div>
                   <div className="p-3 space-y-2">
-                    {getItensSemGrupo().map((item, idx) => (
-                      <div
-                        key={item.id}
-                        className="flex items-start gap-3 p-3 bg-base-100 rounded-lg border border-base-200 group hover:border-primary/30 transition-colors cursor-pointer"
-                        onClick={() => handleAbrirModalEditarItem(item)}
+                    <DndContext
+                      sensors={sensors}
+                      collisionDetection={closestCenter}
+                      onDragEnd={handleDragEnd}
+                    >
+                      <SortableContext
+                        items={getItensSemGrupo()
+                          .sort((a, b) => a.ordem - b.ordem)
+                          .map((item) => item.id)}
+                        strategy={verticalListSortingStrategy}
                       >
-                        <span className="text-sm font-bold text-base-content/40 min-w-[24px]">{idx + 1}.</span>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm">{item.pergunta}</p>
-                          <div className="flex flex-wrap items-center gap-1 mt-1">
-                            <span className="badge badge-ghost badge-xs">{CATEGORIA_ITEM_LABELS[item.categoria]}</span>
-                            <span className={`badge badge-xs ${getCriticidadeBadge(item.criticidade)}`}>
-                              {CRITICIDADE_LABELS[item.criticidade]}
-                            </span>
-                          </div>
-                        </div>
-                        <button onClick={(e) => { e.stopPropagation(); handleRemoverItem(item.id); }} className="btn btn-ghost btn-xs text-error opacity-0 group-hover:opacity-100">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ))}
+                        {getItensSemGrupo()
+                          .sort((a, b) => a.ordem - b.ordem)
+                          .map((item, idx) => (
+                            <SortableItem
+                              key={item.id}
+                              item={item}
+                              index={idx}
+                              onEdit={handleAbrirModalEditarItem}
+                              onRemove={handleRemoverItem}
+                            />
+                          ))}
+                      </SortableContext>
+                    </DndContext>
                   </div>
                 </div>
               )}

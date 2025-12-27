@@ -17,6 +17,7 @@ import {
   TipoAtividade,
   TIPO_ATIVIDADE_LABELS,
 } from '@/lib/api';
+import { toastService } from '@/lib/toast';
 
 export default function ClientesPage() {
   const [clientes, setClientes] = useState<Cliente[]>([]);
@@ -52,19 +53,54 @@ export default function ClientesPage() {
     try {
       const response = await clienteService.listar();
       setClientes(response.items || []);
-    } catch {
-      // Erro silencioso
+    } catch (error) {
+      // Erro já é tratado pelo interceptor
     } finally {
       setLoading(false);
     }
   };
 
+  // Função para aplicar máscara de CNPJ
+  const aplicarMascaraCNPJ = (valor: string) => {
+    const apenasNumeros = valor.replace(/\D/g, '');
+    if (apenasNumeros.length <= 14) {
+      return apenasNumeros
+        .replace(/^(\d{2})(\d)/, '$1.$2')
+        .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
+        .replace(/\.(\d{3})(\d)/, '.$1/$2')
+        .replace(/(\d{4})(\d)/, '$1-$2');
+    }
+    return valor;
+  };
+
+  // Função para remover máscara do CNPJ
+  const removerMascaraCNPJ = (valor: string) => {
+    return valor.replace(/\D/g, '');
+  };
+
+  // Função para formatar CNPJ para exibição
+  const formatarCNPJ = (cnpj: string) => {
+    if (!cnpj) return '';
+    const apenasNumeros = cnpj.replace(/\D/g, '');
+    if (apenasNumeros.length === 14) {
+      return aplicarMascaraCNPJ(apenasNumeros);
+    }
+    return cnpj;
+  };
+
   const handleCriarCliente = async () => {
-    if (!clienteForm.razaoSocial || !clienteForm.cnpj) return;
+    if (!clienteForm.razaoSocial || !clienteForm.cnpj || !clienteForm.telefone) return;
     setSaving(true);
 
     try {
-      await clienteService.criar(clienteForm);
+      // Remover máscara do CNPJ antes de enviar
+      const dadosParaEnviar = {
+        ...clienteForm,
+        cnpj: removerMascaraCNPJ(clienteForm.cnpj),
+        email: clienteForm.email || undefined, // Enviar undefined se vazio
+      };
+      await clienteService.criar(dadosParaEnviar);
+      toastService.success('Cliente cadastrado com sucesso!');
       await carregarClientes();
       setShowModal(false);
       setClienteForm({
@@ -75,8 +111,8 @@ export default function ClientesPage() {
         email: '',
         tipoAtividade: TipoAtividade.OUTRO,
       });
-    } catch {
-      // Erro silencioso
+    } catch (error) {
+      // Erro já é tratado pelo interceptor
     } finally {
       setSaving(false);
     }
@@ -88,11 +124,12 @@ export default function ClientesPage() {
 
     try {
       await clienteService.criarUnidade(showUnidadeModal, unidadeForm);
+      toastService.success('Unidade cadastrada com sucesso!');
       await carregarClientes();
       setShowUnidadeModal(null);
       setUnidadeForm({ nome: '', endereco: '', cidade: '', estado: '', cep: '' });
-    } catch {
-      // Erro silencioso
+    } catch (error) {
+      // Erro já é tratado pelo interceptor
     } finally {
       setSaving(false);
     }
@@ -114,7 +151,7 @@ export default function ClientesPage() {
         }
       />
 
-      <div className="px-4 py-4 lg:px-8 space-y-4 max-w-3xl mx-auto">
+      <div className="px-4 py-4 lg:px-8 space-y-4">
         {loading ? (
           <div className="card bg-base-100 shadow-sm border border-base-300">
             <div className="card-body items-center py-12">
@@ -157,7 +194,7 @@ export default function ClientesPage() {
                         {cliente.nomeFantasia || cliente.razaoSocial}
                       </p>
                       <p className="text-sm text-base-content/60">
-                        {cliente.cnpj} • {TIPO_ATIVIDADE_LABELS[cliente.tipoAtividade] || cliente.tipoAtividade} • {cliente.unidades?.length || 0} unidade(s)
+                        {formatarCNPJ(cliente.cnpj)} • {TIPO_ATIVIDADE_LABELS[cliente.tipoAtividade] || cliente.tipoAtividade} • {cliente.unidades?.length || 0} unidade(s)
                       </p>
                     </div>
                     {expandedCliente === cliente.id ? (
@@ -260,9 +297,11 @@ export default function ClientesPage() {
                   placeholder="00.000.000/0000-00"
                   className="input input-bordered"
                   value={clienteForm.cnpj}
-                  onChange={(e) =>
-                    setClienteForm({ ...clienteForm, cnpj: e.target.value })
-                  }
+                  onChange={(e) => {
+                    const valorFormatado = aplicarMascaraCNPJ(e.target.value);
+                    setClienteForm({ ...clienteForm, cnpj: valorFormatado });
+                  }}
+                  maxLength={18}
                 />
               </div>
               <div className="form-control">
@@ -289,7 +328,7 @@ export default function ClientesPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="form-control">
                   <label className="label">
-                    <span className="label-text">Telefone</span>
+                    <span className="label-text">Telefone *</span>
                   </label>
                   <input
                     type="tel"
@@ -299,11 +338,12 @@ export default function ClientesPage() {
                     onChange={(e) =>
                       setClienteForm({ ...clienteForm, telefone: e.target.value })
                     }
+                    required
                   />
                 </div>
                 <div className="form-control">
                   <label className="label">
-                    <span className="label-text">E-mail</span>
+                    <span className="label-text">E-mail (opcional)</span>
                   </label>
                   <input
                     type="email"
@@ -324,7 +364,12 @@ export default function ClientesPage() {
               <button
                 className="btn btn-primary"
                 onClick={handleCriarCliente}
-                disabled={saving || !clienteForm.razaoSocial || !clienteForm.cnpj}
+                disabled={
+                  saving ||
+                  !clienteForm.razaoSocial ||
+                  !clienteForm.cnpj ||
+                  !clienteForm.telefone
+                }
               >
                 {saving ? (
                   <>

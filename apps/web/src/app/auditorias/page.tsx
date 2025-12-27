@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { AppLayout, PageHeader, EmptyState } from '@/components';
 import { auditoriaService, type Auditoria } from '@/lib/api';
+import { toastService } from '@/lib/toast';
 
 export default function AuditoriasPage() {
   const [auditorias, setAuditorias] = useState<Auditoria[]>([]);
@@ -24,8 +25,8 @@ export default function AuditoriasPage() {
       try {
         const response = await auditoriaService.listar();
         setAuditorias(response.items || []);
-      } catch {
-        // Erro silencioso
+      } catch (error) {
+        // Erro já é tratado pelo interceptor
       } finally {
         setLoading(false);
       }
@@ -67,7 +68,7 @@ export default function AuditoriasPage() {
     <AppLayout>
       <PageHeader title="Auditorias" subtitle="Histórico de auditorias realizadas" />
 
-      <div className="px-4 py-4 lg:px-8 space-y-4 max-w-3xl mx-auto">
+      <div className="px-4 py-4 lg:px-8 space-y-4">
         {/* Search and Filter */}
         <div className="flex gap-2">
           <div className="relative flex-1">

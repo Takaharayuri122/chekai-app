@@ -12,31 +12,20 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { AppLayout, PageHeader } from '@/components';
-import { clienteService, checklistService, auditoriaService } from '@/lib/api';
-
-interface Cliente {
-  id: string;
-  nome: string;
-  unidades: Array<{
-    id: string;
-    nome: string;
-    cidade: string;
-    estado: string;
-  }>;
-}
-
-interface Template {
-  id: string;
-  nome: string;
-  descricao: string;
-  tipoAtividade: string;
-}
+import { 
+  clienteService, 
+  checklistService, 
+  auditoriaService, 
+  Cliente,
+  ChecklistTemplate 
+} from '@/lib/api';
+import { toastService } from '@/lib/toast';
 
 export default function NovaAuditoriaPage() {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [clientes, setClientes] = useState<Cliente[]>([]);
-  const [templates, setTemplates] = useState<Template[]>([]);
+  const [templates, setTemplates] = useState<ChecklistTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -57,8 +46,8 @@ export default function NovaAuditoriaPage() {
         ]);
         setClientes(clientesRes.items || []);
         setTemplates(templatesRes.items || []);
-      } catch {
-        setError('Erro ao carregar dados');
+      } catch (error) {
+        // Erro já é tratado pelo interceptor
       } finally {
         setLoading(false);
       }
@@ -99,9 +88,10 @@ export default function NovaAuditoriaPage() {
         location?.lat,
         location?.lng
       );
+      toastService.success('Auditoria iniciada com sucesso!');
       router.push(`/auditoria/${auditoria.id}`);
-    } catch {
-      setError('Erro ao iniciar auditoria');
+    } catch (error) {
+      // Erro já é tratado pelo interceptor
       setSubmitting(false);
     }
   };
@@ -174,9 +164,9 @@ export default function NovaAuditoriaPage() {
                             <Building2 className="w-6 h-6 text-primary" />
                           </div>
                           <div className="flex-1">
-                            <p className="font-medium">{cliente.nome}</p>
+                            <p className="font-medium">{cliente.nomeFantasia || cliente.razaoSocial}</p>
                             <p className="text-sm text-base-content/60">
-                              {cliente.unidades.length} unidade(s)
+                              {cliente.unidades?.length || 0} unidade(s)
                             </p>
                           </div>
                         </div>
@@ -194,7 +184,7 @@ export default function NovaAuditoriaPage() {
                 animate={{ opacity: 1, x: 0 }}
               >
                 <h2 className="text-lg font-semibold mb-4">
-                  Selecione a unidade de {clienteSelecionado.nome}
+                  Selecione a unidade de {clienteSelecionado.nomeFantasia || clienteSelecionado.razaoSocial}
                 </h2>
                 <div className="space-y-3">
                   {clienteSelecionado.unidades.length === 0 ? (
@@ -310,7 +300,7 @@ export default function NovaAuditoriaPage() {
                       <Building2 className="w-5 h-5 text-primary" />
                       <div>
                         <p className="text-sm text-base-content/60">Cliente</p>
-                        <p className="font-medium">{clienteSelecionado?.nome}</p>
+                        <p className="font-medium">{clienteSelecionado?.nomeFantasia || clienteSelecionado?.razaoSocial}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-3">

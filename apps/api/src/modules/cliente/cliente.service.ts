@@ -39,14 +39,18 @@ export class ClienteService {
     if (usuarioAutenticado && usuarioAutenticado.perfil !== PerfilUsuario.MASTER && usuarioAutenticado.perfil !== PerfilUsuario.ANALISTA) {
       throw new ForbiddenException('Apenas Master e Analista podem criar clientes');
     }
+    // Normalizar CNPJ (remover máscara)
+    const cnpjNormalizado = dto.cnpj.replace(/\D/g, '');
+    
     const clienteExistente = await this.clienteRepository.findOne({
-      where: { cnpj: dto.cnpj },
+      where: { cnpj: cnpjNormalizado },
     });
     if (clienteExistente) {
       throw new ConflictException('CNPJ já cadastrado');
     }
     const cliente = this.clienteRepository.create({
       ...dto,
+      cnpj: cnpjNormalizado,
       analistaId: usuarioAutenticado?.perfil === PerfilUsuario.ANALISTA ? usuarioAutenticado.id : undefined,
     });
     return this.clienteRepository.save(cliente);

@@ -11,6 +11,7 @@ import { motion } from 'framer-motion';
 import { Mail, Lock, Eye, EyeOff, ArrowLeft } from 'lucide-react';
 import { authService } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
+import { toastService } from '@/lib/toast';
 
 const loginSchema = z.object({
   email: z.string().email('E-mail inválido'),
@@ -23,7 +24,6 @@ export default function LoginPage() {
   const router = useRouter();
   const { setAuth } = useAuthStore();
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const {
@@ -36,14 +36,14 @@ export default function LoginPage() {
 
   const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true);
-    setError('');
 
     try {
       const response = await authService.login(data.email, data.senha);
       setAuth(response.accessToken, response.usuario);
+      toastService.success('Login realizado com sucesso!');
       router.push('/dashboard');
-    } catch {
-      setError('E-mail ou senha inválidos');
+    } catch (error) {
+      // Erro já é tratado pelo interceptor - toast será exibido automaticamente
     } finally {
       setIsLoading(false);
     }
@@ -75,13 +75,6 @@ export default function LoginPage() {
                 Entre para continuar suas auditorias
               </p>
             </div>
-
-            {/* Error Alert */}
-            {error && (
-              <div className="alert alert-error mb-4">
-                <span className="text-sm">{error}</span>
-              </div>
-            )}
 
             {/* Form */}
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">

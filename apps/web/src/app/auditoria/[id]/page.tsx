@@ -1,4 +1,4 @@
-'use client';
+  'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -28,6 +28,7 @@ import {
   type AuditoriaItem,
   type AnaliseChecklistResponse,
 } from '@/lib/api';
+import { toastService } from '@/lib/toast';
 
 type RespostaType = 'conforme' | 'nao_conforme' | 'nao_aplicavel';
 
@@ -97,7 +98,9 @@ export default function AuditoriaPage() {
     });
     try {
       await auditoriaService.responderItem(auditoria.id, itemId, resposta);
-    } catch {
+      toastService.success('Resposta salva com sucesso!');
+    } catch (error) {
+      // Erro já é tratado pelo interceptor
       setAuditoria((prev) => {
         if (!prev) return prev;
         return {
@@ -131,7 +134,7 @@ export default function AuditoriaPage() {
     const file = e.target.files?.[0];
     if (!file || !itemModal || !auditoria) return;
     if (itemModal.fotos.length >= MAX_FOTOS_POR_ITEM) {
-      alert(`Máximo de ${MAX_FOTOS_POR_ITEM} fotos por item`);
+      toastService.warning(`Máximo de ${MAX_FOTOS_POR_ITEM} fotos por item`);
       return;
     }
     const preview = URL.createObjectURL(file);
@@ -145,6 +148,7 @@ export default function AuditoriaPage() {
         itemModal.item.id,
         file
       );
+      toastService.success('Foto adicionada com sucesso!');
       // Analisa a imagem com IA
       const analise = await iaService.analisarImagemChecklist(
         file,
@@ -238,6 +242,7 @@ export default function AuditoriaPage() {
     if (fotoParaRemover.id && fotoParaRemover.isExisting) {
       try {
         await auditoriaService.removerFoto(auditoria.id, itemModal.item.id, fotoParaRemover.id);
+        toastService.success('Foto removida com sucesso!');
         
         // Atualiza o estado global também
         setAuditoria((prev) => {
@@ -254,7 +259,8 @@ export default function AuditoriaPage() {
             ),
           };
         });
-      } catch {
+      } catch (error) {
+        // Erro já é tratado pelo interceptor
         // Se falhar, restaura a foto no estado
         setItemModal((prev) => {
           if (!prev) return null;
@@ -299,8 +305,10 @@ export default function AuditoriaPage() {
           ),
         };
       });
+      toastService.success('Item salvo com sucesso!');
       setItemModal(null);
-    } catch {
+    } catch (error) {
+      // Erro já é tratado pelo interceptor
       setItemModal((prev) => prev ? { ...prev, isSaving: false } : null);
     }
   };
@@ -338,8 +346,9 @@ export default function AuditoriaPage() {
           ),
         };
       });
-    } catch {
-      // Erro silencioso
+      toastService.success('Texto gerado pela IA com sucesso!');
+    } catch (error) {
+      // Erro já é tratado pelo interceptor
     } finally {
       setProcessingIa(null);
     }
@@ -351,9 +360,11 @@ export default function AuditoriaPage() {
     setErroFinalizar('');
     try {
       await auditoriaService.finalizar(auditoria.id, observacoesGerais);
+      toastService.success('Auditoria finalizada com sucesso!');
       setShowFinalModal(false);
       router.push('/dashboard');
     } catch (error: unknown) {
+      // Erro já é tratado pelo interceptor
       let mensagem = 'Erro ao finalizar auditoria';
       if (error && typeof error === 'object') {
         const axiosError = error as { response?: { data?: { message?: string | string[] } } };

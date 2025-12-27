@@ -51,7 +51,7 @@ export function Navbar() {
               alt="ChekAI"
               width={180}
               height={30}
-              className="h-12 w-auto w-[150px] h-auto"
+              className="h-12 w-[150px] h-auto"
               priority
             />
           </Link>

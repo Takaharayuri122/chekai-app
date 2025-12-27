@@ -52,14 +52,15 @@ export class UsuarioService {
       email: dto.email,
       senhaHash,
       perfil: dto.perfil || PerfilUsuario.ANALISTA,
-      telefone: dto.telefone || null,
-      analistaId: dto.analistaId ? dto.analistaId : null,
-      tenantId: null,
-    });
+      telefone: dto.telefone || undefined,
+      analistaId: dto.analistaId || undefined,
+      tenantId: undefined,
+    }) as Usuario;
     const savedUsuario = await this.usuarioRepository.save(usuario);
     if (savedUsuario.perfil === PerfilUsuario.ANALISTA) {
       savedUsuario.tenantId = savedUsuario.id;
-      return this.usuarioRepository.save(savedUsuario);
+      const updatedUsuario = await this.usuarioRepository.save(savedUsuario);
+      return updatedUsuario;
     }
     return savedUsuario;
   }

@@ -23,10 +23,10 @@ export class CriarClienteDto {
   @IsOptional()
   nomeFantasia?: string;
 
-  @ApiProperty({ description: 'CNPJ da empresa', example: '12.345.678/0001-90' })
+  @ApiProperty({ description: 'CNPJ da empresa (com ou sem máscara)', example: '12.345.678/0001-90' })
   @IsString()
-  @Matches(/^\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}$/, {
-    message: 'CNPJ deve estar no formato XX.XXX.XXX/XXXX-XX',
+  @Matches(/^(\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}|\d{14})$/, {
+    message: 'CNPJ inválido. Use o formato XX.XXX.XXX/XXXX-XX ou apenas números',
   })
   @IsNotEmpty({ message: 'O CNPJ é obrigatório' })
   cnpj: string;
@@ -36,10 +36,10 @@ export class CriarClienteDto {
   @IsOptional()
   email?: string;
 
-  @ApiPropertyOptional({ description: 'Telefone de contato', example: '11999998888' })
+  @ApiProperty({ description: 'Telefone de contato', example: '11999998888' })
   @IsString()
-  @IsOptional()
-  telefone?: string;
+  @IsNotEmpty({ message: 'O telefone é obrigatório' })
+  telefone: string;
 
   @ApiPropertyOptional({
     description: 'Tipo de atividade',

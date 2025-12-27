@@ -44,8 +44,8 @@ export class ChecklistTemplate {
   @JoinColumn({ name: 'analista_id' })
   analista: Usuario;
 
-  @Column({ name: 'analista_id', nullable: true })
-  analistaId: string;
+  @Column({ name: 'analista_id', nullable: true, type: 'uuid' })
+  analistaId: string | null;
 
   @OneToMany(() => TemplateItem, (item) => item.template)
   itens: TemplateItem[];

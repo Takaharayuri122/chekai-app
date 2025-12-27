@@ -29,6 +29,7 @@ import {
   TIPO_LEGISLACAO_LABELS,
   CriarChunkRequest,
 } from '@/lib/api';
+import { toastService } from '@/lib/toast';
 
 /**
  * Página de detalhes e edição de legislação.
@@ -62,8 +63,8 @@ export default function LegislacaoDetalhesPage() {
       setLegislacao(leg);
       setChunks(chunkList);
       setFormData(leg);
-    } catch {
-      alert('Erro ao carregar legislação');
+    } catch (error) {
+      // Erro já é tratado pelo interceptor
       router.push('/legislacoes');
     } finally {
       setIsLoading(false);
@@ -82,10 +83,11 @@ export default function LegislacaoDetalhesPage() {
     try {
       setIsSaving(true);
       await legislacaoService.atualizar(id, formData);
+      toastService.success('Legislação atualizada com sucesso!');
       setIsEditing(false);
       loadData();
-    } catch {
-      alert('Erro ao salvar legislação');
+    } catch (error) {
+      // Erro já é tratado pelo interceptor
     } finally {
       setIsSaving(false);
     }
@@ -93,17 +95,18 @@ export default function LegislacaoDetalhesPage() {
 
   const handleAddChunk = async () => {
     if (!novoChunk.conteudo.trim()) {
-      alert('Preencha o conteúdo do chunk');
+      toastService.warning('Preencha o conteúdo do chunk');
       return;
     }
     try {
       setIsSaving(true);
       await legislacaoService.adicionarChunks(id, [novoChunk]);
+      toastService.success('Chunk adicionado com sucesso!');
       setNovoChunk({ conteudo: '', artigo: '', inciso: '', paragrafo: '' });
       setShowChunkModal(false);
       loadData();
-    } catch {
-      alert('Erro ao adicionar chunk');
+    } catch (error) {
+      // Erro já é tratado pelo interceptor
     } finally {
       setIsSaving(false);
     }
@@ -113,9 +116,10 @@ export default function LegislacaoDetalhesPage() {
     if (!confirm('Tem certeza que deseja remover este chunk?')) return;
     try {
       await legislacaoService.removerChunk(chunkId);
+      toastService.success('Chunk removido com sucesso!');
       loadData();
-    } catch {
-      alert('Erro ao remover chunk');
+    } catch (error) {
+      // Erro já é tratado pelo interceptor
     }
   };
 

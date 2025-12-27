@@ -24,6 +24,7 @@ import {
   TipoAtividade,
   TIPO_ATIVIDADE_LABELS,
 } from '@/lib/api';
+import { toastService } from '@/lib/toast';
 
 type Step = 'upload' | 'preview' | 'config' | 'result';
 
@@ -106,10 +107,11 @@ export default function ImportarMokiPage() {
         tipoAtividade: formData.tipoAtividade,
         versao: formData.versao,
       });
+      toastService.success(`Template importado com sucesso! ${result.itensCriados} itens criados.`);
       setResultado(result);
       setStep('result');
-    } catch {
-      setErro('Erro ao importar o checklist. Tente novamente.');
+    } catch (error) {
+      // Erro já é tratado pelo interceptor
     } finally {
       setLoading(false);
     }

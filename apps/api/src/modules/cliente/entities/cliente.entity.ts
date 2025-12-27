@@ -46,7 +46,7 @@ export class Cliente {
   @Column({ length: 255, nullable: true })
   email: string;
 
-  @Column({ length: 20, nullable: true })
+  @Column({ length: 20 })
   telefone: string;
 
   @Column({

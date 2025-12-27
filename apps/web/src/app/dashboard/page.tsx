@@ -15,6 +15,7 @@ import {
 import { AppLayout, StatCard, EmptyState } from '@/components';
 import { auditoriaService, type Auditoria } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
+import { toastService } from '@/lib/toast';
 
 export default function DashboardPage() {
   const { usuario } = useAuthStore();
@@ -26,8 +27,8 @@ export default function DashboardPage() {
       try {
         const response = await auditoriaService.listar();
         setAuditorias(response.items || []);
-      } catch {
-        // Erro silencioso
+      } catch (error) {
+        // Erro já é tratado pelo interceptor
       } finally {
         setLoading(false);
       }
