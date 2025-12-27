@@ -5,7 +5,6 @@ export enum PerfilUsuario {
   MASTER = 'master',
   ANALISTA = 'analista',
   AUDITOR = 'auditor',
-  EMPRESA = 'empresa',
 }
 
 export interface Usuario {
@@ -26,7 +25,6 @@ interface AuthState {
   isMaster: () => boolean;
   isAnalista: () => boolean;
   isAuditor: () => boolean;
-  isEmpresa: () => boolean;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -54,10 +52,6 @@ export const useAuthStore = create<AuthState>()(
       isAuditor: () => {
         const { usuario } = get();
         return usuario?.perfil === PerfilUsuario.AUDITOR;
-      },
-      isEmpresa: () => {
-        const { usuario } = get();
-        return usuario?.perfil === PerfilUsuario.EMPRESA;
       },
     }),
     {

@@ -16,7 +16,7 @@ import {
 import { useAuthStore, PerfilUsuario } from '@/lib/store';
 
 const allNavItems = [
-  { href: '/dashboard', label: 'Início', icon: Home, roles: [PerfilUsuario.MASTER, PerfilUsuario.ANALISTA, PerfilUsuario.AUDITOR, PerfilUsuario.EMPRESA] },
+  { href: '/dashboard', label: 'Início', icon: Home, roles: [PerfilUsuario.MASTER, PerfilUsuario.ANALISTA, PerfilUsuario.AUDITOR] },
   { href: '/auditoria/nova', label: 'Nova', icon: Plus, roles: [PerfilUsuario.AUDITOR] },
   { href: '/clientes', label: 'Clientes', icon: Building2, roles: [PerfilUsuario.MASTER, PerfilUsuario.ANALISTA] },
   { href: '/templates', label: 'Templates', icon: FileText, roles: [PerfilUsuario.MASTER, PerfilUsuario.ANALISTA] },

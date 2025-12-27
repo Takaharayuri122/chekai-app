@@ -30,14 +30,12 @@ const PERFIL_LABELS: Record<PerfilUsuario, string> = {
   [PerfilUsuario.MASTER]: 'Master',
   [PerfilUsuario.ANALISTA]: 'Analista',
   [PerfilUsuario.AUDITOR]: 'Auditor',
-  [PerfilUsuario.EMPRESA]: 'Empresa',
 };
 
 const PERFIL_ICONS: Record<PerfilUsuario, typeof User> = {
   [PerfilUsuario.MASTER]: Shield,
   [PerfilUsuario.ANALISTA]: UserCheck,
   [PerfilUsuario.AUDITOR]: User,
-  [PerfilUsuario.EMPRESA]: Building2,
 };
 
 export default function UsuariosPage() {

@@ -128,7 +128,6 @@ export enum PerfilUsuario {
   MASTER = 'master',
   ANALISTA = 'analista',
   AUDITOR = 'auditor',
-  EMPRESA = 'empresa',
 }
 
 export interface CriarUsuarioRequest {
