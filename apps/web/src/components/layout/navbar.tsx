@@ -12,6 +12,10 @@ import {
   Menu,
   Home,
   FileText,
+  Package,
+  Coins,
+  TrendingUp,
+  UserCheck,
 } from 'lucide-react';
 import { useAuthStore, PerfilUsuario } from '@/lib/store';
 
@@ -22,6 +26,10 @@ const allNavItems = [
   { href: '/templates', label: 'Checklists', icon: FileText, roles: [PerfilUsuario.MASTER, PerfilUsuario.GESTOR] },
   { href: '/auditorias', label: 'Auditorias', icon: ClipboardCheck, roles: [PerfilUsuario.MASTER, PerfilUsuario.GESTOR, PerfilUsuario.AUDITOR] },
   { href: '/usuarios', label: 'Usuários', icon: User, roles: [PerfilUsuario.MASTER, PerfilUsuario.GESTOR] },
+  { href: '/planos', label: 'Planos', icon: Package, roles: [PerfilUsuario.MASTER] },
+  { href: '/planos/assinaturas', label: 'Assinaturas', icon: UserCheck, roles: [PerfilUsuario.MASTER] },
+  { href: '/gestor/limites', label: 'Meus Limites', icon: TrendingUp, roles: [PerfilUsuario.GESTOR] },
+  { href: '/gestor/creditos', label: 'Meus Créditos', icon: Coins, roles: [PerfilUsuario.GESTOR] },
 ];
 
 export function Navbar() {
@@ -59,19 +67,20 @@ export function Navbar() {
 
         <div className="flex-none gap-2">
           <ul className="menu menu-horizontal px-1 gap-1">
-            {navItems.map((item) => (
-              <li key={item.href}>
-                <Link
-                  href={item.href}
-                  className={`${
-                    pathname === item.href ? 'bg-primary text-primary-content' : ''
-                  }`}
-                >
-                  <item.icon className="w-4 h-4" />
-                  {item.label}
-                </Link>
-              </li>
-            ))}
+            {navItems.map((item) => {
+              const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+              return (
+                <li key={item.href}>
+                  <Link
+                    href={item.href}
+                    className={isActive ? 'bg-primary text-primary-content' : ''}
+                  >
+                    <item.icon className="w-4 h-4" />
+                    {item.label}
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
 
           <div className="dropdown dropdown-end">
@@ -94,12 +103,42 @@ export function Navbar() {
                 </Link>
               </li>
               {isMaster() && (
-                <li>
-                  <Link href="/usuarios">
-                    <User className="w-4 h-4" />
-                    Usuários
-                  </Link>
-                </li>
+                <>
+                  <li>
+                    <Link href="/usuarios">
+                      <User className="w-4 h-4" />
+                      Usuários
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="/planos">
+                      <Package className="w-4 h-4" />
+                      Planos
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="/planos/assinaturas">
+                      <UserCheck className="w-4 h-4" />
+                      Assinaturas
+                    </Link>
+                  </li>
+                </>
+              )}
+              {isGestor() && !isMaster() && (
+                <>
+                  <li>
+                    <Link href="/gestor/limites">
+                      <TrendingUp className="w-4 h-4" />
+                      Meus Limites
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="/gestor/creditos">
+                      <Coins className="w-4 h-4" />
+                      Meus Créditos
+                    </Link>
+                  </li>
+                </>
               )}
               <li>
                 <button onClick={handleLogout} className="text-error">
@@ -133,11 +172,61 @@ export function Navbar() {
             </div>
             <ul
               tabIndex={0}
-              className="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow-lg bg-base-100 rounded-box w-52 border border-base-300"
+              className="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow-lg bg-base-100 rounded-box w-52 border border-base-300 max-h-[80vh] overflow-y-auto"
             >
               <li className="menu-title">
                 <span>{usuario?.nome || 'Usuário'}</span>
               </li>
+              {navItems.map((item) => (
+                <li key={item.href}>
+                  <Link
+                    href={item.href}
+                    className={pathname === item.href || pathname.startsWith(item.href + '/') ? 'active' : ''}
+                  >
+                    <item.icon className="w-4 h-4" />
+                    {item.label}
+                  </Link>
+                </li>
+              ))}
+              <div className="divider my-1"></div>
+              <li>
+                <Link href="/perfil">
+                  <User className="w-4 h-4" />
+                  Meu Perfil
+                </Link>
+              </li>
+              {isMaster() && (
+                <>
+                  <li>
+                    <Link href="/planos">
+                      <Package className="w-4 h-4" />
+                      Planos
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="/planos/assinaturas">
+                      <UserCheck className="w-4 h-4" />
+                      Assinaturas
+                    </Link>
+                  </li>
+                </>
+              )}
+              {isGestor() && !isMaster() && (
+                <>
+                  <li>
+                    <Link href="/gestor/limites">
+                      <TrendingUp className="w-4 h-4" />
+                      Meus Limites
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="/gestor/creditos">
+                      <Coins className="w-4 h-4" />
+                      Meus Créditos
+                    </Link>
+                  </li>
+                </>
+              )}
               <div className="divider my-1"></div>
               <li>
                 <button onClick={handleLogout} className="text-error">

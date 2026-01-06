@@ -3,6 +3,9 @@ import {
   NotFoundException,
   ConflictException,
   ForbiddenException,
+  forwardRef,
+  Inject,
+  Optional,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -24,6 +27,9 @@ export class UsuarioService {
   constructor(
     @InjectRepository(Usuario)
     private readonly usuarioRepository: Repository<Usuario>,
+    @Inject(forwardRef(() => 'ValidacaoLimitesService'))
+    @Optional()
+    private readonly validacaoLimites?: any,
   ) {}
 
   /**
@@ -45,6 +51,13 @@ export class UsuarioService {
         // Força o perfil como AUDITOR e vincula ao gestor
         dto.perfil = PerfilUsuario.AUDITOR;
         dto.gestorId = usuarioCriador.id;
+        // Valida limite de usuários
+        if (this.validacaoLimites) {
+          const gestorId = this.validacaoLimites.identificarGestorId(usuarioCriador);
+          if (gestorId) {
+            await this.validacaoLimites.validarLimiteUsuarios(gestorId);
+          }
+        }
       } else if (usuarioCriador.perfil === PerfilUsuario.MASTER) {
         // Master pode criar qualquer perfil
         // Se for GESTOR, não deve ter gestorId

@@ -54,10 +54,10 @@ export class AuditoriaController {
   @ApiOperation({ summary: 'Inicia uma nova auditoria' })
   @ApiResponse({ status: 201, description: 'Auditoria iniciada' })
   async iniciarAuditoria(
-    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario },
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
     @Body() dto: IniciarAuditoriaDto,
   ): Promise<Auditoria> {
-    return this.auditoriaService.iniciarAuditoria(usuario.id, dto);
+    return this.auditoriaService.iniciarAuditoria(usuario.id, dto, usuario);
   }
 
   @Get()

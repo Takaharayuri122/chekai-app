@@ -47,7 +47,7 @@ export class ClienteController {
   @ApiResponse({ status: 201, description: 'Cliente criado com sucesso' })
   async criarCliente(
     @Body() dto: CriarClienteDto,
-    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario },
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
   ): Promise<Cliente> {
     return this.clienteService.criarCliente(dto, usuario);
   }

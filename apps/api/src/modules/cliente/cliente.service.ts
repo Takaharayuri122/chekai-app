@@ -3,6 +3,9 @@ import {
   NotFoundException,
   ConflictException,
   ForbiddenException,
+  forwardRef,
+  Inject,
+  Optional,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -27,6 +30,9 @@ export class ClienteService {
     private readonly clienteRepository: Repository<Cliente>,
     @InjectRepository(Unidade)
     private readonly unidadeRepository: Repository<Unidade>,
+    @Inject(forwardRef(() => 'ValidacaoLimitesService'))
+    @Optional()
+    private readonly validacaoLimites?: any,
   ) {}
 
   /**
@@ -34,10 +40,17 @@ export class ClienteService {
    */
   async criarCliente(
     dto: CriarClienteDto,
-    usuarioAutenticado?: { id: string; perfil: PerfilUsuario },
+    usuarioAutenticado?: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
   ): Promise<Cliente> {
     if (usuarioAutenticado && usuarioAutenticado.perfil !== PerfilUsuario.MASTER && usuarioAutenticado.perfil !== PerfilUsuario.GESTOR) {
       throw new ForbiddenException('Apenas Master e Gestor podem criar clientes');
+    }
+    // Valida limite de clientes
+    if (usuarioAutenticado && this.validacaoLimites && usuarioAutenticado.perfil !== PerfilUsuario.MASTER) {
+      const gestorId = this.validacaoLimites.identificarGestorId(usuarioAutenticado);
+      if (gestorId) {
+        await this.validacaoLimites.validarLimiteClientes(gestorId);
+      }
     }
     // Normalizar CNPJ (remover máscara)
     const cnpjNormalizado = dto.cnpj.replace(/\D/g, '');

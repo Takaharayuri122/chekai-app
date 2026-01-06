@@ -21,6 +21,7 @@ import {
 } from '@nestjs/swagger';
 import { IaService } from './ia.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { CurrentUser } from '../../core/decorators/current-user.decorator';
 import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -128,6 +129,7 @@ export class IaController {
     )
     file: Express.Multer.File,
     @Body('contexto') contexto?: string,
+    @CurrentUser() usuario?: { id: string; perfil: any; gestorId?: string | null },
   ): Promise<{
     tipoNaoConformidade: string;
     descricao: string;
@@ -141,6 +143,7 @@ export class IaController {
     return this.iaService.analisarImagem(
       base64,
       contexto || 'área de produção',
+      usuario,
     );
   }
 
@@ -187,6 +190,7 @@ export class IaController {
     @Body('perguntaChecklist') perguntaChecklist: string,
     @Body('categoria') categoria?: string,
     @Body('tipoEstabelecimento') tipoEstabelecimento?: string,
+    @CurrentUser() usuario?: { id: string; perfil: any; gestorId?: string | null },
   ): Promise<{
     descricaoIa: string;
     tipoNaoConformidade: string;
@@ -207,6 +211,7 @@ export class IaController {
       perguntaChecklist,
       categoria || 'geral',
       tipoEstabelecimento || 'serviço de alimentação',
+      usuario,
     );
   }
 
@@ -215,6 +220,7 @@ export class IaController {
   @ApiResponse({ status: 200, description: 'Texto gerado' })
   async gerarTexto(
     @Body() dto: GerarTextoDto,
+    @CurrentUser() usuario?: { id: string; perfil: any; gestorId?: string | null },
   ): Promise<{
     descricaoTecnica: string;
     referenciaLegal: string;
@@ -229,6 +235,7 @@ export class IaController {
     return this.iaService.gerarTextoNaoConformidade(
       dto.descricao,
       dto.tipoEstabelecimento || 'serviço de alimentação',
+      usuario,
     );
   }
 
@@ -237,6 +244,7 @@ export class IaController {
   @ApiResponse({ status: 200, description: 'Plano de ação gerado' })
   async gerarPlanoAcao(
     @Body() dto: GerarPlanoAcaoDto,
+    @CurrentUser() usuario?: { id: string; perfil: any; gestorId?: string | null },
   ): Promise<{
     acoesCorretivas: string[];
     acoesPreventivas: string[];
@@ -245,6 +253,7 @@ export class IaController {
     return this.iaService.gerarPlanoAcao(
       dto.descricaoNaoConformidade,
       dto.referenciaLegal || '',
+      usuario,
     );
   }
 }

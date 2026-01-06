@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { MulterModule } from '@nestjs/platform-express';
 import { Auditoria } from './entities/auditoria.entity';
@@ -7,6 +7,7 @@ import { Foto } from './entities/foto.entity';
 import { AuditoriaService } from './auditoria.service';
 import { AuditoriaController } from './auditoria.controller';
 import { ChecklistModule } from '../checklist/checklist.module';
+import { PlanoModule } from '../plano/plano.module';
 
 /**
  * Módulo responsável pela gestão de auditorias.
@@ -18,6 +19,7 @@ import { ChecklistModule } from '../checklist/checklist.module';
       limits: { fileSize: 10 * 1024 * 1024 }, // 10MB max
     }),
     ChecklistModule,
+    forwardRef(() => PlanoModule),
   ],
   controllers: [AuditoriaController],
   providers: [AuditoriaService],

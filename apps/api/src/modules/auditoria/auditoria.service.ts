@@ -3,6 +3,9 @@ import {
   NotFoundException,
   BadRequestException,
   ForbiddenException,
+  forwardRef,
+  Inject,
+  Optional,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -35,6 +38,9 @@ export class AuditoriaService {
     @InjectRepository(Foto)
     private readonly fotoRepository: Repository<Foto>,
     private readonly checklistService: ChecklistService,
+    @Inject(forwardRef(() => 'ValidacaoLimitesService'))
+    @Optional()
+    private readonly validacaoLimites?: any,
   ) {}
 
   /**
@@ -43,7 +49,15 @@ export class AuditoriaService {
   async iniciarAuditoria(
     consultorId: string,
     dto: IniciarAuditoriaDto,
+    usuario?: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
   ): Promise<Auditoria> {
+    // Valida limite de auditorias
+    if (usuario && this.validacaoLimites && usuario.perfil !== PerfilUsuario.MASTER) {
+      const gestorId = this.validacaoLimites.identificarGestorId(usuario);
+      if (gestorId) {
+        await this.validacaoLimites.validarLimiteAuditorias(gestorId);
+      }
+    }
     const template = await this.checklistService.buscarTemplatePorId(dto.templateId, { id: consultorId, perfil: PerfilUsuario.AUDITOR });
     const auditoria = this.auditoriaRepository.create({
       consultorId,

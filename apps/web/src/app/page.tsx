@@ -89,7 +89,7 @@ export default function HomePage() {
               transition={{ delay: 0.1 }}
               className="text-4xl lg:text-6xl font-bold text-base-content mb-6 font-display"
             >
-              Consultoria em{' '}
+               <span className="text-primary">ChekAI</span> <br/>Consultoria em{' '}
               <span className="text-primary">Segurança de Alimentos</span>
               <br />com Inteligência Artificial
             </motion.h1>

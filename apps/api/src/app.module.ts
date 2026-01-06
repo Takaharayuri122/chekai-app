@@ -8,6 +8,8 @@ import { ChecklistModule } from './modules/checklist/checklist.module';
 import { AuditoriaModule } from './modules/auditoria/auditoria.module';
 import { LegislacaoModule } from './modules/legislacao/legislacao.module';
 import { IaModule } from './modules/ia/ia.module';
+import { PlanoModule } from './modules/plano/plano.module';
+import { CreditoModule } from './modules/credito/credito.module';
 import { CoreModule } from './core/core.module';
 import { SupabaseModule } from './modules/supabase/supabase.module';
 
@@ -57,6 +59,8 @@ import { SupabaseModule } from './modules/supabase/supabase.module';
     AuditoriaModule,
     LegislacaoModule,
     IaModule,
+    PlanoModule,
+    CreditoModule,
   ],
 })
 export class AppModule {}

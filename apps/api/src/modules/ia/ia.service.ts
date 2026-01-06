@@ -2,6 +2,9 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
 import { LegislacaoService } from '../legislacao/legislacao.service';
+import { CreditoService } from '../credito/credito.service';
+import { PerfilUsuario } from '../usuario/entities/usuario.entity';
+import { ProvedorIa } from '../credito/entities/uso-credito.entity';
 
 interface AnaliseImagemResult {
   tipoNaoConformidade: string;
@@ -35,6 +38,7 @@ export class IaService {
   constructor(
     private readonly configService: ConfigService,
     private readonly legislacaoService: LegislacaoService,
+    private readonly creditoService: CreditoService,
   ) {
     // Cliente DeepSeek para textos
     const deepseekApiKey = this.configService.get<string>('DEEPSEEK_API_KEY');
@@ -61,6 +65,7 @@ export class IaService {
   async analisarImagem(
     imagemBase64: string,
     contexto: string,
+    usuario?: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
   ): Promise<AnaliseImagemResult> {
     const prompt = `Você é um especialista em segurança de alimentos e higiene.
 Analise esta imagem de uma área de ${contexto} e identifique possíveis não conformidades relacionadas à segurança alimentar.
@@ -73,6 +78,12 @@ Retorne APENAS um JSON válido (sem markdown, sem backticks) com:
 
 Se não identificar não conformidades, retorne:
 {"tipoNaoConformidade": "Nenhuma identificada", "descricao": "A imagem não apresenta não conformidades visíveis", "gravidade": "baixa", "sugestoes": []}`;
+
+    let gestorId: string | undefined;
+    if (usuario && usuario.perfil !== PerfilUsuario.MASTER) {
+      gestorId = this.creditoService.identificarGestorId(usuario);
+      await this.creditoService.validarSaldoDisponivel(gestorId);
+    }
 
     const response = await this.openaiVision.chat.completions.create({
       model: 'gpt-4o-mini',
@@ -95,6 +106,19 @@ Se não identificar não conformidades, retorne:
     });
 
     const content = response.choices[0]?.message?.content || '{}';
+    const usage = response.usage;
+    if (gestorId && usuario && usage) {
+      await this.creditoService.registrarUso({
+        gestorId,
+        usuarioId: usuario.id,
+        provedor: ProvedorIa.OPENAI,
+        modelo: 'gpt-4o-mini',
+        tokensInput: usage.prompt_tokens || 0,
+        tokensOutput: usage.completion_tokens || 0,
+        metodoChamado: 'analisarImagem',
+        contexto: `Análise de imagem: ${contexto}`,
+      });
+    }
     try {
       // Remove possíveis backticks de markdown
       const cleanContent = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
@@ -116,6 +140,7 @@ Se não identificar não conformidades, retorne:
   async gerarTextoNaoConformidade(
     descricaoSimples: string,
     tipoEstabelecimento: string,
+    usuario?: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
   ): Promise<GeracaoTextoResult> {
     const contextoLegislacao = await this.legislacaoService.gerarContextoRag(
       `${descricaoSimples} ${tipoEstabelecimento} segurança alimentos`,
@@ -142,6 +167,12 @@ Retorne APENAS um JSON válido (sem markdown, sem backticks) com:
   - prazoSugerido: prazo recomendado (ex: "imediato", "7 dias", "30 dias")
   - responsavelSugerido: cargo sugerido (ex: "Responsável Técnico", "Gerente")`;
 
+    let gestorId: string | undefined;
+    if (usuario && usuario.perfil !== PerfilUsuario.MASTER) {
+      gestorId = this.creditoService.identificarGestorId(usuario);
+      await this.creditoService.validarSaldoDisponivel(gestorId);
+    }
+
     const response = await this.deepseekText.chat.completions.create({
       model: 'deepseek-chat',
       messages: [{ role: 'user', content: prompt }],
@@ -150,6 +181,19 @@ Retorne APENAS um JSON válido (sem markdown, sem backticks) com:
     });
 
     const content = response.choices[0]?.message?.content || '{}';
+    const usage = response.usage;
+    if (gestorId && usuario && usage) {
+      await this.creditoService.registrarUso({
+        gestorId,
+        usuarioId: usuario.id,
+        provedor: ProvedorIa.DEEPSEEK,
+        modelo: 'deepseek-chat',
+        tokensInput: usage.prompt_tokens || 0,
+        tokensOutput: usage.completion_tokens || 0,
+        metodoChamado: 'gerarTextoNaoConformidade',
+        contexto: `Geração de texto: ${descricaoSimples.substring(0, 100)}`,
+      });
+    }
     try {
       const cleanContent = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
       return JSON.parse(cleanContent);
@@ -177,6 +221,7 @@ Retorne APENAS um JSON válido (sem markdown, sem backticks) com:
     perguntaChecklist: string,
     categoria: string,
     tipoEstabelecimento: string,
+    usuario?: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
   ): Promise<{
     descricaoIa: string;
     tipoNaoConformidade: string;
@@ -203,6 +248,13 @@ Analise a imagem e retorne JSON (sem markdown):
 - gravidade: "baixa", "media", "alta" ou "critica" (apenas se relevante)
 - sugestoes: array com 2-3 sugestões de correção (apenas se relevante)
 - referenciaLegal: citação legal (ex: "RDC 216/2004, Art. 4.1.3") (apenas se relevante)`;
+
+    let gestorId: string | undefined;
+    if (usuario && usuario.perfil !== PerfilUsuario.MASTER) {
+      gestorId = this.creditoService.identificarGestorId(usuario);
+      await this.creditoService.validarSaldoDisponivel(gestorId);
+    }
+
     const response = await this.openaiVision.chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [
@@ -223,6 +275,19 @@ Analise a imagem e retorne JSON (sem markdown):
       max_tokens: 800,
     });
     const content = response.choices[0]?.message?.content || '{}';
+    const usage = response.usage;
+    if (gestorId && usuario && usage) {
+      await this.creditoService.registrarUso({
+        gestorId,
+        usuarioId: usuario.id,
+        provedor: ProvedorIa.OPENAI,
+        modelo: 'gpt-4o-mini',
+        tokensInput: usage.prompt_tokens || 0,
+        tokensOutput: usage.completion_tokens || 0,
+        metodoChamado: 'analisarImagemChecklist',
+        contexto: `Checklist: ${perguntaChecklist.substring(0, 100)}`,
+      });
+    }
     try {
       const cleanContent = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
       const parsed = JSON.parse(cleanContent);
@@ -253,6 +318,7 @@ Analise a imagem e retorne JSON (sem markdown):
   async gerarPlanoAcao(
     descricaoNaoConformidade: string,
     referenciaLegal: string,
+    usuario?: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
   ): Promise<{
     acoesCorretivas: string[];
     acoesPreventivas: string[];
@@ -268,6 +334,12 @@ Retorne APENAS um JSON válido (sem markdown, sem backticks) com:
 - acoesPreventivas: array com 2-3 ações preventivas
 - prazoSugerido: prazo recomendado`;
 
+    let gestorId: string | undefined;
+    if (usuario && usuario.perfil !== PerfilUsuario.MASTER) {
+      gestorId = this.creditoService.identificarGestorId(usuario);
+      await this.creditoService.validarSaldoDisponivel(gestorId);
+    }
+
     const response = await this.deepseekText.chat.completions.create({
       model: 'deepseek-chat',
       messages: [{ role: 'user', content: prompt }],
@@ -276,6 +348,19 @@ Retorne APENAS um JSON válido (sem markdown, sem backticks) com:
     });
 
     const content = response.choices[0]?.message?.content || '{}';
+    const usage = response.usage;
+    if (gestorId && usuario && usage) {
+      await this.creditoService.registrarUso({
+        gestorId,
+        usuarioId: usuario.id,
+        provedor: ProvedorIa.DEEPSEEK,
+        modelo: 'deepseek-chat',
+        tokensInput: usage.prompt_tokens || 0,
+        tokensOutput: usage.completion_tokens || 0,
+        metodoChamado: 'gerarPlanoAcao',
+        contexto: `Plano de ação: ${descricaoNaoConformidade.substring(0, 100)}`,
+      });
+    }
     try {
       const cleanContent = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
       return JSON.parse(cleanContent);

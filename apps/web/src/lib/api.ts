@@ -858,6 +858,152 @@ export interface GeracaoTextoResponse {
   };
 }
 
+/**
+ * Tipos e interfaces para planos.
+ */
+export interface Plano {
+  id: string;
+  nome: string;
+  descricao?: string;
+  limiteUsuarios: number;
+  limiteAuditorias: number;
+  limiteClientes: number;
+  limiteCreditos: number;
+  ativo: boolean;
+  criadoEm: string;
+  atualizadoEm: string;
+}
+
+export interface CriarPlanoRequest {
+  nome: string;
+  descricao?: string;
+  limiteUsuarios: number;
+  limiteAuditorias: number;
+  limiteClientes: number;
+  limiteCreditos: number;
+  ativo?: boolean;
+}
+
+export interface Assinatura {
+  id: string;
+  gestorId: string;
+  planoId: string;
+  status: 'ativa' | 'cancelada' | 'expirada';
+  dataInicio: string;
+  dataFim?: string;
+  plano: Plano;
+  criadoEm: string;
+  atualizadoEm: string;
+}
+
+export interface CriarAssinaturaRequest {
+  gestorId: string;
+  planoId: string;
+  dataInicio?: string;
+  dataFim?: string;
+}
+
+export interface LimitesGestor {
+  plano: {
+    nome: string;
+    limiteUsuarios: number;
+    limiteAuditorias: number;
+    limiteClientes: number;
+    limiteCreditos: number;
+  };
+  uso: {
+    usuarios: number;
+    auditorias: number;
+    clientes: number;
+    creditos: number;
+  };
+}
+
+export interface SaldoCreditos {
+  limite: number;
+  usado: number;
+  disponivel: number;
+}
+
+export interface UsoCredito {
+  id: string;
+  gestorId: string;
+  usuarioId: string;
+  provedor: 'openai' | 'deepseek';
+  modelo: string;
+  tokensInput: number;
+  tokensOutput: number;
+  tokensTotal: number;
+  creditosConsumidos: number;
+  metodoChamado: string;
+  contexto?: string;
+  criadoEm: string;
+  usuario?: {
+    id: string;
+    nome: string;
+    email: string;
+  };
+}
+
+export const planoService = {
+  async listar(page = 1, limit = 10): Promise<PaginatedResult<Plano>> {
+    const response = await api.get('/planos', { params: { page, limit } });
+    return response.data.data;
+  },
+
+  async buscarPorId(id: string): Promise<Plano> {
+    const response = await api.get(`/planos/${id}`);
+    return response.data.data;
+  },
+
+  async criar(data: CriarPlanoRequest): Promise<Plano> {
+    const response = await api.post('/planos', data);
+    return response.data.data;
+  },
+
+  async atualizar(id: string, data: Partial<CriarPlanoRequest>): Promise<Plano> {
+    const response = await api.put(`/planos/${id}`, data);
+    return response.data.data;
+  },
+
+  async remover(id: string): Promise<void> {
+    await api.delete(`/planos/${id}`);
+  },
+
+  async criarAssinatura(planoId: string, data: CriarAssinaturaRequest): Promise<Assinatura> {
+    const response = await api.post(`/planos/${planoId}/assinaturas`, data);
+    return response.data.data;
+  },
+
+  async buscarAssinaturaGestor(gestorId: string): Promise<Assinatura | null> {
+    const response = await api.get(`/planos/gestores/${gestorId}/assinatura`);
+    return response.data.data;
+  },
+};
+
+export const gestorService = {
+  async consultarLimites(): Promise<LimitesGestor> {
+    const response = await api.get('/gestores/me/limites');
+    return response.data.data;
+  },
+
+  async consultarCreditos(page = 1, limit = 20): Promise<{
+    saldo: SaldoCreditos;
+    historico: {
+      items: UsoCredito[];
+      total: number;
+    };
+  }> {
+    const response = await api.get('/gestores/me/creditos', { params: { page, limit } });
+    return response.data.data;
+  },
+
+  async consultarAssinatura(): Promise<Assinatura | null> {
+    const response = await api.get('/gestores/me/assinatura');
+    return response.data.data;
+  },
+};
+
 export const iaService = {
   /**
    * Analisa uma imagem via upload de arquivo.
