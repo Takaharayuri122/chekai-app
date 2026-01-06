@@ -153,6 +153,19 @@ export class AuditoriaController {
     return this.auditoriaService.finalizarAuditoria(id, dto);
   }
 
+  @Put(':id/reabrir')
+  @UseGuards(RolesGuard)
+  @Roles(PerfilUsuario.MASTER, PerfilUsuario.GESTOR, PerfilUsuario.AUDITOR)
+  @ApiOperation({ summary: 'Reabre uma auditoria finalizada' })
+  @ApiResponse({ status: 200, description: 'Auditoria reaberta' })
+  @ApiResponse({ status: 400, description: 'Auditoria não está finalizada' })
+  async reabrirAuditoria(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; gestorId?: string },
+  ): Promise<Auditoria> {
+    return this.auditoriaService.reabrirAuditoria(id, usuario);
+  }
+
   @Get(':id/nao-conformes')
   @ApiOperation({ summary: 'Lista itens não conformes da auditoria' })
   @ApiResponse({ status: 200, description: 'Itens não conformes' })

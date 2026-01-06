@@ -82,8 +82,9 @@ export class ChecklistController {
   @ApiResponse({ status: 200, description: 'Lista de templates filtrada' })
   async listarTemplatesPorTipo(
     @Param('tipo') tipo: TipoAtividade,
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario },
   ): Promise<ChecklistTemplate[]> {
-    return this.checklistService.listarTemplatesPorTipo(tipo);
+    return this.checklistService.listarTemplatesPorTipo(tipo, usuario);
   }
 
   @Get('templates/:id')
@@ -97,20 +98,42 @@ export class ChecklistController {
   }
 
   @Put('templates/:id')
+  @UseGuards(RolesGuard)
+  @Roles(PerfilUsuario.MASTER, PerfilUsuario.GESTOR)
   @ApiOperation({ summary: 'Atualiza um template' })
   @ApiResponse({ status: 200, description: 'Template atualizado' })
   async atualizarTemplate(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: Partial<CriarChecklistTemplateDto>,
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario },
   ): Promise<ChecklistTemplate> {
-    return this.checklistService.atualizarTemplate(id, dto);
+    return this.checklistService.atualizarTemplate(id, dto, usuario);
   }
 
   @Delete('templates/:id')
-  @ApiOperation({ summary: 'Remove um template' })
+  @UseGuards(RolesGuard)
+  @Roles(PerfilUsuario.MASTER, PerfilUsuario.GESTOR)
+  @ApiOperation({ summary: 'Remove um template (apenas se não estiver vinculado a auditorias)' })
   @ApiResponse({ status: 200, description: 'Template removido' })
-  async removerTemplate(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
-    return this.checklistService.removerTemplate(id);
+  @ApiResponse({ status: 400, description: 'Template está vinculado a auditorias' })
+  async removerTemplate(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario },
+  ): Promise<void> {
+    return this.checklistService.removerTemplate(id, usuario);
+  }
+
+  @Put('templates/:id/status')
+  @UseGuards(RolesGuard)
+  @Roles(PerfilUsuario.MASTER, PerfilUsuario.GESTOR)
+  @ApiOperation({ summary: 'Inativa ou ativa um template' })
+  @ApiResponse({ status: 200, description: 'Status do template alterado' })
+  async alterarStatusTemplate(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body('ativo') ativo: boolean,
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario },
+  ): Promise<ChecklistTemplate> {
+    return this.checklistService.alterarStatusTemplate(id, ativo, usuario);
   }
 
   @Post('templates/:templateId/itens')

@@ -6,4 +6,5 @@ export { AppLayout } from './layout/app-layout';
 export { PageHeader } from './ui/page-header';
 export { StatCard } from './ui/stat-card';
 export { EmptyState } from './ui/empty-state';
+export { ConfirmDialog } from './ui/confirm-dialog';
 

@@ -384,7 +384,15 @@ export default function UsuariosPage() {
 
       {/* Modal de criação/edição */}
       {showModal && (
-        <div className="modal modal-open">
+        <div 
+          className="modal modal-open"
+          onClick={(e) => {
+            // Não fecha ao clicar fora - removido para evitar perda de dados
+            if (e.target === e.currentTarget) {
+              e.stopPropagation();
+            }
+          }}
+        >
           <div className="modal-box max-w-2xl">
             <h3 className="font-bold text-lg mb-4">
               {editingUsuario ? 'Editar Usuário' : 'Novo Usuário'}

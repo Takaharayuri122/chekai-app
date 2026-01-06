@@ -256,7 +256,15 @@ export default function ClientesPage() {
 
       {/* Modal Novo Cliente */}
       {showModal && (
-        <div className="modal modal-open">
+        <div 
+          className="modal modal-open"
+          onClick={(e) => {
+            // Não fecha ao clicar fora - removido para evitar perda de dados
+            if (e.target === e.currentTarget) {
+              e.stopPropagation();
+            }
+          }}
+        >
           <div className="modal-box">
             <h3 className="font-bold text-lg mb-4">Novo Cliente</h3>
             <div className="space-y-4">
@@ -382,13 +390,27 @@ export default function ClientesPage() {
               </button>
             </div>
           </div>
-          <div className="modal-backdrop" onClick={() => setShowModal(false)}></div>
+          <div 
+            className="modal-backdrop" 
+            onClick={(e) => {
+              // Não fecha ao clicar fora - removido para evitar perda de dados
+              e.stopPropagation();
+            }}
+          ></div>
         </div>
       )}
 
       {/* Modal Nova Unidade */}
       {showUnidadeModal && (
-        <div className="modal modal-open">
+        <div 
+          className="modal modal-open"
+          onClick={(e) => {
+            // Não fecha ao clicar fora - removido para evitar perda de dados
+            if (e.target === e.currentTarget) {
+              e.stopPropagation();
+            }
+          }}
+        >
           <div className="modal-box">
             <h3 className="font-bold text-lg mb-4">Nova Unidade</h3>
             <div className="space-y-4">

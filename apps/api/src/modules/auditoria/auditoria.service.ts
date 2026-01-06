@@ -70,27 +70,31 @@ export class AuditoriaService {
 
   /**
    * Lista auditorias, filtradas por perfil do usuário autenticado.
+   * Retorna todas as auditorias (em andamento e finalizadas) do usuário.
    */
   async listarAuditorias(
     params: PaginationParams,
     usuarioAutenticado: { id: string; perfil: PerfilUsuario; gestorId?: string },
   ): Promise<PaginatedResult<Auditoria>> {
-    let where: any = {};
-    if (usuarioAutenticado.perfil === PerfilUsuario.AUDITOR) {
-      where = { consultorId: usuarioAutenticado.id };
-    } else if (usuarioAutenticado.perfil === PerfilUsuario.GESTOR) {
-      where = { consultor: { gestorId: usuarioAutenticado.id } };
-    }
     const queryBuilder = this.auditoriaRepository.createQueryBuilder('auditoria')
       .leftJoinAndSelect('auditoria.unidade', 'unidade')
       .leftJoinAndSelect('unidade.cliente', 'cliente')
       .leftJoinAndSelect('auditoria.template', 'template')
       .leftJoinAndSelect('auditoria.consultor', 'consultor');
+    
     if (usuarioAutenticado.perfil === PerfilUsuario.AUDITOR) {
+      // Auditor vê apenas suas próprias auditorias (todas, independente do status)
       queryBuilder.where('auditoria.consultorId = :consultorId', { consultorId: usuarioAutenticado.id });
     } else if (usuarioAutenticado.perfil === PerfilUsuario.GESTOR) {
-      queryBuilder.where('consultor.gestorId = :gestorId', { gestorId: usuarioAutenticado.id });
+      // Gestor vê auditorias criadas por ele OU por seus auditores vinculados
+      // Usa subquery para garantir que funcione mesmo se o consultor não estiver carregado
+      queryBuilder.where(
+        '(auditoria.consultor_id = :gestorId OR EXISTS (SELECT 1 FROM usuarios u WHERE u.id = auditoria.consultor_id AND u.gestor_id = :gestorId))',
+        { gestorId: usuarioAutenticado.id }
+      );
     }
+    // Master vê todas as auditorias (sem filtro adicional)
+    
     const [items, total] = await queryBuilder
       .skip((params.page - 1) * params.limit)
       .take(params.limit)
@@ -149,6 +153,16 @@ export class AuditoriaService {
     itemId: string,
     dto: ResponderItemDto,
   ): Promise<AuditoriaItem> {
+    // Verificar se a auditoria está finalizada
+    const auditoria = await this.auditoriaRepository.findOne({
+      where: { id: auditoriaId },
+    });
+    if (!auditoria) {
+      throw new NotFoundException('Auditoria não encontrada');
+    }
+    if (auditoria.status === StatusAuditoria.FINALIZADA) {
+      throw new BadRequestException('Não é possível editar uma auditoria finalizada. Reabra a auditoria para fazer alterações.');
+    }
     const item = await this.itemRepository.findOne({
       where: { id: itemId, auditoriaId },
       relations: ['templateItem', 'fotos'],
@@ -211,9 +225,16 @@ export class AuditoriaService {
       longitude?: number;
     },
   ): Promise<Foto> {
-    const item = await this.itemRepository.findOne({ where: { id: itemId } });
+    const item = await this.itemRepository.findOne({
+      where: { id: itemId },
+      relations: ['auditoria'],
+    });
     if (!item) {
       throw new NotFoundException('Item não encontrado');
+    }
+    // Verificar se a auditoria está finalizada
+    if (item.auditoria.status === StatusAuditoria.FINALIZADA) {
+      throw new BadRequestException('Não é possível adicionar fotos em uma auditoria finalizada. Reabra a auditoria para fazer alterações.');
     }
     const foto = this.fotoRepository.create({
       ...fotoData,
@@ -276,6 +297,48 @@ export class AuditoriaService {
     }
     auditoria.pontuacaoTotal = pontuacaoPercentual;
     return this.auditoriaRepository.save(auditoria);
+  }
+
+  /**
+   * Reabre uma auditoria finalizada.
+   */
+  async reabrirAuditoria(
+    id: string,
+    usuarioAutenticado?: { id: string; perfil: PerfilUsuario; gestorId?: string },
+  ): Promise<Auditoria> {
+    const auditoria = await this.buscarAuditoriaPorId(id, usuarioAutenticado);
+    
+    if (auditoria.status !== StatusAuditoria.FINALIZADA) {
+      throw new BadRequestException('Apenas auditorias finalizadas podem ser reabertas');
+    }
+    
+    // Verificar permissões - apenas o auditor que criou ou o gestor responsável podem reabrir
+    if (usuarioAutenticado) {
+      if (usuarioAutenticado.perfil === PerfilUsuario.AUDITOR && auditoria.consultorId !== usuarioAutenticado.id) {
+        throw new ForbiddenException('Apenas o auditor responsável pode reabrir esta auditoria');
+      }
+      if (usuarioAutenticado.perfil === PerfilUsuario.GESTOR) {
+        const consultor = auditoria.consultor;
+        const podeReabrir =
+          auditoria.consultorId === usuarioAutenticado.id ||
+          (consultor && consultor.gestorId === usuarioAutenticado.id);
+        if (!podeReabrir) {
+          throw new ForbiddenException('Apenas o gestor responsável pode reabrir esta auditoria');
+        }
+      }
+    }
+    
+    auditoria.status = StatusAuditoria.EM_ANDAMENTO;
+    
+    // Limpar dados de finalização usando update para permitir null
+    await this.auditoriaRepository.update(id, {
+      status: StatusAuditoria.EM_ANDAMENTO,
+      dataFim: null as any,
+      latitudeFim: null as any,
+      longitudeFim: null as any,
+    });
+    
+    return this.buscarAuditoriaPorId(id, usuarioAutenticado);
   }
 
   /**

@@ -11,13 +11,23 @@ interface AppLayoutProps {
 
 export function AppLayout({ children }: AppLayoutProps) {
   const router = useRouter();
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, _hasHydrated } = useAuthStore();
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    // Aguardar a hidratação do Zustand antes de verificar autenticação
+    if (_hasHydrated && !isAuthenticated) {
       router.push('/login');
     }
-  }, [isAuthenticated, router]);
+  }, [isAuthenticated, _hasHydrated, router]);
+
+  // Mostrar loading enquanto está hidratando
+  if (!_hasHydrated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-base-200">
+        <span className="loading loading-spinner loading-lg text-primary"></span>
+      </div>
+    );
+  }
 
   if (!isAuthenticated) {
     return (

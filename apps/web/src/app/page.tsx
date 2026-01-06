@@ -11,36 +11,61 @@ import {
   ArrowRight,
   Sparkles,
   CheckCircle,
+  Users,
+  MapPin,
+  Zap,
 } from 'lucide-react';
 
 const features = [
   {
     icon: ClipboardCheck,
     title: 'Checklists Inteligentes',
-    description: 'Checklists baseados em RDC 216, 275 e outras legislações vigentes.',
+    description: 'Templates prontos baseados em RDC 216, 275 e outras legislações. Personalize conforme sua necessidade.',
   },
   {
     icon: Camera,
-    title: 'Análise de Imagens',
-    description: 'IA detecta não conformidades automaticamente a partir de fotos.',
+    title: 'Análise Automática de Imagens',
+    description: 'Fotografe durante a auditoria e receba análise automática de não conformidades com sugestões de correção.',
   },
   {
     icon: FileText,
-    title: 'Relatórios com IA',
-    description: 'Textos técnicos e planos de ação gerados automaticamente.',
+    title: 'Relatórios Automáticos',
+    description: 'Gere textos técnicos, planos de ação e relatórios completos automaticamente, baseados na legislação vigente.',
   },
   {
     icon: Shield,
-    title: 'Base de Legislação',
-    description: 'RAG com normas atualizadas para sugestões precisas.',
+    title: 'Base de Legislação Inteligente',
+    description: 'Acesso rápido a normas atualizadas com busca inteligente que encontra exatamente o que você precisa.',
+  },
+  {
+    icon: Users,
+    title: 'Gestão de Clientes',
+    description: 'Organize clientes e unidades em um só lugar. Controle histórico completo de auditorias.',
+  },
+  {
+    icon: MapPin,
+    title: 'Geolocalização',
+    description: 'Registre automaticamente a localização de início e fim de cada auditoria para rastreabilidade.',
+  },
+  {
+    icon: Zap,
+    title: 'Sugestões Inteligentes',
+    description: 'Receba sugestões automáticas de referências legais, descrições técnicas e ações corretivas.',
+  },
+  {
+    icon: CheckCircle,
+    title: 'Controle Total',
+    description: 'Acompanhe status, pontuações e histórico. Reabra auditorias para correções quando necessário.',
   },
 ];
 
 const benefits = [
   'Reduza o tempo de auditorias em até 70%',
   'Elimine erros de interpretação da legislação',
-  'Padronize relatórios e planos de ação',
-  'Facilite a comunicação com clientes',
+  'Padronize relatórios e planos de ação automaticamente',
+  'Facilite a comunicação com clientes com relatórios profissionais',
+  'Aumente a produtividade da sua equipe',
+  'Mantenha histórico completo e organizado',
 ];
 
 export default function HomePage() {
@@ -75,8 +100,8 @@ export default function HomePage() {
               transition={{ delay: 0.2 }}
               className="text-lg text-base-content/70 max-w-2xl mx-auto mb-8"
             >
-              Automatize auditorias, identifique não conformidades e gere relatórios 
-              técnicos em minutos com o poder da IA.
+              A solução completa para consultores em segurança de alimentos. Automatize auditorias, 
+              identifique não conformidades e gere relatórios técnicos profissionais em minutos.
             </motion.p>
 
             <motion.div
@@ -105,11 +130,11 @@ export default function HomePage() {
               Funcionalidades Principais
             </h2>
             <p className="text-base-content/70 max-w-xl mx-auto">
-              Tudo que você precisa para realizar auditorias eficientes e gerar relatórios profissionais.
+              Tecnologia avançada que transforma a forma como você realiza auditorias e gera relatórios.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             {features.map((feature, index) => (
               <motion.div
                 key={feature.title}

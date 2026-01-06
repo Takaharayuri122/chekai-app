@@ -878,7 +878,15 @@ export default function NovoTemplatePage() {
 
       {/* Modal Grupo */}
       {showGrupoModal && (
-        <div className="modal modal-open">
+        <div 
+          className="modal modal-open"
+          onClick={(e) => {
+            // Não fecha ao clicar fora - removido para evitar perda de dados
+            if (e.target === e.currentTarget) {
+              e.stopPropagation();
+            }
+          }}
+        >
           <div className="modal-box max-w-md">
             <h3 className="font-bold text-lg mb-4">{editingGrupo ? 'Editar Grupo' : 'Novo Grupo'}</h3>
             <div className="space-y-4">
@@ -910,13 +918,27 @@ export default function NovoTemplatePage() {
               </button>
             </div>
           </div>
-          <div className="modal-backdrop" onClick={() => { setShowGrupoModal(false); resetGrupoForm(); }}></div>
+          <div 
+            className="modal-backdrop" 
+            onClick={(e) => {
+              // Não fecha ao clicar fora - removido para evitar perda de dados
+              e.stopPropagation();
+            }}
+          ></div>
         </div>
       )}
 
       {/* Modal Item */}
       {showItemModal && (
-        <div className="modal modal-open">
+        <div 
+          className="modal modal-open"
+          onClick={(e) => {
+            // Não fecha ao clicar fora - removido para evitar perda de dados
+            if (e.target === e.currentTarget) {
+              e.stopPropagation();
+            }
+          }}
+        >
           <div className="modal-box max-w-2xl max-h-[90vh] overflow-y-auto">
             <h3 className="font-bold text-lg mb-4">{editingItem ? 'Editar Pergunta' : 'Nova Pergunta'}</h3>
             <div className="space-y-4">
@@ -1116,7 +1138,13 @@ export default function NovoTemplatePage() {
               </button>
             </div>
           </div>
-          <div className="modal-backdrop" onClick={() => { setShowItemModal(false); resetItemForm(); }}></div>
+          <div 
+            className="modal-backdrop" 
+            onClick={(e) => {
+              // Não fecha ao clicar fora - removido para evitar perda de dados
+              e.stopPropagation();
+            }}
+          ></div>
         </div>
       )}
     </AppLayout>

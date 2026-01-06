@@ -9,8 +9,10 @@ import {
   Filter,
   ChevronRight,
   Calendar,
+  RotateCcw,
+  Loader2,
 } from 'lucide-react';
-import { AppLayout, PageHeader, EmptyState } from '@/components';
+import { AppLayout, PageHeader, EmptyState, ConfirmDialog } from '@/components';
 import { auditoriaService, type Auditoria } from '@/lib/api';
 import { toastService } from '@/lib/toast';
 
@@ -19,20 +21,44 @@ export default function AuditoriasPage() {
   const [loading, setLoading] = useState(true);
   const [filtro, setFiltro] = useState<'todos' | 'em_andamento' | 'finalizada'>('todos');
   const [busca, setBusca] = useState('');
+  const [reabrindoId, setReabrindoId] = useState<string | null>(null);
+  const [showReabrirConfirm, setShowReabrirConfirm] = useState<string | null>(null);
+
+  const carregarAuditorias = async () => {
+    try {
+      const response = await auditoriaService.listar();
+      setAuditorias(response.items || []);
+    } catch (error) {
+      // Erro já é tratado pelo interceptor
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const carregarDados = async () => {
-      try {
-        const response = await auditoriaService.listar();
-        setAuditorias(response.items || []);
-      } catch (error) {
-        // Erro já é tratado pelo interceptor
-      } finally {
-        setLoading(false);
-      }
-    };
-    carregarDados();
+    carregarAuditorias();
   }, []);
+
+  const handleReabrirClick = (id: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setShowReabrirConfirm(id);
+  };
+
+  const handleReabrirConfirm = async () => {
+    if (!showReabrirConfirm) return;
+    try {
+      setReabrindoId(showReabrirConfirm);
+      await auditoriaService.reabrir(showReabrirConfirm);
+      toastService.success('Auditoria reaberta com sucesso!');
+      await carregarAuditorias();
+      setShowReabrirConfirm(null);
+    } catch (error) {
+      // Erro já é tratado pelo interceptor
+    } finally {
+      setReabrindoId(null);
+    }
+  };
 
   const auditoriasFiltradas = auditorias.filter((a) => {
     const matchFiltro = filtro === 'todos' || a.status === filtro;
@@ -146,12 +172,12 @@ export default function AuditoriasPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.03 }}
               >
-                <Link
-                  href={`/auditoria/${auditoria.id}`}
-                  className="card bg-base-100 shadow-sm border border-base-300 hover:border-primary/30 transition-colors"
-                >
+                <div className="card bg-base-100 shadow-sm border border-base-300 hover:border-primary/30 transition-colors">
                   <div className="card-body p-4 flex-row items-center gap-4">
-                    <div className="flex-1 min-w-0">
+                    <Link
+                      href={`/auditoria/${auditoria.id}`}
+                      className="flex-1 min-w-0"
+                    >
                       <p className="font-medium text-base-content truncate">
                         {auditoria.unidade?.nome || 'Unidade'}
                       </p>
@@ -165,37 +191,69 @@ export default function AuditoriasPage() {
                           {formatDate(auditoria.dataInicio)}
                         </span>
                       </div>
-                    </div>
-                    {auditoria.status === 'finalizada' &&
-                      auditoria.pontuacaoTotal !== undefined && (
-                        <div
-                          className={`radial-progress text-sm ${
-                            Number(auditoria.pontuacaoTotal) >= 80
-                              ? 'text-success'
-                              : Number(auditoria.pontuacaoTotal) >= 60
-                              ? 'text-warning'
-                              : 'text-error'
-                          }`}
-                          style={{
-                            '--value': Number(auditoria.pontuacaoTotal),
-                            '--size': '3rem',
-                            '--thickness': '4px',
-                          } as React.CSSProperties}
-                          role="progressbar"
+                    </Link>
+                    <div className="flex items-center gap-2">
+                      {auditoria.status === 'finalizada' &&
+                        auditoria.pontuacaoTotal !== undefined && (
+                          <div
+                            className={`radial-progress text-sm ${
+                              Number(auditoria.pontuacaoTotal) >= 80
+                                ? 'text-success'
+                                : Number(auditoria.pontuacaoTotal) >= 60
+                                ? 'text-warning'
+                                : 'text-error'
+                            }`}
+                            style={{
+                              '--value': Number(auditoria.pontuacaoTotal),
+                              '--size': '3rem',
+                              '--thickness': '4px',
+                            } as React.CSSProperties}
+                            role="progressbar"
+                          >
+                            <span className="text-xs font-bold">
+                              {Number(auditoria.pontuacaoTotal).toFixed(0)}%
+                            </span>
+                          </div>
+                        )}
+                      {auditoria.status === 'finalizada' && (
+                        <button
+                          onClick={(e) => handleReabrirClick(auditoria.id, e)}
+                          disabled={reabrindoId === auditoria.id}
+                          className="btn btn-ghost btn-sm gap-1"
+                          title="Reabrir auditoria"
                         >
-                          <span className="text-xs font-bold">
-                            {Number(auditoria.pontuacaoTotal).toFixed(0)}%
-                          </span>
-                        </div>
+                          {reabrindoId === auditoria.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <RotateCcw className="w-4 h-4" />
+                          )}
+                          Reabrir
+                        </button>
                       )}
-                    <ChevronRight className="w-5 h-5 text-base-content/30" />
+                      <Link href={`/auditoria/${auditoria.id}`}>
+                        <ChevronRight className="w-5 h-5 text-base-content/30" />
+                      </Link>
+                    </div>
                   </div>
-                </Link>
+                </div>
               </motion.div>
             ))}
           </div>
         )}
       </div>
+
+      {/* Modal de Confirmação de Reabertura */}
+      <ConfirmDialog
+        open={showReabrirConfirm !== null}
+        onClose={() => setShowReabrirConfirm(null)}
+        onConfirm={handleReabrirConfirm}
+        title="Reabrir Auditoria"
+        message="Tem certeza que deseja reabrir esta auditoria? Você poderá fazer alterações e finalizá-la novamente."
+        confirmLabel="Reabrir"
+        cancelLabel="Cancelar"
+        variant="warning"
+        loading={reabrindoId !== null}
+      />
     </AppLayout>
   );
 }

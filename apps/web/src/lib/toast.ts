@@ -31,14 +31,15 @@ export const toastService = {
     toast.error(message, {
       duration: 5000,
       style: {
-        background: 'hsl(var(--er))',
-        color: 'hsl(var(--erc))',
+        background: '#ef4444',
+        color: '#ffffff',
         borderRadius: '0.5rem',
         padding: '1rem',
+        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
       },
       iconTheme: {
-        primary: 'hsl(var(--erc))',
-        secondary: 'hsl(var(--er))',
+        primary: '#ffffff',
+        secondary: '#ef4444',
       },
     });
   },

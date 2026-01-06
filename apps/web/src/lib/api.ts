@@ -558,6 +558,11 @@ export const checklistService = {
     await api.delete(`/checklists/templates/${id}`);
   },
 
+  async alterarStatusTemplate(id: string, ativo: boolean): Promise<ChecklistTemplate> {
+    const response = await api.put(`/checklists/templates/${id}/status`, { ativo });
+    return response.data.data;
+  },
+
   async adicionarItem(templateId: string, data: CriarTemplateItemRequest): Promise<TemplateItem> {
     const response = await api.post(`/checklists/templates/${templateId}/itens`, data);
     return response.data.data;
@@ -651,8 +656,8 @@ export interface AnaliseChecklistResponse {
 }
 
 export const auditoriaService = {
-  async listar(): Promise<{ items: Auditoria[] }> {
-    const response = await api.get('/auditorias');
+  async listar(page = 1, limit = 100): Promise<{ items: Auditoria[] }> {
+    const response = await api.get('/auditorias', { params: { page, limit } });
     return response.data.data;
   },
 
@@ -695,6 +700,11 @@ export const auditoriaService = {
     const response = await api.put(`/auditorias/${id}/finalizar`, {
       observacoesGerais,
     });
+    return response.data.data;
+  },
+
+  async reabrir(id: string): Promise<Auditoria> {
+    const response = await api.put(`/auditorias/${id}/reabrir`);
     return response.data.data;
   },
 

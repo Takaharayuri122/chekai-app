@@ -839,7 +839,10 @@ export default function EditarTemplatePage() {
       {/* Modal Grupo */}
       {showGrupoModal && (
         <div className="modal modal-open">
-          <div className="modal-box max-w-md">
+          <div 
+            className="modal-box max-w-md"
+            onClick={(e) => e.stopPropagation()}
+          >
             <h3 className="font-bold text-lg mb-4">{editingGrupo ? 'Editar Grupo' : 'Novo Grupo'}</h3>
             <div className="space-y-4">
               <div className="form-control">
@@ -870,7 +873,13 @@ export default function EditarTemplatePage() {
               </button>
             </div>
           </div>
-          <div className="modal-backdrop" onClick={() => { setShowGrupoModal(false); resetGrupoForm(); }}></div>
+          <div 
+            className="modal-backdrop" 
+            onClick={(e) => {
+              // Não fecha ao clicar fora - removido para evitar perda de dados
+              e.stopPropagation();
+            }}
+          ></div>
         </div>
       )}
 
@@ -1076,7 +1085,13 @@ export default function EditarTemplatePage() {
               </button>
             </div>
           </div>
-          <div className="modal-backdrop" onClick={() => { setShowItemModal(false); resetItemForm(); }}></div>
+          <div 
+            className="modal-backdrop" 
+            onClick={(e) => {
+              // Não fecha ao clicar fora - removido para evitar perda de dados
+              e.stopPropagation();
+            }}
+          ></div>
         </div>
       )}
     </AppLayout>

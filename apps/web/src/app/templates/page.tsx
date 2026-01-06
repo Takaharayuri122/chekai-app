@@ -13,8 +13,11 @@ import {
   AlertTriangle,
   Loader2,
   Upload,
+  Trash2,
+  Power,
+  PowerOff,
 } from 'lucide-react';
-import { AppLayout, PageHeader, EmptyState } from '@/components';
+import { AppLayout, PageHeader, EmptyState, ConfirmDialog } from '@/components';
 import {
   checklistService,
   ChecklistTemplate,
@@ -27,16 +30,21 @@ import {
   CriarTemplateItemRequest,
 } from '@/lib/api';
 import { toastService } from '@/lib/toast';
+import { useAuthStore } from '@/lib/store';
 
 /**
  * Página de listagem e gerenciamento de templates de checklist.
  */
 export default function TemplatesPage() {
+  const { isGestor, isMaster } = useAuthStore();
   const [templates, setTemplates] = useState<ChecklistTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedTemplate, setExpandedTemplate] = useState<string | null>(null);
   const [showItemModal, setShowItemModal] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
 
   const [itemForm, setItemForm] = useState<CriarTemplateItemRequest>({
     pergunta: '',
@@ -62,6 +70,38 @@ export default function TemplatesPage() {
       // Erro já é tratado pelo interceptor
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteClick = (id: string) => {
+    setShowDeleteConfirm(id);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!showDeleteConfirm) return;
+    try {
+      setDeletingId(showDeleteConfirm);
+      await checklistService.removerTemplate(showDeleteConfirm);
+      toastService.success('Checklist excluído com sucesso!');
+      await carregarTemplates();
+      setShowDeleteConfirm(null);
+    } catch (error) {
+      // Erro já é tratado pelo interceptor
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const handleToggleStatus = async (id: string, novoStatus: boolean) => {
+    try {
+      setTogglingId(id);
+      await checklistService.alterarStatusTemplate(id, novoStatus);
+      toastService.success(`Checklist ${novoStatus ? 'ativado' : 'inativado'} com sucesso!`);
+      await carregarTemplates();
+    } catch (error) {
+      // Erro já é tratado pelo interceptor
+    } finally {
+      setTogglingId(null);
     }
   };
 
@@ -167,7 +207,11 @@ export default function TemplatesPage() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.03 }}
-                className="card bg-base-100 shadow-sm border border-base-300"
+                className={`card bg-base-100 shadow-sm border ${
+                  !template.ativo 
+                    ? 'opacity-60 border-base-300/50 bg-base-200/30' 
+                    : 'border-base-300'
+                }`}
               >
                 <div className="card-body p-0">
                   {/* Checklist Header */}
@@ -179,23 +223,44 @@ export default function TemplatesPage() {
                     }
                     className="flex items-center gap-4 p-4 w-full text-left hover:bg-base-200/50 transition-colors"
                   >
-                    <div className="w-12 h-12 bg-secondary/10 rounded-xl flex items-center justify-center">
-                      <FileText className="w-6 h-6 text-secondary" />
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                      !template.ativo 
+                        ? 'bg-base-300/30' 
+                        : 'bg-secondary/10'
+                    }`}>
+                      <FileText className={`w-6 h-6 ${
+                        !template.ativo 
+                          ? 'text-base-content/40' 
+                          : 'text-secondary'
+                      }`} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-base-content truncate">
-                        {template.nome}
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className={`font-medium truncate ${
+                          !template.ativo ? 'text-base-content/50' : 'text-base-content'
+                        }`}>
+                          {template.nome}
+                        </p>
+                        {!template.ativo && (
+                          <span className="badge badge-warning badge-sm">Inativo</span>
+                        )}
+                      </div>
                       <div className="flex items-center gap-2 mt-1">
-                        <span className="badge badge-ghost badge-sm">
+                        <span className={`badge badge-ghost badge-sm ${
+                          !template.ativo ? 'opacity-60' : ''
+                        }`}>
                           <Tag className="w-3 h-3 mr-1" />
                           {TIPO_ATIVIDADE_LABELS[template.tipoAtividade] || template.tipoAtividade}
                         </span>
-                        <span className="badge badge-ghost badge-sm">
+                        <span className={`badge badge-ghost badge-sm ${
+                          !template.ativo ? 'opacity-60' : ''
+                        }`}>
                           <List className="w-3 h-3 mr-1" />
                           {template.itens?.filter((i) => i.ativo !== false).length || 0} itens
                         </span>
-                        <span className="text-xs text-base-content/50">
+                        <span className={`text-xs ${
+                          !template.ativo ? 'text-base-content/30' : 'text-base-content/50'
+                        }`}>
                           v{template.versao}
                         </span>
                       </div>
@@ -272,7 +337,43 @@ export default function TemplatesPage() {
                           </div>
                         )}
                       </div>
-                      <div className="p-3 border-t border-base-200 flex justify-end">
+                      <div className="p-3 border-t border-base-200 flex justify-between items-center">
+                        <div className="flex gap-2">
+                          {(isGestor() || isMaster()) && (
+                            <>
+                              <button
+                                onClick={() => handleToggleStatus(template.id, !template.ativo)}
+                                disabled={togglingId === template.id}
+                                className={`btn btn-sm gap-1 ${
+                                  template.ativo ? 'btn-warning' : 'btn-success'
+                                }`}
+                                title={template.ativo ? 'Inativar checklist' : 'Ativar checklist'}
+                              >
+                                {togglingId === template.id ? (
+                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                ) : template.ativo ? (
+                                  <PowerOff className="w-3 h-3" />
+                                ) : (
+                                  <Power className="w-3 h-3" />
+                                )}
+                                {template.ativo ? 'Inativar' : 'Ativar'}
+                              </button>
+                              <button
+                                onClick={() => handleDeleteClick(template.id)}
+                                disabled={deletingId === template.id}
+                                className="btn btn-error btn-sm gap-1"
+                                title="Excluir checklist (apenas se não estiver em uso)"
+                              >
+                                {deletingId === template.id ? (
+                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                ) : (
+                                  <Trash2 className="w-3 h-3" />
+                                )}
+                                Excluir
+                              </button>
+                            </>
+                          )}
+                        </div>
                         <Link
                           href={`/templates/${template.id}`}
                           className="btn btn-ghost btn-sm"
@@ -289,11 +390,34 @@ export default function TemplatesPage() {
         )}
       </div>
 
+      {/* Modal de Confirmação de Exclusão */}
+      <ConfirmDialog
+        open={showDeleteConfirm !== null}
+        onClose={() => setShowDeleteConfirm(null)}
+        onConfirm={handleDeleteConfirm}
+        title="Excluir Checklist"
+        message="Tem certeza que deseja excluir este checklist? Esta ação não pode ser desfeita. O checklist só pode ser excluído se não estiver vinculado a nenhuma auditoria."
+        confirmLabel="Excluir"
+        cancelLabel="Cancelar"
+        variant="danger"
+        loading={deletingId !== null}
+      />
 
       {/* Modal Novo Item */}
       {showItemModal && (
-        <div className="modal modal-open">
-          <div className="modal-box max-w-lg">
+        <div 
+          className="modal modal-open"
+          onClick={(e) => {
+            // Não fecha ao clicar fora - removido para evitar perda de dados
+            if (e.target === e.currentTarget) {
+              e.stopPropagation();
+            }
+          }}
+        >
+          <div 
+            className="modal-box max-w-lg"
+            onClick={(e) => e.stopPropagation()}
+          >
             <h3 className="font-bold text-lg mb-4">Novo Item do Checklist</h3>
             <div className="space-y-4">
               <div className="form-control">
@@ -447,7 +571,10 @@ export default function TemplatesPage() {
           </div>
           <div
             className="modal-backdrop"
-            onClick={() => setShowItemModal(null)}
+            onClick={(e) => {
+              // Não fecha ao clicar fora - removido para evitar perda de dados
+              e.stopPropagation();
+            }}
           ></div>
         </div>
       )}

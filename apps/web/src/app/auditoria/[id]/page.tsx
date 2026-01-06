@@ -87,6 +87,11 @@ export default function AuditoriaPage() {
 
   const handleResposta = async (itemId: string, resposta: RespostaType) => {
     if (!auditoria) return;
+    // Verificar se a auditoria está finalizada
+    if (auditoria.status === 'finalizada') {
+      toastService.warning('Não é possível editar uma auditoria finalizada. Reabra a auditoria para fazer alterações.');
+      return;
+    }
     setAuditoria((prev) => {
       if (!prev) return prev;
       return {
@@ -114,8 +119,11 @@ export default function AuditoriaPage() {
   };
 
   const openPhotoModal = (item: AuditoriaItem) => {
-    // Verificar se o item tem resposta antes de abrir o modal
-    if (!item.resposta || item.resposta === 'nao_avaliado') {
+    // Se a auditoria está finalizada, permitir apenas visualização
+    const isFinalizada = auditoria?.status === 'finalizada';
+    
+    // Se não está finalizada, verificar se o item tem resposta antes de abrir o modal
+    if (!isFinalizada && (!item.resposta || item.resposta === 'nao_avaliado')) {
       toastService.warning('Por favor, marque uma resposta antes de adicionar fotos');
       return;
     }
@@ -138,6 +146,12 @@ export default function AuditoriaPage() {
   const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !itemModal || !auditoria) return;
+    // Verificar se a auditoria está finalizada
+    if (auditoria.status === 'finalizada') {
+      toastService.warning('Não é possível adicionar fotos em uma auditoria finalizada. Reabra a auditoria para fazer alterações.');
+      if (e.target) e.target.value = '';
+      return;
+    }
     // Verificar se o item tem resposta antes de processar a imagem
     if (!itemModal.item.resposta || itemModal.item.resposta === 'nao_avaliado') {
       toastService.warning('Por favor, marque uma resposta antes de adicionar fotos');
@@ -203,7 +217,7 @@ export default function AuditoriaPage() {
         };
       });
       // Atualiza o item com a análise da IA automaticamente (salva a descrição da IA)
-      await auditoriaService.responderItem(
+      const itemAtualizado = await auditoriaService.responderItem(
         auditoria.id,
         itemModal.item.id,
         itemModal.item.resposta || 'nao_avaliado',
@@ -216,6 +230,24 @@ export default function AuditoriaPage() {
           planoAcaoSugerido: analise.sugestoes?.join('\n'),
         }
       );
+      // Atualiza o estado global com a descrição da IA salva
+      setAuditoria((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          itens: prev.itens.map((item) =>
+            item.id === itemModal.item.id
+              ? {
+                  ...item,
+                  descricaoIa: itemAtualizado.descricaoIa || item.descricaoIa,
+                  descricaoNaoConformidade: itemAtualizado.descricaoNaoConformidade || item.descricaoNaoConformidade,
+                  referenciaLegal: itemAtualizado.referenciaLegal || item.referenciaLegal,
+                  planoAcaoSugerido: itemAtualizado.planoAcaoSugerido || item.planoAcaoSugerido,
+                }
+              : item
+          ),
+        };
+      });
     } catch {
       setItemModal((prev) => {
         if (!prev) return null;
@@ -229,7 +261,11 @@ export default function AuditoriaPage() {
 
   const handleRemoveFoto = async (index: number) => {
     if (!itemModal || !auditoria) return;
-    
+    // Verificar se a auditoria está finalizada
+    if (auditoria.status === 'finalizada') {
+      toastService.warning('Não é possível remover fotos de uma auditoria finalizada. Reabra a auditoria para fazer alterações.');
+      return;
+    }
     const fotoParaRemover = itemModal.fotos[index];
     
     // Remove do estado local imediatamente
@@ -275,6 +311,11 @@ export default function AuditoriaPage() {
 
   const handleSaveItemModal = async () => {
     if (!itemModal || !auditoria) return;
+    // Verificar se a auditoria está finalizada
+    if (auditoria.status === 'finalizada') {
+      toastService.warning('Não é possível editar uma auditoria finalizada. Reabra a auditoria para fazer alterações.');
+      return;
+    }
     
     // Validar se a observação foi preenchida
     if (!itemModal.observacao || itemModal.observacao.trim() === '') {
@@ -287,13 +328,14 @@ export default function AuditoriaPage() {
     // Preserva a resposta atual do item
     const respostaAtual = itemModal.item.resposta || 'nao_avaliado';
     try {
-      // Salva apenas a observação (a descrição da IA já foi salva automaticamente durante o upload)
+      // Salva a observação e a descrição da IA (se existir)
       await auditoriaService.responderItem(
         auditoria.id,
         itemModal.item.id,
         respostaAtual,
         {
           observacao: itemModal.observacao,
+          descricaoIa: itemModal.descricaoIaExistente || itemModal.item.descricaoIa,
         }
       );
       // Atualiza o estado local
@@ -306,6 +348,7 @@ export default function AuditoriaPage() {
               ? {
                   ...item,
                   observacao: itemModal.observacao,
+                  descricaoIa: itemModal.descricaoIaExistente || itemModal.item.descricaoIa || item.descricaoIa,
                 }
               : item
           ),
@@ -320,6 +363,12 @@ export default function AuditoriaPage() {
   };
 
   const handleGerarTextoIa = async (item: AuditoriaItem) => {
+    if (!auditoria) return;
+    // Verificar se a auditoria está finalizada
+    if (auditoria.status === 'finalizada') {
+      toastService.warning('Não é possível editar uma auditoria finalizada. Reabra a auditoria para fazer alterações.');
+      return;
+    }
     setProcessingIa(item.id);
     try {
       const resultado = await iaService.gerarTexto(
@@ -501,6 +550,8 @@ export default function AuditoriaPage() {
                       key={idx}
                       className={getRespostaStyle(item, opcao, true)}
                       onClick={() => handleResposta(item.id, opcao)}
+                      disabled={auditoria.status === 'finalizada'}
+                      title={auditoria.status === 'finalizada' ? 'Auditoria finalizada. Reabra para editar.' : ''}
                     >
                       <span>{opcao}</span>
                     </button>
@@ -508,15 +559,30 @@ export default function AuditoriaPage() {
                 ) : (
                   // Opções padrão
                   <>
-                    <button className={getRespostaStyle(item, 'conforme')} onClick={() => handleResposta(item.id, 'conforme')}>
+                    <button
+                      className={getRespostaStyle(item, 'conforme')}
+                      onClick={() => handleResposta(item.id, 'conforme')}
+                      disabled={auditoria.status === 'finalizada'}
+                      title={auditoria.status === 'finalizada' ? 'Auditoria finalizada. Reabra para editar.' : ''}
+                    >
                       <CheckCircle className="w-4 h-4" />
                       <span className="hidden sm:inline">Conforme</span>
                     </button>
-                    <button className={getRespostaStyle(item, 'nao_conforme')} onClick={() => handleResposta(item.id, 'nao_conforme')}>
+                    <button
+                      className={getRespostaStyle(item, 'nao_conforme')}
+                      onClick={() => handleResposta(item.id, 'nao_conforme')}
+                      disabled={auditoria.status === 'finalizada'}
+                      title={auditoria.status === 'finalizada' ? 'Auditoria finalizada. Reabra para editar.' : ''}
+                    >
                       <XCircle className="w-4 h-4" />
                       <span className="hidden sm:inline">Não Conforme</span>
                     </button>
-                    <button className={getRespostaStyle(item, 'nao_aplicavel')} onClick={() => handleResposta(item.id, 'nao_aplicavel')}>
+                    <button
+                      className={getRespostaStyle(item, 'nao_aplicavel')}
+                      onClick={() => handleResposta(item.id, 'nao_aplicavel')}
+                      disabled={auditoria.status === 'finalizada'}
+                      title={auditoria.status === 'finalizada' ? 'Auditoria finalizada. Reabra para editar.' : ''}
+                    >
                       <AlertTriangle className="w-4 h-4" />
                       <span className="hidden sm:inline">N/A</span>
                     </button>
@@ -528,15 +594,21 @@ export default function AuditoriaPage() {
               <div className="mt-3 pt-3 border-t border-base-200">
                 <div className="flex gap-2">
                   <button
-                    className={`btn btn-outline btn-sm gap-1 flex-1 border-primary text-primary hover:bg-primary hover:text-primary-content ${
-                      (!item.resposta || item.resposta === 'nao_avaliado') ? 'opacity-50 cursor-not-allowed' : ''
-                    }`}
+                    className="btn btn-outline btn-sm gap-1 flex-1 border-primary text-primary hover:bg-primary hover:text-primary-content"
                     onClick={() => openPhotoModal(item)}
-                    disabled={!item.resposta || item.resposta === 'nao_avaliado'}
-                    title={(!item.resposta || item.resposta === 'nao_avaliado') ? 'Marque uma resposta antes de adicionar fotos' : ''}
+                    disabled={!auditoria.status || (auditoria.status !== 'finalizada' && (!item.resposta || item.resposta === 'nao_avaliado'))}
+                    title={
+                      auditoria.status === 'finalizada'
+                        ? item.fotos?.length > 0
+                          ? 'Visualizar fotos da auditoria finalizada'
+                          : 'Nenhuma foto adicionada nesta auditoria'
+                        : (!item.resposta || item.resposta === 'nao_avaliado')
+                        ? 'Marque uma resposta antes de adicionar fotos'
+                        : ''
+                    }
                   >
                     <Camera className="w-4 h-4" />
-                    {item.fotos?.length > 0 ? `Foto (${item.fotos.length})` : 'Adicionar Foto'}
+                    {item.fotos?.length > 0 ? `Ver Fotos (${item.fotos.length})` : auditoria.status === 'finalizada' ? 'Ver Fotos' : 'Adicionar Foto'}
                   </button>
                   {item.resposta === 'nao_conforme' && (
                     <button
@@ -674,19 +746,34 @@ export default function AuditoriaPage() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="modal modal-open"
+            onClick={(e) => {
+              // Não fecha ao clicar fora - removido para evitar perda de dados
+              if (e.target === e.currentTarget) {
+                e.stopPropagation();
+              }
+            }}
           >
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
               className="modal-box max-w-2xl max-h-[90vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between mb-4">
-                <h3 className="font-bold text-lg">Documentar Item</h3>
+                <h3 className="font-bold text-lg">
+                  {auditoria.status === 'finalizada' ? 'Visualizar Item' : 'Documentar Item'}
+                </h3>
                 <button onClick={() => setItemModal(null)} className="btn btn-ghost btn-sm btn-circle">
                   <X className="w-5 h-5" />
                 </button>
               </div>
+              {auditoria.status === 'finalizada' && (
+                <div className="alert alert-info mb-4">
+                  <AlertCircle className="w-4 h-4" />
+                  <span className="text-sm">Auditoria finalizada. Apenas visualização disponível.</span>
+                </div>
+              )}
 
               {/* Pergunta do checklist */}
               <div className="bg-base-200 rounded-lg p-3 mb-4">
@@ -741,17 +828,19 @@ export default function AuditoriaPage() {
                           )}
                         </div>
                       )}
-                      <button
-                        onClick={() => handleRemoveFoto(index)}
-                        className="absolute top-1 right-1 btn btn-circle btn-xs btn-error"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
+                      {auditoria.status !== 'finalizada' && (
+                        <button
+                          onClick={() => handleRemoveFoto(index)}
+                          className="absolute top-1 right-1 btn btn-circle btn-xs btn-error"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      )}
                     </div>
                   ))}
 
                   {/* Botão adicionar mais */}
-                  {itemModal.fotos.length < MAX_FOTOS_POR_ITEM && (
+                  {itemModal.fotos.length < MAX_FOTOS_POR_ITEM && auditoria.status !== 'finalizada' && (
                     <button
                       onClick={() => fileInputRef.current?.click()}
                       className="aspect-square border-2 border-dashed border-base-300 rounded-lg flex flex-col items-center justify-center gap-1 hover:border-primary hover:bg-primary/5 transition-colors"
@@ -762,7 +851,7 @@ export default function AuditoriaPage() {
                   )}
                 </div>
 
-                {itemModal.fotos.length === 0 && (
+                {itemModal.fotos.length === 0 && auditoria.status !== 'finalizada' && (
                   <button
                     onClick={() => fileInputRef.current?.click()}
                     className="w-full h-24 border-2 border-dashed border-base-300 rounded-lg flex flex-col items-center justify-center gap-2 hover:border-primary hover:bg-primary/5 transition-colors"
@@ -770,6 +859,12 @@ export default function AuditoriaPage() {
                     <Camera className="w-8 h-8 text-base-content/40" />
                     <span className="text-sm text-base-content/60">Clique para adicionar fotos (até {MAX_FOTOS_POR_ITEM})</span>
                   </button>
+                )}
+                {itemModal.fotos.length === 0 && auditoria.status === 'finalizada' && (
+                  <div className="text-center py-8 text-base-content/60">
+                    <Camera className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                    <p>Nenhuma foto foi adicionada a este item</p>
+                  </div>
                 )}
               </div>
 
@@ -912,6 +1007,8 @@ export default function AuditoriaPage() {
                   value={itemModal.observacao}
                   onChange={(e) => setItemModal((prev) => prev ? { ...prev, observacao: e.target.value } : null)}
                   required
+                  disabled={auditoria.status === 'finalizada'}
+                  readOnly={auditoria.status === 'finalizada'}
                 />
                 {(!itemModal.observacao || itemModal.observacao.trim() === '') && (
                   <label className="label">
@@ -922,34 +1019,48 @@ export default function AuditoriaPage() {
 
               {/* Ações */}
               <div className="modal-action">
-                <button className="btn btn-ghost" onClick={() => setItemModal(null)}>
-                  Cancelar
-                </button>
-                <button
-                  className="btn btn-primary gap-2"
-                  onClick={handleSaveItemModal}
-                  disabled={
-                    itemModal.isSaving || 
-                    itemModal.fotos.some((f) => f.isAnalyzing) ||
-                    !itemModal.observacao || 
-                    itemModal.observacao.trim() === ''
-                  }
-                >
-                  {itemModal.isSaving ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Salvando...
-                    </>
-                  ) : (
-                    <>
-                      <Save className="w-4 h-4" />
-                      Salvar
-                    </>
-                  )}
-                </button>
+                {auditoria.status !== 'finalizada' ? (
+                  <>
+                    <button className="btn btn-ghost" onClick={() => setItemModal(null)}>
+                      Cancelar
+                    </button>
+                    <button
+                      className="btn btn-primary gap-2"
+                      onClick={handleSaveItemModal}
+                      disabled={
+                        itemModal.isSaving || 
+                        itemModal.fotos.some((f) => f.isAnalyzing) ||
+                        !itemModal.observacao || 
+                        itemModal.observacao.trim() === ''
+                      }
+                    >
+                      {itemModal.isSaving ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Salvando...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="w-4 h-4" />
+                          Salvar
+                        </>
+                      )}
+                    </button>
+                  </>
+                ) : (
+                  <button className="btn btn-ghost" onClick={() => setItemModal(null)}>
+                    Fechar
+                  </button>
+                )}
               </div>
             </motion.div>
-            <div className="modal-backdrop" onClick={() => setItemModal(null)}></div>
+            <div 
+              className="modal-backdrop" 
+              onClick={(e) => {
+                // Não fecha ao clicar fora
+                e.stopPropagation();
+              }}
+            ></div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -986,8 +1097,19 @@ export default function AuditoriaPage() {
 
       {/* Modal de finalização */}
       {showFinalModal && (
-        <div className="modal modal-open">
-          <div className="modal-box">
+        <div 
+          className="modal modal-open"
+          onClick={(e) => {
+            // Não fecha ao clicar fora - removido para evitar perda de dados
+            if (e.target === e.currentTarget) {
+              e.stopPropagation();
+            }
+          }}
+        >
+          <div 
+            className="modal-box"
+            onClick={(e) => e.stopPropagation()}
+          >
             <h3 className="font-bold text-lg">Encerrar Auditoria</h3>
             <p className="py-4 text-base-content/60">
               Adicione observações gerais sobre a auditoria (opcional).
@@ -1027,7 +1149,13 @@ export default function AuditoriaPage() {
               </button>
             </div>
           </div>
-          <div className="modal-backdrop" onClick={() => { setShowFinalModal(false); setErroFinalizar(''); }}></div>
+          <div 
+            className="modal-backdrop" 
+            onClick={(e) => {
+              // Não fecha ao clicar fora
+              e.stopPropagation();
+            }}
+          ></div>
         </div>
       )}
     </AppLayout>

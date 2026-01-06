@@ -1,9 +1,10 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ChecklistTemplate } from './entities/checklist-template.entity';
 import { TemplateItem } from './entities/template-item.entity';
 import { ChecklistGrupo } from './entities/checklist-grupo.entity';
+import { Auditoria } from '../auditoria/entities/auditoria.entity';
 import {
   CriarChecklistTemplateDto,
   CriarTemplateItemDto,
@@ -29,6 +30,8 @@ export class ChecklistService {
     private readonly itemRepository: Repository<TemplateItem>,
     @InjectRepository(ChecklistGrupo)
     private readonly grupoRepository: Repository<ChecklistGrupo>,
+    @InjectRepository(Auditoria)
+    private readonly auditoriaRepository: Repository<Auditoria>,
   ) {}
 
   /**
@@ -64,15 +67,29 @@ export class ChecklistService {
 
   /**
    * Lista todos os templates de checklist, filtrados por tenant.
+   * Auditores veem apenas checklists ativos.
+   * Gestores e Master veem todos os checklists (ativos e inativos).
    */
   async listarTemplates(
     params: PaginationParams,
     usuarioAutenticado?: { id: string; perfil: PerfilUsuario },
   ): Promise<PaginatedResult<ChecklistTemplate>> {
-    let where: any = { ativo: true };
-    if (usuarioAutenticado && usuarioAutenticado.perfil === PerfilUsuario.GESTOR) {
-      where = { ...where, gestorId: usuarioAutenticado.id };
+    let where: any = {};
+    
+    // Auditores só veem checklists ativos
+    if (usuarioAutenticado && usuarioAutenticado.perfil === PerfilUsuario.AUDITOR) {
+      where = { ativo: true };
     }
+    // Gestores veem todos os seus checklists (ativos e inativos)
+    else if (usuarioAutenticado && usuarioAutenticado.perfil === PerfilUsuario.GESTOR) {
+      where = { gestorId: usuarioAutenticado.id };
+    }
+    // Master vê todos os checklists (ativos e inativos)
+    else {
+      // Sem filtro de ativo para Master e quando não há usuário autenticado
+      where = {};
+    }
+    
     const [items, total] = await this.templateRepository.findAndCount({
       where,
       relations: ['itens'],
@@ -90,10 +107,23 @@ export class ChecklistService {
 
   /**
    * Lista templates por tipo de atividade.
+   * Auditores veem apenas checklists ativos.
+   * Gestores e Master veem todos os checklists (ativos e inativos).
    */
-  async listarTemplatesPorTipo(tipoAtividade: TipoAtividade): Promise<ChecklistTemplate[]> {
+  async listarTemplatesPorTipo(
+    tipoAtividade: TipoAtividade,
+    usuarioAutenticado?: { id: string; perfil: PerfilUsuario },
+  ): Promise<ChecklistTemplate[]> {
+    let where: any = { tipoAtividade };
+    
+    // Auditores só veem checklists ativos
+    if (usuarioAutenticado && usuarioAutenticado.perfil === PerfilUsuario.AUDITOR) {
+      where = { ...where, ativo: true };
+    }
+    // Gestores e Master veem todos (ativos e inativos)
+    
     const templates = await this.templateRepository.find({
-      where: { tipoAtividade, ativo: true },
+      where,
       relations: ['itens'],
       order: { nome: 'ASC' },
     });
@@ -139,8 +169,17 @@ export class ChecklistService {
   async atualizarTemplate(
     id: string,
     dto: Partial<CriarChecklistTemplateDto>,
+    usuarioAutenticado?: { id: string; perfil: PerfilUsuario },
   ): Promise<ChecklistTemplate> {
-    const template = await this.buscarTemplatePorId(id);
+    const template = await this.buscarTemplatePorId(id, usuarioAutenticado);
+    
+    // Verificar permissões
+    if (usuarioAutenticado) {
+      if (usuarioAutenticado.perfil === PerfilUsuario.GESTOR && template.gestorId !== usuarioAutenticado.id) {
+        throw new ForbiddenException('Apenas o gestor responsável pode editar este checklist');
+      }
+    }
+    
     Object.assign(template, {
       nome: dto.nome ?? template.nome,
       descricao: dto.descricao ?? template.descricao,
@@ -151,12 +190,70 @@ export class ChecklistService {
   }
 
   /**
-   * Remove um template (soft delete).
+   * Verifica se um template está sendo usado em alguma auditoria.
    */
-  async removerTemplate(id: string): Promise<void> {
-    const template = await this.buscarTemplatePorId(id);
-    template.ativo = false;
-    await this.templateRepository.save(template);
+  async templateEmUso(templateId: string): Promise<boolean> {
+    const count = await this.auditoriaRepository.count({
+      where: { templateId },
+    });
+    return count > 0;
+  }
+
+  /**
+   * Remove um template (hard delete) apenas se não estiver vinculado a auditorias.
+   */
+  async removerTemplate(
+    id: string,
+    usuarioAutenticado?: { id: string; perfil: PerfilUsuario },
+  ): Promise<void> {
+    const template = await this.buscarTemplatePorId(id, usuarioAutenticado);
+    
+    // Verificar permissões
+    if (usuarioAutenticado) {
+      if (usuarioAutenticado.perfil === PerfilUsuario.GESTOR && template.gestorId !== usuarioAutenticado.id) {
+        throw new ForbiddenException('Apenas o gestor responsável pode excluir este checklist');
+      }
+      if (usuarioAutenticado.perfil !== PerfilUsuario.MASTER && usuarioAutenticado.perfil !== PerfilUsuario.GESTOR) {
+        throw new ForbiddenException('Apenas Master e Gestor podem excluir checklists');
+      }
+    }
+    
+    // Verificar se está em uso
+    const emUso = await this.templateEmUso(id);
+    if (emUso) {
+      throw new BadRequestException(
+        'Não é possível excluir este checklist pois ele está vinculado a uma ou mais auditorias. Use a opção de inativar.'
+      );
+    }
+    
+    // Hard delete: remove o template e todos os seus itens e grupos
+    await this.itemRepository.delete({ templateId: id });
+    await this.grupoRepository.delete({ templateId: id });
+    await this.templateRepository.delete(id);
+  }
+
+  /**
+   * Inativa ou ativa um template.
+   */
+  async alterarStatusTemplate(
+    id: string,
+    ativo: boolean,
+    usuarioAutenticado?: { id: string; perfil: PerfilUsuario },
+  ): Promise<ChecklistTemplate> {
+    const template = await this.buscarTemplatePorId(id, usuarioAutenticado);
+    
+    // Verificar permissões
+    if (usuarioAutenticado) {
+      if (usuarioAutenticado.perfil === PerfilUsuario.GESTOR && template.gestorId !== usuarioAutenticado.id) {
+        throw new ForbiddenException('Apenas o gestor responsável pode alterar o status deste checklist');
+      }
+      if (usuarioAutenticado.perfil !== PerfilUsuario.MASTER && usuarioAutenticado.perfil !== PerfilUsuario.GESTOR) {
+        throw new ForbiddenException('Apenas Master e Gestor podem alterar o status de checklists');
+      }
+    }
+    
+    template.ativo = ativo;
+    return this.templateRepository.save(template);
   }
 
   /**
