@@ -17,7 +17,7 @@ const features = [
   {
     icon: ClipboardCheck,
     title: 'Checklists Inteligentes',
-    description: 'Templates baseados em RDC 216, 275 e outras legislações vigentes.',
+    description: 'Checklists baseados em RDC 216, 275 e outras legislações vigentes.',
   },
   {
     icon: Camera,
@@ -56,7 +56,6 @@ export default function HomePage() {
               className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium mb-6"
             >
               <Sparkles className="w-4 h-4" />
-              Powered by DeepSeek & OpenAI
             </motion.div>
 
             <motion.h1
@@ -171,7 +170,7 @@ export default function HomePage() {
           />
         </div>
         <p className="text-sm text-base-content/60">
-          POC - Evobit © {new Date().getFullYear()}
+           by Meta Consultoria © {new Date().getFullYear()}
         </p>
       </footer>
     </main>

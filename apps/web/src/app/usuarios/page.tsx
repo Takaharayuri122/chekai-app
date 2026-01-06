@@ -28,21 +28,21 @@ import { toastService } from '@/lib/toast';
 
 const PERFIL_LABELS: Record<PerfilUsuario, string> = {
   [PerfilUsuario.MASTER]: 'Master',
-  [PerfilUsuario.ANALISTA]: 'Analista',
+  [PerfilUsuario.GESTOR]: 'Gestor',
   [PerfilUsuario.AUDITOR]: 'Auditor',
 };
 
 const PERFIL_ICONS: Record<PerfilUsuario, typeof User> = {
   [PerfilUsuario.MASTER]: Shield,
-  [PerfilUsuario.ANALISTA]: UserCheck,
+  [PerfilUsuario.GESTOR]: UserCheck,
   [PerfilUsuario.AUDITOR]: User,
 };
 
 export default function UsuariosPage() {
   const router = useRouter();
-  const { isMaster } = useAuthStore();
+  const { isMaster, isGestor, usuario } = useAuthStore();
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
-  const [analistas, setAnalistas] = useState<Usuario[]>([]);
+  const [gestores, setGestores] = useState<Usuario[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingUsuario, setEditingUsuario] = useState<Usuario | null>(null);
@@ -56,24 +56,57 @@ export default function UsuariosPage() {
     email: '',
     senha: '',
     telefone: '',
-    perfil: PerfilUsuario.ANALISTA,
+    perfil: isGestor() ? PerfilUsuario.AUDITOR : PerfilUsuario.GESTOR,
+    gestorId: isGestor() && !isMaster() ? usuario?.id : undefined,
   });
 
   useEffect(() => {
-    if (!isMaster()) {
+    if (!isMaster() && !isGestor()) {
       router.push('/dashboard');
       return;
     }
     carregarUsuarios();
-  }, [isMaster, router]);
+  }, [isMaster, isGestor, router]);
+
+  // Garante que gestorId está preenchido quando Gestor abre o modal para criar
+  useEffect(() => {
+    if (showModal && !editingUsuario && isGestor() && !isMaster() && usuario?.id) {
+      if (usuarioForm.perfil === PerfilUsuario.AUDITOR && !usuarioForm.gestorId) {
+        setUsuarioForm(prev => ({
+          ...prev,
+          gestorId: usuario.id,
+        }));
+      }
+    }
+  }, [showModal, editingUsuario, isGestor, isMaster, usuario?.id, usuarioForm.perfil, usuarioForm.gestorId]);
+
+  // Função para aplicar máscara de telefone
+  const aplicarMascaraTelefone = (valor: string) => {
+    const apenasNumeros = valor.replace(/\D/g, '');
+    if (apenasNumeros.length <= 10) {
+      return apenasNumeros
+        .replace(/^(\d{2})(\d)/, '($1) $2')
+        .replace(/(\d{4})(\d)/, '$1-$2');
+    } else if (apenasNumeros.length <= 11) {
+      return apenasNumeros
+        .replace(/^(\d{2})(\d)/, '($1) $2')
+        .replace(/(\d{5})(\d)/, '$1-$2');
+    }
+    return valor;
+  };
+
+  // Função para remover máscara do telefone
+  const removerMascaraTelefone = (valor: string) => {
+    return valor.replace(/\D/g, '');
+  };
 
   const carregarUsuarios = async () => {
     try {
       const response = await usuarioService.listar(1, 100);
       setUsuarios(response.items || []);
-      // Carregar analistas para o select
-      const analistasResponse = await usuarioService.listar(1, 100, PerfilUsuario.ANALISTA);
-      setAnalistas(analistasResponse.items || []);
+      // Carregar gestores para o select
+      const gestoresResponse = await usuarioService.listar(1, 100, PerfilUsuario.GESTOR);
+      setGestores(gestoresResponse.items || []);
     } catch (error) {
       // Erro já é tratado pelo interceptor
     } finally {
@@ -84,19 +117,35 @@ export default function UsuariosPage() {
   const handleCriarUsuario = async () => {
     if (!usuarioForm.nome || !usuarioForm.email) return;
     if (!editingUsuario && !usuarioForm.senha) return;
+    if (!usuarioForm.telefone) {
+      toastService.warning('O WhatsApp é obrigatório');
+      return;
+    }
     setSaving(true);
 
     try {
-      const dadosParaEnviar = { ...usuarioForm };
-      // Se estiver editando e não forneceu senha, remover do payload
-      if (editingUsuario && !dadosParaEnviar.senha) {
-        delete dadosParaEnviar.senha;
-      }
-      
       if (editingUsuario) {
-        await usuarioService.atualizar(editingUsuario.id, dadosParaEnviar);
+        const dadosParaEnviar: Partial<CriarUsuarioRequest> = { 
+          ...usuarioForm,
+          // Remove máscara do telefone antes de enviar
+          telefone: usuarioForm.telefone ? removerMascaraTelefone(usuarioForm.telefone) : undefined,
+        };
+        // Se não forneceu senha, remover do payload
+        if (!dadosParaEnviar.senha) {
+          const { senha, ...dadosSemSenha } = dadosParaEnviar;
+          await usuarioService.atualizar(editingUsuario.id, dadosSemSenha);
+        } else {
+          await usuarioService.atualizar(editingUsuario.id, dadosParaEnviar);
+        }
         toastService.success('Usuário atualizado com sucesso!');
       } else {
+        const dadosParaEnviar: CriarUsuarioRequest = { 
+          ...usuarioForm,
+          // Garante que gestorId está preenchido quando Gestor cria Auditor
+          gestorId: isGestor() && !isMaster() && usuarioForm.perfil === PerfilUsuario.AUDITOR
+            ? (usuarioForm.gestorId || usuario?.id)
+            : usuarioForm.gestorId,
+        };
         await usuarioService.criar(dadosParaEnviar);
         toastService.success('Usuário criado com sucesso!');
       }
@@ -109,15 +158,26 @@ export default function UsuariosPage() {
     }
   };
 
-  const handleEditarUsuario = (usuario: Usuario) => {
-    setEditingUsuario(usuario);
+  const handleEditarUsuario = (usuarioItem: Usuario) => {
+    // Gestor só pode editar seus próprios auditores
+    if (isGestor() && !isMaster()) {
+      if (usuarioItem.gestorId !== usuario?.id && usuarioItem.id !== usuario?.id) {
+        toastService.error('Você só pode editar seus próprios auditores');
+        return;
+      }
+      if (usuarioItem.perfil !== PerfilUsuario.AUDITOR) {
+        toastService.error('Você só pode editar auditores');
+        return;
+      }
+    }
+    setEditingUsuario(usuarioItem);
     setUsuarioForm({
-      nome: usuario.nome,
-      email: usuario.email,
+      nome: usuarioItem.nome,
+      email: usuarioItem.email,
       senha: '',
-      telefone: usuario.telefone || '',
-      perfil: usuario.perfil,
-      analistaId: usuario.analistaId || undefined,
+      telefone: usuarioItem.telefone ? aplicarMascaraTelefone(usuarioItem.telefone) : '',
+      perfil: usuarioItem.perfil,
+      gestorId: usuarioItem.gestorId || undefined,
     });
     setShowModal(true);
   };
@@ -130,7 +190,8 @@ export default function UsuariosPage() {
       email: '',
       senha: '',
       telefone: '',
-      perfil: PerfilUsuario.ANALISTA,
+      perfil: isGestor() ? PerfilUsuario.AUDITOR : PerfilUsuario.GESTOR,
+      gestorId: isGestor() && !isMaster() ? usuario?.id : undefined,
     });
   };
 
@@ -155,7 +216,7 @@ export default function UsuariosPage() {
     return matchPerfil && matchBusca;
   });
 
-  if (!isMaster()) {
+  if (!isMaster() && !isGestor()) {
     return null;
   }
 
@@ -163,7 +224,7 @@ export default function UsuariosPage() {
     <AppLayout>
       <PageHeader
         title="Usuários"
-        description="Gerencie usuários do sistema"
+        subtitle="Gerencie usuários do sistema"
         action={
           <button
             className="btn btn-primary gap-2"
@@ -247,16 +308,16 @@ export default function UsuariosPage() {
                     <th>Nome</th>
                     <th>E-mail</th>
                     <th>Perfil</th>
-                    <th>Telefone</th>
+                    <th>WhatsApp</th>
                     <th>Status</th>
                     <th className="text-right">Ações</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {usuariosFiltrados.map((usuario) => {
-                    const Icon = PERFIL_ICONS[usuario.perfil];
+                  {usuariosFiltrados.map((usuarioItem) => {
+                    const Icon = PERFIL_ICONS[usuarioItem.perfil];
                     return (
-                      <tr key={usuario.id}>
+                      <tr key={usuarioItem.id}>
                         <td>
                           <div className="flex items-center gap-3">
                             <div className="avatar placeholder">
@@ -264,24 +325,24 @@ export default function UsuariosPage() {
                                 <Icon className="w-5 h-5" />
                               </div>
                             </div>
-                            <div className="font-medium">{usuario.nome}</div>
+                            <div className="font-medium">{usuarioItem.nome}</div>
                           </div>
                         </td>
                         <td>
-                          <span className="text-sm">{usuario.email}</span>
+                          <span className="text-sm">{usuarioItem.email}</span>
                         </td>
                         <td>
                           <span className="badge badge-outline">
-                            {PERFIL_LABELS[usuario.perfil]}
+                            {PERFIL_LABELS[usuarioItem.perfil]}
                           </span>
                         </td>
                         <td>
                           <span className="text-sm text-base-content/60">
-                            {usuario.telefone || '-'}
+                            {usuarioItem.telefone ? aplicarMascaraTelefone(usuarioItem.telefone) : '-'}
                           </span>
                         </td>
                         <td>
-                          {usuario.ativo ? (
+                          {usuarioItem.ativo ? (
                             <span className="badge badge-success badge-sm">Ativo</span>
                           ) : (
                             <span className="badge badge-error badge-sm">Inativo</span>
@@ -289,20 +350,26 @@ export default function UsuariosPage() {
                         </td>
                         <td>
                           <div className="flex justify-end gap-2">
-                            <button
-                              className="btn btn-ghost btn-xs gap-1"
-                              onClick={() => handleEditarUsuario(usuario)}
-                              title="Editar"
-                            >
-                              <Edit className="w-4 h-4" />
-                            </button>
-                            <button
-                              className="btn btn-ghost btn-xs gap-1 text-error"
-                              onClick={() => handleRemoverUsuario(usuario.id)}
-                              title="Remover"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                            {/* Gestor só pode editar seus próprios auditores */}
+                            {(!isGestor() || isMaster() || (usuarioItem.gestorId === usuario?.id && usuarioItem.perfil === PerfilUsuario.AUDITOR)) && (
+                              <button
+                                className="btn btn-ghost btn-xs gap-1"
+                                onClick={() => handleEditarUsuario(usuarioItem)}
+                                title="Editar"
+                              >
+                                <Edit className="w-4 h-4" />
+                              </button>
+                            )}
+                            {/* Gestor não pode remover usuários */}
+                            {(!isGestor() || isMaster()) && (
+                              <button
+                                className="btn btn-ghost btn-xs gap-1 text-error"
+                                onClick={() => handleRemoverUsuario(usuarioItem.id)}
+                                title="Remover"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -383,58 +450,93 @@ export default function UsuariosPage() {
                 <select
                   className="select select-bordered"
                   value={usuarioForm.perfil}
+                  disabled={isGestor() && !isMaster() && !editingUsuario}
                   onChange={(e) => {
                     const novoPerfil = e.target.value as PerfilUsuario;
+                    // Se for Gestor criando, força AUDITOR
+                    const perfilFinal = isGestor() && !isMaster() && !editingUsuario 
+                      ? PerfilUsuario.AUDITOR 
+                      : novoPerfil;
+                    const novoGestorId = perfilFinal === PerfilUsuario.AUDITOR && isGestor() && !isMaster() && !editingUsuario
+                      ? usuario?.id
+                      : perfilFinal === PerfilUsuario.AUDITOR 
+                        ? usuarioForm.gestorId 
+                        : undefined;
                     setUsuarioForm({
                       ...usuarioForm,
-                      perfil: novoPerfil,
-                      analistaId: novoPerfil === PerfilUsuario.AUDITOR ? usuarioForm.analistaId : undefined,
+                      perfil: perfilFinal,
+                      gestorId: novoGestorId,
                     });
                   }}
                 >
-                  {Object.values(PerfilUsuario).map((perfil) => (
-                    <option key={perfil} value={perfil}>
-                      {PERFIL_LABELS[perfil]}
-                    </option>
-                  ))}
+                  {Object.values(PerfilUsuario).map((perfil) => {
+                    // Gestor só pode criar Auditores
+                    if (isGestor() && !isMaster() && !editingUsuario && perfil !== PerfilUsuario.AUDITOR) {
+                      return null;
+                    }
+                    return (
+                      <option key={perfil} value={perfil}>
+                        {PERFIL_LABELS[perfil]}
+                      </option>
+                    );
+                  })}
                 </select>
+                {isGestor() && !isMaster() && !editingUsuario && (
+                  <label className="label">
+                    <span className="label-text-alt text-base-content/60">
+                      Gestores só podem criar usuários com perfil Auditor
+                    </span>
+                  </label>
+                )}
               </div>
               <div className="form-control">
                 <label className="label">
-                  <span className="label-text">Telefone (opcional)</span>
+                  <span className="label-text">WhatsApp *</span>
                 </label>
                 <input
                   type="tel"
                   className="input input-bordered"
+                  placeholder="(00) 00000-0000"
                   value={usuarioForm.telefone || ''}
-                  onChange={(e) =>
-                    setUsuarioForm({ ...usuarioForm, telefone: e.target.value })
-                  }
+                  onChange={(e) => {
+                    const valorFormatado = aplicarMascaraTelefone(e.target.value);
+                    setUsuarioForm({ ...usuarioForm, telefone: valorFormatado });
+                  }}
+                  maxLength={15}
+                  required
                 />
               </div>
               {usuarioForm.perfil === PerfilUsuario.AUDITOR && (
                 <div className="form-control">
                   <label className="label">
-                    <span className="label-text">Analista Responsável *</span>
+                    <span className="label-text">Gestor Responsável *</span>
                   </label>
                   <select
                     className="select select-bordered"
-                    value={usuarioForm.analistaId || ''}
+                    value={usuarioForm.gestorId || ''}
+                    disabled={isGestor() && !isMaster() && !editingUsuario}
                     onChange={(e) =>
                       setUsuarioForm({
                         ...usuarioForm,
-                        analistaId: e.target.value || undefined,
+                        gestorId: e.target.value || undefined,
                       })
                     }
-                    required
+                    required={!(isGestor() && !isMaster() && !editingUsuario)}
                   >
-                    <option value="">Selecione um analista</option>
-                    {analistas.map((analista) => (
-                      <option key={analista.id} value={analista.id}>
-                        {analista.nome} ({analista.email})
+                    <option value="">Selecione um gestor</option>
+                    {gestores.map((gestor) => (
+                      <option key={gestor.id} value={gestor.id}>
+                        {gestor.nome} ({gestor.email})
                       </option>
                     ))}
                   </select>
+                  {isGestor() && !isMaster() && !editingUsuario && (
+                    <label className="label">
+                      <span className="label-text-alt text-base-content/60">
+                        O auditor será automaticamente vinculado a você
+                      </span>
+                    </label>
+                  )}
                 </div>
               )}
             </div>
@@ -451,7 +553,10 @@ export default function UsuariosPage() {
                 disabled={
                   saving ||
                   (!editingUsuario && !usuarioForm.senha) ||
-                  (usuarioForm.perfil === PerfilUsuario.AUDITOR && !usuarioForm.analistaId)
+                  !usuarioForm.telefone ||
+                  (usuarioForm.perfil === PerfilUsuario.AUDITOR && 
+                   !usuarioForm.gestorId && 
+                   !(isGestor() && !isMaster() && !editingUsuario && usuario?.id))
                 }
               >
                 {saving ? (

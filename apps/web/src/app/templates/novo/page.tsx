@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import {
@@ -155,16 +155,14 @@ function SortableItem({ item, index, onEdit, onRemove }: SortableItemProps) {
 }
 
 /**
- * Página para editar um template existente com suporte a grupos e seções.
+ * Página para criar um novo template com suporte a grupos e seções.
  */
-export default function EditarTemplatePage() {
+export default function NovoTemplatePage() {
   const router = useRouter();
-  const params = useParams();
-  const templateId = params.id as string;
   const [template, setTemplate] = useState<ChecklistTemplate | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [erro, setErro] = useState('');
+  const [templateCreated, setTemplateCreated] = useState(false);
   const [expandedGrupos, setExpandedGrupos] = useState<Set<string>>(new Set());
 
   const [formData, setFormData] = useState({
@@ -280,45 +278,62 @@ export default function EditarTemplatePage() {
       toastService.success('Ordem dos itens atualizada!');
     } catch (error) {
       // Erro já é tratado pelo interceptor
-      // Reverter mudança local em caso de erro
-      loadTemplate();
+      // Recarregar template em caso de erro
+      if (template) {
+        loadTemplate();
+      }
     }
   };
 
   const loadTemplate = useCallback(async () => {
+    if (!template?.id) return;
     try {
       setLoading(true);
-      const data = await checklistService.buscarTemplatePorId(templateId);
+      const data = await checklistService.buscarTemplatePorId(template.id);
       setTemplate(data);
-      setFormData({
-        nome: data.nome,
-        descricao: data.descricao || '',
-        tipoAtividade: data.tipoAtividade,
-        versao: data.versao || '1.0',
-      });
       // Expandir todos os grupos por padrão
       if (data.grupos) {
         setExpandedGrupos(new Set(data.grupos.map((g) => g.id)));
       }
     } catch {
-      setErro('Erro ao carregar template');
+      toastService.error('Erro ao carregar checklist');
     } finally {
       setLoading(false);
     }
-  }, [templateId]);
+  }, [template?.id]);
 
-  useEffect(() => {
-    loadTemplate();
-  }, [loadTemplate]);
-
-  const handleSalvar = async () => {
+  // Criar template inicial
+  const handleCriarTemplate = async () => {
     if (!formData.nome.trim()) {
-      toastService.warning('O nome do template é obrigatório');
+      toastService.warning('O nome do checklist é obrigatório');
       return;
     }
     setSaving(true);
     try {
-      await checklistService.atualizarTemplate(templateId, formData);
+      const novoTemplate = await checklistService.criarTemplate(formData);
+      setTemplate(novoTemplate);
+      setTemplateCreated(true);
+      toastService.success('Checklist criado com sucesso! Agora você pode adicionar grupos e perguntas.');
+      // Expandir todos os grupos por padrão
+      if (novoTemplate.grupos) {
+        setExpandedGrupos(new Set(novoTemplate.grupos.map((g) => g.id)));
+      }
+    } catch (error) {
+      // Erro já é tratado pelo interceptor
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSalvar = async () => {
+    if (!template) return;
+    if (!formData.nome.trim()) {
+      toastService.warning('O nome do checklist é obrigatório');
+      return;
+    }
+    setSaving(true);
+    try {
+      await checklistService.atualizarTemplate(template.id, formData);
       toastService.success('Checklist atualizado com sucesso!');
       router.push('/templates');
     } catch (error) {
@@ -335,6 +350,10 @@ export default function EditarTemplatePage() {
   };
 
   const handleAbrirModalNovoGrupo = () => {
+    if (!template) {
+      toastService.warning('Crie o template primeiro');
+      return;
+    }
     resetGrupoForm();
     setShowGrupoModal(true);
   };
@@ -346,7 +365,7 @@ export default function EditarTemplatePage() {
   };
 
   const handleSalvarGrupo = async () => {
-    if (!grupoForm.nome.trim()) return;
+    if (!grupoForm.nome.trim() || !template) return;
     setSaving(true);
     try {
       if (editingGrupo) {
@@ -361,7 +380,7 @@ export default function EditarTemplatePage() {
           };
         });
       } else {
-        const novoGrupo = await checklistService.adicionarGrupo(templateId, grupoForm);
+        const novoGrupo = await checklistService.adicionarGrupo(template.id, grupoForm);
         setTemplate((prevTemplate) => {
           if (!prevTemplate) return prevTemplate;
           return {
@@ -373,6 +392,8 @@ export default function EditarTemplatePage() {
       toastService.success(editingGrupo ? 'Grupo atualizado com sucesso!' : 'Grupo criado com sucesso!');
       setShowGrupoModal(false);
       resetGrupoForm();
+      // Recarregar template para garantir sincronização
+      loadTemplate();
     } catch (error) {
       // Erro já é tratado pelo interceptor
     } finally {
@@ -433,6 +454,10 @@ export default function EditarTemplatePage() {
   };
 
   const handleAbrirModalNovoItem = (grupoId?: string) => {
+    if (!template) {
+      toastService.warning('Crie o checklist primeiro');
+      return;
+    }
     resetItemForm();
     setSelectedGrupoId(grupoId || null);
     setItemForm((prev) => ({ ...prev, grupoId }));
@@ -459,7 +484,7 @@ export default function EditarTemplatePage() {
   };
 
   const handleSalvarItem = async () => {
-    if (!itemForm.pergunta.trim()) return;
+    if (!itemForm.pergunta.trim() || !template) return;
     setSaving(true);
     try {
       const dadosItem: CriarTemplateItemRequest = {
@@ -487,7 +512,7 @@ export default function EditarTemplatePage() {
           };
         });
       } else {
-        const novoItem = await checklistService.adicionarItem(templateId, dadosItem);
+        const novoItem = await checklistService.adicionarItem(template.id, dadosItem);
         setTemplate((prevTemplate) => {
           if (!prevTemplate) return prevTemplate;
           return {
@@ -499,6 +524,8 @@ export default function EditarTemplatePage() {
       toastService.success(editingItem ? 'Item atualizado com sucesso!' : 'Item adicionado com sucesso!');
       setShowItemModal(false);
       resetItemForm();
+      // Recarregar template para garantir sincronização
+      loadTemplate();
     } catch (error) {
       // Erro já é tratado pelo interceptor
     } finally {
@@ -570,16 +597,6 @@ export default function EditarTemplatePage() {
     return porSecao;
   };
 
-  if (loading) {
-    return (
-      <AppLayout>
-        <div className="min-h-[60vh] flex items-center justify-center">
-          <span className="loading loading-spinner loading-lg text-primary"></span>
-        </div>
-      </AppLayout>
-    );
-  }
-
   return (
     <AppLayout>
       {/* Header */}
@@ -589,25 +606,21 @@ export default function EditarTemplatePage() {
             <ChevronLeft className="w-5 h-5" />
           </Link>
           <div className="flex-1">
-            <h1 className="text-lg font-bold text-base-content">Editar Checklist</h1>
-            <p className="text-sm text-base-content/60 truncate">{template?.nome}</p>
+            <h1 className="text-lg font-bold text-base-content">Novo Checklist</h1>
+            <p className="text-sm text-base-content/60">
+              {templateCreated ? 'Adicione grupos e perguntas ao checklist' : 'Crie um novo checklist'}
+            </p>
           </div>
-          <button onClick={handleSalvar} disabled={saving} className="btn btn-primary btn-sm gap-1">
-            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-            Salvar
-          </button>
+          {templateCreated && (
+            <button onClick={handleSalvar} disabled={saving} className="btn btn-primary btn-sm gap-1">
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              Salvar
+            </button>
+          )}
         </div>
       </div>
 
       <div className="px-4 py-6 lg:px-8 space-y-6 max-w-4xl mx-auto pb-24">
-        {/* Erro */}
-        {erro && (
-          <div className="alert alert-error">
-            <span>{erro}</span>
-            <button onClick={() => setErro('')} className="btn btn-ghost btn-sm">✕</button>
-          </div>
-        )}
-
         {/* Informações Básicas */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
@@ -624,6 +637,7 @@ export default function EditarTemplatePage() {
                   className="input input-bordered"
                   value={formData.nome}
                   onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
+                  disabled={templateCreated}
                 />
               </div>
               <div className="form-control">
@@ -633,6 +647,7 @@ export default function EditarTemplatePage() {
                   rows={2}
                   value={formData.descricao}
                   onChange={(e) => setFormData({ ...formData, descricao: e.target.value })}
+                  disabled={templateCreated}
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -642,6 +657,7 @@ export default function EditarTemplatePage() {
                     className="select select-bordered"
                     value={formData.tipoAtividade}
                     onChange={(e) => setFormData({ ...formData, tipoAtividade: e.target.value as TipoAtividade })}
+                    disabled={templateCreated}
                   >
                     {Object.entries(TIPO_ATIVIDADE_LABELS).map(([value, label]) => (
                       <option key={value} value={value}>{label}</option>
@@ -655,185 +671,209 @@ export default function EditarTemplatePage() {
                     className="input input-bordered"
                     value={formData.versao}
                     onChange={(e) => setFormData({ ...formData, versao: e.target.value })}
+                    disabled={templateCreated}
                   />
                 </div>
               </div>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* Grupos e Itens */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="card bg-base-100 shadow-sm border border-base-300"
-        >
-          <div className="card-body">
-            <div className="flex items-center justify-between">
-              <h2 className="card-title text-base">
-                Grupos e Perguntas ({template?.grupos?.length || 0} grupos, {template?.itens?.filter(i => i.ativo !== false).length || 0} perguntas)
-              </h2>
-              <div className="flex gap-2">
-                <button onClick={handleAbrirModalNovoGrupo} className="btn btn-secondary btn-sm gap-1">
-                  <FolderOpen className="w-4 h-4" />
-                  Novo Grupo
-                </button>
-                <button onClick={() => handleAbrirModalNovoItem()} className="btn btn-primary btn-sm gap-1">
-                  <Plus className="w-4 h-4" />
-                  Nova Pergunta
-                </button>
-              </div>
-            </div>
-
-            <div className="space-y-4 mt-4">
-              {/* Grupos */}
-              {template?.grupos?.map((grupo) => (
-                <div key={grupo.id} className="border border-base-300 rounded-lg overflow-hidden">
-                  {/* Header do Grupo */}
-                  <div
-                    className="flex items-center gap-3 p-3 bg-base-200 cursor-pointer hover:bg-base-300 transition-colors"
-                    onClick={() => toggleGrupoExpanded(grupo.id)}
+              {!templateCreated && (
+                <div className="flex justify-end mt-4">
+                  <button
+                    onClick={handleCriarTemplate}
+                    disabled={saving || !formData.nome.trim()}
+                    className="btn btn-primary gap-2"
                   >
-                    <GripVertical className="w-4 h-4 text-base-content/40" />
-                    <FolderOpen className="w-5 h-5 text-secondary" />
-                    <div className="flex-1">
-                      <p className="font-medium">{grupo.nome}</p>
-                      {grupo.descricao && <p className="text-sm text-base-content/60">{grupo.descricao}</p>}
-                    </div>
-                    <span className="badge badge-ghost">{getItensPorGrupo(grupo.id).length} perguntas</span>
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleAbrirModalEditarGrupo(grupo); }}
-                        className="btn btn-ghost btn-xs"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleRemoverGrupo(grupo.id); }}
-                        className="btn btn-ghost btn-xs text-error"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                      {expandedGrupos.has(grupo.id) ? (
-                        <ChevronUp className="w-5 h-5 text-base-content/40" />
-                      ) : (
-                        <ChevronDown className="w-5 h-5 text-base-content/40" />
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Itens do Grupo */}
-                  {expandedGrupos.has(grupo.id) && (
-                    <div className="p-3 space-y-2">
-                      <DndContext
-                        sensors={sensors}
-                        collisionDetection={closestCenter}
-                        onDragEnd={handleDragEnd}
-                      >
-                        {(() => {
-                          const todosItensDoGrupo = getItensPorGrupo(grupo.id).sort((a, b) => a.ordem - b.ordem);
-                          const itemIds = todosItensDoGrupo.map((item) => item.id);
-
-                          return (
-                            <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
-                              {Object.entries(getItensPorSecao(todosItensDoGrupo)).map(([secao, itens]) => {
-                                const itensOrdenados = [...itens].sort((a, b) => a.ordem - b.ordem);
-
-                                return (
-                                  <div key={secao || 'sem-secao'}>
-                                    {secao && (
-                                      <div className="flex items-center gap-2 py-2 mb-2 border-b border-base-200">
-                                        <span className="text-sm font-medium text-secondary">{secao}</span>
-                                      </div>
-                                    )}
-                                    {itensOrdenados.map((item) => {
-                                      const globalIndex = todosItensDoGrupo.findIndex((i) => i.id === item.id);
-                                      return (
-                                        <SortableItem
-                                          key={item.id}
-                                          item={item}
-                                          index={globalIndex}
-                                          onEdit={handleAbrirModalEditarItem}
-                                          onRemove={handleRemoverItem}
-                                        />
-                                      );
-                                    })}
-                                    {itens.length === 0 && (
-                                      <p className="text-sm text-base-content/50 py-2">Nenhuma pergunta nesta seção</p>
-                                    )}
-                                  </div>
-                                );
-                              })}
-                            </SortableContext>
-                          );
-                        })()}
-                      </DndContext>
-                      {getItensPorGrupo(grupo.id).length === 0 && (
-                        <p className="text-sm text-base-content/50 py-4 text-center">Nenhuma pergunta neste grupo</p>
-                      )}
-                      <button
-                        onClick={() => handleAbrirModalNovoItem(grupo.id)}
-                        className="btn btn-ghost btn-sm w-full mt-2 border-dashed border-base-300"
-                      >
-                        <Plus className="w-4 h-4" /> Adicionar pergunta
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ))}
-
-              {/* Itens sem grupo */}
-              {getItensSemGrupo().length > 0 && (
-                <div className="border border-base-300 rounded-lg overflow-hidden">
-                  <div className="flex items-center gap-3 p-3 bg-base-200">
-                    <AlertTriangle className="w-5 h-5 text-warning" />
-                    <span className="font-medium">Perguntas sem grupo</span>
-                    <span className="badge badge-warning">{getItensSemGrupo().length}</span>
-                  </div>
-                  <div className="p-3 space-y-2">
-                    <DndContext
-                      sensors={sensors}
-                      collisionDetection={closestCenter}
-                      onDragEnd={handleDragEnd}
-                    >
-                      <SortableContext
-                        items={getItensSemGrupo()
-                          .sort((a, b) => a.ordem - b.ordem)
-                          .map((item) => item.id)}
-                        strategy={verticalListSortingStrategy}
-                      >
-                        {getItensSemGrupo()
-                          .sort((a, b) => a.ordem - b.ordem)
-                          .map((item, idx) => (
-                            <SortableItem
-                              key={item.id}
-                              item={item}
-                              index={idx}
-                              onEdit={handleAbrirModalEditarItem}
-                              onRemove={handleRemoverItem}
-                            />
-                          ))}
-                      </SortableContext>
-                    </DndContext>
-                  </div>
-                </div>
-              )}
-
-              {/* Estado vazio */}
-              {(!template?.grupos || template.grupos.length === 0) && getItensSemGrupo().length === 0 && (
-                <div className="text-center py-12">
-                  <FolderOpen className="w-16 h-16 text-base-content/20 mx-auto mb-4" />
-                  <p className="text-base-content/60 font-medium">Nenhum grupo ou pergunta cadastrada</p>
-                  <p className="text-sm text-base-content/40 mt-1">Comece criando um grupo para organizar suas perguntas</p>
-                  <button onClick={handleAbrirModalNovoGrupo} className="btn btn-primary mt-4">
-                    <FolderOpen className="w-4 h-4" /> Criar Primeiro Grupo
+                    {saving ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Criando...
+                      </>
+                    ) : (
+                      <>
+                        <Plus className="w-4 h-4" />
+                        Criar Template
+                      </>
+                    )}
                   </button>
                 </div>
               )}
             </div>
           </div>
         </motion.div>
+
+        {/* Grupos e Itens - Só aparece após criar o template */}
+        {templateCreated && template && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="card bg-base-100 shadow-sm border border-base-300"
+          >
+            <div className="card-body">
+              <div className="flex items-center justify-between">
+                <h2 className="card-title text-base">
+                  Grupos e Perguntas ({template?.grupos?.length || 0} grupos, {template?.itens?.filter(i => i.ativo !== false).length || 0} perguntas)
+                </h2>
+                <div className="flex gap-2">
+                  <button onClick={handleAbrirModalNovoGrupo} className="btn btn-secondary btn-sm gap-1">
+                    <FolderOpen className="w-4 h-4" />
+                    Novo Grupo
+                  </button>
+                  <button onClick={() => handleAbrirModalNovoItem()} className="btn btn-primary btn-sm gap-1">
+                    <Plus className="w-4 h-4" />
+                    Nova Pergunta
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-4 mt-4">
+                {/* Grupos */}
+                {template?.grupos?.map((grupo) => (
+                  <div key={grupo.id} className="border border-base-300 rounded-lg overflow-hidden">
+                    {/* Header do Grupo */}
+                    <div
+                      className="flex items-center gap-3 p-3 bg-base-200 cursor-pointer hover:bg-base-300 transition-colors"
+                      onClick={() => toggleGrupoExpanded(grupo.id)}
+                    >
+                      <GripVertical className="w-4 h-4 text-base-content/40" />
+                      <FolderOpen className="w-5 h-5 text-secondary" />
+                      <div className="flex-1">
+                        <p className="font-medium">{grupo.nome}</p>
+                        {grupo.descricao && <p className="text-sm text-base-content/60">{grupo.descricao}</p>}
+                      </div>
+                      <span className="badge badge-ghost">{getItensPorGrupo(grupo.id).length} perguntas</span>
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleAbrirModalEditarGrupo(grupo); }}
+                          className="btn btn-ghost btn-xs"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleRemoverGrupo(grupo.id); }}
+                          className="btn btn-ghost btn-xs text-error"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                        {expandedGrupos.has(grupo.id) ? (
+                          <ChevronUp className="w-5 h-5 text-base-content/40" />
+                        ) : (
+                          <ChevronDown className="w-5 h-5 text-base-content/40" />
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Itens do Grupo */}
+                    {expandedGrupos.has(grupo.id) && (
+                      <div className="p-3 space-y-2">
+                        <DndContext
+                          sensors={sensors}
+                          collisionDetection={closestCenter}
+                          onDragEnd={handleDragEnd}
+                        >
+                          {(() => {
+                            const todosItensDoGrupo = getItensPorGrupo(grupo.id).sort((a, b) => a.ordem - b.ordem);
+                            const itemIds = todosItensDoGrupo.map((item) => item.id);
+
+                            return (
+                              <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
+                                {Object.entries(getItensPorSecao(todosItensDoGrupo)).map(([secao, itens]) => {
+                                  const itensOrdenados = [...itens].sort((a, b) => a.ordem - b.ordem);
+
+                                  return (
+                                    <div key={secao || 'sem-secao'}>
+                                      {secao && (
+                                        <div className="flex items-center gap-2 py-2 mb-2 border-b border-base-200">
+                                          <span className="text-sm font-medium text-secondary">{secao}</span>
+                                        </div>
+                                      )}
+                                      {itensOrdenados.map((item) => {
+                                        const globalIndex = todosItensDoGrupo.findIndex((i) => i.id === item.id);
+                                        return (
+                                          <SortableItem
+                                            key={item.id}
+                                            item={item}
+                                            index={globalIndex}
+                                            onEdit={handleAbrirModalEditarItem}
+                                            onRemove={handleRemoverItem}
+                                          />
+                                        );
+                                      })}
+                                      {itens.length === 0 && (
+                                        <p className="text-sm text-base-content/50 py-2">Nenhuma pergunta nesta seção</p>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </SortableContext>
+                            );
+                          })()}
+                        </DndContext>
+                        {getItensPorGrupo(grupo.id).length === 0 && (
+                          <p className="text-sm text-base-content/50 py-4 text-center">Nenhuma pergunta neste grupo</p>
+                        )}
+                        <button
+                          onClick={() => handleAbrirModalNovoItem(grupo.id)}
+                          className="btn btn-ghost btn-sm w-full mt-2 border-dashed border-base-300"
+                        >
+                          <Plus className="w-4 h-4" /> Adicionar pergunta
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+
+                {/* Itens sem grupo */}
+                {getItensSemGrupo().length > 0 && (
+                  <div className="border border-base-300 rounded-lg overflow-hidden">
+                    <div className="flex items-center gap-3 p-3 bg-base-200">
+                      <AlertTriangle className="w-5 h-5 text-warning" />
+                      <span className="font-medium">Perguntas sem grupo</span>
+                      <span className="badge badge-warning">{getItensSemGrupo().length}</span>
+                    </div>
+                    <div className="p-3 space-y-2">
+                      <DndContext
+                        sensors={sensors}
+                        collisionDetection={closestCenter}
+                        onDragEnd={handleDragEnd}
+                      >
+                        <SortableContext
+                          items={getItensSemGrupo()
+                            .sort((a, b) => a.ordem - b.ordem)
+                            .map((item) => item.id)}
+                          strategy={verticalListSortingStrategy}
+                        >
+                          {getItensSemGrupo()
+                            .sort((a, b) => a.ordem - b.ordem)
+                            .map((item, idx) => (
+                              <SortableItem
+                                key={item.id}
+                                item={item}
+                                index={idx}
+                                onEdit={handleAbrirModalEditarItem}
+                                onRemove={handleRemoverItem}
+                              />
+                            ))}
+                        </SortableContext>
+                      </DndContext>
+                    </div>
+                  </div>
+                )}
+
+                {/* Estado vazio */}
+                {(!template?.grupos || template.grupos.length === 0) && getItensSemGrupo().length === 0 && (
+                  <div className="text-center py-12">
+                    <FolderOpen className="w-16 h-16 text-base-content/20 mx-auto mb-4" />
+                    <p className="text-base-content/60 font-medium">Nenhum grupo ou pergunta cadastrada</p>
+                    <p className="text-sm text-base-content/40 mt-1">Comece criando um grupo para organizar suas perguntas</p>
+                    <button onClick={handleAbrirModalNovoGrupo} className="btn btn-primary mt-4">
+                      <FolderOpen className="w-4 h-4" /> Criar Primeiro Grupo
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        )}
       </div>
 
       {/* Modal Grupo */}
@@ -1082,3 +1122,4 @@ export default function EditarTemplatePage() {
     </AppLayout>
   );
 }
+

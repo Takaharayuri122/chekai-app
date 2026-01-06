@@ -183,34 +183,26 @@ Retorne APENAS um JSON válido (sem markdown, sem backticks) com:
     gravidade: 'baixa' | 'media' | 'alta' | 'critica';
     sugestoes: string[];
     referenciaLegal: string;
+    imagemRelevante: boolean;
   }> {
     const contextoLegislacao = await this.legislacaoService.gerarContextoRag(
-      `${perguntaChecklist} ${categoria} segurança alimentos`,
+      `${perguntaChecklist} ${categoria}`,
     );
-    const prompt = `Você é um especialista em segurança de alimentos realizando uma auditoria.
+    const prompt = `Auditoria segurança alimentos.
 
-ITEM DO CHECKLIST SENDO AVALIADO:
-"${perguntaChecklist}"
+Item: "${perguntaChecklist}"
+Categoria: ${categoria}
+Estabelecimento: ${tipoEstabelecimento}
 
-CATEGORIA: ${categoria}
-TIPO DE ESTABELECIMENTO: ${tipoEstabelecimento}
+Legislação: ${contextoLegislacao}
 
-LEGISLAÇÃO RELEVANTE:
-${contextoLegislacao}
-
-Analise a imagem e, considerando o item do checklist acima, forneça:
-1. Uma descrição detalhada do que foi observado na imagem em relação ao item
-2. Se há não conformidade, identifique qual o tipo
-3. A gravidade da situação
-4. Sugestões de correção
-5. Referência legal aplicável
-
-Retorne APENAS um JSON válido (sem markdown, sem backticks) com:
-- descricaoIa: descrição técnica detalhada do que foi observado na imagem, relacionando ao item do checklist
-- tipoNaoConformidade: tipo identificado (ex: "armazenamento inadequado", "falta de identificação", "temperatura incorreta") ou "Nenhuma identificada"
-- gravidade: "baixa", "media", "alta" ou "critica"
-- sugestoes: array com 2-4 sugestões de correção específicas
-- referenciaLegal: citação da legislação aplicável (ex: "RDC 216/2004, Art. 4.1.3")`;
+Analise a imagem e retorne JSON (sem markdown):
+- imagemRelevante: true se a imagem mostra algo relacionado ao item, false se irrelevante
+- descricaoIa: SEMPRE forneça uma descrição. Se relevante, descreva o observado. Se não relevante, explique brevemente o motivo (ex: "Imagem mostra X, mas o item pergunta sobre Y")
+- tipoNaoConformidade: tipo identificado ou "Nenhuma identificada" (apenas se relevante)
+- gravidade: "baixa", "media", "alta" ou "critica" (apenas se relevante)
+- sugestoes: array com 2-3 sugestões de correção (apenas se relevante)
+- referenciaLegal: citação legal (ex: "RDC 216/2004, Art. 4.1.3") (apenas se relevante)`;
     const response = await this.openaiVision.chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [
@@ -228,12 +220,20 @@ Retorne APENAS um JSON válido (sem markdown, sem backticks) com:
           ],
         },
       ],
-      max_tokens: 1500,
+      max_tokens: 800,
     });
     const content = response.choices[0]?.message?.content || '{}';
     try {
       const cleanContent = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-      return JSON.parse(cleanContent);
+      const parsed = JSON.parse(cleanContent);
+      return {
+        descricaoIa: parsed.descricaoIa || '',
+        tipoNaoConformidade: parsed.tipoNaoConformidade || 'Nenhuma identificada',
+        gravidade: parsed.gravidade || 'media',
+        sugestoes: parsed.sugestoes || [],
+        referenciaLegal: parsed.referenciaLegal || '',
+        imagemRelevante: parsed.imagemRelevante !== undefined ? parsed.imagemRelevante : true,
+      };
     } catch {
       return {
         descricaoIa: content,
@@ -241,6 +241,7 @@ Retorne APENAS um JSON válido (sem markdown, sem backticks) com:
         gravidade: 'media',
         sugestoes: ['Tente novamente com outra imagem'],
         referenciaLegal: 'Verificar legislação aplicável',
+        imagemRelevante: true,
       };
     }
   }

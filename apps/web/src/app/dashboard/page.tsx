@@ -176,7 +176,7 @@ export default function DashboardPage() {
                         {auditoria.unidade?.nome || 'Unidade'}
                       </p>
                       <p className="text-sm text-base-content/60 truncate">
-                        {auditoria.unidade?.cliente?.nome || 'Cliente'}
+                        {auditoria.unidade?.cliente?.nomeFantasia || auditoria.unidade?.cliente?.razaoSocial || 'Cliente'}
                       </p>
                     </div>
                     <div className="flex flex-col items-end gap-1">

@@ -24,7 +24,6 @@ import {
   CriticidadeItem,
   CATEGORIA_ITEM_LABELS,
   CRITICIDADE_LABELS,
-  CriarTemplateRequest,
   CriarTemplateItemRequest,
 } from '@/lib/api';
 import { toastService } from '@/lib/toast';
@@ -36,16 +35,8 @@ export default function TemplatesPage() {
   const [templates, setTemplates] = useState<ChecklistTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedTemplate, setExpandedTemplate] = useState<string | null>(null);
-  const [showModal, setShowModal] = useState(false);
   const [showItemModal, setShowItemModal] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-
-  const [templateForm, setTemplateForm] = useState<CriarTemplateRequest>({
-    nome: '',
-    descricao: '',
-    tipoAtividade: TipoAtividade.OUTRO,
-    versao: '1.0',
-  });
 
   const [itemForm, setItemForm] = useState<CriarTemplateItemRequest>({
     pergunta: '',
@@ -74,25 +65,9 @@ export default function TemplatesPage() {
     }
   };
 
-  const handleCriarTemplate = async () => {
-    if (!templateForm.nome) return;
-    setSaving(true);
-    try {
-      const novoTemplate = await checklistService.criarTemplate(templateForm);
-      toastService.success('Template criado com sucesso!');
-      setTemplates((prevTemplates) => [novoTemplate, ...prevTemplates]);
-      setShowModal(false);
-      setTemplateForm({
-        nome: '',
-        descricao: '',
-        tipoAtividade: TipoAtividade.OUTRO,
-        versao: '1.0',
-      });
-    } catch (error) {
-      // Erro já é tratado pelo interceptor
-    } finally {
-      setSaving(false);
-    }
+  const handleCriarTemplate = () => {
+    // Redireciona para a página de criação completa
+    window.location.href = '/templates/novo';
   };
 
   const handleAdicionarItem = async () => {
@@ -147,7 +122,7 @@ export default function TemplatesPage() {
   return (
     <AppLayout>
       <PageHeader
-        title="Templates"
+        title="Checklists"
         subtitle="Modelos de checklist para auditorias"
         action={
           <div className="flex gap-2">
@@ -158,13 +133,13 @@ export default function TemplatesPage() {
               <Upload className="w-4 h-4" />
               Importar
             </Link>
-            <button
-              onClick={() => setShowModal(true)}
+            <Link
+              href="/templates/novo"
               className="btn btn-primary btn-sm gap-1"
             >
               <Plus className="w-4 h-4" />
-              Novo
-            </button>
+              Novo Checklist
+            </Link>
           </div>
         }
       />
@@ -179,10 +154,10 @@ export default function TemplatesPage() {
         ) : templates.length === 0 ? (
           <EmptyState
             icon={FileText}
-            title="Nenhum template cadastrado"
-            description="Crie seu primeiro template de checklist para usar nas auditorias."
-            actionLabel="Criar Template"
-            actionHref="#"
+            title="Nenhum checklist cadastrado"
+            description="Crie seu primeiro checklist para usar nas auditorias."
+            actionLabel="Criar Checklist"
+            actionHref="/templates/novo"
           />
         ) : (
           <div className="space-y-3">
@@ -195,7 +170,7 @@ export default function TemplatesPage() {
                 className="card bg-base-100 shadow-sm border border-base-300"
               >
                 <div className="card-body p-0">
-                  {/* Template Header */}
+                  {/* Checklist Header */}
                   <button
                     onClick={() =>
                       setExpandedTemplate(
@@ -232,7 +207,7 @@ export default function TemplatesPage() {
                     )}
                   </button>
 
-                  {/* Itens do Template */}
+                  {/* Itens do Checklist */}
                   {expandedTemplate === template.id && (
                     <div className="border-t border-base-200">
                       {template.descricao && (
@@ -302,7 +277,7 @@ export default function TemplatesPage() {
                           href={`/templates/${template.id}`}
                           className="btn btn-ghost btn-sm"
                         >
-                          Editar Template
+                          Editar Checklist
                         </Link>
                       </div>
                     </div>
@@ -314,101 +289,6 @@ export default function TemplatesPage() {
         )}
       </div>
 
-      {/* Modal Novo Template */}
-      {showModal && (
-        <div className="modal modal-open">
-          <div className="modal-box">
-            <h3 className="font-bold text-lg mb-4">Novo Template</h3>
-            <div className="space-y-4">
-              <div className="form-control">
-                <label className="label">
-                  <span className="label-text">Nome *</span>
-                </label>
-                <input
-                  type="text"
-                  placeholder="Ex: Checklist RDC 216 - Restaurantes"
-                  className="input input-bordered"
-                  value={templateForm.nome}
-                  onChange={(e) =>
-                    setTemplateForm({ ...templateForm, nome: e.target.value })
-                  }
-                />
-              </div>
-              <div className="form-control">
-                <label className="label">
-                  <span className="label-text">Descrição</span>
-                </label>
-                <textarea
-                  placeholder="Descreva o objetivo deste template..."
-                  className="textarea textarea-bordered"
-                  rows={2}
-                  value={templateForm.descricao}
-                  onChange={(e) =>
-                    setTemplateForm({ ...templateForm, descricao: e.target.value })
-                  }
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="form-control">
-                  <label className="label">
-                    <span className="label-text">Tipo de Atividade</span>
-                  </label>
-                  <select
-                    className="select select-bordered"
-                    value={templateForm.tipoAtividade}
-                    onChange={(e) =>
-                      setTemplateForm({
-                        ...templateForm,
-                        tipoAtividade: e.target.value as TipoAtividade,
-                      })
-                    }
-                  >
-                    {Object.entries(TIPO_ATIVIDADE_LABELS).map(([value, label]) => (
-                      <option key={value} value={value}>
-                        {label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="form-control">
-                  <label className="label">
-                    <span className="label-text">Versão</span>
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="1.0"
-                    className="input input-bordered"
-                    value={templateForm.versao}
-                    onChange={(e) =>
-                      setTemplateForm({ ...templateForm, versao: e.target.value })
-                    }
-                  />
-                </div>
-              </div>
-            </div>
-            <div className="modal-action">
-              <button className="btn btn-ghost" onClick={() => setShowModal(false)}>
-                Cancelar
-              </button>
-              <button
-                className="btn btn-primary"
-                onClick={handleCriarTemplate}
-                disabled={saving || !templateForm.nome}
-              >
-                {saving ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Salvando...
-                  </>
-                ) : (
-                  'Salvar'
-                )}
-              </button>
-            </div>
-          </div>
-          <div className="modal-backdrop" onClick={() => setShowModal(false)}></div>
-        </div>
-      )}
 
       {/* Modal Novo Item */}
       {showItemModal && (

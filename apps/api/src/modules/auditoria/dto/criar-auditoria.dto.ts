@@ -38,10 +38,10 @@ export class IniciarAuditoriaDto {
  * DTO para responder um item da auditoria.
  */
 export class ResponderItemDto {
-  @ApiProperty({ description: 'Resposta do item', enum: RespostaItem })
-  @IsEnum(RespostaItem)
+  @ApiProperty({ description: 'Resposta do item (pode ser enum ou string para opções personalizadas)', enum: RespostaItem })
+  @IsString()
   @IsNotEmpty()
-  resposta: RespostaItem;
+  resposta: RespostaItem | string;
 
   @ApiPropertyOptional({ description: 'Observação do auditor' })
   @IsString()

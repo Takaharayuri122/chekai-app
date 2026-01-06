@@ -39,7 +39,7 @@ export class UsuarioController {
 
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(PerfilUsuario.MASTER, PerfilUsuario.ANALISTA)
+  @Roles(PerfilUsuario.MASTER, PerfilUsuario.GESTOR)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Cria um novo usuário' })
   @ApiResponse({ status: 201, description: 'Usuário criado com sucesso' })
@@ -53,14 +53,14 @@ export class UsuarioController {
 
   @Get()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(PerfilUsuario.MASTER, PerfilUsuario.ANALISTA)
+  @Roles(PerfilUsuario.MASTER, PerfilUsuario.GESTOR)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Lista todos os usuários' })
   @ApiResponse({ status: 200, description: 'Lista de usuários' })
   async listar(
     @Query('page') page = 1,
     @Query('limit') limit = 10,
-    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; analistaId?: string },
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; gestorId?: string },
   ): Promise<PaginatedResult<Usuario>> {
     return this.usuarioService.listar({ page, limit }, usuario);
   }
@@ -79,7 +79,7 @@ export class UsuarioController {
     if (usuario.perfil === PerfilUsuario.AUDITOR && usuarioEncontrado.id !== usuario.id) {
       throw new ForbiddenException('Acesso negado');
     }
-    if (usuario.perfil === PerfilUsuario.ANALISTA && usuarioEncontrado.analistaId !== usuario.id && usuarioEncontrado.id !== usuario.id) {
+    if (usuario.perfil === PerfilUsuario.GESTOR && usuarioEncontrado.gestorId !== usuario.id && usuarioEncontrado.id !== usuario.id) {
       throw new ForbiddenException('Acesso negado');
     }
     return usuarioEncontrado;

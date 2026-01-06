@@ -36,8 +36,8 @@ export class ClienteService {
     dto: CriarClienteDto,
     usuarioAutenticado?: { id: string; perfil: PerfilUsuario },
   ): Promise<Cliente> {
-    if (usuarioAutenticado && usuarioAutenticado.perfil !== PerfilUsuario.MASTER && usuarioAutenticado.perfil !== PerfilUsuario.ANALISTA) {
-      throw new ForbiddenException('Apenas Master e Analista podem criar clientes');
+    if (usuarioAutenticado && usuarioAutenticado.perfil !== PerfilUsuario.MASTER && usuarioAutenticado.perfil !== PerfilUsuario.GESTOR) {
+      throw new ForbiddenException('Apenas Master e Gestor podem criar clientes');
     }
     // Normalizar CNPJ (remover máscara)
     const cnpjNormalizado = dto.cnpj.replace(/\D/g, '');
@@ -51,7 +51,7 @@ export class ClienteService {
     const cliente = this.clienteRepository.create({
       ...dto,
       cnpj: cnpjNormalizado,
-      analistaId: usuarioAutenticado?.perfil === PerfilUsuario.ANALISTA ? usuarioAutenticado.id : undefined,
+      gestorId: usuarioAutenticado?.perfil === PerfilUsuario.GESTOR ? usuarioAutenticado.id : undefined,
     });
     return this.clienteRepository.save(cliente);
   }
@@ -64,8 +64,8 @@ export class ClienteService {
     usuarioAutenticado?: { id: string; perfil: PerfilUsuario },
   ): Promise<PaginatedResult<Cliente>> {
     let where: any = {};
-    if (usuarioAutenticado && usuarioAutenticado.perfil === PerfilUsuario.ANALISTA) {
-      where = { analistaId: usuarioAutenticado.id };
+    if (usuarioAutenticado && usuarioAutenticado.perfil === PerfilUsuario.GESTOR) {
+      where = { gestorId: usuarioAutenticado.id };
     }
     const [items, total] = await this.clienteRepository.findAndCount({
       where,
@@ -91,7 +91,7 @@ export class ClienteService {
     if (!cliente) {
       throw new NotFoundException('Cliente não encontrado');
     }
-    if (usuarioAutenticado && usuarioAutenticado.perfil === PerfilUsuario.ANALISTA && cliente.analistaId !== usuarioAutenticado.id) {
+    if (usuarioAutenticado && usuarioAutenticado.perfil === PerfilUsuario.GESTOR && cliente.gestorId !== usuarioAutenticado.id) {
       throw new ForbiddenException('Acesso negado a este cliente');
     }
     return cliente;

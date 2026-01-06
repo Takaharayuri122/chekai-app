@@ -40,9 +40,27 @@ export class LegislacaoService {
     private readonly supabaseService: SupabaseService,
     private readonly configService: ConfigService,
   ) {
+    const apiKey = this.configService.get<string>('OPENAI_API_KEY');
+    console.log('[LegislacaoService] Verificando OPENAI_API_KEY...');
+    console.log('[LegislacaoService] API Key presente:', !!apiKey);
+    console.log('[LegislacaoService] API Key length:', apiKey?.length || 0);
+    console.log('[LegislacaoService] API Key prefix:', apiKey?.substring(0, 7) || 'N/A');
+    
+    if (!apiKey) {
+      throw new Error(
+        'OPENAI_API_KEY não configurada. Configure a variável de ambiente OPENAI_API_KEY no arquivo .env',
+      );
+    }
+    
+    const trimmedKey = apiKey.trim();
+    console.log('[LegislacaoService] API Key após trim length:', trimmedKey.length);
+    console.log('[LegislacaoService] API Key após trim prefix:', trimmedKey.substring(0, 7));
+    
     this.openai = new OpenAI({
-      apiKey: this.configService.get<string>('OPENAI_API_KEY'),
+      apiKey: trimmedKey,
     });
+    
+    console.log('[LegislacaoService] Cliente OpenAI inicializado com sucesso');
   }
 
   /**
@@ -143,11 +161,38 @@ export class LegislacaoService {
    * Gera embedding para um texto usando OpenAI.
    */
   async gerarEmbedding(texto: string): Promise<number[]> {
-    const response = await this.openai.embeddings.create({
-      model: 'text-embedding-3-small',
-      input: texto,
-    });
-    return response.data[0].embedding;
+    console.log('[LegislacaoService] Gerando embedding para texto:', texto.substring(0, 50) + '...');
+    console.log('[LegislacaoService] Modelo:', 'text-embedding-3-small');
+    
+    try {
+      const apiKey = this.configService.get<string>('OPENAI_API_KEY');
+      console.log('[LegislacaoService] API Key sendo usada (prefix):', apiKey?.substring(0, 7) || 'N/A');
+      console.log('[LegislacaoService] API Key length:', apiKey?.length || 0);
+      
+      const response = await this.openai.embeddings.create({
+        model: 'text-embedding-3-small',
+        input: texto,
+      });
+      
+      console.log('[LegislacaoService] Embedding gerado com sucesso. Tamanho:', response.data[0].embedding.length);
+      return response.data[0].embedding;
+    } catch (error: any) {
+      console.error('[LegislacaoService] Erro ao gerar embedding:', {
+        status: error?.status,
+        message: error?.message,
+        code: error?.code,
+        type: error?.type,
+      });
+      
+      if (error?.status === 401 || error?.message?.includes('Invalid API key') || error?.message?.includes('Incorrect API key')) {
+        const apiKey = this.configService.get<string>('OPENAI_API_KEY');
+        console.error('[LegislacaoService] API Key inválida detectada. Key prefix:', apiKey?.substring(0, 7) || 'N/A');
+        throw new Error(
+          'Chave de API da OpenAI inválida ou expirada. Verifique a variável OPENAI_API_KEY no arquivo .env e certifique-se de que a chave está correta e ativa.',
+        );
+      }
+      throw new Error(`Erro ao gerar embedding: ${error?.message || 'Erro desconhecido'}`);
+    }
   }
 
   /**
@@ -184,21 +229,74 @@ export class LegislacaoService {
     query: string,
     limite = 5,
   ): Promise<BuscaSimilarResult[]> {
-    const queryEmbedding = await this.gerarEmbedding(query);
+    console.log('[LegislacaoService] Iniciando busca de chunks similares...');
+    console.log('[LegislacaoService] Query:', query.substring(0, 50) + '...');
+    console.log('[LegislacaoService] Limite:', limite);
+    
+    let queryEmbedding: number[];
+    try {
+      queryEmbedding = await this.gerarEmbedding(query);
+      console.log('[LegislacaoService] Embedding gerado. Tamanho:', queryEmbedding.length);
+    } catch (error: any) {
+      console.error('[LegislacaoService] Erro ao gerar embedding:', error.message);
+      // Propaga o erro de embedding com mensagem clara
+      throw error;
+    }
+    
+    console.log('[LegislacaoService] Obtendo cliente Supabase...');
     const supabase = this.supabaseService.getClient();
+    console.log('[LegislacaoService] Cliente Supabase obtido com sucesso');
+    
+    console.log('[LegislacaoService] Chamando RPC buscar_chunks_similares...');
+    console.log('[LegislacaoService] Parâmetros:', {
+      query_embedding_length: queryEmbedding.length,
+      match_limit: limite,
+    });
+    
     // Chama a função stored procedure via RPC
     const { data, error } = await supabase.rpc('buscar_chunks_similares', {
       query_embedding: queryEmbedding,
       match_limit: limite,
     });
+    
     if (error) {
-      if (error.code === '42883' || error.message.includes('function')) {
+      console.error('[LegislacaoService] Erro na chamada RPC:', {
+        code: error.code,
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+      });
+      
+      if (
+        error.code === '42883' ||
+        error.code === 'PGRST202' ||
+        error.message?.includes('function') ||
+        error.message?.includes('Could not find the function')
+      ) {
         throw new Error(
-          'Função buscar_chunks_similares não encontrada. Execute o script scripts/supabase-busca-vetorial-function.sql no SQL Editor do Supabase.',
+          'Função buscar_chunks_similares não encontrada no banco de dados.\n\n' +
+            'Para resolver:\n' +
+            '1. Acesse o Supabase Dashboard: https://supabase.com/dashboard\n' +
+            '2. Selecione seu projeto\n' +
+            '3. Vá em SQL Editor (menu lateral)\n' +
+            '4. Copie e cole o conteúdo do arquivo: scripts/supabase-busca-vetorial-function.sql\n' +
+            '5. Execute o script (botão Run ou Ctrl+Enter)\n' +
+            '6. Aguarde a confirmação de sucesso\n\n' +
+            'Após executar, reinicie a aplicação.',
         );
       }
+      
+      // Verifica se é erro de autenticação/API key
+      if (error.message?.includes('Invalid API key') || error.message?.includes('JWT') || error.code === 'PGRST301') {
+        throw new Error(
+          `Erro de autenticação do Supabase: ${error.message}. Verifique a variável SUPABASE_SERVICE_ROLE_KEY no arquivo .env e certifique-se de que está usando a Service Role Key (não a anon key).`,
+        );
+      }
+      
       throw new Error(`Erro ao buscar chunks similares: ${error.message}`);
     }
+    
+    console.log('[LegislacaoService] RPC executado com sucesso. Resultados encontrados:', data?.length || 0);
     return this.mapearResultadosBusca(data || []);
   }
 

@@ -193,6 +193,7 @@ export class IaController {
     gravidade: string;
     sugestoes: string[];
     referenciaLegal: string;
+    imagemRelevante: boolean;
   }> {
     if (!file) {
       throw new BadRequestException('Arquivo de imagem é obrigatório');

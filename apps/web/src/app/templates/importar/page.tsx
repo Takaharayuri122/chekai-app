@@ -107,7 +107,7 @@ export default function ImportarMokiPage() {
         tipoAtividade: formData.tipoAtividade,
         versao: formData.versao,
       });
-      toastService.success(`Template importado com sucesso! ${result.itensCriados} itens criados.`);
+      toastService.success(`Checklist importado com sucesso! ${result.itensCriados} itens criados.`);
       setResultado(result);
       setStep('result');
     } catch (error) {
@@ -139,7 +139,7 @@ export default function ImportarMokiPage() {
             <ChevronLeft className="w-5 h-5" />
           </Link>
           <div className="flex-1">
-            <h1 className="text-lg font-bold text-base-content">Importar do Moki</h1>
+            <h1 className="text-lg font-bold text-base-content">Importar Checklist do Moki</h1>
             <p className="text-sm text-base-content/60">Importe checklists exportados do Moki</p>
           </div>
         </div>
@@ -330,7 +330,7 @@ export default function ImportarMokiPage() {
                 <div className="space-y-4 mt-4">
                   <div className="form-control">
                     <label className="label">
-                      <span className="label-text">Nome do Template *</span>
+                      <span className="label-text">Nome do Checklist *</span>
                     </label>
                     <input
                       type="text"
@@ -347,7 +347,7 @@ export default function ImportarMokiPage() {
                     <textarea
                       className="textarea textarea-bordered"
                       rows={2}
-                      placeholder="Descrição opcional do template"
+                      placeholder="Descrição opcional do checklist"
                       value={formData.descricao}
                       onChange={(e) => setFormData({ ...formData, descricao: e.target.value })}
                     />
@@ -392,7 +392,7 @@ export default function ImportarMokiPage() {
                     <div>
                       <p className="font-medium">Pronto para importar</p>
                       <p className="text-sm text-base-content/70">
-                        Serão criados {preview?.totalGrupos} grupos e {preview?.totalPerguntas} perguntas.
+                        Serão criados {preview?.totalGrupos} grupos e {preview?.totalPerguntas} perguntas no checklist.
                       </p>
                     </div>
                   </div>
@@ -475,7 +475,7 @@ export default function ImportarMokiPage() {
                     href={`/templates/${resultado.templateId}`}
                     className="btn btn-primary gap-2"
                   >
-                    Ver Template
+                    Ver Checklist
                     <ArrowRight className="w-4 h-4" />
                   </Link>
                 </div>

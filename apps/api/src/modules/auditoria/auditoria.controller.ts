@@ -50,7 +50,7 @@ export class AuditoriaController {
 
   @Post()
   @UseGuards(RolesGuard)
-  @Roles(PerfilUsuario.AUDITOR)
+  @Roles(PerfilUsuario.MASTER, PerfilUsuario.GESTOR, PerfilUsuario.AUDITOR)
   @ApiOperation({ summary: 'Inicia uma nova auditoria' })
   @ApiResponse({ status: 201, description: 'Auditoria iniciada' })
   async iniciarAuditoria(
@@ -62,11 +62,11 @@ export class AuditoriaController {
 
   @Get()
   @UseGuards(RolesGuard)
-  @Roles(PerfilUsuario.MASTER, PerfilUsuario.ANALISTA, PerfilUsuario.AUDITOR)
+  @Roles(PerfilUsuario.MASTER, PerfilUsuario.GESTOR, PerfilUsuario.AUDITOR)
   @ApiOperation({ summary: 'Lista auditorias' })
   @ApiResponse({ status: 200, description: 'Lista de auditorias' })
   async listarAuditorias(
-    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; analistaId?: string },
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; gestorId?: string },
     @Query('page') page = 1,
     @Query('limit') limit = 10,
   ): Promise<PaginatedResult<Auditoria>> {
@@ -81,7 +81,7 @@ export class AuditoriaController {
   @ApiResponse({ status: 200, description: 'Auditoria encontrada' })
   async buscarAuditoriaPorId(
     @Param('id', ParseUUIDPipe) id: string,
-    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; analistaId?: string },
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; gestorId?: string },
   ): Promise<Auditoria> {
     return this.auditoriaService.buscarAuditoriaPorId(id, usuario);
   }

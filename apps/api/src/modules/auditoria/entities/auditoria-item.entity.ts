@@ -31,11 +31,11 @@ export class AuditoriaItem {
   id: string;
 
   @Column({
-    type: 'enum',
-    enum: RespostaItem,
+    type: 'varchar',
+    length: 100,
     default: RespostaItem.NAO_AVALIADO,
   })
-  resposta: RespostaItem;
+  resposta: RespostaItem | string;
 
   @Column({ type: 'text', nullable: true })
   observacao: string;

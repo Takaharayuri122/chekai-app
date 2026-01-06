@@ -3,7 +3,7 @@ import { persist } from 'zustand/middleware';
 
 export enum PerfilUsuario {
   MASTER = 'master',
-  ANALISTA = 'analista',
+  GESTOR = 'gestor',
   AUDITOR = 'auditor',
 }
 
@@ -12,7 +12,8 @@ export interface Usuario {
   nome: string;
   email: string;
   perfil: PerfilUsuario;
-  analistaId?: string;
+  telefone?: string;
+  gestorId?: string;
   tenantId?: string;
 }
 
@@ -23,7 +24,7 @@ interface AuthState {
   setAuth: (token: string, usuario: Usuario) => void;
   logout: () => void;
   isMaster: () => boolean;
-  isAnalista: () => boolean;
+  isGestor: () => boolean;
   isAuditor: () => boolean;
 }
 
@@ -45,9 +46,9 @@ export const useAuthStore = create<AuthState>()(
         const { usuario } = get();
         return usuario?.perfil === PerfilUsuario.MASTER;
       },
-      isAnalista: () => {
+      isGestor: () => {
         const { usuario } = get();
-        return usuario?.perfil === PerfilUsuario.ANALISTA;
+        return usuario?.perfil === PerfilUsuario.GESTOR;
       },
       isAuditor: () => {
         const { usuario } = get();

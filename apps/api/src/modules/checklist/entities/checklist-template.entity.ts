@@ -41,11 +41,11 @@ export class ChecklistTemplate {
   ativo: boolean;
 
   @ManyToOne(() => Usuario, { nullable: true })
-  @JoinColumn({ name: 'analista_id' })
-  analista: Usuario;
+  @JoinColumn({ name: 'gestor_id' })
+  gestor: Usuario;
 
-  @Column({ name: 'analista_id', nullable: true, type: 'uuid' })
-  analistaId: string | null;
+  @Column({ name: 'gestor_id', nullable: true, type: 'uuid' })
+  gestorId: string | null;
 
   @OneToMany(() => TemplateItem, (item) => item.template)
   itens: TemplateItem[];

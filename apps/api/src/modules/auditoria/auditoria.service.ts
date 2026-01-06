@@ -73,13 +73,13 @@ export class AuditoriaService {
    */
   async listarAuditorias(
     params: PaginationParams,
-    usuarioAutenticado: { id: string; perfil: PerfilUsuario; analistaId?: string },
+    usuarioAutenticado: { id: string; perfil: PerfilUsuario; gestorId?: string },
   ): Promise<PaginatedResult<Auditoria>> {
     let where: any = {};
     if (usuarioAutenticado.perfil === PerfilUsuario.AUDITOR) {
       where = { consultorId: usuarioAutenticado.id };
-    } else if (usuarioAutenticado.perfil === PerfilUsuario.ANALISTA) {
-      where = { consultor: { analistaId: usuarioAutenticado.id } };
+    } else if (usuarioAutenticado.perfil === PerfilUsuario.GESTOR) {
+      where = { consultor: { gestorId: usuarioAutenticado.id } };
     }
     const queryBuilder = this.auditoriaRepository.createQueryBuilder('auditoria')
       .leftJoinAndSelect('auditoria.unidade', 'unidade')
@@ -88,8 +88,8 @@ export class AuditoriaService {
       .leftJoinAndSelect('auditoria.consultor', 'consultor');
     if (usuarioAutenticado.perfil === PerfilUsuario.AUDITOR) {
       queryBuilder.where('auditoria.consultorId = :consultorId', { consultorId: usuarioAutenticado.id });
-    } else if (usuarioAutenticado.perfil === PerfilUsuario.ANALISTA) {
-      queryBuilder.where('consultor.analistaId = :analistaId', { analistaId: usuarioAutenticado.id });
+    } else if (usuarioAutenticado.perfil === PerfilUsuario.GESTOR) {
+      queryBuilder.where('consultor.gestorId = :gestorId', { gestorId: usuarioAutenticado.id });
     }
     const [items, total] = await queryBuilder
       .skip((params.page - 1) * params.limit)
@@ -104,7 +104,7 @@ export class AuditoriaService {
    */
   async buscarAuditoriaPorId(
     id: string,
-    usuarioAutenticado?: { id: string; perfil: PerfilUsuario; analistaId?: string },
+    usuarioAutenticado?: { id: string; perfil: PerfilUsuario; gestorId?: string },
   ): Promise<Auditoria> {
     const auditoria = await this.auditoriaRepository.findOne({
       where: { id },
@@ -125,8 +125,17 @@ export class AuditoriaService {
       if (usuarioAutenticado.perfil === PerfilUsuario.AUDITOR && auditoria.consultorId !== usuarioAutenticado.id) {
         throw new ForbiddenException('Acesso negado a esta auditoria');
       }
-      if (usuarioAutenticado.perfil === PerfilUsuario.ANALISTA && auditoria.consultor.analistaId !== usuarioAutenticado.id) {
-        throw new ForbiddenException('Acesso negado a esta auditoria');
+      if (usuarioAutenticado.perfil === PerfilUsuario.GESTOR) {
+        // Gestor pode acessar se:
+        // 1. Ele mesmo criou a auditoria (consultorId === gestor.id), OU
+        // 2. O consultor é um Auditor vinculado a ele (consultor.gestorId === gestor.id)
+        const consultor = auditoria.consultor;
+        const podeAcessar = 
+          auditoria.consultorId === usuarioAutenticado.id || 
+          (consultor && consultor.gestorId === usuarioAutenticado.id);
+        if (!podeAcessar) {
+          throw new ForbiddenException('Acesso negado a esta auditoria');
+        }
       }
     }
     return auditoria;
@@ -147,6 +156,23 @@ export class AuditoriaService {
     if (!item) {
       throw new NotFoundException('Item não encontrado');
     }
+    // Validar resposta: deve ser um valor do enum ou uma opção personalizada do template
+    const templateItem = item.templateItem;
+    if (templateItem?.usarRespostasPersonalizadas && templateItem?.opcoesResposta) {
+      // Se o template usa opções personalizadas, validar se a resposta está nas opções
+      if (!templateItem.opcoesResposta.includes(dto.resposta)) {
+        throw new BadRequestException(
+          `Resposta inválida. Opções válidas: ${templateItem.opcoesResposta.join(', ')}`
+        );
+      }
+    } else {
+      // Se não usa opções personalizadas, validar se é um valor do enum
+      if (!Object.values(RespostaItem).includes(dto.resposta as RespostaItem)) {
+        throw new BadRequestException(
+          `Resposta inválida. Valores válidos: ${Object.values(RespostaItem).join(', ')}`
+        );
+      }
+    }
     item.resposta = dto.resposta;
     item.observacao = dto.observacao ?? item.observacao;
     item.descricaoNaoConformidade = dto.descricaoNaoConformidade ?? item.descricaoNaoConformidade;
@@ -154,8 +180,18 @@ export class AuditoriaService {
     item.complementoDescricao = dto.complementoDescricao ?? item.complementoDescricao;
     item.planoAcaoSugerido = dto.planoAcaoSugerido ?? item.planoAcaoSugerido;
     item.referenciaLegal = dto.referenciaLegal ?? item.referenciaLegal;
+    // Calcular pontuação: apenas "conforme" recebe pontuação
+    // Para opções personalizadas, assumimos que apenas a primeira opção é "conforme"
+    // (pode ser ajustado no futuro com um campo específico no template)
     if (dto.resposta === RespostaItem.CONFORME) {
       item.pontuacao = item.templateItem?.peso ?? 1;
+    } else if (templateItem?.usarRespostasPersonalizadas && templateItem?.opcoesResposta && templateItem.opcoesResposta.length > 0) {
+      // Para opções personalizadas, a primeira opção é considerada "conforme"
+      if (dto.resposta === templateItem.opcoesResposta[0]) {
+        item.pontuacao = item.templateItem?.peso ?? 1;
+      } else {
+        item.pontuacao = 0;
+      }
     } else {
       item.pontuacao = 0;
     }

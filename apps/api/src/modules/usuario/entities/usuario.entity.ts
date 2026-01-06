@@ -14,7 +14,7 @@ import {
  */
 export enum PerfilUsuario {
   MASTER = 'master',
-  ANALISTA = 'analista',
+  GESTOR = 'gestor',
   AUDITOR = 'auditor',
 }
 
@@ -38,7 +38,7 @@ export class Usuario {
   @Column({
     type: 'enum',
     enum: PerfilUsuario,
-    default: PerfilUsuario.ANALISTA,
+    default: PerfilUsuario.GESTOR,
   })
   perfil: PerfilUsuario;
 
@@ -49,16 +49,16 @@ export class Usuario {
   telefone: string;
 
   @ManyToOne(() => Usuario, { nullable: true })
-  @JoinColumn({ name: 'analista_id' })
-  analista: Usuario;
+  @JoinColumn({ name: 'gestor_id' })
+  gestor: Usuario;
 
-  @Column({ name: 'analista_id', type: 'uuid', nullable: true })
-  analistaId: string | null;
+  @Column({ name: 'gestor_id', type: 'uuid', nullable: true })
+  gestorId: string | null;
 
   @Column({ name: 'tenant_id', type: 'uuid', nullable: true })
   tenantId: string | null;
 
-  @OneToMany(() => Usuario, (usuario) => usuario.analista)
+  @OneToMany(() => Usuario, (usuario) => usuario.gestor)
   auditores: Usuario[];
 
   @CreateDateColumn()

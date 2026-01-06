@@ -36,10 +36,11 @@ export default function AuditoriasPage() {
 
   const auditoriasFiltradas = auditorias.filter((a) => {
     const matchFiltro = filtro === 'todos' || a.status === filtro;
+    const clienteNome = a.unidade?.cliente?.nomeFantasia || a.unidade?.cliente?.razaoSocial || '';
     const matchBusca =
       !busca ||
       a.unidade?.nome?.toLowerCase().includes(busca.toLowerCase()) ||
-      a.unidade?.cliente?.nome?.toLowerCase().includes(busca.toLowerCase());
+      clienteNome.toLowerCase().includes(busca.toLowerCase());
     return matchFiltro && matchBusca;
   });
 
@@ -155,7 +156,7 @@ export default function AuditoriasPage() {
                         {auditoria.unidade?.nome || 'Unidade'}
                       </p>
                       <p className="text-sm text-base-content/60 truncate">
-                        {auditoria.unidade?.cliente?.nome || 'Cliente'}
+                        {auditoria.unidade?.cliente?.nomeFantasia || auditoria.unidade?.cliente?.razaoSocial || 'Cliente'}
                       </p>
                       <div className="flex items-center gap-2 mt-2">
                         {getStatusBadge(auditoria.status)}

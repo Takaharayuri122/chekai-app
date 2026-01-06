@@ -9,7 +9,7 @@ export interface AuthenticatedRequest extends Request {
     id: string;
     email: string;
     perfil: PerfilUsuario;
-    analistaId?: string;
+    gestorId?: string;
     tenantId?: string;
   };
 }

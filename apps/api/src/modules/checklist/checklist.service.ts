@@ -38,15 +38,15 @@ export class ChecklistService {
     dto: CriarChecklistTemplateDto,
     usuarioAutenticado?: { id: string; perfil: PerfilUsuario },
   ): Promise<ChecklistTemplate> {
-    if (usuarioAutenticado && usuarioAutenticado.perfil !== PerfilUsuario.MASTER && usuarioAutenticado.perfil !== PerfilUsuario.ANALISTA) {
-      throw new ForbiddenException('Apenas Master e Analista podem criar templates');
+    if (usuarioAutenticado && usuarioAutenticado.perfil !== PerfilUsuario.MASTER && usuarioAutenticado.perfil !== PerfilUsuario.GESTOR) {
+      throw new ForbiddenException('Apenas Master e Gestor podem criar templates');
     }
     const template = this.templateRepository.create({
       nome: dto.nome,
       descricao: dto.descricao,
       tipoAtividade: dto.tipoAtividade,
       versao: dto.versao,
-      analistaId: usuarioAutenticado?.perfil === PerfilUsuario.ANALISTA ? usuarioAutenticado.id : undefined,
+      gestorId: usuarioAutenticado?.perfil === PerfilUsuario.GESTOR ? usuarioAutenticado.id : undefined,
     });
     const savedTemplate = await this.templateRepository.save(template);
     if (dto.itens && dto.itens.length > 0) {
@@ -70,8 +70,8 @@ export class ChecklistService {
     usuarioAutenticado?: { id: string; perfil: PerfilUsuario },
   ): Promise<PaginatedResult<ChecklistTemplate>> {
     let where: any = { ativo: true };
-    if (usuarioAutenticado && usuarioAutenticado.perfil === PerfilUsuario.ANALISTA) {
-      where = { ...where, analistaId: usuarioAutenticado.id };
+    if (usuarioAutenticado && usuarioAutenticado.perfil === PerfilUsuario.GESTOR) {
+      where = { ...where, gestorId: usuarioAutenticado.id };
     }
     const [items, total] = await this.templateRepository.findAndCount({
       where,
@@ -119,7 +119,7 @@ export class ChecklistService {
     if (!template) {
       throw new NotFoundException('Template não encontrado');
     }
-    if (usuarioAutenticado && usuarioAutenticado.perfil === PerfilUsuario.ANALISTA && template.analistaId !== usuarioAutenticado.id) {
+    if (usuarioAutenticado && usuarioAutenticado.perfil === PerfilUsuario.GESTOR && template.gestorId !== usuarioAutenticado.id) {
       throw new ForbiddenException('Acesso negado a este template');
     }
     if (template.itens) {

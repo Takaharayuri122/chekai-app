@@ -56,7 +56,7 @@ export class ChecklistController {
 
   @Post('templates')
   @UseGuards(RolesGuard)
-  @Roles(PerfilUsuario.MASTER, PerfilUsuario.ANALISTA)
+  @Roles(PerfilUsuario.MASTER, PerfilUsuario.GESTOR)
   @ApiOperation({ summary: 'Cria um novo template de checklist' })
   @ApiResponse({ status: 201, description: 'Template criado com sucesso' })
   async criarTemplate(

@@ -16,17 +16,17 @@ import {
 import { useAuthStore, PerfilUsuario } from '@/lib/store';
 
 const allNavItems = [
-  { href: '/dashboard', label: 'Início', icon: Home, roles: [PerfilUsuario.MASTER, PerfilUsuario.ANALISTA, PerfilUsuario.AUDITOR] },
+  { href: '/dashboard', label: 'Início', icon: Home, roles: [PerfilUsuario.MASTER, PerfilUsuario.GESTOR, PerfilUsuario.AUDITOR] },
   { href: '/auditoria/nova', label: 'Nova', icon: Plus, roles: [PerfilUsuario.AUDITOR] },
-  { href: '/clientes', label: 'Clientes', icon: Building2, roles: [PerfilUsuario.MASTER, PerfilUsuario.ANALISTA] },
-  { href: '/templates', label: 'Templates', icon: FileText, roles: [PerfilUsuario.MASTER, PerfilUsuario.ANALISTA] },
-  { href: '/auditorias', label: 'Auditorias', icon: ClipboardCheck, roles: [PerfilUsuario.MASTER, PerfilUsuario.ANALISTA, PerfilUsuario.AUDITOR] },
-  { href: '/usuarios', label: 'Usuários', icon: User, roles: [PerfilUsuario.MASTER] },
+  { href: '/clientes', label: 'Clientes', icon: Building2, roles: [PerfilUsuario.MASTER, PerfilUsuario.GESTOR] },
+  { href: '/templates', label: 'Checklists', icon: FileText, roles: [PerfilUsuario.MASTER, PerfilUsuario.GESTOR] },
+  { href: '/auditorias', label: 'Auditorias', icon: ClipboardCheck, roles: [PerfilUsuario.MASTER, PerfilUsuario.GESTOR, PerfilUsuario.AUDITOR] },
+  { href: '/usuarios', label: 'Usuários', icon: User, roles: [PerfilUsuario.MASTER, PerfilUsuario.GESTOR] },
 ];
 
 export function Navbar() {
   const pathname = usePathname();
-  const { usuario, logout, isMaster, isAnalista, isAuditor } = useAuthStore();
+  const { usuario, logout, isMaster, isGestor, isAuditor } = useAuthStore();
 
   const handleLogout = () => {
     logout();

@@ -63,11 +63,11 @@ export class Cliente {
   ativo: boolean;
 
   @ManyToOne(() => Usuario, { nullable: true })
-  @JoinColumn({ name: 'analista_id' })
-  analista: Usuario;
+  @JoinColumn({ name: 'gestor_id' })
+  gestor: Usuario;
 
-  @Column({ name: 'analista_id', nullable: true })
-  analistaId: string;
+  @Column({ name: 'gestor_id', nullable: true })
+  gestorId: string;
 
   @OneToMany(() => Unidade, (unidade) => unidade.cliente)
   unidades: Unidade[];

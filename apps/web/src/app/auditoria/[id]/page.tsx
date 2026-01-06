@@ -30,7 +30,7 @@ import {
 } from '@/lib/api';
 import { toastService } from '@/lib/toast';
 
-type RespostaType = 'conforme' | 'nao_conforme' | 'nao_aplicavel';
+type RespostaType = 'conforme' | 'nao_conforme' | 'nao_aplicavel' | string;
 
 interface FotoPreview {
   id?: string;
@@ -114,6 +114,11 @@ export default function AuditoriaPage() {
   };
 
   const openPhotoModal = (item: AuditoriaItem) => {
+    // Verificar se o item tem resposta antes de abrir o modal
+    if (!item.resposta || item.resposta === 'nao_avaliado') {
+      toastService.warning('Por favor, marque uma resposta antes de adicionar fotos');
+      return;
+    }
     // Carregar fotos existentes do item
     const fotosExistentes: FotoPreview[] = (item.fotos || []).map((foto) => ({
       id: foto.id,
@@ -123,7 +128,7 @@ export default function AuditoriaPage() {
     setItemModal({
       item,
       fotos: fotosExistentes,
-      complemento: item.complementoDescricao || '',
+      complemento: '', // Campo removido, mas mantido para compatibilidade
       observacao: item.observacao || '',
       descricaoIaExistente: item.descricaoIa || '',
       isSaving: false,
@@ -133,8 +138,15 @@ export default function AuditoriaPage() {
   const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !itemModal || !auditoria) return;
+    // Verificar se o item tem resposta antes de processar a imagem
+    if (!itemModal.item.resposta || itemModal.item.resposta === 'nao_avaliado') {
+      toastService.warning('Por favor, marque uma resposta antes de adicionar fotos');
+      if (e.target) e.target.value = '';
+      return;
+    }
     if (itemModal.fotos.length >= MAX_FOTOS_POR_ITEM) {
       toastService.warning(`Máximo de ${MAX_FOTOS_POR_ITEM} fotos por item`);
+      if (e.target) e.target.value = '';
       return;
     }
     const preview = URL.createObjectURL(file);
@@ -169,20 +181,9 @@ export default function AuditoriaPage() {
           isExisting: true, // Marca como existente pois já foi salva
         };
         
-        // Adiciona a descrição da IA como sugestão no campo de complemento
-        // Só adiciona se o campo estiver vazio ou se for a primeira foto
-        let novoComplemento = prev.complemento;
-        if (analise.descricaoIa && !prev.complemento) {
-          novoComplemento = analise.descricaoIa;
-        } else if (analise.descricaoIa && prev.complemento && !prev.complemento.includes(analise.descricaoIa)) {
-          // Se já tiver texto, adiciona a nova descrição como complemento
-          novoComplemento = prev.complemento + '\n\n' + analise.descricaoIa;
-        }
-        
         return { 
           ...prev, 
           fotos: fotosAtualizadas,
-          complemento: novoComplemento,
           descricaoIaExistente: analise.descricaoIa,
         };
       });
@@ -201,7 +202,7 @@ export default function AuditoriaPage() {
           ),
         };
       });
-      // Atualiza o item com a análise da IA automaticamente
+      // Atualiza o item com a análise da IA automaticamente (salva a descrição da IA)
       await auditoriaService.responderItem(
         auditoria.id,
         itemModal.item.id,
@@ -274,18 +275,24 @@ export default function AuditoriaPage() {
 
   const handleSaveItemModal = async () => {
     if (!itemModal || !auditoria) return;
+    
+    // Validar se a observação foi preenchida
+    if (!itemModal.observacao || itemModal.observacao.trim() === '') {
+      toastService.warning('A observação do auditor é obrigatória');
+      setItemModal((prev) => prev ? { ...prev, isSaving: false } : null);
+      return;
+    }
+    
     setItemModal((prev) => prev ? { ...prev, isSaving: true } : null);
     // Preserva a resposta atual do item
     const respostaAtual = itemModal.item.resposta || 'nao_avaliado';
     try {
-      // Salva apenas os dados complementares (complemento e observação)
-      // As fotos e análises da IA já foram salvas automaticamente durante o upload
+      // Salva apenas a observação (a descrição da IA já foi salva automaticamente durante o upload)
       await auditoriaService.responderItem(
         auditoria.id,
         itemModal.item.id,
         respostaAtual,
         {
-          complementoDescricao: itemModal.complemento,
           observacao: itemModal.observacao,
         }
       );
@@ -298,7 +305,6 @@ export default function AuditoriaPage() {
             item.id === itemModal.item.id
               ? {
                   ...item,
-                  complementoDescricao: itemModal.complemento,
                   observacao: itemModal.observacao,
                 }
               : item
@@ -402,10 +408,14 @@ export default function AuditoriaPage() {
     };
   };
 
-  const getRespostaStyle = (item: AuditoriaItem, tipo: RespostaType) => {
+  const getRespostaStyle = (item: AuditoriaItem, tipo: RespostaType, isPersonalizada: boolean = false) => {
     const isSelected = item.resposta === tipo;
     const base = 'btn btn-sm flex-1';
     if (!isSelected) return `${base} btn-ghost`;
+    if (isPersonalizada) {
+      // Para opções personalizadas, usar estilo neutro
+      return `${base} btn-primary`;
+    }
     switch (tipo) {
       case 'conforme':
         return `${base} btn-success`;
@@ -413,6 +423,8 @@ export default function AuditoriaPage() {
         return `${base} btn-error`;
       case 'nao_aplicavel':
         return `${base} btn-warning`;
+      default:
+        return `${base} btn-primary`;
     }
   };
 
@@ -481,27 +493,47 @@ export default function AuditoriaPage() {
               </div>
 
               {/* Botões de resposta */}
-              <div className="flex gap-2 mt-3">
-                <button className={getRespostaStyle(item, 'conforme')} onClick={() => handleResposta(item.id, 'conforme')}>
-                  <CheckCircle className="w-4 h-4" />
-                  <span className="hidden sm:inline">Conforme</span>
-                </button>
-                <button className={getRespostaStyle(item, 'nao_conforme')} onClick={() => handleResposta(item.id, 'nao_conforme')}>
-                  <XCircle className="w-4 h-4" />
-                  <span className="hidden sm:inline">Não Conforme</span>
-                </button>
-                <button className={getRespostaStyle(item, 'nao_aplicavel')} onClick={() => handleResposta(item.id, 'nao_aplicavel')}>
-                  <AlertTriangle className="w-4 h-4" />
-                  <span className="hidden sm:inline">N/A</span>
-                </button>
+              <div className="flex gap-2 mt-3 flex-wrap">
+                {item.templateItem.usarRespostasPersonalizadas && item.templateItem.opcoesResposta && item.templateItem.opcoesResposta.length > 0 ? (
+                  // Opções personalizadas do template
+                  item.templateItem.opcoesResposta.map((opcao, idx) => (
+                    <button
+                      key={idx}
+                      className={getRespostaStyle(item, opcao, true)}
+                      onClick={() => handleResposta(item.id, opcao)}
+                    >
+                      <span>{opcao}</span>
+                    </button>
+                  ))
+                ) : (
+                  // Opções padrão
+                  <>
+                    <button className={getRespostaStyle(item, 'conforme')} onClick={() => handleResposta(item.id, 'conforme')}>
+                      <CheckCircle className="w-4 h-4" />
+                      <span className="hidden sm:inline">Conforme</span>
+                    </button>
+                    <button className={getRespostaStyle(item, 'nao_conforme')} onClick={() => handleResposta(item.id, 'nao_conforme')}>
+                      <XCircle className="w-4 h-4" />
+                      <span className="hidden sm:inline">Não Conforme</span>
+                    </button>
+                    <button className={getRespostaStyle(item, 'nao_aplicavel')} onClick={() => handleResposta(item.id, 'nao_aplicavel')}>
+                      <AlertTriangle className="w-4 h-4" />
+                      <span className="hidden sm:inline">N/A</span>
+                    </button>
+                  </>
+                )}
               </div>
 
               {/* Ações - sempre visíveis para documentar qualquer item */}
               <div className="mt-3 pt-3 border-t border-base-200">
                 <div className="flex gap-2">
                   <button
-                    className="btn btn-outline btn-sm gap-1 flex-1 border-primary text-primary hover:bg-primary hover:text-primary-content"
+                    className={`btn btn-outline btn-sm gap-1 flex-1 border-primary text-primary hover:bg-primary hover:text-primary-content ${
+                      (!item.resposta || item.resposta === 'nao_avaliado') ? 'opacity-50 cursor-not-allowed' : ''
+                    }`}
                     onClick={() => openPhotoModal(item)}
+                    disabled={!item.resposta || item.resposta === 'nao_avaliado'}
+                    title={(!item.resposta || item.resposta === 'nao_avaliado') ? 'Marque uma resposta antes de adicionar fotos' : ''}
                   >
                     <Camera className="w-4 h-4" />
                     {item.fotos?.length > 0 ? `Foto (${item.fotos.length})` : 'Adicionar Foto'}
@@ -689,16 +721,24 @@ export default function AuditoriaPage() {
                         </div>
                       )}
                       {foto.analiseIa && (
-                        <div className="absolute bottom-1 left-1">
-                          <span className={`badge badge-xs ${
-                            foto.analiseIa.tipoNaoConformidade === 'Nenhuma identificada' 
-                              ? 'badge-success' 
-                              : foto.analiseIa.gravidade === 'critica' ? 'badge-error' 
-                              : foto.analiseIa.gravidade === 'alta' ? 'badge-warning' 
-                              : 'badge-info'
-                          }`}>
-                            <Sparkles className="w-2 h-2" />
-                          </span>
+                        <div className="absolute bottom-1 left-1 flex gap-1 flex-wrap">
+                          {!foto.analiseIa.imagemRelevante && (
+                            <span className="badge badge-xs badge-error" title="Imagem não relacionada ao item do checklist">
+                              <AlertCircle className="w-2 h-2 mr-1" />
+                              Não relevante
+                            </span>
+                          )}
+                          {foto.analiseIa.imagemRelevante && (
+                            <span className={`badge badge-xs ${
+                              foto.analiseIa.tipoNaoConformidade === 'Nenhuma identificada' 
+                                ? 'badge-success' 
+                                : foto.analiseIa.gravidade === 'critica' ? 'badge-error' 
+                                : foto.analiseIa.gravidade === 'alta' ? 'badge-warning' 
+                                : 'badge-info'
+                            }`}>
+                              <Sparkles className="w-2 h-2" />
+                            </span>
+                          )}
                         </div>
                       )}
                       <button
@@ -749,6 +789,20 @@ export default function AuditoriaPage() {
                 </div>
               )}
 
+              {/* Alerta se houver imagens não relevantes */}
+              {itemModal.fotos.some((f) => !f.isExisting && f.analiseIa && !f.analiseIa.imagemRelevante) && (
+                <div className="alert alert-warning mb-4">
+                  <AlertCircle className="w-5 h-5" />
+                  <div>
+                    <h3 className="font-bold">Atenção: Imagem não relevante</h3>
+                    <div className="text-sm">
+                      Uma ou mais imagens não parecem estar relacionadas ao item do checklist. 
+                      Por favor, remova as imagens inadequadas ou adicione uma observação explicando por que a imagem é relevante.
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Novas análises da IA */}
               {itemModal.fotos.some((f) => !f.isExisting && f.analiseIa) && (
                 <div className="space-y-3 mb-4">
@@ -758,13 +812,23 @@ export default function AuditoriaPage() {
                   </p>
                   {itemModal.fotos.map((foto, index) => (
                     !foto.isExisting && foto.analiseIa && (
-                      <div key={index} className="bg-primary/10 border border-primary/20 rounded-lg p-3 text-sm">
+                      <div key={index} className={`rounded-lg p-3 text-sm ${
+                        !foto.analiseIa.imagemRelevante 
+                          ? 'bg-error/10 border-2 border-error/50' 
+                          : 'bg-primary/10 border border-primary/20'
+                      }`}>
                         <div className="flex items-start gap-2">
                           <img src={foto.preview} alt="" className="w-12 h-12 object-cover rounded" />
                           <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
+                            <div className="flex items-center gap-2 mb-2 flex-wrap">
                               <span className="font-medium">Nova Foto</span>
-                              {foto.analiseIa.tipoNaoConformidade !== 'Nenhuma identificada' && (
+                              {!foto.analiseIa.imagemRelevante && (
+                                <span className="badge badge-sm badge-error" title="Esta imagem não parece estar relacionada ao item do checklist">
+                                  <AlertCircle className="w-3 h-3 mr-1" />
+                                  IMAGEM NÃO RELEVANTE
+                                </span>
+                              )}
+                              {foto.analiseIa.tipoNaoConformidade !== 'Nenhuma identificada' && foto.analiseIa.imagemRelevante && (
                                 <span className={`badge badge-xs ${
                                   foto.analiseIa.gravidade === 'critica' ? 'badge-error' :
                                   foto.analiseIa.gravidade === 'alta' ? 'badge-warning' :
@@ -774,12 +838,34 @@ export default function AuditoriaPage() {
                                 </span>
                               )}
                             </div>
-                            <p className="text-base-content/80">{foto.analiseIa.descricaoIa}</p>
-                            {foto.analiseIa.tipoNaoConformidade !== 'Nenhuma identificada' && (
-                              <p className="text-xs text-warning mt-1">⚠️ {foto.analiseIa.tipoNaoConformidade}</p>
-                            )}
-                            {foto.analiseIa.referenciaLegal && (
-                              <p className="text-xs text-info mt-1">📋 {foto.analiseIa.referenciaLegal}</p>
+                            {!foto.analiseIa.imagemRelevante ? (
+                              <div className="space-y-2">
+                                <div className="bg-error/20 border border-error/30 rounded p-2">
+                                  <p className="text-error font-semibold text-sm mb-1">
+                                    ⚠️ IMAGEM NÃO RELACIONADA AO ITEM
+                                  </p>
+                                  <p className="text-error text-xs mb-2">
+                                    Esta imagem não parece estar relacionada ao item do checklist "{itemModal.item.templateItem.pergunta}". 
+                                    Por favor, remova esta imagem ou adicione uma observação explicando sua relevância.
+                                  </p>
+                                  {foto.analiseIa.descricaoIa && (
+                                    <div className="mt-2 pt-2 border-t border-error/30">
+                                      <p className="text-error text-xs font-medium mb-1">Motivo da não relevância:</p>
+                                      <p className="text-error/90 text-xs">{foto.analiseIa.descricaoIa}</p>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            ) : (
+                              <>
+                                <p className="text-base-content/80">{foto.analiseIa.descricaoIa}</p>
+                                {foto.analiseIa.tipoNaoConformidade !== 'Nenhuma identificada' && (
+                                  <p className="text-xs text-warning mt-1">⚠️ {foto.analiseIa.tipoNaoConformidade}</p>
+                                )}
+                                {foto.analiseIa.referenciaLegal && (
+                                  <p className="text-xs text-info mt-1">📋 {foto.analiseIa.referenciaLegal}</p>
+                                )}
+                              </>
                             )}
                           </div>
                         </div>
@@ -811,41 +897,27 @@ export default function AuditoriaPage() {
                 </div>
               )}
 
-              {/* Descrição do operador */}
-              <div className="form-control mb-4">
-                <label className="label">
-                  <span className="label-text font-medium">
-                    <Edit3 className="w-4 h-4 inline mr-1" />
-                    Descrição {itemModal.fotos.some((f) => f.analiseIa) ? '(complementar à IA)' : ''}
-                  </span>
-                </label>
-                <textarea
-                  className="textarea textarea-bordered"
-                  placeholder={itemModal.fotos.some((f) => f.analiseIa)
-                    ? "Adicione informações que a IA não detectou ou corrija algo..." 
-                    : "Descreva o que foi observado neste item..."
-                  }
-                  rows={3}
-                  value={itemModal.complemento}
-                  onChange={(e) => setItemModal((prev) => prev ? { ...prev, complemento: e.target.value } : null)}
-                />
-              </div>
-
               {/* Observação */}
               <div className="form-control mb-6">
                 <label className="label">
                   <span className="label-text font-medium">
                     <MessageSquare className="w-4 h-4 inline mr-1" />
-                    Observação do Auditor (opcional)
+                    Observação do Auditor <span className="text-error">*</span>
                   </span>
                 </label>
                 <textarea
-                  className="textarea textarea-bordered"
-                  placeholder="Notas internas, contexto adicional..."
-                  rows={2}
+                  className={`textarea textarea-bordered ${!itemModal.observacao || itemModal.observacao.trim() === '' ? 'textarea-error' : ''}`}
+                  placeholder="Descreva o que foi observado neste item..."
+                  rows={3}
                   value={itemModal.observacao}
                   onChange={(e) => setItemModal((prev) => prev ? { ...prev, observacao: e.target.value } : null)}
+                  required
                 />
+                {(!itemModal.observacao || itemModal.observacao.trim() === '') && (
+                  <label className="label">
+                    <span className="label-text-alt text-error">A observação é obrigatória</span>
+                  </label>
+                )}
               </div>
 
               {/* Ações */}
@@ -856,7 +928,12 @@ export default function AuditoriaPage() {
                 <button
                   className="btn btn-primary gap-2"
                   onClick={handleSaveItemModal}
-                  disabled={itemModal.isSaving || itemModal.fotos.some((f) => f.isAnalyzing)}
+                  disabled={
+                    itemModal.isSaving || 
+                    itemModal.fotos.some((f) => f.isAnalyzing) ||
+                    !itemModal.observacao || 
+                    itemModal.observacao.trim() === ''
+                  }
                 >
                   {itemModal.isSaving ? (
                     <>

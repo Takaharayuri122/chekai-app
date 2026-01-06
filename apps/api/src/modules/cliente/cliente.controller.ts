@@ -41,7 +41,7 @@ export class ClienteController {
 
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(PerfilUsuario.MASTER, PerfilUsuario.ANALISTA)
+  @Roles(PerfilUsuario.MASTER, PerfilUsuario.GESTOR)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Cria um novo cliente' })
   @ApiResponse({ status: 201, description: 'Cliente criado com sucesso' })

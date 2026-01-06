@@ -64,10 +64,11 @@ api.interceptors.response.use(
         // Alguns erros do NestJS retornam 'error' ao invés de 'message'
         if (typeof data.error === 'string') {
           errorMessage = data.error;
-        } else if (Array.isArray(data.error)) {
-          errorMessage = data.error.length > 0 
-            ? (data.error.length === 1 ? data.error[0] : data.error.join(', '))
-            : null;
+        } else {
+          const errorArray = data.error as unknown;
+          if (Array.isArray(errorArray) && errorArray.length > 0) {
+            errorMessage = errorArray.length === 1 ? String(errorArray[0]) : errorArray.join(', ');
+          }
         }
       } else if (typeof data === 'string') {
         // Se o data for uma string diretamente
@@ -119,14 +120,14 @@ export interface LoginResponse {
     nome: string;
     email: string;
     perfil: PerfilUsuario;
-    analistaId?: string;
+    gestorId?: string;
     tenantId?: string;
   };
 }
 
 export enum PerfilUsuario {
   MASTER = 'master',
-  ANALISTA = 'analista',
+  GESTOR = 'gestor',
   AUDITOR = 'auditor',
 }
 
@@ -136,7 +137,7 @@ export interface CriarUsuarioRequest {
   senha: string;
   telefone?: string;
   perfil?: PerfilUsuario;
-  analistaId?: string;
+  gestorId?: string;
 }
 
 export const authService = {
@@ -149,20 +150,15 @@ export const authService = {
     await api.post('/usuarios', data);
   },
 
-  async cadastrar(data: CriarUsuarioRequest): Promise<LoginResponse> {
-    // Cria o usuário
-    const criarResponse = await api.post('/usuarios', data);
-    
-    // Verifica se a criação foi bem-sucedida
-    if (criarResponse.status !== 201 && criarResponse.status !== 200) {
-      throw new Error('Erro ao criar usuário');
-    }
-    
-    // Aguarda um pouco para garantir que o usuário foi criado no banco
-    await new Promise((resolve) => setTimeout(resolve, 300));
-    
-    // Faz login automaticamente
-    return this.login(data.email, data.senha);
+  async cadastrar(data: { nome: string; email: string; senha: string; telefone?: string }): Promise<LoginResponse> {
+    // Usa o endpoint público de cadastro que cria automaticamente como GESTOR
+    const response = await api.post<{ data: LoginResponse }>('/auth/cadastro', {
+      nome: data.nome,
+      email: data.email,
+      senha: data.senha,
+      telefone: data.telefone,
+    });
+    return response.data.data;
   },
 
   async me(): Promise<{ id: string; email: string; perfil: string }> {
@@ -178,7 +174,7 @@ export interface Usuario {
   perfil: PerfilUsuario;
   telefone?: string;
   ativo: boolean;
-  analistaId?: string;
+  gestorId?: string;
   tenantId?: string;
   criadoEm: string;
   atualizadoEm: string;
@@ -193,8 +189,12 @@ export interface PaginatedResult<T> {
 }
 
 export const usuarioService = {
-  async listar(page = 1, limit = 10): Promise<PaginatedResult<Usuario>> {
-    const response = await api.get('/usuarios', { params: { page, limit } });
+  async listar(page = 1, limit = 10, perfil?: PerfilUsuario): Promise<PaginatedResult<Usuario>> {
+    const params: { page: number; limit: number; perfil?: PerfilUsuario } = { page, limit };
+    if (perfil) {
+      params.perfil = perfil;
+    }
+    const response = await api.get('/usuarios', { params });
     return response.data.data;
   },
 
@@ -647,6 +647,7 @@ export interface AnaliseChecklistResponse {
   gravidade: string;
   sugestoes: string[];
   referenciaLegal: string;
+  imagemRelevante: boolean;
 }
 
 export const auditoriaService = {

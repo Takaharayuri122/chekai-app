@@ -27,7 +27,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  async validate(payload: JwtPayload): Promise<{ id: string; email: string; perfil: PerfilUsuario; analistaId?: string | null; tenantId?: string | null }> {
+  async validate(payload: JwtPayload): Promise<{ id: string; email: string; perfil: PerfilUsuario; gestorId?: string | null; tenantId?: string | null }> {
     const usuario = await this.usuarioService.buscarPorId(payload.sub);
     if (!usuario || !usuario.ativo) {
       throw new UnauthorizedException('Usuário inválido ou inativo');
@@ -36,7 +36,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       id: payload.sub,
       email: payload.email,
       perfil: payload.perfil,
-      analistaId: usuario.analistaId ?? undefined,
+      gestorId: usuario.gestorId ?? undefined,
       tenantId: usuario.tenantId ?? undefined,
     };
   }

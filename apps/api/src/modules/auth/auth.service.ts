@@ -43,7 +43,7 @@ export class AuthService {
         nome: usuario.nome,
         email: usuario.email,
         perfil: usuario.perfil,
-        analistaId: usuario.analistaId ?? undefined,
+        gestorId: usuario.gestorId ?? undefined,
         tenantId: usuario.tenantId ?? undefined,
       },
     };
@@ -58,6 +58,41 @@ export class AuthService {
     } catch {
       throw new UnauthorizedException('Token inválido');
     }
+  }
+
+  /**
+   * Cadastra um novo usuário pelo site (público).
+   * Usuários cadastrados pelo site são automaticamente criados como GESTOR.
+   */
+  async cadastroPublico(dto: { nome: string; email: string; senha: string; telefone: string }): Promise<LoginResponse> {
+    // Cria o usuário como GESTOR automaticamente
+    const usuario = await this.usuarioService.criar({
+      nome: dto.nome,
+      email: dto.email,
+      senha: dto.senha,
+      telefone: dto.telefone,
+      perfil: PerfilUsuario.GESTOR,
+    });
+    
+    // Realiza login automático após cadastro
+    const payload = {
+      sub: usuario.id,
+      email: usuario.email,
+      perfil: usuario.perfil,
+    };
+    const accessToken = this.jwtService.sign(payload);
+    
+    return {
+      accessToken,
+      usuario: {
+        id: usuario.id,
+        nome: usuario.nome,
+        email: usuario.email,
+        perfil: usuario.perfil,
+        gestorId: usuario.gestorId ?? undefined,
+        tenantId: usuario.tenantId ?? undefined,
+      },
+    };
   }
 }
 

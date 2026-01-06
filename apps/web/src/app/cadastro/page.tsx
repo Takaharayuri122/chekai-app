@@ -16,7 +16,7 @@ import { toastService } from '@/lib/toast';
 const cadastroSchema = z.object({
   nome: z.string().min(3, 'O nome deve ter pelo menos 3 caracteres'),
   email: z.string().email('E-mail inválido'),
-  telefone: z.string().optional(),
+  telefone: z.string().min(10, 'O WhatsApp deve ter pelo menos 10 dígitos'),
   senha: z.string().min(6, 'A senha deve ter pelo menos 6 caracteres'),
   confirmarSenha: z.string(),
 }).refine((data) => data.senha === data.confirmarSenha, {
@@ -32,6 +32,26 @@ export default function CadastroPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  // Função para aplicar máscara de telefone
+  const aplicarMascaraTelefone = (valor: string) => {
+    const apenasNumeros = valor.replace(/\D/g, '');
+    if (apenasNumeros.length <= 10) {
+      return apenasNumeros
+        .replace(/^(\d{2})(\d)/, '($1) $2')
+        .replace(/(\d{4})(\d)/, '$1-$2');
+    } else if (apenasNumeros.length <= 11) {
+      return apenasNumeros
+        .replace(/^(\d{2})(\d)/, '($1) $2')
+        .replace(/(\d{5})(\d)/, '$1-$2');
+    }
+    return valor;
+  };
+
+  // Função para remover máscara do telefone
+  const removerMascaraTelefone = (valor: string) => {
+    return valor.replace(/\D/g, '');
+  };
 
   const {
     register,
@@ -173,10 +193,21 @@ export default function CadastroPage() {
                   <input
                     type="tel"
                     placeholder="(11) 99999-9999"
-                    className="input input-bordered w-full pl-10"
-                    {...register('telefone')}
+                    className={`input input-bordered w-full pl-10 ${errors.telefone ? 'input-error' : ''}`}
+                    {...register('telefone', {
+                      onChange: (e) => {
+                        const valorFormatado = aplicarMascaraTelefone(e.target.value);
+                        e.target.value = valorFormatado;
+                      },
+                    })}
+                    maxLength={15}
                   />
                 </div>
+                {errors.telefone && (
+                  <label className="label">
+                    <span className="label-text-alt text-error">{errors.telefone.message}</span>
+                  </label>
+                )}
               </div>
 
               <div className="form-control">

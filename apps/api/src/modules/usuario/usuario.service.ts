@@ -37,27 +37,39 @@ export class UsuarioService {
       throw new ConflictException('E-mail já cadastrado');
     }
     if (usuarioCriador) {
-      if (usuarioCriador.perfil === PerfilUsuario.ANALISTA && dto.perfil === PerfilUsuario.AUDITOR) {
-        dto.analistaId = usuarioCriador.id;
-      } else if (usuarioCriador.perfil !== PerfilUsuario.MASTER) {
-        throw new ForbiddenException('Apenas Master pode criar usuários com este perfil');
+      // Gestor só pode criar Auditores
+      if (usuarioCriador.perfil === PerfilUsuario.GESTOR) {
+        if (dto.perfil && dto.perfil !== PerfilUsuario.AUDITOR) {
+          throw new ForbiddenException('Gestor só pode criar usuários com perfil Auditor');
+        }
+        // Força o perfil como AUDITOR e vincula ao gestor
+        dto.perfil = PerfilUsuario.AUDITOR;
+        dto.gestorId = usuarioCriador.id;
+      } else if (usuarioCriador.perfil === PerfilUsuario.MASTER) {
+        // Master pode criar qualquer perfil
+        // Se for GESTOR, não deve ter gestorId
+        if (dto.perfil === PerfilUsuario.GESTOR) {
+          dto.gestorId = undefined;
+        }
+      } else {
+        throw new ForbiddenException('Apenas Master e Gestor podem criar usuários');
       }
     }
-    if (dto.perfil === PerfilUsuario.ANALISTA) {
-      dto.analistaId = undefined;
+    if (dto.perfil === PerfilUsuario.GESTOR) {
+      dto.gestorId = undefined;
     }
     const senhaHash = await bcrypt.hash(dto.senha, 10);
     const usuario = this.usuarioRepository.create({
       nome: dto.nome,
       email: dto.email,
       senhaHash,
-      perfil: dto.perfil || PerfilUsuario.ANALISTA,
+      perfil: dto.perfil || PerfilUsuario.GESTOR,
       telefone: dto.telefone || undefined,
-      analistaId: dto.analistaId || undefined,
+      gestorId: dto.gestorId || undefined,
       tenantId: undefined,
     }) as Usuario;
     const savedUsuario = await this.usuarioRepository.save(usuario);
-    if (savedUsuario.perfil === PerfilUsuario.ANALISTA) {
+    if (savedUsuario.perfil === PerfilUsuario.GESTOR) {
       savedUsuario.tenantId = savedUsuario.id;
       const updatedUsuario = await this.usuarioRepository.save(savedUsuario);
       return updatedUsuario;
@@ -70,14 +82,14 @@ export class UsuarioService {
    */
   async listar(
     params: PaginationParams,
-    usuarioAutenticado?: { id: string; perfil: PerfilUsuario; analistaId?: string },
+    usuarioAutenticado?: { id: string; perfil: PerfilUsuario; gestorId?: string },
   ): Promise<PaginatedResult<Usuario>> {
     let where: any = {};
     if (usuarioAutenticado) {
-      if (usuarioAutenticado.perfil === PerfilUsuario.ANALISTA) {
+      if (usuarioAutenticado.perfil === PerfilUsuario.GESTOR) {
         where = [
           { id: usuarioAutenticado.id },
-          { analistaId: usuarioAutenticado.id },
+          { gestorId: usuarioAutenticado.id },
         ];
       } else if (usuarioAutenticado.perfil === PerfilUsuario.AUDITOR) {
         where = { id: usuarioAutenticado.id };
@@ -88,7 +100,7 @@ export class UsuarioService {
       skip: (params.page - 1) * params.limit,
       take: params.limit,
       order: { criadoEm: 'DESC' },
-      relations: ['analista'],
+      relations: ['gestor'],
     });
     return createPaginatedResult(items, total, params.page, params.limit);
   }
@@ -110,7 +122,7 @@ export class UsuarioService {
   async buscarPorEmail(email: string): Promise<Usuario | null> {
     return this.usuarioRepository.findOne({
       where: { email },
-      select: ['id', 'nome', 'email', 'senhaHash', 'perfil', 'ativo', 'analistaId', 'tenantId'],
+      select: ['id', 'nome', 'email', 'senhaHash', 'perfil', 'ativo', 'gestorId', 'tenantId'],
     });
   }
 

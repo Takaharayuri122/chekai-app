@@ -1,19 +1,17 @@
 import {
   IsEmail,
-  IsEnum,
   IsNotEmpty,
   IsOptional,
   IsString,
   MinLength,
-  IsUUID,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { PerfilUsuario } from '../entities/usuario.entity';
 
 /**
- * DTO para criação de um novo usuário.
+ * DTO para cadastro público de usuário (pelo site).
+ * Usuários cadastrados pelo site são automaticamente criados como GESTOR.
  */
-export class CriarUsuarioDto {
+export class CadastroPublicoDto {
   @ApiProperty({ description: 'Nome completo do usuário', example: 'João Silva' })
   @IsString()
   @IsNotEmpty({ message: 'O nome é obrigatório' })
@@ -29,23 +27,6 @@ export class CriarUsuarioDto {
   @MinLength(6, { message: 'A senha deve ter no mínimo 6 caracteres' })
   @IsNotEmpty({ message: 'A senha é obrigatória' })
   senha: string;
-
-  @ApiPropertyOptional({
-    description: 'Perfil do usuário',
-    enum: PerfilUsuario,
-    default: PerfilUsuario.GESTOR,
-  })
-  @IsEnum(PerfilUsuario, { message: 'Perfil inválido' })
-  @IsOptional()
-  perfil?: PerfilUsuario;
-
-  @ApiPropertyOptional({
-    description: 'ID do Gestor ao qual o Auditor está vinculado (apenas para perfil AUDITOR)',
-    example: '123e4567-e89b-12d3-a456-426614174000',
-  })
-  @IsUUID('4', { message: 'ID do gestor inválido' })
-  @IsOptional()
-  gestorId?: string;
 
   @ApiProperty({ description: 'WhatsApp do usuário', example: '11999998888' })
   @IsString()
