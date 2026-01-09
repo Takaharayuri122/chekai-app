@@ -143,6 +143,17 @@ export class AuditoriaController {
     return { success: true };
   }
 
+  @Put(':id/itens/:itemId/fotos/:fotoId/analise')
+  @ApiOperation({ summary: 'Atualiza a análise de IA de uma foto' })
+  @ApiResponse({ status: 200, description: 'Análise atualizada' })
+  async atualizarAnaliseFoto(
+    @Param('fotoId', ParseUUIDPipe) fotoId: string,
+    @Body() body: { analiseIa: string },
+  ): Promise<{ success: boolean }> {
+    await this.auditoriaService.atualizarAnaliseFoto(fotoId, body.analiseIa);
+    return { success: true };
+  }
+
   @Put(':id/finalizar')
   @ApiOperation({ summary: 'Finaliza a auditoria' })
   @ApiResponse({ status: 200, description: 'Auditoria finalizada' })
@@ -173,6 +184,20 @@ export class AuditoriaController {
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<AuditoriaItem[]> {
     return this.auditoriaService.buscarItensNaoConformes(id);
+  }
+
+  @Delete(':id')
+  @UseGuards(RolesGuard)
+  @Roles(PerfilUsuario.MASTER, PerfilUsuario.GESTOR)
+  @ApiOperation({ summary: 'Remove uma auditoria' })
+  @ApiResponse({ status: 200, description: 'Auditoria removida com sucesso' })
+  @ApiResponse({ status: 403, description: 'Acesso negado. Apenas gestores podem remover auditorias.' })
+  async removerAuditoria(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; gestorId?: string },
+  ): Promise<{ success: boolean }> {
+    await this.auditoriaService.removerAuditoria(id, usuario);
+    return { success: true };
   }
 }
 

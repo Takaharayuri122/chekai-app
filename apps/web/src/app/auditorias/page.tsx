@@ -11,18 +11,24 @@ import {
   Calendar,
   RotateCcw,
   Loader2,
+  Trash2,
 } from 'lucide-react';
 import { AppLayout, PageHeader, EmptyState, ConfirmDialog } from '@/components';
 import { auditoriaService, type Auditoria } from '@/lib/api';
 import { toastService } from '@/lib/toast';
+import { useAuthStore, PerfilUsuario } from '@/lib/store';
 
 export default function AuditoriasPage() {
+  const { usuario } = useAuthStore();
   const [auditorias, setAuditorias] = useState<Auditoria[]>([]);
   const [loading, setLoading] = useState(true);
   const [filtro, setFiltro] = useState<'todos' | 'em_andamento' | 'finalizada'>('todos');
   const [busca, setBusca] = useState('');
   const [reabrindoId, setReabrindoId] = useState<string | null>(null);
   const [showReabrirConfirm, setShowReabrirConfirm] = useState<string | null>(null);
+  const [removendoId, setRemovendoId] = useState<string | null>(null);
+  const [showRemoverConfirm, setShowRemoverConfirm] = useState<string | null>(null);
+  const podeRemover = usuario?.perfil === PerfilUsuario.MASTER || usuario?.perfil === PerfilUsuario.GESTOR;
 
   const carregarAuditorias = async () => {
     try {
@@ -57,6 +63,27 @@ export default function AuditoriasPage() {
       // Erro já é tratado pelo interceptor
     } finally {
       setReabrindoId(null);
+    }
+  };
+
+  const handleRemoverClick = (id: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setShowRemoverConfirm(id);
+  };
+
+  const handleRemoverConfirm = async () => {
+    if (!showRemoverConfirm) return;
+    try {
+      setRemovendoId(showRemoverConfirm);
+      await auditoriaService.remover(showRemoverConfirm);
+      toastService.success('Auditoria removida com sucesso!');
+      await carregarAuditorias();
+      setShowRemoverConfirm(null);
+    } catch (error) {
+      // Erro já é tratado pelo interceptor
+    } finally {
+      setRemovendoId(null);
     }
   };
 
@@ -230,6 +257,20 @@ export default function AuditoriasPage() {
                           Reabrir
                         </button>
                       )}
+                      {podeRemover && (
+                        <button
+                          onClick={(e) => handleRemoverClick(auditoria.id, e)}
+                          disabled={removendoId === auditoria.id}
+                          className="btn btn-ghost btn-sm gap-1 text-error hover:text-error hover:bg-error/10"
+                          title="Remover auditoria"
+                        >
+                          {removendoId === auditoria.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="w-4 h-4" />
+                          )}
+                        </button>
+                      )}
                       <Link href={`/auditoria/${auditoria.id}`}>
                         <ChevronRight className="w-5 h-5 text-base-content/30" />
                       </Link>
@@ -253,6 +294,19 @@ export default function AuditoriasPage() {
         cancelLabel="Cancelar"
         variant="warning"
         loading={reabrindoId !== null}
+      />
+
+      {/* Modal de Confirmação de Remoção */}
+      <ConfirmDialog
+        open={showRemoverConfirm !== null}
+        onClose={() => setShowRemoverConfirm(null)}
+        onConfirm={handleRemoverConfirm}
+        title="Remover Auditoria"
+        message="Tem certeza que deseja remover esta auditoria? Esta ação não pode ser desfeita e todos os dados relacionados serão excluídos permanentemente."
+        confirmLabel="Remover"
+        cancelLabel="Cancelar"
+        variant="danger"
+        loading={removendoId !== null}
       />
     </AppLayout>
   );

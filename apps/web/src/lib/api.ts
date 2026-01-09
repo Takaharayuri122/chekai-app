@@ -643,7 +643,7 @@ export interface AuditoriaItem {
   planoAcaoSugerido: string;
   referenciaLegal: string;
   templateItem: TemplateItem;
-  fotos: { id: string; url: string }[];
+  fotos: { id: string; url: string; analiseIa?: string }[];
 }
 
 export interface AnaliseChecklistResponse {
@@ -708,6 +708,10 @@ export const auditoriaService = {
     return response.data.data;
   },
 
+  async remover(id: string): Promise<void> {
+    await api.delete(`/auditorias/${id}`);
+  },
+
   async adicionarFoto(
     auditoriaId: string,
     itemId: string,
@@ -730,6 +734,17 @@ export const auditoriaService = {
     fotoId: string
   ): Promise<void> {
     await api.delete(`/auditorias/${auditoriaId}/itens/${itemId}/fotos/${fotoId}`);
+  },
+
+  async atualizarAnaliseFoto(
+    auditoriaId: string,
+    itemId: string,
+    fotoId: string,
+    analiseIa: string
+  ): Promise<void> {
+    await api.put(`/auditorias/${auditoriaId}/itens/${itemId}/fotos/${fotoId}/analise`, {
+      analiseIa,
+    });
   },
 };
 
@@ -938,6 +953,11 @@ export interface UsoCredito {
   metodoChamado: string;
   contexto?: string;
   criadoEm: string;
+  gestor?: {
+    id: string;
+    nome: string;
+    email: string;
+  };
   usuario?: {
     id: string;
     nome: string;
@@ -1000,6 +1020,122 @@ export const gestorService = {
 
   async consultarAssinatura(): Promise<Assinatura | null> {
     const response = await api.get('/gestores/me/assinatura');
+    return response.data.data;
+  },
+};
+
+export type ProvedorIa = 'openai' | 'deepseek';
+
+export interface ConfiguracaoCredito {
+  id: string;
+  provedor: ProvedorIa;
+  modelo: string;
+  tokensPorCredito: number;
+  ativo: boolean;
+  criadoEm: string;
+  atualizadoEm: string;
+}
+
+export interface CriarConfiguracaoCreditoRequest {
+  provedor: ProvedorIa;
+  modelo: string;
+  tokensPorCredito: number;
+  ativo?: boolean;
+}
+
+export const configuracaoCreditoService = {
+  async listar(): Promise<ConfiguracaoCredito[]> {
+    const response = await api.get('/configuracoes-credito');
+    return response.data.data;
+  },
+
+  async buscarPorId(id: string): Promise<ConfiguracaoCredito> {
+    const response = await api.get(`/configuracoes-credito/${id}`);
+    return response.data.data;
+  },
+
+  async criarOuAtualizar(data: CriarConfiguracaoCreditoRequest): Promise<ConfiguracaoCredito> {
+    const response = await api.post('/configuracoes-credito', data);
+    return response.data.data;
+  },
+
+  async atualizar(id: string, data: Partial<CriarConfiguracaoCreditoRequest>): Promise<ConfiguracaoCredito> {
+    const response = await api.put(`/configuracoes-credito/${id}`, data);
+    return response.data.data;
+  },
+
+  async remover(id: string): Promise<void> {
+    await api.delete(`/configuracoes-credito/${id}`);
+  },
+};
+
+export interface EstatisticasTokens {
+  total: {
+    tokensInput: number;
+    tokensOutput: number;
+    tokensTotal: number;
+    creditosConsumidos: number;
+    totalUsos: number;
+  };
+  porProvedor: Array<{
+    provedor: ProvedorIa;
+    tokensInput: number;
+    tokensOutput: number;
+    tokensTotal: number;
+    creditosConsumidos: number;
+    totalUsos: number;
+  }>;
+  porModelo: Array<{
+    provedor: ProvedorIa;
+    modelo: string;
+    tokensInput: number;
+    tokensOutput: number;
+    tokensTotal: number;
+    creditosConsumidos: number;
+    totalUsos: number;
+  }>;
+  porGestor: Array<{
+    gestorId: string;
+    gestorNome: string;
+    tokensInput: number;
+    tokensOutput: number;
+    tokensTotal: number;
+    creditosConsumidos: number;
+    totalUsos: number;
+  }>;
+  porPeriodo: Array<{
+    data: string;
+    tokensInput: number;
+    tokensOutput: number;
+    tokensTotal: number;
+    creditosConsumidos: number;
+    totalUsos: number;
+  }>;
+}
+
+export const auditoriaTokensService = {
+  async obterEstatisticas(dataInicio?: string, dataFim?: string): Promise<EstatisticasTokens> {
+    const params: any = {};
+    if (dataInicio) params.dataInicio = dataInicio;
+    if (dataFim) params.dataFim = dataFim;
+    const response = await api.get('/auditoria-tokens/estatisticas', { params });
+    return response.data.data;
+  },
+
+  async listarHistorico(
+    page = 1,
+    limit = 50,
+    gestorId?: string,
+    provedor?: ProvedorIa,
+    dataInicio?: string,
+    dataFim?: string,
+  ): Promise<{ items: UsoCredito[]; total: number }> {
+    const params: any = { page, limit };
+    if (gestorId) params.gestorId = gestorId;
+    if (provedor) params.provedor = provedor;
+    if (dataInicio) params.dataInicio = dataInicio;
+    if (dataFim) params.dataFim = dataFim;
+    const response = await api.get('/auditoria-tokens/historico', { params });
     return response.data.data;
   },
 };

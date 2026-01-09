@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ConfiguracaoCredito } from './entities/configuracao-credito.entity';
@@ -9,11 +9,54 @@ import { ProvedorIa } from './entities/uso-credito.entity';
  * Serviço responsável pela configuração de taxas de conversão de créditos.
  */
 @Injectable()
-export class ConfiguracaoCreditoService {
+export class ConfiguracaoCreditoService implements OnModuleInit {
   constructor(
     @InjectRepository(ConfiguracaoCredito)
     private readonly configuracaoRepository: Repository<ConfiguracaoCredito>,
   ) {}
+
+  /**
+   * Inicializa as configurações padrão quando o módulo é carregado.
+   */
+  async onModuleInit(): Promise<void> {
+    await this.inicializarConfiguracoesPadrao();
+  }
+
+  /**
+   * Cria as configurações padrão se não existirem.
+   */
+  async inicializarConfiguracoesPadrao(): Promise<void> {
+    const configuracoesPadrao = [
+      {
+        provedor: ProvedorIa.OPENAI,
+        modelo: 'gpt-4o-mini',
+        tokensPorCredito: 1000,
+      },
+      {
+        provedor: ProvedorIa.DEEPSEEK,
+        modelo: 'deepseek-chat',
+        tokensPorCredito: 10000,
+      },
+    ];
+
+    for (const config of configuracoesPadrao) {
+      const existente = await this.configuracaoRepository.findOne({
+        where: {
+          provedor: config.provedor,
+          modelo: config.modelo,
+          ativo: true,
+        },
+      });
+      if (!existente) {
+        await this.criarOuAtualizar({
+          provedor: config.provedor,
+          modelo: config.modelo,
+          tokensPorCredito: config.tokensPorCredito,
+          ativo: true,
+        });
+      }
+    }
+  }
 
   /**
    * Cria ou atualiza uma configuração de crédito.
@@ -36,18 +79,61 @@ export class ConfiguracaoCreditoService {
 
   /**
    * Busca a configuração ativa para um provedor e modelo.
+   * Se não encontrar, tenta criar a configuração padrão automaticamente.
    */
   async buscarConfiguracao(
     provedor: ProvedorIa,
     modelo: string,
   ): Promise<ConfiguracaoCredito | null> {
-    return this.configuracaoRepository.findOne({
+    let configuracao = await this.configuracaoRepository.findOne({
       where: {
         provedor,
         modelo,
         ativo: true,
       },
     });
+
+    // Se não encontrar, tenta criar configuração padrão
+    if (!configuracao) {
+      // Primeiro verifica se existe uma configuração padrão para este provedor/modelo
+      const configuracoesPadrao: Record<string, { provedor: ProvedorIa; modelo: string; tokensPorCredito: number }> = {
+        'openai/gpt-4o-mini': {
+          provedor: ProvedorIa.OPENAI,
+          modelo: 'gpt-4o-mini',
+          tokensPorCredito: 1000,
+        },
+        'deepseek/deepseek-chat': {
+          provedor: ProvedorIa.DEEPSEEK,
+          modelo: 'deepseek-chat',
+          tokensPorCredito: 10000,
+        },
+      };
+
+      const chave = `${provedor}/${modelo}`;
+      const configPadrao = configuracoesPadrao[chave];
+
+      if (configPadrao) {
+        // Cria a configuração padrão
+        configuracao = await this.criarOuAtualizar({
+          provedor: configPadrao.provedor,
+          modelo: configPadrao.modelo,
+          tokensPorCredito: configPadrao.tokensPorCredito,
+          ativo: true,
+        });
+      } else {
+        // Se não tem configuração padrão, inicializa todas as padrões e tenta buscar novamente
+        await this.inicializarConfiguracoesPadrao();
+        configuracao = await this.configuracaoRepository.findOne({
+          where: {
+            provedor,
+            modelo,
+            ativo: true,
+          },
+        });
+      }
+    }
+
+    return configuracao;
   }
 
   /**

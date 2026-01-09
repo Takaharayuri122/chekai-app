@@ -16,6 +16,10 @@ import {
   Coins,
   TrendingUp,
   UserCheck,
+  Settings,
+  Shield,
+  ChevronDown,
+  BarChart3,
 } from 'lucide-react';
 import { useAuthStore, PerfilUsuario } from '@/lib/store';
 
@@ -26,10 +30,15 @@ const allNavItems = [
   { href: '/templates', label: 'Checklists', icon: FileText, roles: [PerfilUsuario.MASTER, PerfilUsuario.GESTOR] },
   { href: '/auditorias', label: 'Auditorias', icon: ClipboardCheck, roles: [PerfilUsuario.MASTER, PerfilUsuario.GESTOR, PerfilUsuario.AUDITOR] },
   { href: '/usuarios', label: 'Usuários', icon: User, roles: [PerfilUsuario.MASTER, PerfilUsuario.GESTOR] },
-  { href: '/planos', label: 'Planos', icon: Package, roles: [PerfilUsuario.MASTER] },
-  { href: '/planos/assinaturas', label: 'Assinaturas', icon: UserCheck, roles: [PerfilUsuario.MASTER] },
   { href: '/gestor/limites', label: 'Meus Limites', icon: TrendingUp, roles: [PerfilUsuario.GESTOR] },
   { href: '/gestor/creditos', label: 'Meus Créditos', icon: Coins, roles: [PerfilUsuario.GESTOR] },
+];
+
+const administrativoItems = [
+  { href: '/planos', label: 'Planos', icon: Package },
+  { href: '/planos/assinaturas', label: 'Assinaturas', icon: UserCheck },
+  { href: '/configuracoes-credito', label: 'Config Créditos', icon: Settings },
+  { href: '/auditoria-tokens', label: 'Auditoria Tokens', icon: BarChart3 },
 ];
 
 export function Navbar() {
@@ -81,6 +90,44 @@ export function Navbar() {
                 </li>
               );
             })}
+            {isMaster() && (
+              <li className="dropdown dropdown-bottom">
+                <div
+                  tabIndex={0}
+                  role="button"
+                  className={`${
+                    administrativoItems.some(
+                      (item) => pathname === item.href || pathname.startsWith(item.href + '/')
+                    )
+                      ? 'bg-primary text-primary-content'
+                      : ''
+                  }`}
+                >
+                  <Shield className="w-4 h-4" />
+                  Administrativo
+                  <ChevronDown className="w-3 h-3 ml-1" />
+                </div>
+                <ul
+                  tabIndex={0}
+                  className="dropdown-content menu bg-base-100 rounded-box z-[1] w-52 p-2 shadow-lg border border-base-300 mt-2"
+                >
+                  {administrativoItems.map((item) => {
+                    const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+                    return (
+                      <li key={item.href}>
+                        <Link
+                          href={item.href}
+                          className={isActive ? 'bg-primary text-primary-content' : ''}
+                        >
+                          <item.icon className="w-4 h-4" />
+                          {item.label}
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </li>
+            )}
           </ul>
 
           <div className="dropdown dropdown-end">
@@ -120,6 +167,12 @@ export function Navbar() {
                     <Link href="/planos/assinaturas">
                       <UserCheck className="w-4 h-4" />
                       Assinaturas
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="/configuracoes-credito">
+                      <Settings className="w-4 h-4" />
+                      Config. Créditos
                     </Link>
                   </li>
                 </>
@@ -188,6 +241,34 @@ export function Navbar() {
                   </Link>
                 </li>
               ))}
+              {isMaster() && (
+                <li>
+                  <details>
+                    <summary className={administrativoItems.some(
+                      (item) => pathname === item.href || pathname.startsWith(item.href + '/')
+                    ) ? 'active' : ''}>
+                      <Shield className="w-4 h-4" />
+                      Administrativo
+                    </summary>
+                    <ul>
+                      {administrativoItems.map((item) => {
+                        const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+                        return (
+                          <li key={item.href}>
+                            <Link
+                              href={item.href}
+                              className={isActive ? 'active' : ''}
+                            >
+                              <item.icon className="w-4 h-4" />
+                              {item.label}
+                            </Link>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </details>
+                </li>
+              )}
               <div className="divider my-1"></div>
               <li>
                 <Link href="/perfil">
@@ -207,6 +288,12 @@ export function Navbar() {
                     <Link href="/planos/assinaturas">
                       <UserCheck className="w-4 h-4" />
                       Assinaturas
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="/configuracoes-credito">
+                      <Settings className="w-4 h-4" />
+                      Config. Créditos
                     </Link>
                   </li>
                 </>

@@ -127,12 +127,31 @@ export default function AuditoriaPage() {
       toastService.warning('Por favor, marque uma resposta antes de adicionar fotos');
       return;
     }
-    // Carregar fotos existentes do item
-    const fotosExistentes: FotoPreview[] = (item.fotos || []).map((foto) => ({
-      id: foto.id,
-      preview: foto.url,
-      isExisting: true,
-    }));
+    // Carregar fotos existentes do item com suas análises
+    const fotosExistentes: FotoPreview[] = (item.fotos || []).map((foto) => {
+      let analiseIa: AnaliseChecklistResponse | undefined;
+      if (foto.analiseIa) {
+        try {
+          analiseIa = JSON.parse(foto.analiseIa);
+        } catch {
+          // Se não for JSON válido, trata como texto simples
+          analiseIa = {
+            descricaoIa: foto.analiseIa,
+            tipoNaoConformidade: '',
+            gravidade: '',
+            sugestoes: [],
+            referenciaLegal: '',
+            imagemRelevante: true,
+          };
+        }
+      }
+      return {
+        id: foto.id,
+        preview: foto.url,
+        isExisting: true,
+        analiseIa,
+      };
+    });
     setItemModal({
       item,
       fotos: fotosExistentes,
@@ -167,40 +186,31 @@ export default function AuditoriaPage() {
     const novaFoto: FotoPreview = { file, preview, isAnalyzing: true, isExisting: false };
     const fotoIndex = itemModal.fotos.length;
     setItemModal((prev) => prev ? { ...prev, fotos: [...prev.fotos, novaFoto] } : null);
+    let fotoSalva: { id: string; url: string } | null = null;
+    
     try {
-      // Salva a foto automaticamente no backend
-      const fotoSalva = await auditoriaService.adicionarFoto(
+      // Salva a foto automaticamente no backend (sempre salva, mesmo sem créditos)
+      fotoSalva = await auditoriaService.adicionarFoto(
         auditoria.id,
         itemModal.item.id,
         file
       );
       toastService.success('Foto adicionada com sucesso!');
-      // Analisa a imagem com IA
-      const analise = await iaService.analisarImagemChecklist(
-        file,
-        itemModal.item.templateItem.pergunta,
-        itemModal.item.templateItem.categoria || 'geral',
-        auditoria?.template?.tipoAtividade || 'serviço de alimentação'
-      );
-      // Atualiza o estado com a foto salva e a análise
+      
+      // Atualiza o estado com a foto salva (sem análise ainda)
       setItemModal((prev) => {
         if (!prev) return null;
         const fotosAtualizadas = [...prev.fotos];
         fotosAtualizadas[fotoIndex] = { 
           ...fotosAtualizadas[fotoIndex], 
-          id: fotoSalva.id,
-          preview: fotoSalva.url || preview,
-          analiseIa: analise, 
-          isAnalyzing: false,
+          id: fotoSalva!.id,
+          preview: fotoSalva!.url || preview,
+          isAnalyzing: true, // Continua analisando
           isExisting: true, // Marca como existente pois já foi salva
         };
-        
-        return { 
-          ...prev, 
-          fotos: fotosAtualizadas,
-          descricaoIaExistente: analise.descricaoIa,
-        };
+        return { ...prev, fotos: fotosAtualizadas };
       });
+      
       // Atualiza o estado global da auditoria com a nova foto
       setAuditoria((prev) => {
         if (!prev) return prev;
@@ -210,49 +220,94 @@ export default function AuditoriaPage() {
             item.id === itemModal.item.id
               ? {
                   ...item,
-                  fotos: [...(item.fotos || []), { id: fotoSalva.id, url: fotoSalva.url }],
+                  fotos: [...(item.fotos || []), { 
+                    id: fotoSalva!.id, 
+                    url: fotoSalva!.url,
+                  }],
                 }
               : item
           ),
         };
       });
-      // Atualiza o item com a análise da IA automaticamente (salva a descrição da IA)
-      const itemAtualizado = await auditoriaService.responderItem(
-        auditoria.id,
-        itemModal.item.id,
-        itemModal.item.resposta || 'nao_avaliado',
-        {
-          descricaoIa: analise.descricaoIa,
-          descricaoNaoConformidade: analise.tipoNaoConformidade !== 'Nenhuma identificada' 
-            ? analise.tipoNaoConformidade 
-            : undefined,
-          referenciaLegal: analise.referenciaLegal,
-          planoAcaoSugerido: analise.sugestoes?.join('\n'),
+
+      // Tenta analisar a imagem com IA (pode falhar se não houver créditos)
+      try {
+        const analise = await iaService.analisarImagemChecklist(
+          file,
+          itemModal.item.templateItem.pergunta,
+          itemModal.item.templateItem.categoria || 'geral',
+          auditoria?.template?.tipoAtividade || 'serviço de alimentação'
+        );
+        
+        // Salva a análise individual da foto
+        await auditoriaService.atualizarAnaliseFoto(
+          auditoria.id,
+          itemModal.item.id,
+          fotoSalva.id,
+          JSON.stringify(analise)
+        );
+        
+        // Atualiza o estado com a análise
+        setItemModal((prev) => {
+          if (!prev) return null;
+          const fotosAtualizadas = [...prev.fotos];
+          fotosAtualizadas[fotoIndex] = { 
+            ...fotosAtualizadas[fotoIndex], 
+            analiseIa: analise, 
+            isAnalyzing: false,
+          };
+          return { ...prev, fotos: fotosAtualizadas };
+        });
+        
+        // Atualiza o estado global com a análise
+        setAuditoria((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            itens: prev.itens.map((item) =>
+              item.id === itemModal.item.id
+                ? {
+                    ...item,
+                    fotos: item.fotos.map((foto) =>
+                      foto.id === fotoSalva!.id
+                        ? { ...foto, analiseIa: JSON.stringify(analise) }
+                        : foto
+                    ),
+                  }
+                : item
+            ),
+          };
+        });
+      } catch (analiseError: any) {
+        // Se der erro na análise (ex: créditos insuficientes), apenas avisa mas mantém a foto
+        const errorMessage = analiseError?.response?.data?.message || analiseError?.message || 'Erro desconhecido';
+        if (errorMessage.includes('crédito') || errorMessage.includes('limite')) {
+          toastService.warning('Foto salva, mas não foi possível analisar: créditos insuficientes.');
+        } else {
+          toastService.warning(`Foto salva, mas não foi possível analisar: ${errorMessage}`);
         }
-      );
-      // Atualiza o estado global com a descrição da IA salva
-      setAuditoria((prev) => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          itens: prev.itens.map((item) =>
-            item.id === itemModal.item.id
-              ? {
-                  ...item,
-                  descricaoIa: itemAtualizado.descricaoIa || item.descricaoIa,
-                  descricaoNaoConformidade: itemAtualizado.descricaoNaoConformidade || item.descricaoNaoConformidade,
-                  referenciaLegal: itemAtualizado.referenciaLegal || item.referenciaLegal,
-                  planoAcaoSugerido: itemAtualizado.planoAcaoSugerido || item.planoAcaoSugerido,
-                }
-              : item
-          ),
-        };
-      });
-    } catch {
+        
+        // Atualiza o estado removendo o indicador de análise
+        setItemModal((prev) => {
+          if (!prev) return null;
+          const fotosAtualizadas = [...prev.fotos];
+          fotosAtualizadas[fotoIndex] = { 
+            ...fotosAtualizadas[fotoIndex], 
+            isAnalyzing: false,
+          };
+          return { ...prev, fotos: fotosAtualizadas };
+        });
+      }
+    } catch (error: any) {
+      // Se der erro ao salvar a foto, remove do estado
+      const errorMessage = error?.response?.data?.message || error?.message || 'Erro ao salvar foto';
+      toastService.error(`Erro ao salvar foto: ${errorMessage}`);
+      
       setItemModal((prev) => {
         if (!prev) return null;
         const fotosAtualizadas = [...prev.fotos];
-        fotosAtualizadas[fotoIndex] = { ...fotosAtualizadas[fotoIndex], isAnalyzing: false };
+        // Remove a foto que falhou ao salvar
+        fotosAtualizadas.splice(fotoIndex, 1);
         return { ...prev, fotos: fotosAtualizadas };
       });
     }
@@ -757,7 +812,7 @@ export default function AuditoriaPage() {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="modal-box max-w-2xl max-h-[90vh] overflow-y-auto"
+              className="modal-box max-w-5xl w-full max-h-[95vh] overflow-y-auto"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between mb-4">
@@ -868,55 +923,27 @@ export default function AuditoriaPage() {
                 )}
               </div>
 
-              {/* Descrição IA existente */}
-              {itemModal.descricaoIaExistente && (
-                <div className="mb-4">
-                  <p className="text-sm font-medium flex items-center gap-1 mb-2">
-                    <Sparkles className="w-4 h-4 text-success" />
-                    Análise Salva Anteriormente
-                  </p>
-                  <div className="bg-success/10 border border-success/20 rounded-lg p-3 text-sm">
-                    <p className="whitespace-pre-line">{itemModal.descricaoIaExistente}</p>
-                  </div>
-                  {itemModal.item.referenciaLegal && (
-                    <p className="text-xs text-info mt-2">📋 {itemModal.item.referenciaLegal}</p>
-                  )}
-                </div>
-              )}
-
-              {/* Alerta se houver imagens não relevantes */}
-              {itemModal.fotos.some((f) => !f.isExisting && f.analiseIa && !f.analiseIa.imagemRelevante) && (
-                <div className="alert alert-warning mb-4">
-                  <AlertCircle className="w-5 h-5" />
-                  <div>
-                    <h3 className="font-bold">Atenção: Imagem não relevante</h3>
-                    <div className="text-sm">
-                      Uma ou mais imagens não parecem estar relacionadas ao item do checklist. 
-                      Por favor, remova as imagens inadequadas ou adicione uma observação explicando por que a imagem é relevante.
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Novas análises da IA */}
-              {itemModal.fotos.some((f) => !f.isExisting && f.analiseIa) && (
+              {/* Análises individuais de cada foto */}
+              {itemModal.fotos.some((f) => f.analiseIa) && (
                 <div className="space-y-3 mb-4">
                   <p className="text-sm font-medium flex items-center gap-1">
                     <Sparkles className="w-4 h-4 text-primary" />
-                    Novas Análises
+                    Análises das Imagens
                   </p>
                   {itemModal.fotos.map((foto, index) => (
-                    !foto.isExisting && foto.analiseIa && (
-                      <div key={index} className={`rounded-lg p-3 text-sm ${
+                    foto.analiseIa && (
+                      <div key={foto.id || index} className={`rounded-lg p-3 text-sm ${
                         !foto.analiseIa.imagemRelevante 
                           ? 'bg-error/10 border-2 border-error/50' 
                           : 'bg-primary/10 border border-primary/20'
                       }`}>
-                        <div className="flex items-start gap-2">
-                          <img src={foto.preview} alt="" className="w-12 h-12 object-cover rounded" />
-                          <div className="flex-1">
+                        <div className="flex items-start gap-3">
+                          <img src={foto.preview} alt="" className="w-16 h-16 object-cover rounded flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-2 flex-wrap">
-                              <span className="font-medium">Nova Foto</span>
+                              <span className="font-medium text-xs text-base-content/60">
+                                {foto.isExisting ? 'Foto existente' : 'Nova foto'}
+                              </span>
                               {!foto.analiseIa.imagemRelevante && (
                                 <span className="badge badge-sm badge-error" title="Esta imagem não parece estar relacionada ao item do checklist">
                                   <AlertCircle className="w-3 h-3 mr-1" />
@@ -946,49 +973,54 @@ export default function AuditoriaPage() {
                                   {foto.analiseIa.descricaoIa && (
                                     <div className="mt-2 pt-2 border-t border-error/30">
                                       <p className="text-error text-xs font-medium mb-1">Motivo da não relevância:</p>
-                                      <p className="text-error/90 text-xs">{foto.analiseIa.descricaoIa}</p>
+                                      <p className="text-error/90 text-xs whitespace-pre-line">{foto.analiseIa.descricaoIa}</p>
                                     </div>
                                   )}
                                 </div>
                               </div>
                             ) : (
-                              <>
-                                <p className="text-base-content/80">{foto.analiseIa.descricaoIa}</p>
+                              <div className="space-y-2">
+                                <p className="text-base-content/90 whitespace-pre-line">{foto.analiseIa.descricaoIa}</p>
                                 {foto.analiseIa.tipoNaoConformidade !== 'Nenhuma identificada' && (
-                                  <p className="text-xs text-warning mt-1">⚠️ {foto.analiseIa.tipoNaoConformidade}</p>
+                                  <p className="text-xs text-warning">⚠️ {foto.analiseIa.tipoNaoConformidade}</p>
                                 )}
                                 {foto.analiseIa.referenciaLegal && (
-                                  <p className="text-xs text-info mt-1">📋 {foto.analiseIa.referenciaLegal}</p>
+                                  <p className="text-xs text-info">📋 {foto.analiseIa.referenciaLegal}</p>
                                 )}
-                              </>
+                                {foto.analiseIa.sugestoes && foto.analiseIa.sugestoes.length > 0 && (
+                                  <div className="mt-2 pt-2 border-t border-primary/20">
+                                    <p className="text-xs font-medium mb-1">Sugestões:</p>
+                                    <ul className="text-xs space-y-1">
+                                      {foto.analiseIa.sugestoes.map((s, i) => (
+                                        <li key={i} className="flex items-start gap-2">
+                                          <span className="text-primary">•</span>
+                                          <span>{s}</span>
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                )}
+                              </div>
                             )}
                           </div>
                         </div>
                       </div>
                     )
                   ))}
+                </div>
+              )}
 
-                  {/* Sugestões consolidadas das novas fotos */}
-                  {(() => {
-                    const todasSugestoes = itemModal.fotos
-                      .filter((f) => !f.isExisting && f.analiseIa?.sugestoes)
-                      .flatMap((f) => f.analiseIa!.sugestoes);
-                    const sugestoesUnicas = [...new Set(todasSugestoes)];
-                    if (sugestoesUnicas.length === 0) return null;
-                    return (
-                      <div className="bg-success/10 border border-success/20 rounded-lg p-3">
-                        <p className="text-sm font-medium mb-2">Sugestões de Correção:</p>
-                        <ul className="text-sm space-y-1">
-                          {sugestoesUnicas.map((s, i) => (
-                            <li key={i} className="flex items-start gap-2">
-                              <span className="text-success">•</span>
-                              {s}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    );
-                  })()}
+              {/* Alerta se houver imagens não relevantes */}
+              {itemModal.fotos.some((f) => f.analiseIa && !f.analiseIa.imagemRelevante) && (
+                <div className="alert alert-warning mb-4">
+                  <AlertCircle className="w-5 h-5" />
+                  <div>
+                    <h3 className="font-bold">Atenção: Imagem não relevante</h3>
+                    <div className="text-sm">
+                      Uma ou mais imagens não parecem estar relacionadas ao item do checklist. 
+                      Por favor, remova as imagens inadequadas ou adicione uma observação explicando por que a imagem é relevante.
+                    </div>
+                  </div>
                 </div>
               )}
 

@@ -270,6 +270,22 @@ export class AuditoriaService {
   }
 
   /**
+   * Atualiza a análise de IA de uma foto.
+   */
+  async atualizarAnaliseFoto(
+    fotoId: string,
+    analiseIa: string,
+  ): Promise<Foto> {
+    const foto = await this.fotoRepository.findOne({ where: { id: fotoId } });
+    if (!foto) {
+      throw new NotFoundException('Foto não encontrada');
+    }
+    foto.analiseIa = analiseIa;
+    foto.processadoPorIa = true;
+    return this.fotoRepository.save(foto);
+  }
+
+  /**
    * Finaliza uma auditoria.
    */
   async finalizarAuditoria(
@@ -363,6 +379,47 @@ export class AuditoriaService {
       where: { auditoriaId, resposta: RespostaItem.NAO_CONFORME },
       relations: ['templateItem', 'fotos'],
     });
+  }
+
+  /**
+   * Remove uma auditoria (apenas para GESTOR ou superior).
+   * Remove também todos os itens e fotos relacionados.
+   */
+  async removerAuditoria(
+    id: string,
+    usuarioAutenticado: { id: string; perfil: PerfilUsuario; gestorId?: string },
+  ): Promise<void> {
+    const auditoria = await this.buscarAuditoriaPorId(id, usuarioAutenticado);
+    // Verificar permissões - apenas GESTOR ou superior podem remover
+    if (usuarioAutenticado.perfil === PerfilUsuario.AUDITOR) {
+      throw new ForbiddenException('Apenas gestores podem remover auditorias');
+    }
+    if (usuarioAutenticado.perfil === PerfilUsuario.GESTOR) {
+      const consultor = auditoria.consultor;
+      const podeRemover =
+        auditoria.consultorId === usuarioAutenticado.id ||
+        (consultor && consultor.gestorId === usuarioAutenticado.id);
+      if (!podeRemover) {
+        throw new ForbiddenException('Apenas o gestor responsável pode remover esta auditoria');
+      }
+    }
+    // Buscar todos os itens da auditoria
+    const itens = await this.itemRepository.find({
+      where: { auditoriaId: id },
+      relations: ['fotos'],
+    });
+    // Remover todas as fotos
+    for (const item of itens) {
+      if (item.fotos && item.fotos.length > 0) {
+        await this.fotoRepository.remove(item.fotos);
+      }
+    }
+    // Remover todos os itens
+    if (itens.length > 0) {
+      await this.itemRepository.remove(itens);
+    }
+    // Remover a auditoria
+    await this.auditoriaRepository.remove(auditoria);
   }
 }
 
