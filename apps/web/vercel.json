@@ -2,7 +2,6 @@
   "buildCommand": "cd ../.. && npm install && npx turbo build --filter=@meta-app/web",
   "outputDirectory": ".next",
   "installCommand": "cd ../.. && npm install",
-  "framework": "nextjs",
-  "rootDirectory": "apps/web"
+  "framework": "nextjs"
 }
 
