@@ -17,15 +17,22 @@ async function bootstrap(): Promise<void> {
         'http://localhost:3001',
         process.env.CORS_ORIGIN,
       ].filter(Boolean);
+      
       // Permite requisições sem origin (apps mobile, Postman, etc.)
       if (!origin) {
         return callback(null, true);
       }
+      
+      // Permite domínios da Vercel (*.vercel.app)
+      const isVercelDomain = /^https:\/\/.*\.vercel\.app$/.test(origin);
+      
       // Permite IPs de rede local (192.168.x.x, 10.x.x.x, 172.16-31.x.x)
       const isLocalNetwork = /^http:\/\/(192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+)(:\d+)?$/.test(origin);
-      if (allowedOrigins.includes(origin) || isLocalNetwork) {
+      
+      if (allowedOrigins.includes(origin) || isVercelDomain || isLocalNetwork) {
         return callback(null, true);
       }
+      
       return callback(new Error('Origem não permitida pelo CORS'), false);
     },
     credentials: true,
