@@ -12,6 +12,7 @@ import { Mail, Lock, Eye, EyeOff, ArrowLeft } from 'lucide-react';
 import { authService } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
 import { toastService } from '@/lib/toast';
+import { analyticsEvents } from '@/lib/analytics';
 
 const loginSchema = z.object({
   email: z.string().email('E-mail inválido'),
@@ -41,9 +42,15 @@ export default function LoginPage() {
       const response = await authService.login(data.email, data.senha);
       setAuth(response.accessToken, response.usuario);
       toastService.success('Login realizado com sucesso!');
+      
+      // Rastrear login bem-sucedido
+      analyticsEvents.login('email');
+      
       router.push('/dashboard');
     } catch (error) {
       // Erro já é tratado pelo interceptor - toast será exibido automaticamente
+      // Rastrear erro de login
+      analyticsEvents.error('login_failed', error instanceof Error ? error.message : 'Erro desconhecido');
     } finally {
       setIsLoading(false);
     }
