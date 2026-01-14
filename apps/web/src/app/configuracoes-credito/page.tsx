@@ -407,7 +407,7 @@ export default function ConfiguracoesCreditoPage() {
         title="Remover Configuração"
         message="Tem certeza que deseja remover esta configuração? Esta ação marcará a configuração como inativa."
         onConfirm={handleDeletar}
-        onCancel={() => {
+        onClose={() => {
           setShowConfirmDelete(false);
           setConfigToDelete(null);
         }}
