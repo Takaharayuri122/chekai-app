@@ -15,6 +15,8 @@ import {
   Users,
   Package,
   Activity,
+  ArrowDown,
+  ArrowUp,
 } from 'lucide-react';
 import { AppLayout, PageHeader, StatCard, EmptyState } from '@/components';
 import {
@@ -214,13 +216,24 @@ export default function AuditoriaTokensPage() {
         </div>
 
         {/* Estatísticas Gerais */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
           <StatCard
             title="Total de Tokens"
             value={formatarNumero(estatisticas.total.tokensTotal)}
             icon={Zap}
             color="primary"
-            subtitle={`Input: ${formatarNumero(estatisticas.total.tokensInput)} | Output: ${formatarNumero(estatisticas.total.tokensOutput)}`}
+          />
+          <StatCard
+            title="Tokens Input"
+            value={formatarNumero(estatisticas.total.tokensInput)}
+            icon={ArrowDown}
+            color="info"
+          />
+          <StatCard
+            title="Tokens Output"
+            value={formatarNumero(estatisticas.total.tokensOutput)}
+            icon={ArrowUp}
+            color="success"
           />
           <StatCard
             title="Créditos Consumidos"
