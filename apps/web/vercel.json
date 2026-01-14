@@ -1,5 +1,5 @@
 {
   "buildCommand": "npm ci && npx turbo build --filter=@meta-app/web",
-  "outputDirectory": "apps/web/.next",
+  "outputDirectory": ".next",
   "framework": "nextjs"
 }
