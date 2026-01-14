@@ -19,6 +19,16 @@ export const metadata: Metadata = {
   title: 'ChekAI - Consultoria em Segurança de Alimentos',
   description: 'Aplicativo para auditorias e consultorias em segurança de alimentos com IA',
   manifest: '/manifest.json',
+  icons: {
+    icon: [
+      { url: '/images/logo-square.png', sizes: '32x32', type: 'image/png' },
+      { url: '/images/logo-square.png', sizes: '16x16', type: 'image/png' },
+    ],
+    apple: [
+      { url: '/images/logo-square.png', sizes: '180x180', type: 'image/png' },
+    ],
+    shortcut: '/images/logo-square.png',
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
