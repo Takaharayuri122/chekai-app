@@ -6,7 +6,7 @@ import { TemplateItem } from './entities/template-item.entity';
 import { ChecklistGrupo } from './entities/checklist-grupo.entity';
 import { Auditoria } from '../auditoria/entities/auditoria.entity';
 import { ChecklistService } from './checklist.service';
-import { MokiImportService } from './moki-import.service';
+import { ChecklistImportService } from './checklist-import.service';
 import { ChecklistController } from './checklist.controller';
 
 /**
@@ -20,8 +20,8 @@ import { ChecklistController } from './checklist.controller';
     }),
   ],
   controllers: [ChecklistController],
-  providers: [ChecklistService, MokiImportService],
-  exports: [ChecklistService, MokiImportService],
+  providers: [ChecklistService, ChecklistImportService],
+  exports: [ChecklistService, ChecklistImportService],
 })
 export class ChecklistModule {}
 

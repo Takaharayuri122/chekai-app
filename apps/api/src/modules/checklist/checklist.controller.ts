@@ -23,13 +23,13 @@ import {
   ApiBody,
 } from '@nestjs/swagger';
 import { ChecklistService } from './checklist.service';
-import { MokiImportService } from './moki-import.service';
+import { ChecklistImportService } from './checklist-import.service';
 import {
   CriarChecklistTemplateDto,
   CriarTemplateItemDto,
   CriarChecklistGrupoDto,
 } from './dto/criar-checklist-template.dto';
-import { ImportarMokiDto, ImportacaoPreview, ImportacaoResultado } from './dto/importar-moki.dto';
+import { ImportarChecklistDto, ImportacaoPreview, ImportacaoResultado } from './dto/importar-checklist.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../core/guards/roles.guard';
 import { Roles } from '../../core/decorators/roles.decorator';
@@ -51,7 +51,7 @@ import { PaginatedResult } from '../../shared/types/pagination.interface';
 export class ChecklistController {
   constructor(
     private readonly checklistService: ChecklistService,
-    private readonly mokiImportService: MokiImportService,
+    private readonly checklistImportService: ChecklistImportService,
   ) {}
 
   @Post('templates')
@@ -209,8 +209,8 @@ export class ChecklistController {
     return this.checklistService.reordenarGrupos(templateId, grupoIds);
   }
 
-  @Post('importar/moki/preview')
-  @ApiOperation({ summary: 'Faz preview de um arquivo CSV do Moki' })
+  @Post('importar/checklist/preview')
+  @ApiOperation({ summary: 'Faz preview de um arquivo CSV ou XLSX de checklist' })
   @ApiResponse({ status: 200, description: 'Preview da importação' })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
@@ -222,37 +222,47 @@ export class ChecklistController {
     },
   })
   @UseInterceptors(FileInterceptor('file'))
-  async previewImportacaoMoki(
+  async previewImportacao(
     @UploadedFile() file: Express.Multer.File,
   ): Promise<ImportacaoPreview> {
     if (!file) {
       throw new BadRequestException('Arquivo não enviado');
     }
-    if (!file.originalname.endsWith('.csv')) {
-      throw new BadRequestException('O arquivo deve ser um CSV');
+    const isCsv = file.originalname.toLowerCase().endsWith('.csv');
+    const isXlsx = file.originalname.toLowerCase().endsWith('.xlsx');
+    if (!isCsv && !isXlsx) {
+      throw new BadRequestException('O arquivo deve ser um CSV ou XLSX');
+    }
+    if (isXlsx) {
+      return this.checklistImportService.preview(undefined, file.buffer);
     }
     const csvContent = file.buffer.toString('utf-8');
-    return this.mokiImportService.preview(csvContent);
+    return this.checklistImportService.preview(csvContent);
   }
 
-  @Post('importar/moki')
-  @ApiOperation({ summary: 'Importa um arquivo CSV do Moki' })
+  @Post('importar/checklist')
+  @ApiOperation({ summary: 'Importa um arquivo CSV ou XLSX de checklist' })
   @ApiResponse({ status: 201, description: 'Template importado com sucesso' })
   @ApiConsumes('multipart/form-data')
   @UseInterceptors(FileInterceptor('file'))
-  async importarMoki(
+  async importarChecklist(
     @UploadedFile() file: Express.Multer.File,
-    @Body() dto: ImportarMokiDto,
+    @Body() dto: ImportarChecklistDto,
     @CurrentUser() usuario: { id: string; perfil: PerfilUsuario },
   ): Promise<ImportacaoResultado> {
     if (!file) {
       throw new BadRequestException('Arquivo não enviado');
     }
-    if (!file.originalname.endsWith('.csv')) {
-      throw new BadRequestException('O arquivo deve ser um CSV');
+    const isCsv = file.originalname.toLowerCase().endsWith('.csv');
+    const isXlsx = file.originalname.toLowerCase().endsWith('.xlsx');
+    if (!isCsv && !isXlsx) {
+      throw new BadRequestException('O arquivo deve ser um CSV ou XLSX');
+    }
+    if (isXlsx) {
+      return this.checklistImportService.importar(undefined, dto, usuario, file.buffer);
     }
     const csvContent = file.buffer.toString('utf-8');
-    return this.mokiImportService.importar(csvContent, dto, usuario);
+    return this.checklistImportService.importar(csvContent, dto, usuario);
   }
 }
 

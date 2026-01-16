@@ -24,11 +24,11 @@ export class CriarUsuarioDto {
   @IsNotEmpty({ message: 'O e-mail é obrigatório' })
   email: string;
 
-  @ApiProperty({ description: 'Senha do usuário', example: 'Senha@123', minLength: 6 })
+  @ApiPropertyOptional({ description: 'Senha do usuário (opcional - não usado com OTP)', example: 'Senha@123', minLength: 6 })
   @IsString()
   @MinLength(6, { message: 'A senha deve ter no mínimo 6 caracteres' })
-  @IsNotEmpty({ message: 'A senha é obrigatória' })
-  senha: string;
+  @IsOptional()
+  senha?: string;
 
   @ApiPropertyOptional({
     description: 'Perfil do usuário',

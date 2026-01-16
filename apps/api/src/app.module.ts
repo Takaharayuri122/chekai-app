@@ -12,6 +12,7 @@ import { PlanoModule } from './modules/plano/plano.module';
 import { CreditoModule } from './modules/credito/credito.module';
 import { CoreModule } from './core/core.module';
 import { SupabaseModule } from './modules/supabase/supabase.module';
+import { EmailModule } from './modules/email/email.module';
 
 /**
  * Módulo principal da aplicação.

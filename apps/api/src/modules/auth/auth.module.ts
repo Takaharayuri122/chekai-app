@@ -6,6 +6,7 @@ import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { UsuarioModule } from '../usuario/usuario.module';
+import { EmailModule } from '../email/email.module';
 
 /**
  * Módulo responsável pela autenticação JWT.
@@ -24,6 +25,7 @@ import { UsuarioModule } from '../usuario/usuario.module';
       inject: [ConfigService],
     }),
     UsuarioModule,
+    EmailModule,
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy],

@@ -29,9 +29,9 @@ import { toastService } from '@/lib/toast';
 type Step = 'upload' | 'preview' | 'config' | 'result';
 
 /**
- * Página de importação de checklists do Moki.
+ * Página de importação de checklists.
  */
-export default function ImportarMokiPage() {
+export default function ImportarChecklistPage() {
   const router = useRouter();
   const [step, setStep] = useState<Step>('upload');
   const [file, setFile] = useState<File | null>(null);
@@ -49,8 +49,10 @@ export default function ImportarMokiPage() {
   });
 
   const handleFileSelect = useCallback(async (selectedFile: File) => {
-    if (!selectedFile.name.endsWith('.csv')) {
-      setErro('Por favor, selecione um arquivo CSV exportado do Moki.');
+    const isCsv = selectedFile.name.toLowerCase().endsWith('.csv');
+    const isXlsx = selectedFile.name.toLowerCase().endsWith('.xlsx');
+    if (!isCsv && !isXlsx) {
+      setErro('Por favor, selecione um arquivo CSV ou XLSX válido.');
       return;
     }
 
@@ -59,7 +61,7 @@ export default function ImportarMokiPage() {
     setLoading(true);
 
     try {
-      const previewData = await checklistService.previewImportacaoMoki(selectedFile);
+      const previewData = await checklistService.previewImportacao(selectedFile);
       setPreview(previewData);
       setFormData((prev) => ({
         ...prev,
@@ -67,7 +69,7 @@ export default function ImportarMokiPage() {
       }));
       setStep('preview');
     } catch {
-      setErro('Erro ao processar o arquivo. Verifique se é um CSV válido do Moki.');
+      setErro('Erro ao processar o arquivo. Verifique se é um CSV ou XLSX válido.');
     } finally {
       setLoading(false);
     }
@@ -101,7 +103,7 @@ export default function ImportarMokiPage() {
     setErro('');
 
     try {
-      const result = await checklistService.importarMoki(file, {
+      const result = await checklistService.importarChecklist(file, {
         nomeTemplate: formData.nomeTemplate,
         descricao: formData.descricao,
         tipoAtividade: formData.tipoAtividade,
@@ -139,8 +141,8 @@ export default function ImportarMokiPage() {
             <ChevronLeft className="w-5 h-5" />
           </Link>
           <div className="flex-1">
-            <h1 className="text-lg font-bold text-base-content">Importar Checklist do Moki</h1>
-            <p className="text-sm text-base-content/60">Importe checklists exportados do Moki</p>
+            <h1 className="text-lg font-bold text-base-content">Importar Checklist</h1>
+            <p className="text-sm text-base-content/60">Importe checklists a partir de arquivos CSV ou XLSX</p>
           </div>
         </div>
       </div>
@@ -202,19 +204,19 @@ export default function ImportarMokiPage() {
                         <FileSpreadsheet className="w-8 h-8 text-primary" />
                       </div>
                       <h3 className="text-lg font-semibold mb-2">
-                        Arraste o arquivo CSV aqui
+                        Arraste o arquivo CSV ou XLSX aqui
                       </h3>
                       <p className="text-base-content/60 text-sm mb-4">
                         ou clique para selecionar
                       </p>
-                      <div className="badge badge-ghost">Formato: CSV exportado do Moki</div>
+                      <div className="badge badge-ghost">Formato: CSV ou XLSX</div>
                     </>
                   )}
                 </div>
                 <input
                   id="file-input"
                   type="file"
-                  accept=".csv"
+                  accept=".csv,.xlsx"
                   className="hidden"
                   onChange={(e) => {
                     const f = e.target.files?.[0];
@@ -222,19 +224,19 @@ export default function ImportarMokiPage() {
                   }}
                 />
 
-                <div className="divider max-w-md">Como exportar do Moki?</div>
+                <div className="divider max-w-md">Formato do arquivo</div>
                 <ol className="text-left text-sm text-base-content/70 max-w-md space-y-2">
                   <li className="flex gap-2">
                     <span className="badge badge-sm badge-ghost">1</span>
-                    Acesse o Moki e vá até o checklist desejado
+                    O arquivo deve conter colunas para grupo, seção e pergunta
                   </li>
                   <li className="flex gap-2">
                     <span className="badge badge-sm badge-ghost">2</span>
-                    Clique em &quot;Exportar&quot; ou &quot;Baixar CSV&quot;
+                    Formatos suportados: CSV (separado por vírgulas) ou XLSX (Excel)
                   </li>
                   <li className="flex gap-2">
                     <span className="badge badge-sm badge-ghost">3</span>
-                    Faça o upload do arquivo aqui
+                    Faça o upload do arquivo acima para iniciar a importação
                   </li>
                 </ol>
               </div>

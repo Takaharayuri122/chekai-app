@@ -32,8 +32,8 @@ export class Usuario {
   @Column({ length: 255, unique: true })
   email: string;
 
-  @Column({ length: 255, select: false })
-  senhaHash: string;
+  @Column({ name: 'senha_hash', type: 'varchar', length: 255, select: false, nullable: true })
+  senhaHash: string | null;
 
   @Column({
     type: 'enum',
@@ -57,6 +57,12 @@ export class Usuario {
 
   @Column({ name: 'tenant_id', type: 'uuid', nullable: true })
   tenantId: string | null;
+
+  @Column({ name: 'otp_code', type: 'varchar', length: 6, nullable: true })
+  otpCode: string | null;
+
+  @Column({ name: 'otp_expires_at', type: 'timestamp', nullable: true })
+  otpExpiresAt: Date | null;
 
   @OneToMany(() => Usuario, (usuario) => usuario.gestor)
   auditores: Usuario[];

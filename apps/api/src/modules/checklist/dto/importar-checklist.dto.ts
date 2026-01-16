@@ -3,9 +3,9 @@ import { IsNotEmpty, IsOptional, IsString, IsEnum } from 'class-validator';
 import { TipoAtividade } from '../../cliente/entities/cliente.entity';
 
 /**
- * DTO para importação de checklist do Moki.
+ * DTO para importação de checklist.
  */
-export class ImportarMokiDto {
+export class ImportarChecklistDto {
   @ApiProperty({ description: 'Nome do template a ser criado' })
   @IsString()
   @IsNotEmpty()
@@ -28,9 +28,9 @@ export class ImportarMokiDto {
 }
 
 /**
- * Representa uma linha do CSV do Moki.
+ * Representa uma linha do CSV importado.
  */
-export interface MokiCsvRow {
+export interface ChecklistCsvRow {
   grupo: string;
   secao: string;
   pergunta: string;
@@ -45,13 +45,13 @@ export interface MokiCsvRow {
   permiteFotos?: boolean;
   fotosObrigatorias?: boolean;
   descricaoAjuda?: string;
-  opcoesResposta?: MokiOpcaoResposta[];
+  opcoesResposta?: ChecklistOpcaoResposta[];
 }
 
 /**
- * Representa uma opção de resposta do Moki.
+ * Representa uma opção de resposta importada.
  */
-export interface MokiOpcaoResposta {
+export interface ChecklistOpcaoResposta {
   texto: string;
   inconformidade?: boolean;
   pontos?: number;

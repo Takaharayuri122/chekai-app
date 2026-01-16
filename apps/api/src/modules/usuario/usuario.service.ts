@@ -71,7 +71,7 @@ export class UsuarioService {
     if (dto.perfil === PerfilUsuario.GESTOR) {
       dto.gestorId = undefined;
     }
-    const senhaHash = await bcrypt.hash(dto.senha, 10);
+    const senhaHash = dto.senha ? await bcrypt.hash(dto.senha, 10) : null;
     const usuario = this.usuarioRepository.create({
       nome: dto.nome,
       email: dto.email,
@@ -130,12 +130,12 @@ export class UsuarioService {
   }
 
   /**
-   * Busca um usuário pelo e-mail (inclui senha para autenticação).
+   * Busca um usuário pelo e-mail (inclui senha e OTP para autenticação).
    */
   async buscarPorEmail(email: string): Promise<Usuario | null> {
     return this.usuarioRepository.findOne({
       where: { email },
-      select: ['id', 'nome', 'email', 'senhaHash', 'perfil', 'ativo', 'gestorId', 'tenantId'],
+      select: ['id', 'nome', 'email', 'senhaHash', 'perfil', 'ativo', 'gestorId', 'tenantId', 'otpCode', 'otpExpiresAt'],
     });
   }
 
@@ -167,6 +167,26 @@ export class UsuarioService {
   async remover(id: string): Promise<void> {
     const usuario = await this.buscarPorId(id);
     usuario.ativo = false;
+    await this.usuarioRepository.save(usuario);
+  }
+
+  /**
+   * Atualiza o código OTP e data de expiração do usuário.
+   */
+  async atualizarOtp(id: string, otpCode: string, otpExpiresAt: Date): Promise<void> {
+    const usuario = await this.buscarPorId(id);
+    usuario.otpCode = otpCode;
+    usuario.otpExpiresAt = otpExpiresAt;
+    await this.usuarioRepository.save(usuario);
+  }
+
+  /**
+   * Limpa o código OTP do usuário após uso.
+   */
+  async limparOtp(id: string): Promise<void> {
+    const usuario = await this.buscarPorId(id);
+    usuario.otpCode = null;
+    usuario.otpExpiresAt = null;
     await this.usuarioRepository.save(usuario);
   }
 }

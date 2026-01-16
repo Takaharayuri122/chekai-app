@@ -25,15 +25,6 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error: AxiosError<{ message?: string | string[]; statusCode?: number; error?: string }>) => {
-    // Não exibir toast para erros 401 (redirecionamento automático)
-    if (error.response?.status === 401) {
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('token');
-        window.location.href = '/login';
-      }
-      return Promise.reject(error);
-    }
-
     // Extrair mensagem de erro do backend
     let errorMessage: string | null = null;
     
@@ -85,8 +76,36 @@ api.interceptors.response.use(
       }
     }
 
-    // Exibir toast de erro apenas se não for 401
-    if (typeof window !== 'undefined' && error.response?.status !== 401) {
+    // Tratar erros 401 de forma especial
+    if (error.response?.status === 401) {
+      const requestUrl = error.config?.url || '';
+      const isAuthRequest = requestUrl.includes('/auth/login') 
+        || requestUrl.includes('/auth/cadastro')
+        || requestUrl.includes('/auth/solicitar-otp')
+        || requestUrl.includes('/auth/validar-otp');
+      
+      if (isAuthRequest) {
+        // Para erros de autenticação, exibir toast e não redirecionar
+        if (typeof window !== 'undefined') {
+          if (errorMessage) {
+            toastService.error(errorMessage);
+          } else {
+            toastService.error('Erro na autenticação. Verifique suas credenciais.');
+          }
+        }
+        return Promise.reject(error);
+      } else {
+        // Para outros erros 401, redirecionar para login (token expirado/inválido)
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('token');
+          window.location.href = '/login';
+        }
+        return Promise.reject(error);
+      }
+    }
+
+    // Exibir toast de erro para outros status codes
+    if (typeof window !== 'undefined') {
       // Se conseguimos extrair uma mensagem, usar ela
       if (errorMessage) {
         toastService.error(errorMessage);
@@ -141,6 +160,16 @@ export interface CriarUsuarioRequest {
 }
 
 export const authService = {
+  async solicitarOtp(email: string): Promise<{ message: string }> {
+    const response = await api.post<{ data: { message: string } }>('/auth/solicitar-otp', { email });
+    return response.data.data;
+  },
+
+  async validarOtp(email: string, codigo: string): Promise<LoginResponse> {
+    const response = await api.post<{ data: LoginResponse }>('/auth/validar-otp', { email, codigo });
+    return response.data.data;
+  },
+
   async login(email: string, senha: string): Promise<LoginResponse> {
     const response = await api.post<{ data: LoginResponse }>('/auth/login', { email, senha });
     return response.data.data;
@@ -489,7 +518,7 @@ export interface CriarGrupoRequest {
 }
 
 /**
- * Preview de importação do Moki.
+ * Preview de importação de checklist.
  */
 export interface ImportacaoPreview {
   nomeOriginal: string;
@@ -513,7 +542,7 @@ export interface ImportacaoResultado {
   avisos: string[];
 }
 
-export interface ImportarMokiRequest {
+export interface ImportarChecklistRequest {
   nomeTemplate: string;
   descricao?: string;
   tipoAtividade?: TipoAtividade;
@@ -600,23 +629,23 @@ export const checklistService = {
     await api.put(`/checklists/templates/${templateId}/grupos/reordenar`, grupoIds);
   },
 
-  async previewImportacaoMoki(file: File): Promise<ImportacaoPreview> {
+  async previewImportacao(file: File): Promise<ImportacaoPreview> {
     const formData = new FormData();
     formData.append('file', file);
-    const response = await api.post('/checklists/importar/moki/preview', formData, {
+    const response = await api.post('/checklists/importar/checklist/preview', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
     return response.data.data;
   },
 
-  async importarMoki(file: File, data: ImportarMokiRequest): Promise<ImportacaoResultado> {
+  async importarChecklist(file: File, data: ImportarChecklistRequest): Promise<ImportacaoResultado> {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('nomeTemplate', data.nomeTemplate);
     if (data.descricao) formData.append('descricao', data.descricao);
     if (data.tipoAtividade) formData.append('tipoAtividade', data.tipoAtividade);
     if (data.versao) formData.append('versao', data.versao);
-    const response = await api.post('/checklists/importar/moki', formData, {
+    const response = await api.post('/checklists/importar/checklist', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
     return response.data.data;
