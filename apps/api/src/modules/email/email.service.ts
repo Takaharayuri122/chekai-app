@@ -68,7 +68,7 @@ export class EmailService {
    * Envia e-mail de boas-vindas para um novo usuário.
    */
   async enviarEmailBoasVindas(destinatario: string, nome: string): Promise<void> {
-    const assunto = 'Bem-vindo à Meta App!';
+    const assunto = 'Bem-vindo à ChekAI!';
     const html = this.getTemplateBoasVindas(nome);
     await this.enviarEmail(destinatario, assunto, html);
   }
@@ -77,7 +77,7 @@ export class EmailService {
    * Envia e-mail com código OTP para login.
    */
   async enviarEmailOTP(destinatario: string, nome: string, codigoOTP: string): Promise<void> {
-    const assunto = 'Código de acesso - Meta App';
+    const assunto = 'Código de acesso - ChekAI';
     const html = this.getTemplateOTP(nome, codigoOTP);
     await this.enviarEmail(destinatario, assunto, html);
   }

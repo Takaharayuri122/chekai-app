@@ -3,25 +3,60 @@
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Código de Acesso - ChekAI App</title>
+    <title>Código de Acesso - ChekAI</title>
   </head>
-  <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-    <div style="background-color: #f8f9fa; padding: 30px; border-radius: 8px;">
-      <h1 style="color: #2c3e50; margin-top: 0;">Olá, {{nome}}!</h1>
-      <p>Você solicitou um código de acesso para entrar na ChekAI App.</p>
-      <div style="background-color: #fff; border: 2px solid #3498db; border-radius: 8px; padding: 20px; text-align: center; margin: 30px 0;">
-        <p style="margin: 0; font-size: 14px; color: #666; text-transform: uppercase; letter-spacing: 1px;">Seu código de acesso</p>
-        <p style="margin: 10px 0 0 0; font-size: 32px; font-weight: bold; color: #3498db; letter-spacing: 5px;">{{codigoOTP}}</p>
-      </div>
-      <p style="color: #e74c3c; font-weight: bold;">Este código expira em 10 minutos.</p>
-      <p style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; color: #666; font-size: 14px;">
-        Se você não solicitou este código, por favor, ignore este e-mail ou entre em contato conosco.
-      </p>
-      <p style="color: #666; font-size: 14px; margin-top: 10px;">
-        Atenciosamente,<br>
-        Equipe Meta App
-      </p>
-    </div>
+  <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #F4F7FA; line-height: 1.6;">
+    <table role="presentation" style="width: 100%; border-collapse: collapse; background-color: #F4F7FA; padding: 20px;">
+      <tr>
+        <td align="center" style="padding: 20px 0;">
+          <table role="presentation" style="max-width: 600px; width: 100%; background-color: #FFFFFF; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+            <!-- Header -->
+            <tr>
+              <td style="background: linear-gradient(135deg, #00B8A9 0%, #0891b2 100%); padding: 40px 30px; text-align: center;">
+                <h1 style="margin: 0; color: #FFFFFF; font-size: 28px; font-weight: 700; letter-spacing: -0.5px;">ChekAI</h1>
+                <p style="margin: 8px 0 0 0; color: #FFFFFF; font-size: 14px; opacity: 0.95;">Segurança de Alimentos com IA</p>
+              </td>
+            </tr>
+            
+            <!-- Content -->
+            <tr>
+              <td style="padding: 40px 30px;">
+                <h2 style="margin: 0 0 10px 0; color: #1B2A4A; font-size: 24px; font-weight: 600;">Olá, {{nome}}!</h2>
+                <p style="margin: 0 0 30px 0; color: #1B2A4A; font-size: 16px;">Você solicitou um código de acesso para entrar na ChekAI.</p>
+                
+                <!-- OTP Code Box -->
+                <div style="background: linear-gradient(135deg, #F4F7FA 0%, #FFFFFF 100%); border: 2px solid #00B8A9; border-radius: 12px; padding: 30px; text-align: center; margin: 30px 0;">
+                  <p style="margin: 0 0 12px 0; font-size: 12px; color: #6B7280; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600;">Seu código de acesso</p>
+                  <p style="margin: 0; font-size: 42px; font-weight: 700; color: #00B8A9; letter-spacing: 8px; font-family: 'Courier New', monospace;">{{codigoOTP}}</p>
+                </div>
+                
+                <!-- Warning -->
+                <div style="background-color: #FEF3C7; border-left: 4px solid #F59E0B; padding: 16px; margin: 25px 0; border-radius: 4px;">
+                  <p style="margin: 0; color: #92400E; font-size: 14px; font-weight: 600;">
+                    ⏱️ Este código expira em 10 minutos
+                  </p>
+                </div>
+              </td>
+            </tr>
+            
+            <!-- Footer -->
+            <tr>
+              <td style="background-color: #F4F7FA; padding: 30px; text-align: center; border-top: 1px solid #E5E9F0;">
+                <p style="margin: 0 0 15px 0; color: #6B7280; font-size: 13px; line-height: 1.6;">
+                  Se você não solicitou este código, por favor, ignore este e-mail ou entre em contato conosco.
+                </p>
+                <p style="margin: 0; color: #6B7280; font-size: 13px;">
+                  Atenciosamente,<br>
+                  <strong style="color: #1B2A4A;">Equipe ChekAI</strong>
+                </p>
+                <p style="margin: 20px 0 0 0; color: #9CA3AF; font-size: 12px;">
+                  © 2025 ChekAI. Todos os direitos reservados.
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
   </body>
 </html>
-
