@@ -18,7 +18,7 @@ export class EmailService {
     const secureEnv = this.configService.get<string>('SMTP_SECURE');
     const secure = secureEnv === 'true' || secureEnv === '1';
     const isPort465 = port === 465;
-    this.transporter = nodemailer.createTransport({
+    const smtpConfig = {
       host: this.configService.get<string>('SMTP_HOST'),
       port,
       secure: secure || isPort465,
@@ -29,8 +29,17 @@ export class EmailService {
       },
       tls: {
         rejectUnauthorized: false,
+        minVersion: 'TLSv1.2',
       },
-    });
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 10000,
+      pool: false,
+      logger: process.env.NODE_ENV === 'development',
+      debug: process.env.NODE_ENV === 'development',
+      ignoreTLS: false,
+    };
+    this.transporter = nodemailer.createTransport(smtpConfig as nodemailer.TransportOptions);
     this.templatesPath = this.resolveTemplatesPath();
   }
 
@@ -56,12 +65,27 @@ export class EmailService {
     const smtpFrom = this.configService.get<string>('SMTP_FROM');
     const smtpUser = this.configService.get<string>('SMTP_USER');
     const remetente = smtpFrom || smtpUser || '';
-    await this.transporter.sendMail({
-      from: remetente,
-      to: destinatario,
-      subject: assunto,
-      html,
-    });
+    try {
+      await this.transporter.sendMail({
+        from: remetente,
+        to: destinatario,
+        subject: assunto,
+        html,
+      });
+    } catch (error) {
+      if (error instanceof Error) {
+        if (error.message.includes('timeout') || error.message.includes('Connection timeout')) {
+          throw new Error('Timeout ao conectar com o servidor de e-mail. Verifique as configurações SMTP e a conectividade de rede.');
+        }
+        if (error.message.includes('ECONNREFUSED')) {
+          throw new Error('Não foi possível conectar ao servidor SMTP. Verifique o host e a porta configurados.');
+        }
+        if (error.message.includes('EAUTH')) {
+          throw new Error('Falha na autenticação SMTP. Verifique o usuário e senha configurados.');
+        }
+      }
+      throw error;
+    }
   }
 
   /**
