@@ -5,15 +5,29 @@ import { Transporter } from 'nodemailer';
 import * as fs from 'fs';
 import * as path from 'path';
 
+type EmailProvider = 'smtp' | 'sendgrid';
+
 /**
- * Serviço responsável pelo envio de e-mails via SMTP.
+ * Serviço responsável pelo envio de e-mails via SMTP ou SendGrid Web API.
  */
 @Injectable()
 export class EmailService {
-  private transporter: Transporter;
+  private transporter?: Transporter;
   private readonly templatesPath: string;
+  private readonly provider: EmailProvider;
 
   constructor(private readonly configService: ConfigService) {
+    this.provider = (this.configService.get<string>('EMAIL_PROVIDER', 'smtp') as EmailProvider) || 'smtp';
+    this.templatesPath = this.resolveTemplatesPath();
+    if (this.provider === 'smtp') {
+      this.initializeSmtp();
+    }
+  }
+
+  /**
+   * Inicializa o transporter SMTP.
+   */
+  private initializeSmtp(): void {
     const port = this.configService.get<number>('SMTP_PORT', 587);
     const secureEnv = this.configService.get<string>('SMTP_SECURE');
     const secure = secureEnv === 'true' || secureEnv === '1';
@@ -40,7 +54,6 @@ export class EmailService {
       ignoreTLS: false,
     };
     this.transporter = nodemailer.createTransport(smtpConfig as nodemailer.TransportOptions);
-    this.templatesPath = this.resolveTemplatesPath();
   }
 
   /**
@@ -62,6 +75,20 @@ export class EmailService {
    * Envia um e-mail genérico.
    */
   async enviarEmail(destinatario: string, assunto: string, html: string): Promise<void> {
+    if (this.provider === 'sendgrid') {
+      await this.enviarEmailSendGrid(destinatario, assunto, html);
+    } else {
+      await this.enviarEmailSmtp(destinatario, assunto, html);
+    }
+  }
+
+  /**
+   * Envia e-mail via SMTP.
+   */
+  private async enviarEmailSmtp(destinatario: string, assunto: string, html: string): Promise<void> {
+    if (!this.transporter) {
+      throw new Error('Transporter SMTP não inicializado.');
+    }
     const smtpFrom = this.configService.get<string>('SMTP_FROM');
     const smtpUser = this.configService.get<string>('SMTP_USER');
     const remetente = smtpFrom || smtpUser || '';
@@ -85,6 +112,62 @@ export class EmailService {
         }
       }
       throw error;
+    }
+  }
+
+  /**
+   * Envia e-mail via SendGrid Web API.
+   */
+  private async enviarEmailSendGrid(destinatario: string, assunto: string, html: string): Promise<void> {
+    const sendgridApiKey = this.configService.get<string>('SENDGRID_API_KEY');
+    if (!sendgridApiKey) {
+      throw new Error('SENDGRID_API_KEY não configurada. Configure a variável de ambiente.');
+    }
+    const sendgridFrom = this.configService.get<string>('SENDGRID_FROM') || this.configService.get<string>('SMTP_FROM');
+    if (!sendgridFrom) {
+      throw new Error('SENDGRID_FROM ou SMTP_FROM não configurado. Configure o e-mail remetente.');
+    }
+    try {
+      const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${sendgridApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          personalizations: [
+            {
+              to: [{ email: destinatario }],
+            },
+          ],
+          from: { email: sendgridFrom },
+          subject: assunto,
+          content: [
+            {
+              type: 'text/html',
+              value: html,
+            },
+          ],
+        }),
+      });
+      if (!response.ok) {
+        const errorText = await response.text();
+        let errorMessage = `Erro ao enviar e-mail via SendGrid: ${response.statusText}`;
+        try {
+          const errorData = JSON.parse(errorText);
+          if (errorData.errors && errorData.errors.length > 0) {
+            errorMessage = `Erro ao enviar e-mail via SendGrid: ${errorData.errors.map((e: { message: string }) => e.message).join(', ')}`;
+          }
+        } catch {
+          errorMessage = `Erro ao enviar e-mail via SendGrid: ${errorText || response.statusText}`;
+        }
+        throw new Error(errorMessage);
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('Erro desconhecido ao enviar e-mail via SendGrid');
     }
   }
 
