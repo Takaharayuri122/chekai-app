@@ -54,7 +54,6 @@ const pwaConfig = withPWA({
   buildExcludes: [/middleware-manifest\.json$/],
   publicExcludes: ['!noprecache/**/*'],
   reloadOnOnline: true,
-  swcMinify: true,
 });
 
 export default pwaConfig(nextConfig);
