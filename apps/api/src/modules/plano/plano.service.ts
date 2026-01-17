@@ -37,6 +37,16 @@ export class PlanoService {
   }
 
   /**
+   * Lista todos os planos ativos para exibição pública (sem autenticação).
+   */
+  async listarPublicos(): Promise<Plano[]> {
+    return this.planoRepository.find({
+      where: { ativo: true },
+      order: { criadoEm: 'DESC' },
+    });
+  }
+
+  /**
    * Lista todos os planos.
    */
   async listar(params: PaginationParams): Promise<PaginatedResult<Plano>> {

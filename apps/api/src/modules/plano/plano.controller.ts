@@ -24,6 +24,7 @@ import { CriarAssinaturaDto } from './dto/criar-assinatura.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../core/guards/roles.guard';
 import { Roles } from '../../core/decorators/roles.decorator';
+import { Public } from '../../core/decorators/public.decorator';
 import { CurrentUser } from '../../core/decorators/current-user.decorator';
 import { PerfilUsuario } from '../usuario/entities/usuario.entity';
 import { Plano } from './entities/plano.entity';
@@ -53,6 +54,14 @@ export class PlanoController {
     @CurrentUser() usuario: { perfil: PerfilUsuario },
   ): Promise<Plano> {
     return this.planoService.criar(dto, usuario);
+  }
+
+  @Get('publicos')
+  @Public()
+  @ApiOperation({ summary: 'Lista todos os planos ativos (público, sem autenticação)' })
+  @ApiResponse({ status: 200, description: 'Lista de planos disponíveis para cadastro' })
+  async listarPublicos(): Promise<Plano[]> {
+    return this.planoService.listarPublicos();
   }
 
   @Get()

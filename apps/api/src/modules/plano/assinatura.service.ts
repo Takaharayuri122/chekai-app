@@ -57,6 +57,34 @@ export class AssinaturaService {
   }
 
   /**
+   * Cria uma assinatura pública durante o cadastro (sem autenticação Master).
+   * Usado apenas durante o processo de cadastro público de novos gestores.
+   */
+  async criarAssinaturaPublica(gestorId: string, planoId: string): Promise<Assinatura> {
+    const gestor = await this.usuarioService.buscarPorId(gestorId);
+    if (gestor.perfil !== PerfilUsuario.GESTOR) {
+      throw new BadRequestException('Apenas gestores podem ter assinaturas');
+    }
+    const plano = await this.planoService.buscarPorId(planoId);
+    if (!plano.ativo) {
+      throw new BadRequestException('Plano não está ativo');
+    }
+    const assinaturaExistente = await this.buscarAssinaturaAtiva(gestorId);
+    if (assinaturaExistente) {
+      assinaturaExistente.status = StatusAssinatura.CANCELADA;
+      await this.assinaturaRepository.save(assinaturaExistente);
+    }
+    const assinatura = this.assinaturaRepository.create({
+      gestorId,
+      planoId,
+      dataInicio: new Date(),
+      dataFim: null,
+      status: StatusAssinatura.ATIVA,
+    });
+    return this.assinaturaRepository.save(assinatura);
+  }
+
+  /**
    * Busca a assinatura ativa de um gestor.
    */
   async buscarAssinaturaAtiva(gestorId: string): Promise<Assinatura | null> {

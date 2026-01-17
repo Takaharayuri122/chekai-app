@@ -3,6 +3,7 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
+  IsUUID,
   MinLength,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
@@ -26,5 +27,10 @@ export class CadastroPublicoDto {
   @IsString()
   @IsNotEmpty({ message: 'O WhatsApp é obrigatório' })
   telefone: string;
+
+  @ApiProperty({ description: 'ID do plano selecionado', example: '123e4567-e89b-12d3-a456-426614174000' })
+  @IsUUID('4', { message: 'ID do plano deve ser um UUID válido' })
+  @IsNotEmpty({ message: 'O plano é obrigatório' })
+  planoId: string;
 }
 

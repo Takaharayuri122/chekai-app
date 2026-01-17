@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -7,6 +7,7 @@ import { AuthController } from './auth.controller';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { UsuarioModule } from '../usuario/usuario.module';
 import { EmailModule } from '../email/email.module';
+import { PlanoModule } from '../plano/plano.module';
 
 /**
  * Módulo responsável pela autenticação JWT.
@@ -26,6 +27,7 @@ import { EmailModule } from '../email/email.module';
     }),
     UsuarioModule,
     EmailModule,
+    forwardRef(() => PlanoModule),
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy],

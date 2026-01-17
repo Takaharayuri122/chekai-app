@@ -1,7 +1,9 @@
-import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, BadRequestException, NotFoundException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UsuarioService } from '../usuario/usuario.service';
 import { EmailService } from '../email/email.service';
+import { AssinaturaService } from '../plano/assinatura.service';
+import { PlanoService } from '../plano/plano.service';
 import { PerfilUsuario } from '../usuario/entities/usuario.entity';
 import { LoginDto, LoginResponse } from './dto/login.dto';
 import { SolicitarOtpDto } from './dto/solicitar-otp.dto';
@@ -16,6 +18,8 @@ export class AuthService {
     private readonly usuarioService: UsuarioService,
     private readonly jwtService: JwtService,
     private readonly emailService: EmailService,
+    private readonly assinaturaService: AssinaturaService,
+    private readonly planoService: PlanoService,
   ) {}
 
   /**
@@ -138,14 +142,20 @@ export class AuthService {
    * Cadastra um novo usuário pelo site (público).
    * Usuários cadastrados pelo site são automaticamente criados como GESTOR.
    * Não requer senha, apenas envia e-mail de boas-vindas.
+   * Cria assinatura automaticamente com o plano selecionado.
    */
-  async cadastroPublico(dto: { nome: string; email: string; telefone: string }): Promise<{ message: string }> {
+  async cadastroPublico(dto: { nome: string; email: string; telefone: string; planoId: string }): Promise<{ message: string }> {
+    const plano = await this.planoService.buscarPorId(dto.planoId);
+    if (!plano.ativo) {
+      throw new BadRequestException('Plano não está ativo');
+    }
     const usuario = await this.usuarioService.criar({
       nome: dto.nome,
       email: dto.email,
       telefone: dto.telefone,
       perfil: PerfilUsuario.GESTOR,
     });
+    await this.assinaturaService.criarAssinaturaPublica(usuario.id, dto.planoId);
     await this.emailService.enviarEmailBoasVindas(usuario.email, usuario.nome);
     return { message: 'Usuário cadastrado com sucesso. Verifique seu e-mail para mais informações.' };
   }

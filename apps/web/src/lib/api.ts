@@ -179,13 +179,14 @@ export const authService = {
     await api.post('/usuarios', data);
   },
 
-  async cadastrar(data: { nome: string; email: string; senha: string; telefone?: string }): Promise<LoginResponse> {
+  async cadastrar(data: { nome: string; email: string; telefone?: string; planoId: string }): Promise<{ message: string }> {
     // Usa o endpoint público de cadastro que cria automaticamente como GESTOR
-    const response = await api.post<{ data: LoginResponse }>('/auth/cadastro', {
+    // Não retorna token, apenas mensagem de sucesso
+    const response = await api.post<{ data: { message: string } }>('/auth/cadastro', {
       nome: data.nome,
       email: data.email,
-      senha: data.senha,
       telefone: data.telefone,
+      planoId: data.planoId,
     });
     return response.data.data;
   },
@@ -995,6 +996,11 @@ export interface UsoCredito {
 }
 
 export const planoService = {
+  async listarPublicos(): Promise<Plano[]> {
+    const response = await api.get('/planos/publicos');
+    return response.data.data;
+  },
+
   async listar(page = 1, limit = 10): Promise<PaginatedResult<Plano>> {
     const response = await api.get('/planos', { params: { page, limit } });
     return response.data.data;

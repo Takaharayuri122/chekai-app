@@ -3,6 +3,7 @@ import {
   NotFoundException,
   ConflictException,
   ForbiddenException,
+  BadRequestException,
   forwardRef,
   Inject,
   Optional,
@@ -18,6 +19,8 @@ import {
   PaginatedResult,
   createPaginatedResult,
 } from '../../shared/types/pagination.interface';
+import { Auditoria } from '../auditoria/entities/auditoria.entity';
+import { Cliente } from '../cliente/entities/cliente.entity';
 
 /**
  * Serviço responsável pela gestão de usuários.
@@ -27,6 +30,10 @@ export class UsuarioService {
   constructor(
     @InjectRepository(Usuario)
     private readonly usuarioRepository: Repository<Usuario>,
+    @InjectRepository(Auditoria)
+    private readonly auditoriaRepository: Repository<Auditoria>,
+    @InjectRepository(Cliente)
+    private readonly clienteRepository: Repository<Cliente>,
     @Inject(forwardRef(() => 'ValidacaoLimitesService'))
     @Optional()
     private readonly validacaoLimites?: any,
@@ -162,12 +169,35 @@ export class UsuarioService {
   }
 
   /**
-   * Remove um usuário (soft delete - desativa).
+   * Remove um usuário da base de dados (hard delete).
+   * Apenas Master pode executar esta operação.
+   * Verifica dependências antes de remover.
    */
   async remover(id: string): Promise<void> {
     const usuario = await this.buscarPorId(id);
-    usuario.ativo = false;
-    await this.usuarioRepository.save(usuario);
+    const auditoriasVinculadas = await this.auditoriaRepository.count({
+      where: { consultorId: id },
+    });
+    if (auditoriasVinculadas > 0) {
+      throw new BadRequestException(
+        `Não é possível remover o usuário. Existem ${auditoriasVinculadas} auditoria(s) vinculada(s) a este usuário.`,
+      );
+    }
+    const usuariosVinculados = await this.usuarioRepository.count({
+      where: { gestorId: id },
+    });
+    if (usuariosVinculados > 0) {
+      throw new BadRequestException(
+        `Não é possível remover o usuário. Existem ${usuariosVinculados} usuário(s) vinculado(s) a este gestor.`,
+      );
+    }
+    const clientesVinculados = await this.clienteRepository.count({
+      where: { gestorId: id },
+    });
+    if (clientesVinculados > 0) {
+      await this.clienteRepository.update({ gestorId: id }, { gestorId: null });
+    }
+    await this.usuarioRepository.remove(usuario);
   }
 
   /**

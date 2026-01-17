@@ -99,11 +99,13 @@ export class UsuarioController {
   }
 
   @Delete(':id')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(PerfilUsuario.MASTER)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Remove um usuário' })
+  @ApiOperation({ summary: 'Remove um usuário (apenas Master)' })
   @ApiResponse({ status: 200, description: 'Usuário removido' })
   @ApiResponse({ status: 404, description: 'Usuário não encontrado' })
+  @ApiResponse({ status: 403, description: 'Acesso negado. Apenas Master pode remover usuários.' })
   async remover(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
     return this.usuarioService.remover(id);
   }
