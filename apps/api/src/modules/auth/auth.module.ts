@@ -20,7 +20,7 @@ import { PlanoModule } from '../plano/plano.module';
       useFactory: (configService: ConfigService) => ({
         secret: configService.get<string>('JWT_SECRET', 'secret'),
         signOptions: {
-          expiresIn: configService.get<string>('JWT_EXPIRES_IN', '7d'),
+          expiresIn: configService.get<string>('JWT_EXPIRES_IN', '30d'),
         },
       }),
       inject: [ConfigService],

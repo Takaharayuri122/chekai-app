@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ChekAI - Offline</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(135deg, #00B8A9 0%, #007A6E 100%);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .container {
+      text-align: center;
+      max-width: 500px;
+    }
+    .icon {
+      font-size: 80px;
+      margin-bottom: 20px;
+    }
+    h1 {
+      font-size: 28px;
+      margin-bottom: 16px;
+      font-weight: 600;
+    }
+    p {
+      font-size: 16px;
+      line-height: 1.6;
+      margin-bottom: 24px;
+      opacity: 0.9;
+    }
+    .button {
+      display: inline-block;
+      background: #fff;
+      color: #00B8A9;
+      padding: 12px 32px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 600;
+      transition: transform 0.2s;
+    }
+    .button:hover {
+      transform: scale(1.05);
+    }
+    .button:active {
+      transform: scale(0.95);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="icon">📡</div>
+    <h1>Você está offline</h1>
+    <p>Parece que você não está conectado à internet. Verifique sua conexão e tente novamente.</p>
+    <a href="/" class="button">Tentar novamente</a>
+  </div>
+  <script>
+    window.addEventListener('online', () => {
+      window.location.reload();
+    });
+  </script>
+</body>
+</html>

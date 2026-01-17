@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { Inter, Montserrat } from 'next/font/google';
 import { Toaster } from 'react-hot-toast';
 import { GoogleAnalytics } from '@/components/analytics/google-analytics';
+import { ServiceWorkerCleanup } from '@/components/pwa/sw-cleanup';
 import './globals.css';
 
 const inter = Inter({
@@ -22,18 +23,21 @@ export const metadata: Metadata = {
   manifest: '/manifest.json',
   icons: {
     icon: [
-      { url: '/images/logo-square.png', sizes: '32x32', type: 'image/png' },
-      { url: '/images/logo-square.png', sizes: '16x16', type: 'image/png' },
+      { url: '/icons/icon-192x192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/icons/icon-512x512.png', sizes: '512x512', type: 'image/png' },
     ],
     apple: [
-      { url: '/images/logo-square.png', sizes: '180x180', type: 'image/png' },
+      { url: '/icons/icon-192x192.png', sizes: '180x180', type: 'image/png' },
     ],
-    shortcut: '/images/logo-square.png',
+    shortcut: '/icons/icon-192x192.png',
   },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
     title: 'ChekAI',
+  },
+  other: {
+    'mobile-web-app-capable': 'yes',
   },
 };
 
@@ -55,6 +59,7 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" data-theme="light">
       <body className={`${inter.variable} ${montserrat.variable} font-sans antialiased bg-base-200 min-h-screen`}>
+        <ServiceWorkerCleanup />
         {children}
         <Toaster
           position="bottom-right"

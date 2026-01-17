@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useRef } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
 import { Navbar } from './navbar';
 
@@ -11,16 +11,27 @@ interface AppLayoutProps {
 
 export function AppLayout({ children }: AppLayoutProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const { isAuthenticated, _hasHydrated } = useAuthStore();
+  const redirectAttempted = useRef(false);
 
   useEffect(() => {
-    // Aguardar a hidratação do Zustand antes de verificar autenticação
-    if (_hasHydrated && !isAuthenticated) {
-      router.push('/login');
+    if (!_hasHydrated) {
+      return;
     }
-  }, [isAuthenticated, _hasHydrated, router]);
+    if (!isAuthenticated && !redirectAttempted.current) {
+      const isLoginPage = pathname === '/login';
+      const isCadastroPage = pathname === '/cadastro';
+      const isPublicPage = isLoginPage || isCadastroPage;
+      if (!isPublicPage) {
+        redirectAttempted.current = true;
+        router.push('/login');
+      }
+    } else if (isAuthenticated) {
+      redirectAttempted.current = false;
+    }
+  }, [isAuthenticated, _hasHydrated, router, pathname]);
 
-  // Mostrar loading enquanto está hidratando
   if (!_hasHydrated) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-base-200">
@@ -30,6 +41,11 @@ export function AppLayout({ children }: AppLayoutProps) {
   }
 
   if (!isAuthenticated) {
+    const isLoginPage = pathname === '/login';
+    const isCadastroPage = pathname === '/cadastro';
+    if (isLoginPage || isCadastroPage) {
+      return <>{children}</>;
+    }
     return (
       <div className="min-h-screen flex items-center justify-center bg-base-200">
         <span className="loading loading-spinner loading-lg text-primary"></span>

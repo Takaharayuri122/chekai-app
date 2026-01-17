@@ -67,7 +67,7 @@ export class Cliente {
   gestor: Usuario;
 
   @Column({ name: 'gestor_id', nullable: true })
-  gestorId: string;
+  gestorId: string | null;
 
   @OneToMany(() => Unidade, (unidade) => unidade.cliente)
   unidades: Unidade[];

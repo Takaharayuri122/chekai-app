@@ -1,11 +1,61 @@
 import type { NextConfig } from 'next';
+import withPWA from 'next-pwa';
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  // PWA será configurado posteriormente
-  // Habilita standalone para deploy em container
   output: 'standalone',
 };
 
-export default nextConfig;
+const isDev = process.env.NODE_ENV === 'development';
+
+const pwaConfig = withPWA({
+  dest: 'public',
+  register: !isDev,
+  skipWaiting: true,
+  disable: isDev,
+  sw: 'sw.js',
+  runtimeCaching: [
+    {
+      urlPattern: /\/api\/auth\/.*/i,
+      handler: 'NetworkOnly',
+      options: {
+        cacheName: 'auth-requests',
+        networkTimeoutSeconds: 10,
+      },
+    },
+    {
+      urlPattern: /^https?:\/\/.*\/api\/.*/i,
+      handler: 'NetworkFirst',
+      options: {
+        cacheName: 'api-cache',
+        networkTimeoutSeconds: 10,
+        expiration: {
+          maxEntries: 50,
+          maxAgeSeconds: 60,
+        },
+      },
+    },
+    {
+      urlPattern: /^https?.*/,
+      handler: 'NetworkFirst',
+      options: {
+        cacheName: 'offlineCache',
+        networkTimeoutSeconds: 10,
+        expiration: {
+          maxEntries: 200,
+          maxAgeSeconds: 86400,
+        },
+      },
+    },
+  ],
+  fallbacks: {
+    document: '/offline.html',
+  },
+  buildExcludes: [/middleware-manifest\.json$/],
+  publicExcludes: ['!noprecache/**/*'],
+  reloadOnOnline: true,
+  swcMinify: true,
+});
+
+export default pwaConfig(nextConfig);
 

@@ -3,6 +3,8 @@
   "short_name": "ChekAI",
   "description": "Consultoria em Segurança de Alimentos com IA",
   "start_url": "/",
+  "scope": "/",
+  "id": "/",
   "display": "standalone",
   "background_color": "#FFFFFF",
   "theme_color": "#00B8A9",
