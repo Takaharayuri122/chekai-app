@@ -20,7 +20,6 @@ const pwaConfig = withPWA({
       handler: 'NetworkOnly',
       options: {
         cacheName: 'auth-requests',
-        networkTimeoutSeconds: 10,
       },
     },
     {
