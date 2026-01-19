@@ -41,7 +41,9 @@ export const useAuthStore = create<AuthState>()(
         set({ _hasHydrated: state });
       },
       setAuth: (token, usuario) => {
-        localStorage.setItem('token', token);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('token', token);
+        }
         set({ token, usuario, isAuthenticated: true });
       },
       logout: () => {
@@ -64,18 +66,19 @@ export const useAuthStore = create<AuthState>()(
     {
       name: 'auth-storage',
       onRehydrateStorage: () => (state) => {
-        state?.setHasHydrated(true);
-        // Verificar se há token no localStorage e atualizar isAuthenticated
         if (typeof window !== 'undefined' && state) {
           const token = localStorage.getItem('token');
-          if (token && state.token) {
+          if (token && state.token && state.usuario) {
             state.isAuthenticated = true;
-          } else if (!token) {
+          } else {
             state.isAuthenticated = false;
-            state.token = null;
-            state.usuario = null;
+            if (!token) {
+              state.token = null;
+              state.usuario = null;
+            }
           }
         }
+        state?.setHasHydrated(true);
       },
     }
   )

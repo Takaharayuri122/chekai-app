@@ -1,5 +1,7 @@
 'use client';
 
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
@@ -15,6 +17,7 @@ import {
   MapPin,
   Zap,
 } from 'lucide-react';
+import { useAuthStore } from '@/lib/store';
 
 const features = [
   {
@@ -69,6 +72,23 @@ const benefits = [
 ];
 
 export default function HomePage() {
+  const router = useRouter();
+  const { isAuthenticated, _hasHydrated } = useAuthStore();
+
+  useEffect(() => {
+    if (_hasHydrated && isAuthenticated) {
+      router.push('/dashboard');
+    }
+  }, [isAuthenticated, _hasHydrated, router]);
+
+  if (_hasHydrated && isAuthenticated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-base-200">
+        <span className="loading loading-spinner loading-lg text-primary"></span>
+      </div>
+    );
+  }
+
   return (
     <main className="min-h-screen bg-gradient-to-b from-base-100 to-base-200">
       {/* Hero Section */}

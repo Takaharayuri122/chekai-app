@@ -111,7 +111,7 @@ export default function NovaAuditoriaPage() {
         <ul className="steps steps-horizontal w-full mb-8">
           <li className={`step ${step >= 1 ? 'step-primary' : ''}`}>Cliente</li>
           <li className={`step ${step >= 2 ? 'step-primary' : ''}`}>Unidade</li>
-          <li className={`step ${step >= 3 ? 'step-primary' : ''}`}>Template</li>
+          <li className={`step ${step >= 3 ? 'step-primary' : ''}`}>Checklist</li>
           <li className={`step ${step >= 4 ? 'step-primary' : ''}`}>Confirmar</li>
         </ul>
 
@@ -230,19 +230,19 @@ export default function NovaAuditoriaPage() {
               </motion.div>
             )}
 
-            {/* Step 3: Template */}
+            {/* Step 3: Checklist */}
             {step === 3 && (
               <motion.div
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
               >
-                <h2 className="text-lg font-semibold mb-4">Selecione o template</h2>
+                <h2 className="text-lg font-semibold mb-4">Selecione o Checklist</h2>
                 <div className="space-y-3">
                   {templates.length === 0 ? (
                     <div className="card bg-base-100 shadow-sm border border-base-300">
                       <div className="card-body items-center text-center py-8">
                         <ClipboardList className="w-12 h-12 text-base-content/30 mb-2" />
-                        <p className="text-base-content/60">Nenhum template disponível</p>
+                        <p className="text-base-content/60">Nenhum Checklist disponível</p>
                       </div>
                     </div>
                   ) : (
@@ -315,7 +315,7 @@ export default function NovaAuditoriaPage() {
                     <div className="flex items-center gap-3">
                       <ClipboardList className="w-5 h-5 text-accent" />
                       <div>
-                        <p className="text-sm text-base-content/60">Template</p>
+                        <p className="text-sm text-base-content/60">Checklist</p>
                         <p className="font-medium">
                           {templates.find((t) => t.id === templateId)?.nome}
                         </p>

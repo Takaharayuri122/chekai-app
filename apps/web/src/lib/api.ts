@@ -95,10 +95,20 @@ api.interceptors.response.use(
         }
         return Promise.reject(error);
       } else {
-        // Para outros erros 401, redirecionar para login (token expirado/inválido)
+        // Para outros erros 401, verificar se é realmente um problema de autenticação
+        // antes de remover o token e redirecionar
         if (typeof window !== 'undefined') {
-          localStorage.removeItem('token');
-          window.location.href = '/login';
+          const pathname = window.location.pathname;
+          const isPublicPage = pathname === '/login' || pathname === '/cadastro' || pathname === '/';
+          
+          if (!isPublicPage) {
+            localStorage.removeItem('token');
+            // Importar dinamicamente para evitar dependência circular
+            import('./store').then(({ useAuthStore }) => {
+              useAuthStore.getState().logout();
+            });
+            window.location.href = '/login';
+          }
         }
         return Promise.reject(error);
       }

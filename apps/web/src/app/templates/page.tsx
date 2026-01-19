@@ -374,12 +374,14 @@ export default function TemplatesPage() {
                             </>
                           )}
                         </div>
-                        <Link
-                          href={`/templates/${template.id}`}
-                          className="btn btn-ghost btn-sm"
-                        >
-                          Editar Checklist
-                        </Link>
+                        {(isGestor() || isMaster()) && (
+                          <Link
+                            href={`/templates/${template.id}`}
+                            className="btn btn-ghost btn-sm"
+                          >
+                            Editar Checklist
+                          </Link>
+                        )}
                       </div>
                     </div>
                   )}

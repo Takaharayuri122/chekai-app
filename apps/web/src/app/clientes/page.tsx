@@ -9,23 +9,31 @@ import {
   ChevronDown,
   ChevronUp,
   Loader2,
+  Edit,
+  Trash2,
 } from 'lucide-react';
 import { AppLayout, PageHeader, EmptyState } from '@/components';
 import {
   clienteService,
+  unidadeService,
   Cliente,
   TipoAtividade,
   TIPO_ATIVIDADE_LABELS,
 } from '@/lib/api';
 import { toastService } from '@/lib/toast';
+import { useAuthStore } from '@/lib/store';
 
 export default function ClientesPage() {
+  const { isGestor, isMaster } = useAuthStore();
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedCliente, setExpandedCliente] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [showUnidadeModal, setShowUnidadeModal] = useState<string | null>(null);
+  const [editingCliente, setEditingCliente] = useState<Cliente | null>(null);
+  const [editingUnidade, setEditingUnidade] = useState<{ clienteId: string; unidadeId: string } | null>(null);
   const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   // Form state
   const [clienteForm, setClienteForm] = useState({
@@ -123,8 +131,14 @@ export default function ClientesPage() {
     setSaving(true);
 
     try {
-      await clienteService.criarUnidade(showUnidadeModal, unidadeForm);
-      toastService.success('Unidade cadastrada com sucesso!');
+      if (editingUnidade) {
+        await unidadeService.atualizar(editingUnidade.unidadeId, unidadeForm);
+        toastService.success('Unidade atualizada com sucesso!');
+        setEditingUnidade(null);
+      } else {
+        await clienteService.criarUnidade(showUnidadeModal, unidadeForm);
+        toastService.success('Unidade cadastrada com sucesso!');
+      }
       await carregarClientes();
       setShowUnidadeModal(null);
       setUnidadeForm({ nome: '', endereco: '', cidade: '', estado: '', cep: '' });
@@ -132,6 +146,90 @@ export default function ClientesPage() {
       // Erro já é tratado pelo interceptor
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleEditarCliente = (cliente: Cliente) => {
+    setEditingCliente(cliente);
+    setClienteForm({
+      razaoSocial: cliente.razaoSocial,
+      nomeFantasia: cliente.nomeFantasia || '',
+      cnpj: formatarCNPJ(cliente.cnpj),
+      telefone: cliente.telefone || '',
+      email: cliente.email || '',
+      tipoAtividade: cliente.tipoAtividade,
+    });
+    setShowModal(true);
+  };
+
+  const handleEditarUnidade = (clienteId: string, unidadeId: string) => {
+    const cliente = clientes.find((c) => c.id === clienteId);
+    const unidade = cliente?.unidades.find((u) => u.id === unidadeId);
+    if (unidade) {
+      setEditingUnidade({ clienteId, unidadeId });
+      setUnidadeForm({
+        nome: unidade.nome,
+        endereco: unidade.endereco,
+        cidade: unidade.cidade,
+        estado: unidade.estado,
+        cep: unidade.cep || '',
+      });
+      setShowUnidadeModal(clienteId);
+    }
+  };
+
+  const handleAtualizarCliente = async () => {
+    if (!editingCliente || !clienteForm.razaoSocial || !clienteForm.cnpj || !clienteForm.telefone) return;
+    setSaving(true);
+
+    try {
+      const dadosParaEnviar = {
+        ...clienteForm,
+        cnpj: removerMascaraCNPJ(clienteForm.cnpj),
+        email: clienteForm.email || undefined,
+      };
+      await clienteService.atualizar(editingCliente.id, dadosParaEnviar);
+      toastService.success('Cliente atualizado com sucesso!');
+      await carregarClientes();
+      setShowModal(false);
+      setEditingCliente(null);
+      setClienteForm({
+        razaoSocial: '',
+        nomeFantasia: '',
+        cnpj: '',
+        telefone: '',
+        email: '',
+        tipoAtividade: TipoAtividade.OUTRO,
+      });
+    } catch (error) {
+      // Erro já é tratado pelo interceptor
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleRemoverCliente = async (id: string) => {
+    if (!confirm('Tem certeza que deseja remover este cliente? Esta ação não pode ser desfeita.')) return;
+    setDeletingId(id);
+    try {
+      await clienteService.remover(id);
+      toastService.success('Cliente removido com sucesso!');
+      await carregarClientes();
+    } catch (error) {
+      // Erro já é tratado pelo interceptor
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const handleRemoverUnidade = async (clienteId: string, unidadeId: string) => {
+    if (!confirm('Tem certeza que deseja remover esta unidade? Esta ação não pode ser desfeita.')) return;
+    try {
+      await unidadeService.remover(unidadeId);
+      toastService.success('Unidade removida com sucesso!');
+      await carregarClientes();
+    } catch (error) {
+      // Erro já é tratado pelo interceptor
     }
   };
 
@@ -213,7 +311,10 @@ export default function ClientesPage() {
                             Unidades
                           </span>
                           <button
-                            onClick={() => setShowUnidadeModal(cliente.id)}
+                            onClick={() => {
+                              setEditingUnidade(null);
+                              setShowUnidadeModal(cliente.id);
+                            }}
                             className="btn btn-ghost btn-xs gap-1"
                           >
                             <Plus className="w-3 h-3" />
@@ -229,7 +330,7 @@ export default function ClientesPage() {
                             {cliente.unidades.map((unidade) => (
                               <div
                                 key={unidade.id}
-                                className="flex items-center gap-3 p-3 bg-base-100 rounded-lg"
+                                className="flex items-center gap-3 p-3 bg-base-100 rounded-lg group"
                               >
                                 <MapPin className="w-4 h-4 text-secondary" />
                                 <div className="flex-1 min-w-0">
@@ -240,11 +341,52 @@ export default function ClientesPage() {
                                     {unidade.cidade}, {unidade.estado}
                                   </p>
                                 </div>
+                                {(isGestor() || isMaster()) && (
+                                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button
+                                      onClick={() => handleEditarUnidade(cliente.id, unidade.id)}
+                                      className="btn btn-ghost btn-xs"
+                                      title="Editar unidade"
+                                    >
+                                      <Edit className="w-3 h-3" />
+                                    </button>
+                                    <button
+                                      onClick={() => handleRemoverUnidade(cliente.id, unidade.id)}
+                                      className="btn btn-ghost btn-xs text-error"
+                                      title="Remover unidade"
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                    </button>
+                                  </div>
+                                )}
                               </div>
                             ))}
                           </div>
                         )}
                       </div>
+                      {(isGestor() || isMaster()) && (
+                        <div className="p-3 border-t border-base-200 flex justify-end gap-2">
+                          <button
+                            onClick={() => handleEditarCliente(cliente)}
+                            className="btn btn-ghost btn-sm gap-1"
+                          >
+                            <Edit className="w-4 h-4" />
+                            Editar Cliente
+                          </button>
+                          <button
+                            onClick={() => handleRemoverCliente(cliente.id)}
+                            disabled={deletingId === cliente.id}
+                            className="btn btn-error btn-sm gap-1"
+                          >
+                            {deletingId === cliente.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="w-4 h-4" />
+                            )}
+                            Remover
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -266,7 +408,9 @@ export default function ClientesPage() {
           }}
         >
           <div className="modal-box">
-            <h3 className="font-bold text-lg mb-4">Novo Cliente</h3>
+            <h3 className="font-bold text-lg mb-4">
+              {editingCliente ? 'Editar Cliente' : 'Novo Cliente'}
+            </h3>
             <div className="space-y-4">
               <div className="form-control">
                 <label className="label">
@@ -366,12 +510,26 @@ export default function ClientesPage() {
               </div>
             </div>
             <div className="modal-action">
-              <button className="btn btn-ghost" onClick={() => setShowModal(false)}>
+              <button
+                className="btn btn-ghost"
+                onClick={() => {
+                  setShowModal(false);
+                  setEditingCliente(null);
+                  setClienteForm({
+                    razaoSocial: '',
+                    nomeFantasia: '',
+                    cnpj: '',
+                    telefone: '',
+                    email: '',
+                    tipoAtividade: TipoAtividade.OUTRO,
+                  });
+                }}
+              >
                 Cancelar
               </button>
               <button
                 className="btn btn-primary"
-                onClick={handleCriarCliente}
+                onClick={editingCliente ? handleAtualizarCliente : handleCriarCliente}
                 disabled={
                   saving ||
                   !clienteForm.razaoSocial ||
@@ -385,7 +543,7 @@ export default function ClientesPage() {
                     Salvando...
                   </>
                 ) : (
-                  'Salvar'
+                  editingCliente ? 'Atualizar' : 'Salvar'
                 )}
               </button>
             </div>
@@ -412,7 +570,9 @@ export default function ClientesPage() {
           }}
         >
           <div className="modal-box">
-            <h3 className="font-bold text-lg mb-4">Nova Unidade</h3>
+            <h3 className="font-bold text-lg mb-4">
+              {editingUnidade ? 'Editar Unidade' : 'Nova Unidade'}
+            </h3>
             <div className="space-y-4">
               <div className="form-control">
                 <label className="label">
@@ -494,7 +654,11 @@ export default function ClientesPage() {
             <div className="modal-action">
               <button
                 className="btn btn-ghost"
-                onClick={() => setShowUnidadeModal(null)}
+                onClick={() => {
+                  setShowUnidadeModal(null);
+                  setEditingUnidade(null);
+                  setUnidadeForm({ nome: '', endereco: '', cidade: '', estado: '', cep: '' });
+                }}
               >
                 Cancelar
               </button>
@@ -515,7 +679,7 @@ export default function ClientesPage() {
                     Salvando...
                   </>
                 ) : (
-                  'Salvar'
+                  editingUnidade ? 'Atualizar' : 'Salvar'
                 )}
               </button>
             </div>

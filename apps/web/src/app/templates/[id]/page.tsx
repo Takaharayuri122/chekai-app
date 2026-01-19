@@ -53,6 +53,7 @@ import {
   RESPOSTAS_PADRAO,
 } from '@/lib/api';
 import { toastService } from '@/lib/toast';
+import { useAuthStore } from '@/lib/store';
 
 interface ItemFormData extends CriarTemplateItemRequest {
   id?: string;
@@ -160,6 +161,7 @@ function SortableItem({ item, index, onEdit, onRemove }: SortableItemProps) {
 export default function EditarTemplatePage() {
   const router = useRouter();
   const params = useParams();
+  const { isGestor, isMaster } = useAuthStore();
   const templateId = params.id as string;
   const [template, setTemplate] = useState<ChecklistTemplate | null>(null);
   const [loading, setLoading] = useState(true);
@@ -308,8 +310,12 @@ export default function EditarTemplatePage() {
   }, [templateId]);
 
   useEffect(() => {
+    if (!isGestor() && !isMaster()) {
+      router.push('/templates');
+      return;
+    }
     loadTemplate();
-  }, [loadTemplate]);
+  }, [loadTemplate, isGestor, isMaster, router]);
 
   const handleSalvar = async () => {
     if (!formData.nome.trim()) {
