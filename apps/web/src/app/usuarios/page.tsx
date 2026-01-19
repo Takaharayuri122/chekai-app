@@ -16,7 +16,7 @@ import {
   Search,
   Filter,
 } from 'lucide-react';
-import { AppLayout, PageHeader, EmptyState } from '@/components';
+import { AppLayout, PageHeader, EmptyState, ConfirmDialog } from '@/components';
 import {
   usuarioService,
   Usuario,
@@ -50,6 +50,8 @@ export default function UsuariosPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [filtroPerfil, setFiltroPerfil] = useState<PerfilUsuario | 'todos'>('todos');
   const [busca, setBusca] = useState('');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const [usuarioForm, setUsuarioForm] = useState<CriarUsuarioRequest>({
     nome: '',
@@ -195,15 +197,22 @@ export default function UsuariosPage() {
     });
   };
 
-  const handleRemoverUsuario = async (id: string) => {
-    if (!confirm('Tem certeza que deseja remover este usuário?')) return;
+  const handleDeleteClick = (id: string) => {
+    setShowDeleteConfirm(id);
+  };
 
+  const handleDeleteConfirm = async () => {
+    if (!showDeleteConfirm) return;
     try {
-      await usuarioService.remover(id);
+      setDeletingId(showDeleteConfirm);
+      await usuarioService.remover(showDeleteConfirm);
       toastService.success('Usuário removido com sucesso!');
       await carregarUsuarios();
+      setShowDeleteConfirm(null);
     } catch (error) {
       // Erro já é tratado pelo interceptor
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -364,10 +373,15 @@ export default function UsuariosPage() {
                             {(!isGestor() || isMaster()) && (
                               <button
                                 className="btn btn-ghost btn-xs gap-1 text-error"
-                                onClick={() => handleRemoverUsuario(usuarioItem.id)}
+                                onClick={() => handleDeleteClick(usuarioItem.id)}
+                                disabled={deletingId === usuarioItem.id}
                                 title="Remover"
                               >
-                                <Trash2 className="w-4 h-4" />
+                                {deletingId === usuarioItem.id ? (
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <Trash2 className="w-4 h-4" />
+                                )}
                               </button>
                             )}
                           </div>
@@ -579,6 +593,19 @@ export default function UsuariosPage() {
           </div>
         </div>
       )}
+
+      {/* Modal de Confirmação de Remoção */}
+      <ConfirmDialog
+        open={showDeleteConfirm !== null}
+        onClose={() => setShowDeleteConfirm(null)}
+        onConfirm={handleDeleteConfirm}
+        title="Remover Usuário"
+        message="Tem certeza que deseja remover este usuário? Esta ação não pode ser desfeita. O usuário só pode ser removido se não houver auditorias, outros usuários ou clientes vinculados a ele."
+        confirmLabel="Remover"
+        cancelLabel="Cancelar"
+        variant="danger"
+        loading={deletingId !== null}
+      />
     </AppLayout>
   );
 }

@@ -2,8 +2,9 @@
 
 import { useEffect, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { useAuthStore } from '@/lib/store';
+import { useAuthStore, useTutorialStore, PerfilUsuario } from '@/lib/store';
 import { Navbar } from './navbar';
+import { TutorialProvider } from '@/components/tutorial/tutorial-provider';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -12,8 +13,10 @@ interface AppLayoutProps {
 export function AppLayout({ children }: AppLayoutProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const { isAuthenticated, _hasHydrated } = useAuthStore();
+  const { isAuthenticated, _hasHydrated, usuario } = useAuthStore();
+  const { verificarTutorialCompleto, iniciarTour } = useTutorialStore();
   const redirectAttempted = useRef(false);
+  const tutorialVerificado = useRef(false);
 
   useEffect(() => {
     if (!_hasHydrated) {
@@ -31,6 +34,26 @@ export function AppLayout({ children }: AppLayoutProps) {
       redirectAttempted.current = false;
     }
   }, [isAuthenticated, _hasHydrated, router, pathname]);
+
+  useEffect(() => {
+    if (!_hasHydrated || !isAuthenticated || !usuario || tutorialVerificado.current) {
+      return;
+    }
+
+    const perfil = usuario.perfil;
+    const tutorialCompleto = verificarTutorialCompleto(perfil);
+    const isDashboardPage = pathname === '/dashboard';
+
+    if (!tutorialCompleto && isDashboardPage) {
+      tutorialVerificado.current = true;
+      const timer = setTimeout(() => {
+        iniciarTour(perfil);
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+
+    tutorialVerificado.current = true;
+  }, [_hasHydrated, isAuthenticated, usuario, pathname, verificarTutorialCompleto, iniciarTour]);
 
   if (!_hasHydrated) {
     return (
@@ -53,13 +76,19 @@ export function AppLayout({ children }: AppLayoutProps) {
     );
   }
 
+  if (!usuario) {
+    return null;
+  }
+
   return (
-    <div className="min-h-screen bg-base-200">
-      <Navbar />
-      <main className="pb-20 md:pb-8">
-        {children}
-      </main>
-    </div>
+    <TutorialProvider perfil={usuario.perfil}>
+      <div className="min-h-screen bg-base-200">
+        <Navbar />
+        <main className="pb-20 md:pb-8">
+          {children}
+        </main>
+      </div>
+    </TutorialProvider>
   );
 }
 

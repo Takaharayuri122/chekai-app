@@ -1,5 +1,6 @@
 import { Injectable, UnauthorizedException, BadRequestException, NotFoundException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 import { UsuarioService } from '../usuario/usuario.service';
 import { EmailService } from '../email/email.service';
 import { AssinaturaService } from '../plano/assinatura.service';
@@ -14,13 +15,23 @@ import { ValidarOtpDto } from './dto/validar-otp.dto';
  */
 @Injectable()
 export class AuthService {
+  private readonly OTP_MOCK = '252622';
   constructor(
     private readonly usuarioService: UsuarioService,
     private readonly jwtService: JwtService,
     private readonly emailService: EmailService,
     private readonly assinaturaService: AssinaturaService,
     private readonly planoService: PlanoService,
+    private readonly configService: ConfigService,
   ) {}
+
+  /**
+   * Verifica se está em ambiente de desenvolvimento.
+   */
+  private isDevelopment(): boolean {
+    const nodeEnv = this.configService.get<string>('NODE_ENV') || process.env.NODE_ENV;
+    return !nodeEnv || nodeEnv === 'development';
+  }
 
   /**
    * Solicita um código OTP para login.
@@ -32,6 +43,9 @@ export class AuthService {
     }
     if (!usuario.ativo) {
       throw new UnauthorizedException('Usuário inativo');
+    }
+    if (this.isDevelopment()) {
+      return { message: 'Em desenvolvimento: use o código OTP 252622' };
     }
     const codigoOTP = this.gerarCodigoOTP();
     const dataExpiracao = new Date();
@@ -52,16 +66,19 @@ export class AuthService {
     if (!usuario.ativo) {
       throw new UnauthorizedException('Usuário inativo');
     }
-    if (!usuario.otpCode || !usuario.otpExpiresAt) {
-      throw new BadRequestException('Código OTP não solicitado ou expirado');
+    const isMockOtp = this.isDevelopment() && dto.codigo === this.OTP_MOCK;
+    if (!isMockOtp) {
+      if (!usuario.otpCode || !usuario.otpExpiresAt) {
+        throw new BadRequestException('Código OTP não solicitado ou expirado');
+      }
+      if (usuario.otpCode !== dto.codigo) {
+        throw new UnauthorizedException('Código OTP inválido');
+      }
+      if (new Date() > usuario.otpExpiresAt) {
+        throw new BadRequestException('Código OTP expirado. Solicite um novo código.');
+      }
+      await this.usuarioService.limparOtp(usuario.id);
     }
-    if (usuario.otpCode !== dto.codigo) {
-      throw new UnauthorizedException('Código OTP inválido');
-    }
-    if (new Date() > usuario.otpExpiresAt) {
-      throw new BadRequestException('Código OTP expirado. Solicite um novo código.');
-    }
-    await this.usuarioService.limparOtp(usuario.id);
     const payload = {
       sub: usuario.id,
       email: usuario.email,

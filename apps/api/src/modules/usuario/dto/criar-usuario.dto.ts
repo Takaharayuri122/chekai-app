@@ -51,5 +51,13 @@ export class CriarUsuarioDto {
   @IsString()
   @IsNotEmpty({ message: 'O WhatsApp é obrigatório' })
   telefone: string;
+
+  @ApiPropertyOptional({
+    description: 'ID do plano a ser atribuído ao usuário (apenas para perfil GESTOR)',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+  })
+  @IsUUID('4', { message: 'ID do plano inválido' })
+  @IsOptional()
+  planoId?: string;
 }
 

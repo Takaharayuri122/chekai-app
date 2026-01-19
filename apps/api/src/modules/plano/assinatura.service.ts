@@ -3,6 +3,8 @@ import {
   NotFoundException,
   BadRequestException,
   ForbiddenException,
+  Inject,
+  forwardRef,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, LessThanOrEqual, MoreThanOrEqual } from 'typeorm';
@@ -21,6 +23,7 @@ export class AssinaturaService {
     @InjectRepository(Assinatura)
     private readonly assinaturaRepository: Repository<Assinatura>,
     private readonly planoService: PlanoService,
+    @Inject(forwardRef(() => UsuarioService))
     private readonly usuarioService: UsuarioService,
   ) {}
 

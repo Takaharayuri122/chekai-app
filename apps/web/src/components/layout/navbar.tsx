@@ -21,7 +21,8 @@ import {
   ChevronDown,
   BarChart3,
 } from 'lucide-react';
-import { useAuthStore, PerfilUsuario } from '@/lib/store';
+import { useAuthStore, useTutorialStore, PerfilUsuario } from '@/lib/store';
+import { BookOpen } from 'lucide-react';
 
 const allNavItems = [
   { href: '/dashboard', label: 'Início', icon: Home, roles: [PerfilUsuario.MASTER, PerfilUsuario.GESTOR, PerfilUsuario.AUDITOR] },
@@ -44,10 +45,17 @@ const administrativoItems = [
 export function Navbar() {
   const pathname = usePathname();
   const { usuario, logout, isMaster, isGestor, isAuditor } = useAuthStore();
+  const { iniciarTour } = useTutorialStore();
 
   const handleLogout = () => {
     logout();
     window.location.href = '/';
+  };
+
+  const handleVerTutorial = () => {
+    if (usuario) {
+      iniciarTour(usuario.perfil);
+    }
   };
 
   const getNavItems = () => {
@@ -75,14 +83,16 @@ export function Navbar() {
         </div>
 
         <div className="flex-none gap-2">
-          <ul className="menu menu-horizontal px-1 gap-1">
+          <ul className="menu menu-horizontal px-1 gap-1" data-tutorial-id="navbar">
             {navItems.map((item) => {
               const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+              const tutorialId = item.href === '/auditoria/nova' ? 'navbar-nova' : undefined;
               return (
                 <li key={item.href}>
                   <Link
                     href={item.href}
                     className={isActive ? 'bg-primary text-primary-content' : ''}
+                    {...(tutorialId ? { 'data-tutorial-id': tutorialId } : {})}
                   >
                     <item.icon className="w-4 h-4" />
                     {item.label}
@@ -131,7 +141,12 @@ export function Navbar() {
           </ul>
 
           <div className="dropdown dropdown-end">
-            <div tabIndex={0} role="button" className="btn btn-ghost btn-circle avatar placeholder">
+            <div
+              tabIndex={0}
+              role="button"
+              className="btn btn-ghost btn-circle avatar placeholder"
+              data-tutorial-id="navbar-avatar"
+            >
               <div className="bg-primary text-primary-content rounded-full w-10">
                 <span className="text-sm">{usuario?.nome?.charAt(0) || 'U'}</span>
               </div>
@@ -148,6 +163,12 @@ export function Navbar() {
                   <User className="w-4 h-4" />
                   Meu Perfil
                 </Link>
+              </li>
+              <li>
+                <button onClick={handleVerTutorial} type="button">
+                  <BookOpen className="w-4 h-4" />
+                  Ver Tutorial
+                </button>
               </li>
               {isMaster() && (
                 <>
@@ -221,26 +242,33 @@ export function Navbar() {
         <div className="flex-none">
           <div className="dropdown dropdown-end">
             <div tabIndex={0} role="button" className="btn btn-ghost btn-circle">
-              <Menu className="w-5 h-5" />
+              <Menu className="w-6 h-6" />
             </div>
             <ul
               tabIndex={0}
-              className="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow-lg bg-base-100 rounded-box w-52 border border-base-300 max-h-[80vh] overflow-y-auto"
+              className="menu dropdown-content mt-3 z-[1] p-3 shadow-lg bg-base-100 rounded-box w-64 border border-base-300 max-h-[80vh] overflow-y-auto"
+              data-tutorial-id="navbar"
             >
               <li className="menu-title">
-                <span>{usuario?.nome || 'Usuário'}</span>
+                <span className="text-base font-semibold">{usuario?.nome || 'Usuário'}</span>
               </li>
-              {navItems.map((item) => (
-                <li key={item.href}>
-                  <Link
-                    href={item.href}
-                    className={pathname === item.href || pathname.startsWith(item.href + '/') ? 'active' : ''}
-                  >
-                    <item.icon className="w-4 h-4" />
-                    {item.label}
-                  </Link>
-                </li>
-              ))}
+              {navItems.map((item) => {
+                const tutorialId = item.href === '/auditoria/nova' ? 'navbar-nova' : undefined;
+                return (
+                  <li key={item.href}>
+                    <Link
+                      href={item.href}
+                      className={`text-base py-3 ${
+                        pathname === item.href || pathname.startsWith(item.href + '/') ? 'active' : ''
+                      }`}
+                      {...(tutorialId ? { 'data-tutorial-id': tutorialId } : {})}
+                    >
+                      <item.icon className="w-5 h-5" />
+                      {item.label}
+                    </Link>
+                  </li>
+                );
+              })}
               {isMaster() && (
                 <li>
                   <details>
@@ -257,9 +285,9 @@ export function Navbar() {
                           <li key={item.href}>
                             <Link
                               href={item.href}
-                              className={isActive ? 'active' : ''}
+                              className={`text-base py-3 ${isActive ? 'active' : ''}`}
                             >
-                              <item.icon className="w-4 h-4" />
+                              <item.icon className="w-5 h-5" />
                               {item.label}
                             </Link>
                           </li>
@@ -269,30 +297,36 @@ export function Navbar() {
                   </details>
                 </li>
               )}
-              <div className="divider my-1"></div>
+              <div className="divider my-2"></div>
               <li>
-                <Link href="/perfil">
-                  <User className="w-4 h-4" />
+                <Link href="/perfil" className="text-base py-3">
+                  <User className="w-5 h-5" />
                   Meu Perfil
                 </Link>
+              </li>
+              <li>
+                <button onClick={handleVerTutorial} type="button" className="text-base py-3 w-full text-left">
+                  <BookOpen className="w-5 h-5" />
+                  Ver Tutorial
+                </button>
               </li>
               {isMaster() && (
                 <>
                   <li>
-                    <Link href="/planos">
-                      <Package className="w-4 h-4" />
+                    <Link href="/planos" className="text-base py-3">
+                      <Package className="w-5 h-5" />
                       Planos
                     </Link>
                   </li>
                   <li>
-                    <Link href="/planos/assinaturas">
-                      <UserCheck className="w-4 h-4" />
+                    <Link href="/planos/assinaturas" className="text-base py-3">
+                      <UserCheck className="w-5 h-5" />
                       Assinaturas
                     </Link>
                   </li>
                   <li>
-                    <Link href="/configuracoes-credito">
-                      <Settings className="w-4 h-4" />
+                    <Link href="/configuracoes-credito" className="text-base py-3">
+                      <Settings className="w-5 h-5" />
                       Config. Créditos
                     </Link>
                   </li>
@@ -301,23 +335,23 @@ export function Navbar() {
               {isGestor() && !isMaster() && (
                 <>
                   <li>
-                    <Link href="/gestor/limites">
-                      <TrendingUp className="w-4 h-4" />
+                    <Link href="/gestor/limites" className="text-base py-3">
+                      <TrendingUp className="w-5 h-5" />
                       Meus Limites
                     </Link>
                   </li>
                   <li>
-                    <Link href="/gestor/creditos">
-                      <Coins className="w-4 h-4" />
+                    <Link href="/gestor/creditos" className="text-base py-3">
+                      <Coins className="w-5 h-5" />
                       Meus Créditos
                     </Link>
                   </li>
                 </>
               )}
-              <div className="divider my-1"></div>
+              <div className="divider my-2"></div>
               <li>
-                <button onClick={handleLogout} className="text-error">
-                  <LogOut className="w-4 h-4" />
+                <button onClick={handleLogout} className="text-error text-base py-3">
+                  <LogOut className="w-5 h-5" />
                   Sair
                 </button>
               </li>
@@ -327,15 +361,19 @@ export function Navbar() {
       </div>
 
       {/* Bottom Navigation - Mobile */}
-      <div className="btm-nav btm-nav-sm bg-base-100 border-t border-base-300 md:hidden safe-bottom z-50">
+      <div className="btm-nav bg-base-100 border-t border-base-300 md:hidden safe-bottom z-50 h-20">
         {navItems.slice(0, 5).map((item) => (
           <Link
             key={item.href}
             href={item.href}
-            className={pathname === item.href || pathname.startsWith(item.href + '/') ? 'active text-primary' : 'text-base-content/60'}
+            className={`flex flex-col items-center justify-center gap-1.5 min-w-0 flex-1 ${
+              pathname === item.href || pathname.startsWith(item.href + '/')
+                ? 'active text-primary'
+                : 'text-base-content/60'
+            }`}
           >
-            <item.icon className="w-5 h-5" />
-            <span className="btm-nav-label text-xs">{item.label}</span>
+            <item.icon className="w-7 h-7" />
+            <span className="text-sm font-medium leading-tight">{item.label}</span>
           </Link>
         ))}
       </div>

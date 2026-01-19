@@ -21,6 +21,7 @@ import {
 } from '../../shared/types/pagination.interface';
 import { Auditoria } from '../auditoria/entities/auditoria.entity';
 import { Cliente } from '../cliente/entities/cliente.entity';
+import { AssinaturaService } from '../plano/assinatura.service';
 
 /**
  * Serviço responsável pela gestão de usuários.
@@ -37,6 +38,9 @@ export class UsuarioService {
     @Inject(forwardRef(() => 'ValidacaoLimitesService'))
     @Optional()
     private readonly validacaoLimites?: any,
+    @Inject(forwardRef(() => AssinaturaService))
+    @Optional()
+    private readonly assinaturaService?: AssinaturaService,
   ) {}
 
   /**
@@ -92,6 +96,23 @@ export class UsuarioService {
     if (savedUsuario.perfil === PerfilUsuario.GESTOR) {
       savedUsuario.tenantId = savedUsuario.id;
       const updatedUsuario = await this.usuarioRepository.save(savedUsuario);
+      if (dto.planoId && this.assinaturaService) {
+        try {
+          if (usuarioCriador && usuarioCriador.perfil === PerfilUsuario.MASTER) {
+            await this.assinaturaService.criar(
+              {
+                gestorId: updatedUsuario.id,
+                planoId: dto.planoId,
+              },
+              usuarioCriador,
+            );
+          } else {
+            await this.assinaturaService.criarAssinaturaPublica(updatedUsuario.id, dto.planoId);
+          }
+        } catch (error) {
+          throw new BadRequestException(`Erro ao criar assinatura: ${error.message}`);
+        }
+      }
       return updatedUsuario;
     }
     return savedUsuario;

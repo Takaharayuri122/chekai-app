@@ -53,3 +53,158 @@
   60% { content: '..'; }
   80%, 100% { content: '...'; }
 }
+
+/* React Joyride Tutorial Styles - Force opaque tooltip */
+/* Remove todos os fundos cinzas e garante fundo branco opaco */
+div[class*="react-joyride__tooltip"] {
+  background-color: #ffffff !important;
+  background: #ffffff !important;
+  background-image: none !important;
+}
+
+.react-joyride__tooltip,
+.react-joyride__tooltip__wrapper,
+.react-joyride__tooltip__main,
+[data-react-joyride-tooltip] {
+  background-color: #ffffff !important;
+  background: #ffffff !important;
+  background-image: none !important;
+  opacity: 1 !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: #1f2937 !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+/* Remove qualquer fundo cinza dos elementos internos */
+.react-joyride__tooltip__container,
+.react-joyride__tooltip__content,
+.react-joyride__tooltip__content > div,
+.react-joyride__tooltip__content > *,
+.react-joyride__tooltip > div,
+.react-joyride__tooltip > div > div {
+  background-color: transparent !important;
+  background: transparent !important;
+  background-image: none !important;
+}
+
+/* Garante que o conteúdo interno seja visível */
+.react-joyride__tooltip * {
+  opacity: 1 !important;
+}
+
+.react-joyride__tooltip__content,
+.react-joyride__tooltip__content > *,
+.react-joyride__tooltip__content p,
+.react-joyride__tooltip__content div,
+.react-joyride__tooltip__content h3,
+.react-joyride__tooltip__content > div > div,
+.react-joyride__tooltip__content > div > p {
+  opacity: 1 !important;
+  color: #1f2937 !important;
+  background-color: transparent !important;
+  background: transparent !important;
+  background-image: none !important;
+}
+
+.react-joyride__tooltip__title,
+.react-joyride__tooltip__title > * {
+  color: #111827 !important;
+  opacity: 1 !important;
+  background-color: transparent !important;
+  background: transparent !important;
+}
+
+.react-joyride__overlay,
+div[class*="react-joyride__overlay"] {
+  background-color: rgba(0, 0, 0, 0.75) !important;
+  background: rgba(0, 0, 0, 0.75) !important;
+  opacity: 1 !important;
+  backdrop-filter: blur(2px) !important;
+  mix-blend-mode: normal !important;
+}
+
+/* Spotlight - área que fica visível através do overlay */
+/* Remove qualquer fundo cinza e garante que o conteúdo seja visível */
+.react-joyride__spotlight,
+.react-joyride__spotlight__legacy,
+div[class*="react-joyride__spotlight"],
+div[class*="react-joyride__spotlight"] > * {
+  background-color: transparent !important;
+  background: transparent !important;
+  background-image: none !important;
+  border: 2px solid hsl(var(--p)) !important;
+  box-shadow: 0 0 20px rgba(0, 184, 169, 0.5) !important;
+  border-radius: 0.5rem !important;
+  z-index: 9999 !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  filter: none !important;
+  mix-blend-mode: normal !important;
+  opacity: 1 !important;
+}
+
+/* Garante que o conteúdo dentro do spotlight seja visível */
+.react-joyride__spotlight > *,
+.react-joyride__spotlight__legacy > *,
+div[class*="react-joyride__spotlight"] > *,
+div[class*="react-joyride__spotlight"] > * > * {
+  background-color: transparent !important;
+  background: transparent !important;
+  background-image: none !important;
+  opacity: 1 !important;
+  filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  mix-blend-mode: normal !important;
+}
+
+/* Remove filtros do overlay que podem afetar o spotlight */
+/* Usa clip-path para criar um buraco no overlay onde está o spotlight */
+.react-joyride__overlay {
+  filter: none !important;
+  -webkit-backdrop-filter: blur(2px) !important;
+  backdrop-filter: blur(2px) !important;
+  mix-blend-mode: normal !important;
+}
+
+/* Garante que elementos que devem ficar visíveis não sejam afetados */
+[data-react-joyride-target] {
+  position: relative !important;
+  z-index: 10000 !important;
+  background-color: transparent !important;
+  filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+[data-react-joyride-target] > * {
+  filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  opacity: 1 !important;
+}
+
+.react-joyride__button--primary,
+button[class*="react-joyride__button--primary"] {
+  background-color: hsl(var(--p)) !important;
+  background: hsl(var(--p)) !important;
+  color: hsl(var(--pc)) !important;
+  opacity: 1 !important;
+  border: none !important;
+}
+
+.react-joyride__button--back,
+button[class*="react-joyride__button--back"] {
+  color: #1f2937 !important;
+  opacity: 1 !important;
+  background-color: transparent !important;
+}
+
+.react-joyride__button--skip,
+button[class*="react-joyride__button--skip"] {
+  color: #6b7280 !important;
+  opacity: 1 !important;
+  background-color: transparent !important;
+}

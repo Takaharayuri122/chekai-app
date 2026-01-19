@@ -111,44 +111,44 @@ function SortableItem({ item, index, onEdit, onRemove }: SortableItemProps) {
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-start gap-3 p-3 bg-base-100 rounded-lg border border-base-200 group hover:border-primary/30 transition-colors cursor-pointer"
+      className="flex items-start gap-2 sm:gap-3 p-2 sm:p-3 bg-base-100 rounded-lg border border-base-200 group hover:border-primary/30 transition-colors cursor-pointer"
       onClick={() => onEdit(item)}
     >
       <div
         {...attributes}
         {...listeners}
-        className="cursor-grab active:cursor-grabbing text-base-content/40 hover:text-base-content/60 transition-colors"
+        className="cursor-grab active:cursor-grabbing text-base-content/40 hover:text-base-content/60 transition-colors flex-shrink-0 mt-0.5"
         onClick={(e) => e.stopPropagation()}
       >
-        <GripVertical className="w-5 h-5" />
+        <GripVertical className="w-4 h-4 sm:w-5 sm:h-5" />
       </div>
-      <span className="text-sm font-bold text-base-content/40 min-w-[24px]">{index + 1}.</span>
+      <span className="text-xs sm:text-sm font-bold text-base-content/40 min-w-[20px] sm:min-w-[24px] flex-shrink-0">{index + 1}.</span>
       <div className="flex-1 min-w-0">
-        <p className="text-sm">{item.pergunta}</p>
-        <div className="flex flex-wrap items-center gap-1 mt-1">
+        <p className="text-xs sm:text-sm leading-relaxed break-words">{item.pergunta}</p>
+        <div className="flex flex-wrap items-center gap-1 mt-1.5 sm:mt-1">
           <span className="badge badge-ghost badge-xs">{CATEGORIA_ITEM_LABELS[item.categoria]}</span>
           <span className={`badge badge-xs ${getCriticidadeBadge(item.criticidade)}`}>
             {CRITICIDADE_LABELS[item.criticidade]}
           </span>
           {item.legislacaoReferencia && (
-            <span className="text-xs text-base-content/50">{item.legislacaoReferencia}</span>
+            <span className="text-xs text-base-content/50 truncate max-w-[120px] sm:max-w-none">{item.legislacaoReferencia}</span>
           )}
           {item.usarRespostasPersonalizadas && (
             <span className="badge badge-secondary badge-xs gap-1">
-              <Settings className="w-3 h-3" />Pers.
+              <Settings className="w-2.5 h-2.5 sm:w-3 sm:h-3" />Pers.
             </span>
           )}
         </div>
       </div>
-      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+      <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex-shrink-0">
         <button
           onClick={(e) => {
             e.stopPropagation();
             onRemove(item.id);
           }}
-          className="btn btn-ghost btn-xs text-error"
+          className="btn btn-ghost btn-xs text-error p-1 sm:p-2"
         >
-          <Trash2 className="w-4 h-4" />
+          <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
         </button>
       </div>
     </div>
@@ -589,18 +589,18 @@ export default function EditarTemplatePage() {
   return (
     <AppLayout>
       {/* Header */}
-      <div className="bg-base-100 border-b border-base-300 px-4 lg:px-8 py-4 sticky top-16 z-30">
-        <div className="flex items-center gap-3 max-w-4xl mx-auto">
-          <Link href="/templates" className="btn btn-ghost btn-sm btn-circle">
+      <div className="bg-base-100 border-b border-base-300 px-4 lg:px-8 py-3 sm:py-4 sticky top-16 z-30">
+        <div className="flex items-center gap-2 sm:gap-3 max-w-4xl mx-auto">
+          <Link href="/templates" className="btn btn-ghost btn-sm btn-circle flex-shrink-0">
             <ChevronLeft className="w-5 h-5" />
           </Link>
-          <div className="flex-1">
-            <h1 className="text-lg font-bold text-base-content">Editar Checklist</h1>
-            <p className="text-sm text-base-content/60 truncate">{template?.nome}</p>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-base sm:text-lg font-bold text-base-content truncate">Editar Checklist</h1>
+            <p className="text-xs sm:text-sm text-base-content/60 truncate">{template?.nome}</p>
           </div>
-          <button onClick={handleSalvar} disabled={saving} className="btn btn-primary btn-sm gap-1">
+          <button onClick={handleSalvar} disabled={saving} className="btn btn-primary btn-sm gap-1 flex-shrink-0">
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-            Salvar
+            <span className="hidden sm:inline">Salvar</span>
           </button>
         </div>
       </div>
@@ -641,7 +641,7 @@ export default function EditarTemplatePage() {
                   onChange={(e) => setFormData({ ...formData, descricao: e.target.value })}
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="form-control">
                   <label className="label"><span className="label-text">Tipo de Atividade</span></label>
                   <select
@@ -676,18 +676,21 @@ export default function EditarTemplatePage() {
           className="card bg-base-100 shadow-sm border border-base-300"
         >
           <div className="card-body">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-2">
               <h2 className="card-title text-base">
-                Grupos e Perguntas ({template?.grupos?.length || 0} grupos, {template?.itens?.filter(i => i.ativo !== false).length || 0} perguntas)
+                <span className="block sm:inline">Grupos e Perguntas</span>
+                <span className="text-sm font-normal text-base-content/60 block sm:inline sm:ml-2">
+                  ({template?.grupos?.length || 0} grupos, {template?.itens?.filter(i => i.ativo !== false).length || 0} perguntas)
+                </span>
               </h2>
-              <div className="flex gap-2">
-                <button onClick={handleAbrirModalNovoGrupo} className="btn btn-secondary btn-sm gap-1">
+              <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                <button onClick={handleAbrirModalNovoGrupo} className="btn btn-secondary btn-sm gap-1 w-full sm:w-auto">
                   <FolderOpen className="w-4 h-4" />
-                  Novo Grupo
+                  <span className="whitespace-nowrap">Novo Grupo</span>
                 </button>
-                <button onClick={() => handleAbrirModalNovoItem()} className="btn btn-primary btn-sm gap-1">
+                <button onClick={() => handleAbrirModalNovoItem()} className="btn btn-primary btn-sm gap-1 w-full sm:w-auto">
                   <Plus className="w-4 h-4" />
-                  Nova Pergunta
+                  <span className="whitespace-nowrap">Nova Pergunta</span>
                 </button>
               </div>
             </div>
@@ -698,34 +701,39 @@ export default function EditarTemplatePage() {
                 <div key={grupo.id} className="border border-base-300 rounded-lg overflow-hidden">
                   {/* Header do Grupo */}
                   <div
-                    className="flex items-center gap-3 p-3 bg-base-200 cursor-pointer hover:bg-base-300 transition-colors"
+                    className="flex items-start sm:items-center gap-2 sm:gap-3 p-3 bg-base-200 cursor-pointer hover:bg-base-300 transition-colors"
                     onClick={() => toggleGrupoExpanded(grupo.id)}
                   >
-                    <GripVertical className="w-4 h-4 text-base-content/40" />
-                    <FolderOpen className="w-5 h-5 text-secondary" />
-                    <div className="flex-1">
-                      <p className="font-medium">{grupo.nome}</p>
-                      {grupo.descricao && <p className="text-sm text-base-content/60">{grupo.descricao}</p>}
+                    <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                      <GripVertical className="w-4 h-4 text-base-content/40 flex-shrink-0" />
+                      <FolderOpen className="w-5 h-5 text-secondary flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">{grupo.nome}</p>
+                        {grupo.descricao && <p className="text-xs sm:text-sm text-base-content/60 line-clamp-1">{grupo.descricao}</p>}
+                      </div>
                     </div>
-                    <span className="badge badge-ghost">{getItensPorGrupo(grupo.id).length} perguntas</span>
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleAbrirModalEditarGrupo(grupo); }}
-                        className="btn btn-ghost btn-xs"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleRemoverGrupo(grupo.id); }}
-                        className="btn btn-ghost btn-xs text-error"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                      {expandedGrupos.has(grupo.id) ? (
-                        <ChevronUp className="w-5 h-5 text-base-content/40" />
-                      ) : (
-                        <ChevronDown className="w-5 h-5 text-base-content/40" />
-                      )}
+                    <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+                      <span className="badge badge-ghost text-xs hidden sm:inline-flex">{getItensPorGrupo(grupo.id).length} perguntas</span>
+                      <span className="badge badge-ghost badge-sm sm:hidden">{getItensPorGrupo(grupo.id).length}</span>
+                      <div className="flex items-center gap-0.5 sm:gap-1">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleAbrirModalEditarGrupo(grupo); }}
+                          className="btn btn-ghost btn-xs p-1 sm:p-2"
+                        >
+                          <Edit className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleRemoverGrupo(grupo.id); }}
+                          className="btn btn-ghost btn-xs text-error p-1 sm:p-2"
+                        >
+                          <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                        </button>
+                        {expandedGrupos.has(grupo.id) ? (
+                          <ChevronUp className="w-4 h-4 sm:w-5 sm:h-5 text-base-content/40 flex-shrink-0" />
+                        ) : (
+                          <ChevronDown className="w-4 h-4 sm:w-5 sm:h-5 text-base-content/40 flex-shrink-0" />
+                        )}
+                      </div>
                     </div>
                   </div>
 
@@ -792,10 +800,10 @@ export default function EditarTemplatePage() {
               {/* Itens sem grupo */}
               {getItensSemGrupo().length > 0 && (
                 <div className="border border-base-300 rounded-lg overflow-hidden">
-                  <div className="flex items-center gap-3 p-3 bg-base-200">
-                    <AlertTriangle className="w-5 h-5 text-warning" />
-                    <span className="font-medium">Perguntas sem grupo</span>
-                    <span className="badge badge-warning">{getItensSemGrupo().length}</span>
+                  <div className="flex items-center gap-2 sm:gap-3 p-3 bg-base-200">
+                    <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5 text-warning flex-shrink-0" />
+                    <span className="font-medium text-sm sm:text-base">Perguntas sem grupo</span>
+                    <span className="badge badge-warning badge-sm sm:badge-md">{getItensSemGrupo().length}</span>
                   </div>
                   <div className="p-3 space-y-2">
                     <DndContext
@@ -846,7 +854,7 @@ export default function EditarTemplatePage() {
       {showGrupoModal && (
         <div className="modal modal-open">
           <div 
-            className="modal-box max-w-md"
+            className="modal-box max-w-md w-full mx-4 sm:mx-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="font-bold text-lg mb-4">{editingGrupo ? 'Editar Grupo' : 'Novo Grupo'}</h3>
@@ -872,9 +880,9 @@ export default function EditarTemplatePage() {
                 />
               </div>
             </div>
-            <div className="modal-action">
-              <button className="btn btn-ghost" onClick={() => { setShowGrupoModal(false); resetGrupoForm(); }}>Cancelar</button>
-              <button className="btn btn-primary" onClick={handleSalvarGrupo} disabled={saving || !grupoForm.nome}>
+            <div className="modal-action flex-col sm:flex-row gap-2">
+              <button className="btn btn-ghost w-full sm:w-auto" onClick={() => { setShowGrupoModal(false); resetGrupoForm(); }}>Cancelar</button>
+              <button className="btn btn-primary w-full sm:w-auto" onClick={handleSalvarGrupo} disabled={saving || !grupoForm.nome}>
                 {saving ? <><Loader2 className="w-4 h-4 animate-spin" />Salvando...</> : 'Salvar'}
               </button>
             </div>
@@ -892,11 +900,11 @@ export default function EditarTemplatePage() {
       {/* Modal Item */}
       {showItemModal && (
         <div className="modal modal-open">
-          <div className="modal-box max-w-2xl max-h-[90vh] overflow-y-auto">
+          <div className="modal-box max-w-2xl w-full mx-4 sm:mx-auto max-h-[90vh] overflow-y-auto">
             <h3 className="font-bold text-lg mb-4">{editingItem ? 'Editar Pergunta' : 'Nova Pergunta'}</h3>
             <div className="space-y-4">
               {/* Grupo e Seção */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="form-control">
                   <label className="label"><span className="label-text">Grupo</span></label>
                   <select
@@ -935,7 +943,7 @@ export default function EditarTemplatePage() {
               </div>
 
               {/* Categoria e Criticidade */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="form-control">
                   <label className="label"><span className="label-text">Categoria</span></label>
                   <select
@@ -963,7 +971,7 @@ export default function EditarTemplatePage() {
               </div>
 
               {/* Peso e Obrigatório */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="form-control">
                   <label className="label"><span className="label-text">Peso</span></label>
                   <input
@@ -989,7 +997,7 @@ export default function EditarTemplatePage() {
               </div>
 
               {/* Legislação */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="form-control">
                   <label className="label"><span className="label-text">Legislação</span></label>
                   <input
@@ -1084,9 +1092,9 @@ export default function EditarTemplatePage() {
               )}
             </div>
 
-            <div className="modal-action">
-              <button className="btn btn-ghost" onClick={() => { setShowItemModal(false); resetItemForm(); }}>Cancelar</button>
-              <button className="btn btn-primary" onClick={handleSalvarItem} disabled={saving || !itemForm.pergunta}>
+            <div className="modal-action flex-col sm:flex-row gap-2">
+              <button className="btn btn-ghost w-full sm:w-auto" onClick={() => { setShowItemModal(false); resetItemForm(); }}>Cancelar</button>
+              <button className="btn btn-primary w-full sm:w-auto" onClick={handleSalvarItem} disabled={saving || !itemForm.pergunta}>
                 {saving ? <><Loader2 className="w-4 h-4 animate-spin" />Salvando...</> : editingItem ? 'Salvar Alterações' : 'Adicionar'}
               </button>
             </div>
