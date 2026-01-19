@@ -110,10 +110,6 @@ export function TutorialProvider({ perfil, children }: TutorialProviderProps) {
               maxWidth: '400px',
               opacity: 1,
             },
-            tooltipWrapper: {
-              backgroundColor: '#ffffff',
-              opacity: 1,
-            },
             tooltipContainer: {
               textAlign: 'left',
               backgroundColor: 'transparent',
