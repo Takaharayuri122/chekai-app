@@ -100,8 +100,6 @@ export function TutorialProvider({ perfil, children }: TutorialProviderProps) {
               backgroundColor: '#ffffff',
               beaconSize: 36,
               zIndex: 10000,
-              spotlightPadding: 10,
-              spotlightClicks: false,
             },
             tooltip: {
               borderRadius: '0.75rem',
