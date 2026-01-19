@@ -1,0 +1,22 @@
+diff --git a/node_modules/react-joyride/dist/index.mjs b/node_modules/react-joyride/dist/index.mjs
+index b5925d5..2613b96 100644
+--- a/node_modules/react-joyride/dist/index.mjs
++++ b/node_modules/react-joyride/dist/index.mjs
+@@ -1223,7 +1223,7 @@ var JoyridePortal = class extends React3.Component {
+       return;
+     }
+     if (!isReact16) {
+-      ReactDOM.unmountComponentAtNode(this.node);
++      // React 19: unmountComponentAtNode removed
+     }
+     if (this.node.parentNode === document.body) {
+       document.body.removeChild(this.node);
+@@ -1236,7 +1236,7 @@ var JoyridePortal = class extends React3.Component {
+     }
+     const { children } = this.props;
+     if (this.node) {
+-      ReactDOM.unstable_renderSubtreeIntoContainer(this, children, this.node);
++      // React 19: unstable_renderSubtreeIntoContainer removed
+     }
+   }
+   renderReact16() {
