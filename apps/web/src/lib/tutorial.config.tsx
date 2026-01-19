@@ -8,7 +8,7 @@ export const tutorialSteps: TutorialSteps = {
   [PerfilUsuario.MASTER]: [
     {
       target: 'body',
-      content: (
+      content: () => () => (
         <div>
           <h3 className="font-bold text-lg mb-2">Bem-vindo ao ChekAI! 👋</h3>
           <p className="text-sm">
@@ -22,7 +22,7 @@ export const tutorialSteps: TutorialSteps = {
     },
     {
       target: '[data-tutorial-id="navbar"]',
-      content: (
+      content: () => () => (
         <div>
           <h3 className="font-bold text-base mb-2">Menu de Navegação</h3>
           <p className="text-sm">
@@ -35,7 +35,7 @@ export const tutorialSteps: TutorialSteps = {
     },
     {
       target: '[data-tutorial-id="dashboard-welcome"]',
-      content: (
+      content: () => (
         <div>
           <h3 className="font-bold text-base mb-2">Página Inicial</h3>
           <p className="text-sm">
@@ -48,7 +48,7 @@ export const tutorialSteps: TutorialSteps = {
     },
     {
       target: '[data-tutorial-id="quick-actions"]',
-      content: (
+      content: () => (
         <div>
           <h3 className="font-bold text-base mb-2">Ações Rápidas</h3>
           <p className="text-sm">
@@ -61,7 +61,7 @@ export const tutorialSteps: TutorialSteps = {
     },
     {
       target: '[data-tutorial-id="stats-cards"]',
-      content: (
+      content: () => (
         <div>
           <h3 className="font-bold text-base mb-2">Estatísticas</h3>
           <p className="text-sm">
@@ -74,7 +74,7 @@ export const tutorialSteps: TutorialSteps = {
     },
     {
       target: '[data-tutorial-id="navbar-avatar"]',
-      content: (
+      content: () => (
         <div>
           <h3 className="font-bold text-base mb-2">Menu do Usuário</h3>
           <p className="text-sm">
@@ -90,7 +90,7 @@ export const tutorialSteps: TutorialSteps = {
   [PerfilUsuario.GESTOR]: [
     {
       target: 'body',
-      content: (
+      content: () => (
         <div>
           <h3 className="font-bold text-lg mb-2">Bem-vindo ao ChekAI! 👋</h3>
           <p className="text-sm">
@@ -104,7 +104,7 @@ export const tutorialSteps: TutorialSteps = {
     },
     {
       target: '[data-tutorial-id="navbar"]',
-      content: (
+      content: () => (
         <div>
           <h3 className="font-bold text-base mb-2">Menu de Navegação</h3>
           <p className="text-sm">
@@ -117,7 +117,7 @@ export const tutorialSteps: TutorialSteps = {
     },
     {
       target: '[data-tutorial-id="dashboard-welcome"]',
-      content: (
+      content: () => (
         <div>
           <h3 className="font-bold text-base mb-2">Página Inicial</h3>
           <p className="text-sm">
@@ -130,7 +130,7 @@ export const tutorialSteps: TutorialSteps = {
     },
     {
       target: '[data-tutorial-id="quick-actions"]',
-      content: (
+      content: () => (
         <div>
           <h3 className="font-bold text-base mb-2">Ações Rápidas</h3>
           <p className="text-sm">
@@ -143,7 +143,7 @@ export const tutorialSteps: TutorialSteps = {
     },
     {
       target: '[data-tutorial-id="stats-cards"]',
-      content: (
+      content: () => (
         <div>
           <h3 className="font-bold text-base mb-2">Estatísticas</h3>
           <p className="text-sm">
@@ -156,7 +156,7 @@ export const tutorialSteps: TutorialSteps = {
     },
     {
       target: '[data-tutorial-id="navbar-avatar"]',
-      content: (
+      content: () => (
         <div>
           <h3 className="font-bold text-base mb-2">Menu do Usuário</h3>
           <p className="text-sm">
@@ -172,7 +172,7 @@ export const tutorialSteps: TutorialSteps = {
   [PerfilUsuario.AUDITOR]: [
     {
       target: 'body',
-      content: (
+      content: () => (
         <div>
           <h3 className="font-bold text-lg mb-2">Bem-vindo ao ChekAI! 👋</h3>
           <p className="text-sm">
@@ -186,7 +186,7 @@ export const tutorialSteps: TutorialSteps = {
     },
     {
       target: '[data-tutorial-id="navbar"]',
-      content: (
+      content: () => (
         <div>
           <h3 className="font-bold text-base mb-2">Menu de Navegação</h3>
           <p className="text-sm">
@@ -199,7 +199,7 @@ export const tutorialSteps: TutorialSteps = {
     },
     {
       target: '[data-tutorial-id="navbar-nova"]',
-      content: (
+      content: () => (
         <div>
           <h3 className="font-bold text-base mb-2">Nova Auditoria</h3>
           <p className="text-sm">
@@ -212,7 +212,7 @@ export const tutorialSteps: TutorialSteps = {
     },
     {
       target: '[data-tutorial-id="dashboard-welcome"]',
-      content: (
+      content: () => (
         <div>
           <h3 className="font-bold text-base mb-2">Página Inicial</h3>
           <p className="text-sm">
@@ -225,7 +225,7 @@ export const tutorialSteps: TutorialSteps = {
     },
     {
       target: '[data-tutorial-id="quick-actions"]',
-      content: (
+      content: () => (
         <div>
           <h3 className="font-bold text-base mb-2">Iniciar Nova Auditoria</h3>
           <p className="text-sm">
@@ -238,7 +238,7 @@ export const tutorialSteps: TutorialSteps = {
     },
     {
       target: '[data-tutorial-id="navbar-avatar"]',
-      content: (
+      content: () => (
         <div>
           <h3 className="font-bold text-base mb-2">Menu do Usuário</h3>
           <p className="text-sm">
