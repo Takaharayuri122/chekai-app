@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import Joyride, { CallBackProps, STATUS, EVENTS, ACTIONS, Step } from 'react-joyride';
 import { useTutorialStore } from '@/lib/store';
-import { tutorialSteps } from '@/lib/tutorial.config';
+import { getTutorialSteps } from '@/lib/tutorial.config';
 import { PerfilUsuario } from '@/lib/store';
 
 const JoyrideComponent = dynamic(() => Promise.resolve(Joyride), {
@@ -19,7 +19,7 @@ interface TutorialProviderProps {
 export function TutorialProvider({ perfil, children }: TutorialProviderProps) {
   const { tourAtivo, finalizarTour } = useTutorialStore();
 
-  const steps: Step[] = tutorialSteps[perfil] || [];
+  const steps: Step[] = useMemo(() => getTutorialSteps(perfil), [perfil]);
 
   const handleJoyrideCallback = useCallback(
     (data: CallBackProps) => {

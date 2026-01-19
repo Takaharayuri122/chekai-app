@@ -1,10 +1,12 @@
+'use client';
+
 import React from 'react';
 import { Step } from 'react-joyride';
 import { PerfilUsuario } from './store';
 
 type TutorialSteps = Record<PerfilUsuario, Step[]>;
 
-export const tutorialSteps: TutorialSteps = {
+const getTutorialStepsData = (): TutorialSteps => ({
   [PerfilUsuario.MASTER]: [
     {
       target: 'body',
@@ -250,4 +252,12 @@ export const tutorialSteps: TutorialSteps = {
       placement: 'left',
     },
   ],
+});
+
+export const getTutorialSteps = (perfil: PerfilUsuario): Step[] => {
+  if (typeof window === 'undefined') {
+    return [];
+  }
+  const steps = getTutorialStepsData();
+  return steps[perfil] || [];
 };
