@@ -89,8 +89,6 @@ export function TutorialProvider({ perfil, children }: TutorialProviderProps) {
           showProgress
           showSkipButton
           callback={handleJoyrideCallback}
-          disableOverlay
-          disableScrolling={false}
           styles={{
             options: {
               primaryColor: 'hsl(var(--p))',
