@@ -30,15 +30,46 @@ export function TutorialProvider({ perfil, children }: TutorialProviderProps) {
     }
 
     if (tourAtivo) {
-      import('@/lib/tutorial.config')
-        .then((mod) => {
-          const loadedSteps = mod.getTutorialSteps(perfil);
+      const loadSteps = async () => {
+        try {
+          const [{ tutorialStepsData }, ReactModule] = await Promise.all([
+            import('@/lib/tutorial.config.data'),
+            import('react'),
+          ]);
+          
+          const stepsData = tutorialStepsData[perfil] || [];
+          
+          const titleClass = (size: 'lg' | 'base' | undefined) => 
+            size === 'lg' ? 'font-bold text-lg mb-2' : 'font-bold text-base mb-2';
+          
+          const loadedSteps: Step[] = stepsData.map((stepData): Step => ({
+            target: stepData.target,
+            content: ReactModule.default.createElement(
+              'div',
+              null,
+              ReactModule.default.createElement(
+                'h3',
+                { className: titleClass(stepData.titleSize) },
+                stepData.title
+              ),
+              ReactModule.default.createElement(
+                'p',
+                { className: 'text-sm' },
+                stepData.text
+              )
+            ),
+            placement: stepData.placement || 'bottom',
+            disableBeacon: stepData.disableBeacon || false,
+          }));
+          
           setSteps(loadedSteps);
-        })
-        .catch((err) => {
+        } catch (err) {
           console.error('Erro ao carregar steps do tutorial:', err);
           setSteps([]);
-        });
+        }
+      };
+      
+      loadSteps();
     } else {
       setSteps([]);
     }
