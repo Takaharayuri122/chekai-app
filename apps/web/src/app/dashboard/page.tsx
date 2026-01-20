@@ -67,7 +67,6 @@ export default function DashboardPage() {
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          data-tutorial-id="dashboard-welcome"
         >
           <h1 className="text-2xl font-bold text-base-content">
             Olá, {usuario?.nome?.split(' ')[0] || 'Usuário'} 👋
@@ -90,7 +89,6 @@ export default function DashboardPage() {
           <Link
             href="/auditoria/nova"
             className="btn btn-primary btn-lg w-full gap-2 justify-start"
-            data-tutorial-id="quick-actions"
           >
             <Plus className="w-5 h-5" />
             Iniciar Nova Auditoria
@@ -103,7 +101,6 @@ export default function DashboardPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
           className="grid grid-cols-2 lg:grid-cols-4 gap-4"
-          data-tutorial-id="stats-cards"
         >
           <StatCard
             title="Em Andamento"

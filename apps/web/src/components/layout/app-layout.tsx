@@ -1,17 +1,9 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import dynamic from 'next/dynamic';
-import { useAuthStore, useTutorialStore, PerfilUsuario } from '@/lib/store';
+import { useAuthStore } from '@/lib/store';
 import { Navbar } from './navbar';
-
-const TutorialProvider = dynamic(
-  () => import('@/components/tutorial/tutorial-provider').then((mod) => ({ default: mod.TutorialProvider })),
-  {
-    ssr: false,
-  }
-);
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -21,9 +13,7 @@ export function AppLayout({ children }: AppLayoutProps) {
   const router = useRouter();
   const pathname = usePathname();
   const { isAuthenticated, _hasHydrated, usuario } = useAuthStore();
-  const { verificarTutorialCompleto, iniciarTour } = useTutorialStore();
   const redirectAttempted = useRef(false);
-  const tutorialVerificado = useRef(false);
 
   useEffect(() => {
     if (!_hasHydrated) {
@@ -42,25 +32,6 @@ export function AppLayout({ children }: AppLayoutProps) {
     }
   }, [isAuthenticated, _hasHydrated, router, pathname]);
 
-  useEffect(() => {
-    if (!_hasHydrated || !isAuthenticated || !usuario || tutorialVerificado.current) {
-      return;
-    }
-
-    const perfil = usuario.perfil;
-    const tutorialCompleto = verificarTutorialCompleto(perfil);
-    const isDashboardPage = pathname === '/dashboard';
-
-    if (!tutorialCompleto && isDashboardPage) {
-      tutorialVerificado.current = true;
-      const timer = setTimeout(() => {
-        iniciarTour(perfil);
-      }, 1000);
-      return () => clearTimeout(timer);
-    }
-
-    tutorialVerificado.current = true;
-  }, [_hasHydrated, isAuthenticated, usuario, pathname, verificarTutorialCompleto, iniciarTour]);
 
   if (!_hasHydrated) {
     return (
@@ -87,23 +58,13 @@ export function AppLayout({ children }: AppLayoutProps) {
     return null;
   }
 
-  const content = (
+  return (
     <div className="min-h-screen bg-base-200">
       <Navbar />
       <main className="pb-20 md:pb-8">
         {children}
       </main>
     </div>
-  );
-
-  if (typeof window === 'undefined') {
-    return content;
-  }
-
-  return (
-    <TutorialProvider perfil={usuario.perfil}>
-      {content}
-    </TutorialProvider>
   );
 }
 

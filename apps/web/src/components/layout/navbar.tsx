@@ -21,8 +21,7 @@ import {
   ChevronDown,
   BarChart3,
 } from 'lucide-react';
-import { useAuthStore, useTutorialStore, PerfilUsuario } from '@/lib/store';
-import { BookOpen } from 'lucide-react';
+import { useAuthStore, PerfilUsuario } from '@/lib/store';
 
 const allNavItems = [
   { href: '/dashboard', label: 'Início', icon: Home, roles: [PerfilUsuario.MASTER, PerfilUsuario.GESTOR, PerfilUsuario.AUDITOR] },
@@ -45,17 +44,10 @@ const administrativoItems = [
 export function Navbar() {
   const pathname = usePathname();
   const { usuario, logout, isMaster, isGestor, isAuditor } = useAuthStore();
-  const { iniciarTour } = useTutorialStore();
 
   const handleLogout = () => {
     logout();
     window.location.href = '/';
-  };
-
-  const handleVerTutorial = () => {
-    if (usuario) {
-      iniciarTour(usuario.perfil);
-    }
   };
 
   const getNavItems = () => {
@@ -83,16 +75,14 @@ export function Navbar() {
         </div>
 
         <div className="flex-none gap-2">
-          <ul className="menu menu-horizontal px-1 gap-1" data-tutorial-id="navbar">
+          <ul className="menu menu-horizontal px-1 gap-1">
             {navItems.map((item) => {
               const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
-              const tutorialId = item.href === '/auditoria/nova' ? 'navbar-nova' : undefined;
               return (
                 <li key={item.href}>
                   <Link
                     href={item.href}
                     className={isActive ? 'bg-primary text-primary-content' : ''}
-                    {...(tutorialId ? { 'data-tutorial-id': tutorialId } : {})}
                   >
                     <item.icon className="w-4 h-4" />
                     {item.label}
@@ -145,7 +135,6 @@ export function Navbar() {
               tabIndex={0}
               role="button"
               className="btn btn-ghost btn-circle avatar placeholder"
-              data-tutorial-id="navbar-avatar"
             >
               <div className="bg-primary text-primary-content rounded-full w-10">
                 <span className="text-sm">{usuario?.nome?.charAt(0) || 'U'}</span>
@@ -163,12 +152,6 @@ export function Navbar() {
                   <User className="w-4 h-4" />
                   Meu Perfil
                 </Link>
-              </li>
-              <li>
-                <button onClick={handleVerTutorial} type="button">
-                  <BookOpen className="w-4 h-4" />
-                  Ver Tutorial
-                </button>
               </li>
               {isMaster() && (
                 <>
@@ -247,13 +230,11 @@ export function Navbar() {
             <ul
               tabIndex={0}
               className="menu dropdown-content mt-3 z-[1] p-3 shadow-lg bg-base-100 rounded-box w-64 border border-base-300 max-h-[80vh] overflow-y-auto"
-              data-tutorial-id="navbar"
             >
               <li className="menu-title">
                 <span className="text-base font-semibold">{usuario?.nome || 'Usuário'}</span>
               </li>
               {navItems.map((item) => {
-                const tutorialId = item.href === '/auditoria/nova' ? 'navbar-nova' : undefined;
                 return (
                   <li key={item.href}>
                     <Link
@@ -261,7 +242,6 @@ export function Navbar() {
                       className={`text-base py-3 ${
                         pathname === item.href || pathname.startsWith(item.href + '/') ? 'active' : ''
                       }`}
-                      {...(tutorialId ? { 'data-tutorial-id': tutorialId } : {})}
                     >
                       <item.icon className="w-5 h-5" />
                       {item.label}
@@ -303,12 +283,6 @@ export function Navbar() {
                   <User className="w-5 h-5" />
                   Meu Perfil
                 </Link>
-              </li>
-              <li>
-                <button onClick={handleVerTutorial} type="button" className="text-base py-3 w-full text-left">
-                  <BookOpen className="w-5 h-5" />
-                  Ver Tutorial
-                </button>
               </li>
               {isMaster() && (
                 <>
