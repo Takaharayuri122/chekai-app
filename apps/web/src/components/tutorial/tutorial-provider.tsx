@@ -18,9 +18,14 @@ interface TutorialProviderProps {
 export function TutorialProvider({ perfil, children }: TutorialProviderProps) {
   const { tourAtivo, finalizarTour } = useTutorialStore();
   const [steps, setSteps] = useState<Step[]>([]);
+  const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
-    if (typeof window === 'undefined' || typeof document === 'undefined') {
+    setIsClient(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isClient || typeof window === 'undefined' || typeof document === 'undefined') {
       return;
     }
 
@@ -37,7 +42,7 @@ export function TutorialProvider({ perfil, children }: TutorialProviderProps) {
     } else {
       setSteps([]);
     }
-  }, [perfil, tourAtivo]);
+  }, [perfil, tourAtivo, isClient]);
 
   const handleJoyrideCallback = useCallback(
     (data: CallBackProps) => {
@@ -100,7 +105,7 @@ export function TutorialProvider({ perfil, children }: TutorialProviderProps) {
   return (
     <>
       {children}
-      {tourAtivo && (
+      {isClient && tourAtivo && steps.length > 0 && (
         <JoyrideComponent
           steps={steps}
           continuous
