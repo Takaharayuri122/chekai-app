@@ -1,10 +1,9 @@
 'use client';
 
-import { useEffect, useCallback, useMemo } from 'react';
+import { useEffect, useCallback, useState } from 'react';
 import dynamic from 'next/dynamic';
 import Joyride, { CallBackProps, STATUS, EVENTS, ACTIONS, Step } from 'react-joyride';
 import { useTutorialStore } from '@/lib/store';
-import { getTutorialSteps } from '@/lib/tutorial.config';
 import { PerfilUsuario } from '@/lib/store';
 
 const JoyrideComponent = dynamic(() => Promise.resolve(Joyride), {
@@ -18,8 +17,27 @@ interface TutorialProviderProps {
 
 export function TutorialProvider({ perfil, children }: TutorialProviderProps) {
   const { tourAtivo, finalizarTour } = useTutorialStore();
+  const [steps, setSteps] = useState<Step[]>([]);
 
-  const steps: Step[] = useMemo(() => getTutorialSteps(perfil), [perfil]);
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof document === 'undefined') {
+      return;
+    }
+
+    if (tourAtivo) {
+      import('@/lib/tutorial.config')
+        .then((mod) => {
+          const loadedSteps = mod.getTutorialSteps(perfil);
+          setSteps(loadedSteps);
+        })
+        .catch((err) => {
+          console.error('Erro ao carregar steps do tutorial:', err);
+          setSteps([]);
+        });
+    } else {
+      setSteps([]);
+    }
+  }, [perfil, tourAtivo]);
 
   const handleJoyrideCallback = useCallback(
     (data: CallBackProps) => {
