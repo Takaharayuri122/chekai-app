@@ -1,21 +1,26 @@
 'use client';
 
 import React from 'react';
-import { Step } from 'react-joyride';
+import type { Step } from 'react-joyride';
 import { PerfilUsuario } from './store';
 
 type TutorialSteps = Record<PerfilUsuario, Step[]>;
 
+const isClient = typeof window !== 'undefined' && typeof document !== 'undefined';
+
 const createContent = (title: string, text: string, titleSize: 'lg' | 'base' = 'base'): React.ReactNode => {
-  if (typeof window === 'undefined' || typeof document === 'undefined') {
+  if (!isClient) {
     return null;
   }
+  
+  const titleClass = titleSize === 'lg' ? 'font-bold text-lg mb-2' : 'font-bold text-base mb-2';
+  
   return React.createElement(
     'div',
     null,
     React.createElement(
       'h3',
-      { className: `font-bold text-${titleSize === 'lg' ? 'lg' : 'base'} mb-2` },
+      { className: titleClass },
       title
     ),
     React.createElement(
@@ -27,7 +32,7 @@ const createContent = (title: string, text: string, titleSize: 'lg' | 'base' = '
 };
 
 const getTutorialStepsData = (): TutorialSteps => {
-  if (typeof window === 'undefined' || typeof document === 'undefined') {
+  if (!isClient) {
     return {
       [PerfilUsuario.MASTER]: [],
       [PerfilUsuario.GESTOR]: [],
@@ -198,9 +203,16 @@ const getTutorialStepsData = (): TutorialSteps => {
 };
 
 export const getTutorialSteps = (perfil: PerfilUsuario): Step[] => {
-  if (typeof window === 'undefined' || typeof document === 'undefined') {
+  if (!isClient) {
     return [];
   }
-  const steps = getTutorialStepsData();
-  return steps[perfil] || [];
+  try {
+    const steps = getTutorialStepsData();
+    return steps[perfil] || [];
+  } catch (error) {
+    if (isClient) {
+      console.error('Erro ao obter steps do tutorial:', error);
+    }
+    return [];
+  }
 };

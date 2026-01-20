@@ -1,10 +1,17 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import { useAuthStore, useTutorialStore, PerfilUsuario } from '@/lib/store';
 import { Navbar } from './navbar';
-import { TutorialProvider } from '@/components/tutorial/tutorial-provider';
+
+const TutorialProvider = dynamic(
+  () => import('@/components/tutorial/tutorial-provider').then((mod) => ({ default: mod.TutorialProvider })),
+  {
+    ssr: false,
+  }
+);
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -80,14 +87,22 @@ export function AppLayout({ children }: AppLayoutProps) {
     return null;
   }
 
+  const content = (
+    <div className="min-h-screen bg-base-200">
+      <Navbar />
+      <main className="pb-20 md:pb-8">
+        {children}
+      </main>
+    </div>
+  );
+
+  if (typeof window === 'undefined') {
+    return content;
+  }
+
   return (
     <TutorialProvider perfil={usuario.perfil}>
-      <div className="min-h-screen bg-base-200">
-        <Navbar />
-        <main className="pb-20 md:pb-8">
-          {children}
-        </main>
-      </div>
+      {content}
     </TutorialProvider>
   );
 }
