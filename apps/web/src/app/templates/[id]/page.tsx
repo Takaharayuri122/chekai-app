@@ -622,7 +622,7 @@ export default function EditarTemplatePage() {
         </div>
       </div>
 
-      <div className="px-4 py-6 lg:px-8 space-y-6 max-w-4xl mx-auto pb-24">
+      <div className="px-4 py-4 lg:px-8 space-y-4 pb-24">
         {/* Erro */}
         {erro && (
           <div className="alert alert-error">

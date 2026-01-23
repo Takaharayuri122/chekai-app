@@ -106,7 +106,7 @@ export default function NovaAuditoriaPage() {
         backHref="/dashboard"
       />
 
-      <div className="px-4 py-6 lg:px-8 max-w-2xl mx-auto">
+      <div className="px-4 py-4 lg:px-8 space-y-4">
         {/* Steps */}
         <ul className="steps steps-horizontal w-full mb-8">
           <li className={`step ${step >= 1 ? 'step-primary' : ''}`}>Cliente</li>

@@ -106,7 +106,7 @@ export default function LegislacoesPage() {
         </div>
       </header>
 
-      <div className="px-6 py-6 space-y-6">
+      <div className="px-4 py-4 lg:px-8 space-y-4">
         {/* Search */}
         <motion.div
           initial={{ opacity: 0, y: -10 }}

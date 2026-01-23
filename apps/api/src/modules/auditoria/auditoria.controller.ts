@@ -242,28 +242,13 @@ export class AuditoriaController {
     let pdfBuffer: Buffer;
     let pdfUrl = auditoria.pdfUrl;
 
-    if (pdfUrl && auditoria.pdfGeradoEm) {
-      const diasDesdeGeracao = Math.floor(
-        (new Date().getTime() - new Date(auditoria.pdfGeradoEm).getTime()) /
-          (1000 * 60 * 60 * 24),
-      );
-
-      if (diasDesdeGeracao < 30) {
-        const pdfExistente = await this.relatorioPdfPuppeteerService.verificarPdfExistente(id);
-        if (pdfExistente) {
-          pdfUrl = pdfExistente;
-        }
-      }
-    }
-
-    if (!pdfUrl || !auditoria.pdfGeradoEm) {
-      pdfBuffer = await this.relatorioPdfPuppeteerService.gerarPdf(auditoria);
-      pdfUrl = await this.relatorioPdfPuppeteerService.salvarPdfNoStorage(id, pdfBuffer);
-      
-      await this.auditoriaService.atualizarPdfUrl(id, pdfUrl);
-    } else {
+    // Primeiro, verificar se já existe PDF no bucket
+    const pdfExistenteNoBucket = await this.relatorioPdfPuppeteerService.verificarPdfExistente(id);
+    
+    if (pdfExistenteNoBucket) {
+      // Se existe no bucket, apenas baixar
       const supabase = this.supabaseService.getClient();
-      const urlParts = pdfUrl.split(`/storage/v1/object/public/${this.bucketName}/`);
+      const urlParts = pdfExistenteNoBucket.split(`/storage/v1/object/public/${this.bucketName}/`);
       const filePath = urlParts.length > 1 ? urlParts[1] : null;
       
       if (filePath) {
@@ -271,14 +256,55 @@ export class AuditoriaController {
           .from(this.bucketName)
           .download(filePath);
         
-        if (error || !data) {
+        if (!error && data) {
+          pdfBuffer = Buffer.from(await data.arrayBuffer());
+          pdfUrl = pdfExistenteNoBucket;
+          
+          // Atualizar URL e data no banco se necessário
+          if (!auditoria.pdfUrl || auditoria.pdfUrl !== pdfExistenteNoBucket) {
+            await this.auditoriaService.atualizarPdfUrl(id, pdfExistenteNoBucket);
+          }
+        } else {
+          // Se não conseguiu baixar, gerar novo
           pdfBuffer = await this.relatorioPdfPuppeteerService.gerarPdf(auditoria);
           pdfUrl = await this.relatorioPdfPuppeteerService.salvarPdfNoStorage(id, pdfBuffer);
           await this.auditoriaService.atualizarPdfUrl(id, pdfUrl);
-        } else {
-          pdfBuffer = Buffer.from(await data.arrayBuffer());
         }
       } else {
+        // Se não conseguiu extrair o caminho, gerar novo
+        pdfBuffer = await this.relatorioPdfPuppeteerService.gerarPdf(auditoria);
+        pdfUrl = await this.relatorioPdfPuppeteerService.salvarPdfNoStorage(id, pdfBuffer);
+        await this.auditoriaService.atualizarPdfUrl(id, pdfUrl);
+      }
+    } else {
+      // Se não existe no bucket, verificar se tem URL no banco e tentar baixar
+      if (pdfUrl) {
+        const supabase = this.supabaseService.getClient();
+        const urlParts = pdfUrl.split(`/storage/v1/object/public/${this.bucketName}/`);
+        const filePath = urlParts.length > 1 ? urlParts[1] : null;
+        
+        if (filePath) {
+          const { data, error } = await supabase.storage
+            .from(this.bucketName)
+            .download(filePath);
+          
+          if (!error && data) {
+            // PDF existe e foi baixado com sucesso
+            pdfBuffer = Buffer.from(await data.arrayBuffer());
+          } else {
+            // PDF não existe mais no bucket, gerar novo
+            pdfBuffer = await this.relatorioPdfPuppeteerService.gerarPdf(auditoria);
+            pdfUrl = await this.relatorioPdfPuppeteerService.salvarPdfNoStorage(id, pdfBuffer);
+            await this.auditoriaService.atualizarPdfUrl(id, pdfUrl);
+          }
+        } else {
+          // URL inválida, gerar novo
+          pdfBuffer = await this.relatorioPdfPuppeteerService.gerarPdf(auditoria);
+          pdfUrl = await this.relatorioPdfPuppeteerService.salvarPdfNoStorage(id, pdfBuffer);
+          await this.auditoriaService.atualizarPdfUrl(id, pdfUrl);
+        }
+      } else {
+        // Não existe PDF, gerar novo
         pdfBuffer = await this.relatorioPdfPuppeteerService.gerarPdf(auditoria);
         pdfUrl = await this.relatorioPdfPuppeteerService.salvarPdfNoStorage(id, pdfBuffer);
         await this.auditoriaService.atualizarPdfUrl(id, pdfUrl);

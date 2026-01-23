@@ -11,7 +11,7 @@ export default function TermosUsoPage() {
   return (
     <div className="min-h-screen bg-base-200">
       <div className="bg-base-100 border-b border-base-300">
-        <div className="max-w-4xl mx-auto px-4 py-6">
+        <div className="max-w-4xl mx-auto px-4 py-4 lg:px-8">
           <Link
             href="/"
             className="inline-flex items-center gap-2 text-base-content/70 hover:text-primary transition-colors mb-4"
@@ -27,7 +27,7 @@ export default function TermosUsoPage() {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 py-8 md:py-12">
+      <div className="max-w-4xl mx-auto px-4 py-4 lg:px-8">
         <div className="prose prose-lg max-w-none">
           <section className="mb-8">
             <h2 className="text-2xl font-semibold text-base-content mb-4 flex items-center gap-2">

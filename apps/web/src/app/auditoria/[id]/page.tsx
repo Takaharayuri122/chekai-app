@@ -670,7 +670,7 @@ export default function AuditoriaPage() {
       </div>
 
       {/* Items */}
-      <div className="px-4 py-4 lg:px-8 space-y-3 max-w-3xl mx-auto pb-36 md:pb-24">
+      <div className="px-4 py-4 lg:px-8 space-y-4 pb-36 md:pb-24">
         {[...auditoria.itens]
           .sort((a, b) => {
             const ordemA = a.templateItem?.ordem ?? 0;

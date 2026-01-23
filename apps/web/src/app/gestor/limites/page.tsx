@@ -64,7 +64,7 @@ export default function LimitesPage() {
         subtitle="Visualize seus limites e uso atual"
       />
 
-      <div className="px-4 py-4 lg:px-8 space-y-6">
+      <div className="px-4 py-4 lg:px-8 space-y-4">
         {loading ? (
           <div className="card bg-base-100 shadow-sm border border-base-300">
             <div className="card-body items-center py-12">

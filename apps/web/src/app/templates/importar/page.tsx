@@ -147,7 +147,7 @@ export default function ImportarChecklistPage() {
         </div>
       </div>
 
-      <div className="px-4 py-6 lg:px-8 max-w-3xl mx-auto">
+      <div className="px-4 py-4 lg:px-8 space-y-4">
         {/* Steps Indicator */}
         <div className="mb-8">
           <ul className="steps steps-horizontal w-full">

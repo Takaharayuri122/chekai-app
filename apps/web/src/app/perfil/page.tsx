@@ -32,7 +32,7 @@ export default function PerfilPage() {
     <AppLayout>
       <PageHeader title="Meu Perfil" subtitle="Gerencie suas informações" />
 
-      <div className="px-4 py-6 lg:px-8 max-w-xl mx-auto space-y-6">
+      <div className="px-4 py-4 lg:px-8 space-y-4">
         {/* Avatar */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}

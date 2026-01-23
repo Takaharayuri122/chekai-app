@@ -635,7 +635,7 @@ export default function RelatorioPage() {
   return (
     <AppLayout>
       <PageHeader title="Relatório de Auditoria" />
-      <div className="space-y-4 sm:space-y-6 px-4 sm:px-0 pb-6 sm:pb-0">
+      <div className="px-4 py-4 lg:px-8 space-y-4">
         {/* Cabeçalho */}
         <div className="card bg-base-100 shadow-sm border border-base-300">
           <div className="card-body p-4 sm:p-6">

@@ -1,6 +1,6 @@
-import { Injectable, NotFoundException, OnApplicationBootstrap } from '@nestjs/common';
+import { Injectable, NotFoundException, OnApplicationBootstrap, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, DataSource } from 'typeorm';
 import { ConfiguracaoCredito } from './entities/configuracao-credito.entity';
 import { ConfigurarCreditoDto } from './dto/configurar-credito.dto';
 import { ProvedorIa } from './entities/uso-credito.entity';
@@ -10,16 +10,53 @@ import { ProvedorIa } from './entities/uso-credito.entity';
  */
 @Injectable()
 export class ConfiguracaoCreditoService implements OnApplicationBootstrap {
+  private readonly logger = new Logger(ConfiguracaoCreditoService.name);
+
   constructor(
     @InjectRepository(ConfiguracaoCredito)
     private readonly configuracaoRepository: Repository<ConfiguracaoCredito>,
+    private readonly dataSource: DataSource,
   ) {}
 
   /**
    * Inicializa as configurações padrão quando a aplicação é inicializada.
    */
   async onApplicationBootstrap(): Promise<void> {
-    await this.inicializarConfiguracoesPadrao();
+    // Aguardar um pouco para garantir que o TypeORM carregou todos os metadados
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    
+    // Verificar se a entidade está disponível antes de tentar usar
+    try {
+      const metadata = this.dataSource.getMetadata(ConfiguracaoCredito);
+      if (!metadata) {
+        this.logger.warn('Metadata de ConfiguracaoCredito não encontrada, tentando novamente em 2 segundos...');
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+      }
+    } catch (error) {
+      this.logger.warn('Erro ao verificar metadata, tentando novamente em 2 segundos...', error);
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+    }
+
+    // Tentar inicializar com retry
+    let tentativas = 0;
+    const maxTentativas = 3;
+    
+    while (tentativas < maxTentativas) {
+      try {
+        await this.inicializarConfiguracoesPadrao();
+        this.logger.log('Configurações padrão de crédito inicializadas com sucesso');
+        return;
+      } catch (error) {
+        tentativas++;
+        if (tentativas >= maxTentativas) {
+          this.logger.error('Erro ao inicializar configurações padrão após múltiplas tentativas:', error);
+          // Não lançar erro para não impedir a inicialização da aplicação
+          return;
+        }
+        this.logger.warn(`Tentativa ${tentativas} falhou, tentando novamente em 2 segundos...`);
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+      }
+    }
   }
 
   /**

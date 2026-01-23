@@ -88,7 +88,7 @@ export default function NovaLegislacaoPage() {
         </div>
       </header>
 
-      <form onSubmit={handleSubmit} className="px-6 py-6 space-y-6 pb-32">
+      <form onSubmit={handleSubmit} className="px-4 py-4 lg:px-8 space-y-4 pb-32">
         {/* Tipo e Número */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}

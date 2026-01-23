@@ -164,7 +164,7 @@ export default function ConfiguracoesCreditoPage() {
         subtitle="Gerencie as taxas de conversão de tokens para créditos de IA"
       />
 
-      <div className="px-4 py-4 lg:px-8">
+      <div className="px-4 py-4 lg:px-8 space-y-4">
         <div className="flex flex-col md:flex-row gap-4 mb-6">
           <div className="flex-1">
             <div className="form-control">

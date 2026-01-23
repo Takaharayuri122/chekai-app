@@ -152,7 +152,7 @@ export default function AuditoriaTokensPage() {
         subtitle="Monitoramento detalhado de uso de tokens de Inteligência Artificial"
       />
 
-      <div className="px-4 py-4 lg:px-8 space-y-6">
+      <div className="px-4 py-4 lg:px-8 space-y-4">
         {/* Filtros */}
         <div className="card bg-base-100 shadow-sm border border-base-300">
           <div className="card-body p-4">

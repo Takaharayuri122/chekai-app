@@ -62,7 +62,7 @@ export default function DashboardPage() {
 
   return (
     <AppLayout>
-      <div className="px-4 py-6 lg:px-8 space-y-6">
+      <div className="px-4 py-4 lg:px-8 space-y-4">
         {/* Welcome */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
