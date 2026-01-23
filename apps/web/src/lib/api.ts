@@ -490,6 +490,7 @@ export interface TemplateItem {
   obrigatorio: boolean;
   opcoesResposta?: string[];
   usarRespostasPersonalizadas: boolean;
+  tipoRespostaCustomizada?: TipoRespostaCustomizada;
   grupoId?: string;
   grupo?: ChecklistGrupo;
   secao?: string;
@@ -506,6 +507,20 @@ export const RESPOSTAS_PADRAO = [
   { valor: 'nao_avaliado', label: 'Não Avaliado' },
 ];
 
+export enum TipoRespostaCustomizada {
+  TEXTO = 'texto',
+  NUMERO = 'numero',
+  DATA = 'data',
+  SELECT = 'select',
+}
+
+export const TIPO_RESPOSTA_LABELS: Record<TipoRespostaCustomizada, string> = {
+  [TipoRespostaCustomizada.TEXTO]: 'Texto',
+  [TipoRespostaCustomizada.NUMERO]: 'Número',
+  [TipoRespostaCustomizada.DATA]: 'Data',
+  [TipoRespostaCustomizada.SELECT]: 'Seleção',
+};
+
 export interface CriarTemplateItemRequest {
   pergunta: string;
   categoria?: CategoriaItem;
@@ -518,6 +533,7 @@ export interface CriarTemplateItemRequest {
   obrigatorio?: boolean;
   opcoesResposta?: string[];
   usarRespostasPersonalizadas?: boolean;
+  tipoRespostaCustomizada?: TipoRespostaCustomizada;
   grupoId?: string;
   secao?: string;
 }

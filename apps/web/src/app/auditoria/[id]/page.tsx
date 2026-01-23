@@ -27,8 +27,10 @@ import {
   type Auditoria,
   type AuditoriaItem,
   type AnaliseChecklistResponse,
+  TipoRespostaCustomizada,
 } from '@/lib/api';
 import { toastService } from '@/lib/toast';
+import { renderEmoji } from '@/lib/emoji';
 
 type RespostaType = 'conforme' | 'nao_conforme' | 'nao_aplicavel' | string;
 
@@ -52,28 +54,6 @@ interface ItemModalState {
 
 const MAX_FOTOS_POR_ITEM = 5;
 
-const emojiMap: Record<string, string> = {
-  emoji_like: '👍',
-  emoji_unlike: '👎',
-  emoji_check: '✅',
-  emoji_cross: '❌',
-  emoji_warning: '⚠️',
-  emoji_info: 'ℹ️',
-  emoji_question: '❓',
-  emoji_star: '⭐',
-  emoji_heart: '❤️',
-  emoji_thumbsup: '👍',
-  emoji_thumbsdown: '👎',
-};
-
-function renderEmoji(text: string): string {
-  let result = text;
-  Object.entries(emojiMap).forEach(([code, emoji]) => {
-    result = result.replace(new RegExp(code, 'g'), emoji);
-  });
-  return result;
-}
-
 export default function AuditoriaPage() {
   const params = useParams();
   const router = useRouter();
@@ -87,6 +67,7 @@ export default function AuditoriaPage() {
   const [showFinalModal, setShowFinalModal] = useState(false);
   const [observacoesGerais, setObservacoesGerais] = useState('');
   const [erroFinalizar, setErroFinalizar] = useState('');
+  const [respostasCustomizadas, setRespostasCustomizadas] = useState<Record<string, string>>({});
 
   // Modal de foto + IA
   const [itemModal, setItemModal] = useState<ItemModalState | null>(null);
@@ -96,6 +77,13 @@ export default function AuditoriaPage() {
     try {
       const data = await auditoriaService.buscarPorId(id);
       setAuditoria(data);
+      const customizadas: Record<string, string> = {};
+      data.itens.forEach((item) => {
+        if (item.templateItem?.tipoRespostaCustomizada && item.resposta) {
+          customizadas[item.id] = item.resposta;
+        }
+      });
+      setRespostasCustomizadas(customizadas);
     } catch {
       router.push('/dashboard');
     } finally {
@@ -134,6 +122,38 @@ export default function AuditoriaPage() {
           ...prev,
           itens: prev.itens.map((item) =>
             item.id === itemId ? { ...item, resposta: '' } : item
+          ),
+        };
+      });
+    }
+  };
+
+  const handleRespostaCustomizada = async (itemId: string, valor: string) => {
+    if (!auditoria) return;
+    if (auditoria.status === 'finalizada') {
+      toastService.warning('Não é possível editar uma auditoria finalizada. Reabra a auditoria para fazer alterações.');
+      return;
+    }
+    setRespostasCustomizadas((prev) => ({ ...prev, [itemId]: valor }));
+    setAuditoria((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        itens: prev.itens.map((item) =>
+          item.id === itemId ? { ...item, resposta: valor } : item
+        ),
+      };
+    });
+    try {
+      await auditoriaService.responderItem(auditoria.id, itemId, valor);
+    } catch (error) {
+      // Erro já é tratado pelo interceptor
+      setAuditoria((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          itens: prev.itens.map((item) =>
+            item.id === itemId ? { ...item, resposta: item.resposta } : item
           ),
         };
       });
@@ -624,24 +644,88 @@ export default function AuditoriaPage() {
                 </div>
               </div>
 
-              {/* Botões de resposta */}
-              <div className="flex gap-2 mt-3 flex-wrap">
-                {item.templateItem.usarRespostasPersonalizadas && item.templateItem.opcoesResposta && item.templateItem.opcoesResposta.length > 0 ? (
-                  // Opções personalizadas do template
-                  item.templateItem.opcoesResposta.map((opcao, idx) => (
-                    <button
-                      key={idx}
-                      className={getRespostaStyle(item, opcao, true)}
-                      onClick={() => handleResposta(item.id, opcao)}
-                      disabled={auditoria.status === 'finalizada'}
-                      title={auditoria.status === 'finalizada' ? 'Auditoria finalizada. Reabra para editar.' : ''}
-                    >
-                      <span>{renderEmoji(opcao)}</span>
-                    </button>
-                  ))
+              {/* Campos de resposta */}
+              <div className="mt-3">
+                {item.templateItem.tipoRespostaCustomizada ? (
+                  // Campos customizados
+                  <div className="space-y-2">
+                    {item.templateItem.tipoRespostaCustomizada === TipoRespostaCustomizada.TEXTO && (
+                      <textarea
+                        className="textarea textarea-bordered w-full"
+                        placeholder="Digite sua resposta..."
+                        value={respostasCustomizadas[item.id] ?? item.resposta ?? ''}
+                        onChange={(e) => {
+                          setRespostasCustomizadas((prev) => ({ ...prev, [item.id]: e.target.value }));
+                        }}
+                        onBlur={(e) => {
+                          if (e.target.value !== (item.resposta || '')) {
+                            handleRespostaCustomizada(item.id, e.target.value);
+                          }
+                        }}
+                        disabled={auditoria.status === 'finalizada'}
+                        rows={3}
+                      />
+                    )}
+                    {item.templateItem.tipoRespostaCustomizada === TipoRespostaCustomizada.NUMERO && (
+                      <input
+                        type="number"
+                        className="input input-bordered w-full"
+                        placeholder="Digite um número..."
+                        value={respostasCustomizadas[item.id] ?? item.resposta ?? ''}
+                        onChange={(e) => {
+                          setRespostasCustomizadas((prev) => ({ ...prev, [item.id]: e.target.value }));
+                        }}
+                        onBlur={(e) => {
+                          if (e.target.value !== (item.resposta || '')) {
+                            handleRespostaCustomizada(item.id, e.target.value);
+                          }
+                        }}
+                        disabled={auditoria.status === 'finalizada'}
+                      />
+                    )}
+                    {item.templateItem.tipoRespostaCustomizada === TipoRespostaCustomizada.DATA && (
+                      <input
+                        type="date"
+                        className="input input-bordered w-full"
+                        value={respostasCustomizadas[item.id] ?? item.resposta ?? ''}
+                        onChange={(e) => handleRespostaCustomizada(item.id, e.target.value)}
+                        disabled={auditoria.status === 'finalizada'}
+                      />
+                    )}
+                    {item.templateItem.tipoRespostaCustomizada === TipoRespostaCustomizada.SELECT && (
+                      <select
+                        className="select select-bordered w-full"
+                        value={respostasCustomizadas[item.id] ?? item.resposta ?? ''}
+                        onChange={(e) => handleRespostaCustomizada(item.id, e.target.value)}
+                        disabled={auditoria.status === 'finalizada'}
+                      >
+                        <option value="">Selecione uma opção</option>
+                        {item.templateItem.opcoesResposta?.map((opcao, idx) => (
+                          <option key={idx} value={opcao}>
+                            {renderEmoji(opcao)}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+                ) : item.templateItem.usarRespostasPersonalizadas && item.templateItem.opcoesResposta && item.templateItem.opcoesResposta.length > 0 ? (
+                  // Opções personalizadas do template (botões)
+                  <div className="flex gap-2 flex-wrap">
+                    {item.templateItem.opcoesResposta.map((opcao, idx) => (
+                      <button
+                        key={idx}
+                        className={getRespostaStyle(item, opcao, true)}
+                        onClick={() => handleResposta(item.id, opcao)}
+                        disabled={auditoria.status === 'finalizada'}
+                        title={auditoria.status === 'finalizada' ? 'Auditoria finalizada. Reabra para editar.' : ''}
+                      >
+                        <span>{renderEmoji(opcao)}</span>
+                      </button>
+                    ))}
+                  </div>
                 ) : (
                   // Opções padrão
-                  <>
+                  <div className="flex gap-2 flex-wrap">
                     <button
                       className={getRespostaStyle(item, 'conforme')}
                       onClick={() => handleResposta(item.id, 'conforme')}
@@ -669,7 +753,7 @@ export default function AuditoriaPage() {
                       <AlertTriangle className="w-4 h-4" />
                       <span className="hidden sm:inline">N/A</span>
                     </button>
-                  </>
+                  </div>
                 )}
               </div>
 

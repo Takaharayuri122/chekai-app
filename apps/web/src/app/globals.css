@@ -54,3 +54,13 @@
   80%, 100% { content: '...'; }
 }
 
+/* Tooltip z-index fix */
+.tooltip {
+  position: relative;
+  z-index: 9999;
+}
+
+.tooltip::before,
+.tooltip::after {
+  z-index: 99999 !important;
+}

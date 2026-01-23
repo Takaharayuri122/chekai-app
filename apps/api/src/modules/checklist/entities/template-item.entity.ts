@@ -36,6 +36,16 @@ export enum CriticidadeItem {
 }
 
 /**
+ * Enum para tipo de resposta customizada.
+ */
+export enum TipoRespostaCustomizada {
+  TEXTO = 'texto',
+  NUMERO = 'numero',
+  DATA = 'data',
+  SELECT = 'select',
+}
+
+/**
  * Entidade que representa um item de um template de checklist.
  */
 @Entity('template_itens')
@@ -83,6 +93,13 @@ export class TemplateItem {
 
   @Column({ default: false })
   usarRespostasPersonalizadas: boolean;
+
+  @Column({
+    type: 'enum',
+    enum: TipoRespostaCustomizada,
+    nullable: true,
+  })
+  tipoRespostaCustomizada: TipoRespostaCustomizada;
 
   @Column({ default: true })
   ativo: boolean;

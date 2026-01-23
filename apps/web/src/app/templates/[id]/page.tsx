@@ -36,7 +36,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { AppLayout } from '@/components';
+import { AppLayout, Tooltip } from '@/components';
 import {
   checklistService,
   ChecklistTemplate,
@@ -51,6 +51,8 @@ import {
   CriarTemplateItemRequest,
   CriarGrupoRequest,
   RESPOSTAS_PADRAO,
+  TipoRespostaCustomizada,
+  TIPO_RESPOSTA_LABELS,
 } from '@/lib/api';
 import { toastService } from '@/lib/toast';
 import { useAuthStore } from '@/lib/store';
@@ -125,18 +127,30 @@ function SortableItem({ item, index, onEdit, onRemove }: SortableItemProps) {
       <span className="text-xs sm:text-sm font-bold text-base-content/40 min-w-[20px] sm:min-w-[24px] flex-shrink-0">{index + 1}.</span>
       <div className="flex-1 min-w-0">
         <p className="text-xs sm:text-sm leading-relaxed break-words">{item.pergunta}</p>
-        <div className="flex flex-wrap items-center gap-1 mt-1.5 sm:mt-1">
-          <span className="badge badge-ghost badge-xs">{CATEGORIA_ITEM_LABELS[item.categoria]}</span>
-          <span className={`badge badge-xs ${getCriticidadeBadge(item.criticidade)}`}>
-            {CRITICIDADE_LABELS[item.criticidade]}
-          </span>
+        <div className="flex flex-wrap items-center gap-1.5 mt-1.5 sm:mt-1">
+          <Tooltip content="Categoria da pergunta: indica a área ou aspecto que a pergunta avalia">
+            <span className="badge badge-ghost badge-sm px-2 py-1">
+              {CATEGORIA_ITEM_LABELS[item.categoria]}
+            </span>
+          </Tooltip>
+          <Tooltip content={`Criticidade: ${CRITICIDADE_LABELS[item.criticidade]} - indica o nível de importância e impacto desta pergunta na avaliação`}>
+            <span className={`badge badge-sm px-2 py-1 ${getCriticidadeBadge(item.criticidade)}`}>
+              {CRITICIDADE_LABELS[item.criticidade]}
+            </span>
+          </Tooltip>
           {item.legislacaoReferencia && (
-            <span className="text-xs text-base-content/50 truncate max-w-[120px] sm:max-w-none">{item.legislacaoReferencia}</span>
+            <Tooltip content={`Referência legal: ${item.legislacaoReferencia}${item.artigo ? ` - ${item.artigo}` : ''}`}>
+              <span className="text-xs text-base-content/50 truncate max-w-[120px] sm:max-w-none">
+                {item.legislacaoReferencia}
+              </span>
+            </Tooltip>
           )}
           {item.usarRespostasPersonalizadas && (
-            <span className="badge badge-secondary badge-xs gap-1">
-              <Settings className="w-2.5 h-2.5 sm:w-3 sm:h-3" />Pers.
-            </span>
+            <Tooltip content="Respostas Personalizadas: este item usa opções de resposta customizadas ao invés das padrão">
+              <span className="badge badge-secondary badge-sm gap-1 px-2 py-1">
+                <Settings className="w-2.5 h-2.5 sm:w-3 sm:h-3" />Pers.
+              </span>
+            </Tooltip>
           )}
         </div>
       </div>
@@ -198,6 +212,7 @@ export default function EditarTemplatePage() {
     obrigatorio: true,
     opcoesResposta: [],
     usarRespostasPersonalizadas: false,
+    tipoRespostaCustomizada: undefined,
     grupoId: undefined,
     secao: '',
   });
@@ -458,6 +473,7 @@ export default function EditarTemplatePage() {
       obrigatorio: item.obrigatorio,
       opcoesResposta: item.opcoesResposta || [],
       usarRespostasPersonalizadas: item.usarRespostasPersonalizadas || false,
+      tipoRespostaCustomizada: item.tipoRespostaCustomizada,
       grupoId: item.grupoId,
       secao: item.secao || '',
     });
@@ -476,8 +492,9 @@ export default function EditarTemplatePage() {
         legislacaoReferencia: itemForm.legislacaoReferencia,
         artigo: itemForm.artigo,
         obrigatorio: itemForm.obrigatorio,
-        opcoesResposta: itemForm.usarRespostasPersonalizadas ? itemForm.opcoesResposta : undefined,
+        opcoesResposta: itemForm.usarRespostasPersonalizadas && !itemForm.tipoRespostaCustomizada ? itemForm.opcoesResposta : (itemForm.tipoRespostaCustomizada === TipoRespostaCustomizada.SELECT ? itemForm.opcoesResposta : undefined),
         usarRespostasPersonalizadas: itemForm.usarRespostasPersonalizadas,
+        tipoRespostaCustomizada: itemForm.tipoRespostaCustomizada,
         grupoId: itemForm.grupoId || undefined,
         secao: itemForm.secao || undefined,
       };
@@ -1022,30 +1039,67 @@ export default function EditarTemplatePage() {
 
               <div className="divider">Opções de Resposta</div>
 
-              {/* Toggle Respostas Personalizadas */}
-              <div className="form-control bg-base-200 rounded-lg p-4">
-                <label className="label cursor-pointer justify-start gap-3">
-                  <input
-                    type="checkbox"
-                    className="toggle toggle-secondary"
-                    checked={itemForm.usarRespostasPersonalizadas}
-                    onChange={(e) => setItemForm({ ...itemForm, usarRespostasPersonalizadas: e.target.checked })}
-                  />
-                  <div>
-                    <span className="label-text font-medium">Usar respostas personalizadas</span>
-                    <p className="text-xs text-base-content/60 mt-0.5">Padrão: Conforme, Não Conforme, Não Aplicável, Não Avaliado</p>
-                  </div>
+              {/* Tipo de Resposta Customizada */}
+              <div className="form-control">
+                <label className="label">
+                  <span className="label-text font-medium">Tipo de Resposta</span>
+                </label>
+                <select
+                  className="select select-bordered"
+                  value={itemForm.tipoRespostaCustomizada || ''}
+                  onChange={(e) => {
+                    const valor = e.target.value ? (e.target.value as TipoRespostaCustomizada) : undefined;
+                    setItemForm({
+                      ...itemForm,
+                      tipoRespostaCustomizada: valor,
+                      usarRespostasPersonalizadas: valor !== undefined,
+                    });
+                  }}
+                >
+                  <option value="">Padrão (Botões: Conforme/Não Conforme/Não Aplicável)</option>
+                  <option value={TipoRespostaCustomizada.TEXTO}>{TIPO_RESPOSTA_LABELS[TipoRespostaCustomizada.TEXTO]}</option>
+                  <option value={TipoRespostaCustomizada.NUMERO}>{TIPO_RESPOSTA_LABELS[TipoRespostaCustomizada.NUMERO]}</option>
+                  <option value={TipoRespostaCustomizada.DATA}>{TIPO_RESPOSTA_LABELS[TipoRespostaCustomizada.DATA]}</option>
+                  <option value={TipoRespostaCustomizada.SELECT}>{TIPO_RESPOSTA_LABELS[TipoRespostaCustomizada.SELECT]}</option>
+                </select>
+                <label className="label">
+                  <span className="label-text-alt text-base-content/60">
+                    {itemForm.tipoRespostaCustomizada === TipoRespostaCustomizada.SELECT && 'Configure as opções abaixo'}
+                    {itemForm.tipoRespostaCustomizada === TipoRespostaCustomizada.TEXTO && 'Campo de texto livre'}
+                    {itemForm.tipoRespostaCustomizada === TipoRespostaCustomizada.NUMERO && 'Campo numérico'}
+                    {itemForm.tipoRespostaCustomizada === TipoRespostaCustomizada.DATA && 'Seletor de data'}
+                    {!itemForm.tipoRespostaCustomizada && 'Use botões de resposta padrão'}
+                  </span>
                 </label>
               </div>
 
-              {/* Respostas Personalizadas */}
-              {itemForm.usarRespostasPersonalizadas && (
+              {/* Toggle Respostas Personalizadas (apenas para botões) */}
+              {!itemForm.tipoRespostaCustomizada && (
+                <div className="form-control bg-base-200 rounded-lg p-4">
+                  <label className="label cursor-pointer justify-start gap-3">
+                    <input
+                      type="checkbox"
+                      className="toggle toggle-secondary"
+                      checked={itemForm.usarRespostasPersonalizadas}
+                      onChange={(e) => setItemForm({ ...itemForm, usarRespostasPersonalizadas: e.target.checked })}
+                    />
+                    <div>
+                      <span className="label-text font-medium">Usar respostas personalizadas</span>
+                      <p className="text-xs text-base-content/60 mt-0.5">Padrão: Conforme, Não Conforme, Não Aplicável, Não Avaliado</p>
+                    </div>
+                  </label>
+                </div>
+              )}
+
+              {/* Respostas Personalizadas (botões ou opções para select) */}
+              {/* Mostra opções apenas para SELECT ou quando usarRespostasPersonalizadas está ativo sem tipo customizado */}
+              {((itemForm.usarRespostasPersonalizadas && !itemForm.tipoRespostaCustomizada) || itemForm.tipoRespostaCustomizada === TipoRespostaCustomizada.SELECT) && (
                 <div className="space-y-3 bg-base-200/50 rounded-lg p-4">
                   <label className="label"><span className="label-text font-medium">Opções de Resposta</span></label>
                   {itemForm.opcoesResposta && itemForm.opcoesResposta.length > 0 && (
                     <div className="flex flex-wrap gap-2">
                       {itemForm.opcoesResposta.map((opcao, idx) => (
-                        <div key={idx} className="badge badge-lg gap-1 pr-1">
+                        <div key={idx} className="badge badge-lg gap-1 pr-1 border-2 border-primary">
                           {opcao}
                           <button onClick={() => handleRemoverOpcaoResposta(opcao)} className="btn btn-ghost btn-xs btn-circle">
                             <X className="w-3 h-3" />
@@ -1069,9 +1123,9 @@ export default function EditarTemplatePage() {
                   </div>
                   <div>
                     <span className="text-xs text-base-content/60">Sugestões:</span>
-                    <div className="flex flex-wrap gap-1 mt-1">
+                    <div className="flex flex-wrap gap-2 mt-2">
                       {RESPOSTAS_PERSONALIZADAS_SUGESTOES.filter((s) => !itemForm.opcoesResposta?.includes(s)).map((sugestao) => (
-                        <button key={sugestao} type="button" onClick={() => handleAdicionarSugestao(sugestao)} className="badge badge-outline badge-sm hover:badge-secondary cursor-pointer">
+                        <button key={sugestao} type="button" onClick={() => handleAdicionarSugestao(sugestao)} className="badge badge-outline badge-md text-base-content font-bold hover:badge-primary hover:!text-white cursor-pointer transition-colors px-4 py-2">
                           + {sugestao}
                         </button>
                       ))}

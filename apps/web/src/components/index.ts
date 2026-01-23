@@ -7,6 +7,8 @@ export { PageHeader } from './ui/page-header';
 export { StatCard } from './ui/stat-card';
 export { EmptyState } from './ui/empty-state';
 export { ConfirmDialog } from './ui/confirm-dialog';
+export { Emoji } from './ui/emoji';
+export { Tooltip } from './ui/tooltip';
 
 // Analytics
 export { GoogleAnalytics } from './analytics/google-analytics';

@@ -11,7 +11,7 @@ import {
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { TipoAtividade } from '../../cliente/entities/cliente.entity';
-import { CategoriaItem, CriticidadeItem } from '../entities/template-item.entity';
+import { CategoriaItem, CriticidadeItem, TipoRespostaCustomizada } from '../entities/template-item.entity';
 
 /**
  * DTO para criar um item do template.
@@ -75,6 +75,11 @@ export class CriarTemplateItemDto {
   @IsBoolean()
   @IsOptional()
   usarRespostasPersonalizadas?: boolean;
+
+  @ApiPropertyOptional({ description: 'Tipo de resposta customizada', enum: TipoRespostaCustomizada })
+  @IsEnum(TipoRespostaCustomizada)
+  @IsOptional()
+  tipoRespostaCustomizada?: TipoRespostaCustomizada;
 
   @ApiPropertyOptional({ description: 'ID do grupo ao qual o item pertence' })
   @IsString()
