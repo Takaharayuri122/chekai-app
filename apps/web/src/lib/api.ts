@@ -667,6 +667,7 @@ export interface Auditoria {
   id: string;
   status: string;
   dataInicio: string;
+  dataFim?: string;
   unidade: Unidade & { cliente: Cliente };
   template: ChecklistTemplate;
   pontuacaoTotal: number;

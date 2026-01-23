@@ -52,6 +52,28 @@ interface ItemModalState {
 
 const MAX_FOTOS_POR_ITEM = 5;
 
+const emojiMap: Record<string, string> = {
+  emoji_like: '👍',
+  emoji_unlike: '👎',
+  emoji_check: '✅',
+  emoji_cross: '❌',
+  emoji_warning: '⚠️',
+  emoji_info: 'ℹ️',
+  emoji_question: '❓',
+  emoji_star: '⭐',
+  emoji_heart: '❤️',
+  emoji_thumbsup: '👍',
+  emoji_thumbsdown: '👎',
+};
+
+function renderEmoji(text: string): string {
+  let result = text;
+  Object.entries(emojiMap).forEach(([code, emoji]) => {
+    result = result.replace(new RegExp(code, 'g'), emoji);
+  });
+  return result;
+}
+
 export default function AuditoriaPage() {
   const params = useParams();
   const router = useRouter();
@@ -576,7 +598,13 @@ export default function AuditoriaPage() {
 
       {/* Items */}
       <div className="px-4 py-4 lg:px-8 space-y-3 max-w-3xl mx-auto pb-36 md:pb-24">
-        {auditoria.itens.map((item, index) => (
+        {[...auditoria.itens]
+          .sort((a, b) => {
+            const ordemA = a.templateItem?.ordem ?? 0;
+            const ordemB = b.templateItem?.ordem ?? 0;
+            return ordemA - ordemB;
+          })
+          .map((item, index) => (
           <motion.div
             key={item.id}
             initial={{ opacity: 0, y: 10 }}
@@ -608,7 +636,7 @@ export default function AuditoriaPage() {
                       disabled={auditoria.status === 'finalizada'}
                       title={auditoria.status === 'finalizada' ? 'Auditoria finalizada. Reabra para editar.' : ''}
                     >
-                      <span>{opcao}</span>
+                      <span>{renderEmoji(opcao)}</span>
                     </button>
                   ))
                 ) : (
