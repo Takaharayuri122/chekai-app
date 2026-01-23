@@ -54,13 +54,36 @@
   80%, 100% { content: '...'; }
 }
 
-/* Tooltip z-index fix */
-.tooltip {
-  position: relative;
-  z-index: 9999;
+/* Garantir que modais sempre fiquem acima de badges e tooltips */
+.modal.modal-open {
+  z-index: 50 !important;
 }
 
-.tooltip::before,
-.tooltip::after {
-  z-index: 99999 !important;
+.modal.modal-open .modal-box {
+  position: relative;
+  z-index: 51 !important;
+}
+
+/* Tooltip z-index - apenas os pseudo-elementos (tooltip visível) devem estar acima de tudo */
+.tooltip[data-tip] {
+  position: relative;
+  z-index: auto !important; /* Não cria novo contexto de empilhamento, permite que filhos fiquem abaixo dos modais */
+}
+
+.tooltip[data-tip]::before,
+.tooltip[data-tip]::after {
+  z-index: 100 !important; /* Apenas o tooltip visível fica acima dos modais */
+}
+
+/* Garantir que badges dentro de tooltips fiquem abaixo dos modais (z-50) */
+.tooltip[data-tip] .badge,
+.tooltip[data-tip] > *,
+.tooltip[data-tip] span,
+.tooltip[data-tip] .badge-ghost,
+.tooltip[data-tip] .badge-secondary,
+.tooltip[data-tip] .badge-info,
+.tooltip[data-tip] .badge-warning,
+.tooltip[data-tip] .badge-error {
+  position: relative;
+  z-index: 1 !important;
 }

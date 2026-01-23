@@ -869,7 +869,7 @@ export default function EditarTemplatePage() {
 
       {/* Modal Grupo */}
       {showGrupoModal && (
-        <div className="modal modal-open">
+        <div className="modal modal-open z-50">
           <div 
             className="modal-box max-w-md w-full mx-4 sm:mx-auto"
             onClick={(e) => e.stopPropagation()}
@@ -916,7 +916,7 @@ export default function EditarTemplatePage() {
 
       {/* Modal Item */}
       {showItemModal && (
-        <div className="modal modal-open">
+        <div className="modal modal-open z-50">
           <div className="modal-box max-w-2xl w-full mx-4 sm:mx-auto max-h-[90vh] overflow-y-auto">
             <h3 className="font-bold text-lg mb-4">{editingItem ? 'Editar Pergunta' : 'Nova Pergunta'}</h3>
             <div className="space-y-4">

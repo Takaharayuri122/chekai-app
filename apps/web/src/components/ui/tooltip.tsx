@@ -34,6 +34,7 @@ export function Tooltip({ content, children, position = 'top', className = '' }:
     <div
       className={`tooltip ${positionClasses[position]} ${className}`}
       data-tip={content}
+      style={{ position: 'relative', zIndex: 1 }}
     >
       {children}
     </div>

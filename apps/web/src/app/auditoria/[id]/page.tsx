@@ -19,6 +19,7 @@ import {
   Image as ImageIcon,
   MessageSquare,
   AlertCircle,
+  Clock,
 } from 'lucide-react';
 import { AppLayout, PageHeader } from '@/components';
 import {
@@ -62,19 +63,35 @@ export default function AuditoriaPage() {
   const [auditoria, setAuditoria] = useState<Auditoria | null>(null);
   const [loading, setLoading] = useState(true);
   const [expandedItem, setExpandedItem] = useState<string | null>(null);
-  const [processingIa, setProcessingIa] = useState<string | null>(null);
   const [finalizando, setFinalizando] = useState(false);
   const [showFinalModal, setShowFinalModal] = useState(false);
   const [observacoesGerais, setObservacoesGerais] = useState('');
   const [erroFinalizar, setErroFinalizar] = useState('');
   const [respostasCustomizadas, setRespostasCustomizadas] = useState<Record<string, string>>({});
+  const [salvando, setSalvando] = useState(false);
+  const [ultimaHoraSalva, setUltimaHoraSalva] = useState<Date | null>(null);
+  const [itensObrigatoriosNaoAvaliados, setItensObrigatoriosNaoAvaliados] = useState<Set<string>>(new Set());
 
   // Modal de foto + IA
   const [itemModal, setItemModal] = useState<ItemModalState | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Refs para scroll automático até o último item respondido
+  const itemRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const scrollRealizado = useRef(false);
+
+  const formatarHora = (data: Date) => {
+    return data.toLocaleTimeString('pt-BR', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    });
+  };
 
   const carregarAuditoria = useCallback(async () => {
     try {
+      // Resetar flag de scroll ao carregar nova auditoria
+      scrollRealizado.current = false;
       const data = await auditoriaService.buscarPorId(id);
       setAuditoria(data);
       const customizadas: Record<string, string> = {};
@@ -95,6 +112,40 @@ export default function AuditoriaPage() {
     carregarAuditoria();
   }, [carregarAuditoria]);
 
+  // Scroll automático até o último item respondido quando a auditoria carregar
+  useEffect(() => {
+    if (!loading && auditoria && auditoria.status === 'em_andamento' && !scrollRealizado.current) {
+      // Encontra o último item respondido (que tem resposta preenchida)
+      const itensComResposta = auditoria.itens
+        .filter((item) => item.resposta && item.resposta !== 'nao_avaliado')
+        .sort((a, b) => {
+          // Ordena por ordem do templateItem
+          const ordemA = a.templateItem?.ordem ?? 0;
+          const ordemB = b.templateItem?.ordem ?? 0;
+          return ordemA - ordemB;
+        });
+
+      if (itensComResposta.length > 0) {
+        const ultimoItem = itensComResposta[itensComResposta.length - 1];
+        
+        // Aguarda um pouco para garantir que o DOM está renderizado
+        setTimeout(() => {
+          const itemRef = itemRefs.current.get(ultimoItem.id);
+          if (itemRef) {
+            itemRef.scrollIntoView({ 
+              behavior: 'smooth', 
+              block: 'center' 
+            });
+            scrollRealizado.current = true;
+          }
+        }, 500);
+      } else {
+        // Se não houver itens respondidos, marca como realizado para não tentar novamente
+        scrollRealizado.current = true;
+      }
+    }
+  }, [loading, auditoria]);
+
   const handleResposta = async (itemId: string, resposta: RespostaType) => {
     if (!auditoria) return;
     // Verificar se a auditoria está finalizada
@@ -112,8 +163,17 @@ export default function AuditoriaPage() {
       };
     });
     try {
+      setSalvando(true);
       await auditoriaService.responderItem(auditoria.id, itemId, resposta);
-      toastService.success('Resposta salva com sucesso!');
+      setUltimaHoraSalva(new Date());
+      // Remove o item da lista de obrigatórios não avaliados se foi respondido
+      if (resposta && resposta !== 'nao_avaliado') {
+        setItensObrigatoriosNaoAvaliados((prev) => {
+          const novo = new Set(prev);
+          novo.delete(itemId);
+          return novo;
+        });
+      }
     } catch (error) {
       // Erro já é tratado pelo interceptor
       setAuditoria((prev) => {
@@ -125,6 +185,8 @@ export default function AuditoriaPage() {
           ),
         };
       });
+    } finally {
+      setSalvando(false);
     }
   };
 
@@ -145,7 +207,17 @@ export default function AuditoriaPage() {
       };
     });
     try {
+      setSalvando(true);
       await auditoriaService.responderItem(auditoria.id, itemId, valor);
+      setUltimaHoraSalva(new Date());
+      // Remove o item da lista de obrigatórios não avaliados se foi respondido
+      if (valor && valor.trim() !== '') {
+        setItensObrigatoriosNaoAvaliados((prev) => {
+          const novo = new Set(prev);
+          novo.delete(itemId);
+          return novo;
+        });
+      }
     } catch (error) {
       // Erro já é tratado pelo interceptor
       setAuditoria((prev) => {
@@ -157,6 +229,8 @@ export default function AuditoriaPage() {
           ),
         };
       });
+    } finally {
+      setSalvando(false);
     }
   };
 
@@ -232,12 +306,14 @@ export default function AuditoriaPage() {
     
     try {
       // Salva a foto automaticamente no backend (sempre salva, mesmo sem créditos)
+      setSalvando(true);
       fotoSalva = await auditoriaService.adicionarFoto(
         auditoria.id,
         itemModal.item.id,
         file
       );
-      toastService.success('Foto adicionada com sucesso!');
+      setUltimaHoraSalva(new Date());
+      setSalvando(false);
       
       // Atualiza o estado com a foto salva (sem análise ainda)
       setItemModal((prev) => {
@@ -282,12 +358,15 @@ export default function AuditoriaPage() {
         );
         
         // Salva a análise individual da foto
+        setSalvando(true);
         await auditoriaService.atualizarAnaliseFoto(
           auditoria.id,
           itemModal.item.id,
           fotoSalva.id,
           JSON.stringify(analise)
         );
+        setUltimaHoraSalva(new Date());
+        setSalvando(false);
         
         // Atualiza o estado com a análise
         setItemModal((prev) => {
@@ -375,8 +454,10 @@ export default function AuditoriaPage() {
     // Se a foto já foi salva no backend (tem id), deleta
     if (fotoParaRemover.id && fotoParaRemover.isExisting) {
       try {
+        setSalvando(true);
         await auditoriaService.removerFoto(auditoria.id, itemModal.item.id, fotoParaRemover.id);
-        toastService.success('Foto removida com sucesso!');
+        setUltimaHoraSalva(new Date());
+        setSalvando(false);
         
         // Atualiza o estado global também
         setAuditoria((prev) => {
@@ -426,6 +507,7 @@ export default function AuditoriaPage() {
     const respostaAtual = itemModal.item.resposta || 'nao_avaliado';
     try {
       // Salva a observação e a descrição da IA (se existir)
+      setSalvando(true);
       await auditoriaService.responderItem(
         auditoria.id,
         itemModal.item.id,
@@ -435,6 +517,7 @@ export default function AuditoriaPage() {
           descricaoIa: itemModal.descricaoIaExistente || itemModal.item.descricaoIa,
         }
       );
+      setUltimaHoraSalva(new Date());
       // Atualiza o estado local
       setAuditoria((prev) => {
         if (!prev) return prev;
@@ -451,7 +534,6 @@ export default function AuditoriaPage() {
           ),
         };
       });
-      toastService.success('Item salvo com sucesso!');
       setItemModal(null);
     } catch (error) {
       // Erro já é tratado pelo interceptor
@@ -459,52 +541,6 @@ export default function AuditoriaPage() {
     }
   };
 
-  const handleGerarTextoIa = async (item: AuditoriaItem) => {
-    if (!auditoria) return;
-    // Verificar se a auditoria está finalizada
-    if (auditoria.status === 'finalizada') {
-      toastService.warning('Não é possível editar uma auditoria finalizada. Reabra a auditoria para fazer alterações.');
-      return;
-    }
-    setProcessingIa(item.id);
-    try {
-      const resultado = await iaService.gerarTexto(
-        item.descricaoNaoConformidade || item.templateItem.pergunta,
-        auditoria?.template?.tipoAtividade || 'serviço de alimentação'
-      );
-      await auditoriaService.responderItem(
-        auditoria!.id,
-        item.id,
-        'nao_conforme',
-        {
-          descricaoIa: resultado.descricaoTecnica,
-          referenciaLegal: resultado.referenciaLegal,
-          planoAcaoSugerido: resultado.planoAcao.acoesCorretivas.join('\n'),
-        }
-      );
-      setAuditoria((prev) => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          itens: prev.itens.map((i) =>
-            i.id === item.id
-              ? {
-                  ...i,
-                  descricaoIa: resultado.descricaoTecnica,
-                  referenciaLegal: resultado.referenciaLegal,
-                  planoAcaoSugerido: resultado.planoAcao.acoesCorretivas.join('\n'),
-                }
-              : i
-          ),
-        };
-      });
-      toastService.success('Texto gerado pela IA com sucesso!');
-    } catch (error) {
-      // Erro já é tratado pelo interceptor
-    } finally {
-      setProcessingIa(null);
-    }
-  };
 
   const handleFinalizar = async () => {
     if (!auditoria) return;
@@ -514,6 +550,7 @@ export default function AuditoriaPage() {
       await auditoriaService.finalizar(auditoria.id, observacoesGerais);
       toastService.success('Auditoria finalizada com sucesso!');
       setShowFinalModal(false);
+      setItensObrigatoriosNaoAvaliados(new Set());
       router.push('/dashboard');
     } catch (error: unknown) {
       // Erro já é tratado pelo interceptor
@@ -603,6 +640,22 @@ export default function AuditoriaPage() {
         title={auditoria.unidade?.nome || 'Auditoria'}
         subtitle={auditoria.template?.nome}
         backHref="/dashboard"
+        action={
+          <div className="flex items-center gap-2 text-sm text-base-content/70">
+            {salvando ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                <span className="hidden sm:inline">Salvando...</span>
+              </>
+            ) : ultimaHoraSalva ? (
+              <>
+                <Clock className="w-4 h-4 text-success" />
+                <span className="hidden sm:inline">Salvo às</span>
+                <span className="font-medium">{formatarHora(ultimaHoraSalva)}</span>
+              </>
+            ) : null}
+          </div>
+        }
       />
 
       {/* Progress */}
@@ -627,10 +680,21 @@ export default function AuditoriaPage() {
           .map((item, index) => (
           <motion.div
             key={item.id}
+            ref={(el) => {
+              if (el) {
+                itemRefs.current.set(item.id, el);
+              } else {
+                itemRefs.current.delete(item.id);
+              }
+            }}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.02 }}
-            className="card bg-base-100 shadow-sm border border-base-300"
+            className={`card bg-base-100 shadow-sm border ${
+              itensObrigatoriosNaoAvaliados.has(item.id)
+                ? 'border-error border-2'
+                : 'border-base-300'
+            }`}
           >
             <div className="card-body p-4">
               {/* Pergunta */}
@@ -777,20 +841,6 @@ export default function AuditoriaPage() {
                     <Camera className="w-4 h-4" />
                     {item.fotos?.length > 0 ? `Ver Fotos (${item.fotos.length})` : auditoria.status === 'finalizada' ? 'Ver Fotos' : 'Adicionar Foto'}
                   </button>
-                  {item.resposta === 'nao_conforme' && (
-                    <button
-                      className="btn btn-ghost btn-sm gap-1 flex-1"
-                      onClick={() => handleGerarTextoIa(item)}
-                      disabled={processingIa === item.id}
-                    >
-                      {processingIa === item.id ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <Sparkles className="w-4 h-4" />
-                      )}
-                      Gerar Texto
-                    </button>
-                  )}
                 </div>
 
                 {/* Indicadores de dados preenchidos */}
@@ -1218,18 +1268,49 @@ export default function AuditoriaPage() {
         >
           <div className="max-w-3xl mx-auto space-y-2">
             {!obrigatoriasStatus.completo && obrigatoriasStatus.total > 0 && (
-              <div className="bg-warning/10 text-warning text-center text-sm py-2 px-4 rounded-lg border border-warning/20">
+              <div className="bg-warning/30 text-warning text-center text-sm py-2 px-4 rounded-lg border border-warning/40 font-medium">
                 <AlertCircle className="w-4 h-4 inline-block mr-1" />
                 {obrigatoriasStatus.total - obrigatoriasStatus.respondidas} pergunta(s) obrigatória(s) pendente(s)
               </div>
             )}
             <button
-              onClick={() => setShowFinalModal(true)}
-              disabled={!obrigatoriasStatus.completo}
+              onClick={() => {
+                // Se há itens obrigatórios não respondidos, marcar e não abrir o modal
+                if (!obrigatoriasStatus.completo && auditoria) {
+                  const itensNaoAvaliados = auditoria.itens
+                    .filter((item) => 
+                      item.templateItem?.obrigatorio && 
+                      (!item.resposta || item.resposta === 'nao_avaliado')
+                    )
+                    .map((item) => item.id);
+                  setItensObrigatoriosNaoAvaliados(new Set(itensNaoAvaliados));
+                  
+                  // Scroll até o primeiro item não avaliado
+                  if (itensNaoAvaliados.length > 0) {
+                    setTimeout(() => {
+                      const primeiroItemId = itensNaoAvaliados[0];
+                      const itemRef = itemRefs.current.get(primeiroItemId);
+                      if (itemRef) {
+                        itemRef.scrollIntoView({ 
+                          behavior: 'smooth', 
+                          block: 'center' 
+                        });
+                      }
+                    }, 100);
+                  }
+                  
+                  toastService.error('Existem itens obrigatórios não avaliados. Eles foram marcados em vermelho.');
+                  return; // Não abre o modal
+                }
+                
+                // Se todos os itens obrigatórios foram respondidos, abre o modal
+                setItensObrigatoriosNaoAvaliados(new Set());
+                setShowFinalModal(true);
+              }}
               className={`btn w-full shadow-lg gap-2 ${
                 obrigatoriasStatus.completo 
                   ? 'btn-primary' 
-                  : 'btn-disabled bg-base-300 text-base-content/40'
+                  : 'btn-warning'
               }`}
             >
               <CheckCircle className="w-5 h-5" />
@@ -1258,7 +1339,7 @@ export default function AuditoriaPage() {
             <p className="py-4 text-base-content/60">
               Adicione observações gerais sobre a auditoria (opcional).
             </p>
-            {erroFinalizar && (
+            {erroFinalizar && !erroFinalizar.toLowerCase().includes('itens não avaliados') && !erroFinalizar.toLowerCase().includes('obrigat') && (
               <div className="alert alert-error mb-4">
                 <AlertTriangle className="w-5 h-5" />
                 <span>{erroFinalizar}</span>
@@ -1278,7 +1359,14 @@ export default function AuditoriaPage() {
               onChange={(e) => setObservacoesGerais(e.target.value)}
             ></textarea>
             <div className="modal-action">
-              <button className="btn btn-ghost" onClick={() => { setShowFinalModal(false); setErroFinalizar(''); }}>
+              <button 
+                className="btn btn-ghost" 
+                onClick={() => { 
+                  setShowFinalModal(false); 
+                  setErroFinalizar('');
+                  setItensObrigatoriosNaoAvaliados(new Set());
+                }}
+              >
                 Cancelar
               </button>
               <button className="btn btn-primary" onClick={handleFinalizar} disabled={finalizando}>

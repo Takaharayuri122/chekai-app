@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, OnModuleInit } from '@nestjs/common';
+import { Injectable, NotFoundException, OnApplicationBootstrap } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ConfiguracaoCredito } from './entities/configuracao-credito.entity';
@@ -9,16 +9,16 @@ import { ProvedorIa } from './entities/uso-credito.entity';
  * Serviço responsável pela configuração de taxas de conversão de créditos.
  */
 @Injectable()
-export class ConfiguracaoCreditoService implements OnModuleInit {
+export class ConfiguracaoCreditoService implements OnApplicationBootstrap {
   constructor(
     @InjectRepository(ConfiguracaoCredito)
     private readonly configuracaoRepository: Repository<ConfiguracaoCredito>,
   ) {}
 
   /**
-   * Inicializa as configurações padrão quando o módulo é carregado.
+   * Inicializa as configurações padrão quando a aplicação é inicializada.
    */
-  async onModuleInit(): Promise<void> {
+  async onApplicationBootstrap(): Promise<void> {
     await this.inicializarConfiguracoesPadrao();
   }
 

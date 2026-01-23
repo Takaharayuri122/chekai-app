@@ -265,7 +265,11 @@ export default function AuditoriasPage() {
                     {getStatusBadge(auditoria.status).text}
                   </div>
                   <Link
-                    href={`/auditoria/${auditoria.id}`}
+                    href={
+                      auditoria.status === 'finalizada'
+                        ? `/auditoria/${auditoria.id}/relatorio`
+                        : `/auditoria/${auditoria.id}`
+                    }
                     className="card-body p-4 sm:p-5 cursor-pointer"
                   >
                     <div className="flex flex-col lg:flex-row gap-4">

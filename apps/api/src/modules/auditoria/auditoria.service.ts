@@ -6,6 +6,7 @@ import {
   forwardRef,
   Inject,
   Optional,
+  Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -24,12 +25,15 @@ import {
   PaginatedResult,
   createPaginatedResult,
 } from '../../shared/types/pagination.interface';
+import { IaService } from '../ia/ia.service';
 
 /**
  * Serviço responsável pela gestão de auditorias.
  */
 @Injectable()
 export class AuditoriaService {
+  private readonly logger = new Logger(AuditoriaService.name);
+
   constructor(
     @InjectRepository(Auditoria)
     private readonly auditoriaRepository: Repository<Auditoria>,
@@ -38,6 +42,7 @@ export class AuditoriaService {
     @InjectRepository(Foto)
     private readonly fotoRepository: Repository<Foto>,
     private readonly checklistService: ChecklistService,
+    private readonly iaService: IaService,
     @Inject(forwardRef(() => 'ValidacaoLimitesService'))
     @Optional()
     private readonly validacaoLimites?: any,
@@ -186,7 +191,36 @@ export class AuditoriaService {
     }
     // Validar resposta: deve ser um valor do enum ou uma opção personalizada do template
     const templateItem = item.templateItem;
-    if (templateItem?.usarRespostasPersonalizadas && templateItem?.opcoesResposta) {
+    
+    // Se tem tipoRespostaCustomizada (texto, numero, data, select), valida conforme o tipo
+    if (templateItem?.tipoRespostaCustomizada) {
+      if (!dto.resposta || dto.resposta.trim() === '') {
+        throw new BadRequestException('Resposta é obrigatória para este tipo de item');
+      }
+      // Validação específica por tipo
+      if (templateItem.tipoRespostaCustomizada === 'numero') {
+        const num = Number(dto.resposta);
+        if (isNaN(num)) {
+          throw new BadRequestException('Resposta deve ser um número válido');
+        }
+      } else if (templateItem.tipoRespostaCustomizada === 'data') {
+        const data = new Date(dto.resposta);
+        if (isNaN(data.getTime())) {
+          throw new BadRequestException('Resposta deve ser uma data válida');
+        }
+      } else if (templateItem.tipoRespostaCustomizada === 'select') {
+        // Para 'select', validar que a resposta está nas opções disponíveis
+        if (!templateItem.opcoesResposta || templateItem.opcoesResposta.length === 0) {
+          throw new BadRequestException('Item do tipo SELECT deve ter opções de resposta definidas');
+        }
+        if (!templateItem.opcoesResposta.includes(dto.resposta)) {
+          throw new BadRequestException(
+            `Resposta inválida. Opções válidas: ${templateItem.opcoesResposta.join(', ')}`
+          );
+        }
+      }
+      // Para 'texto', aceita qualquer string não vazia (já validado acima)
+    } else if (templateItem?.usarRespostasPersonalizadas && templateItem?.opcoesResposta) {
       // Se o template usa opções personalizadas, validar se a resposta está nas opções
       if (!templateItem.opcoesResposta.includes(dto.resposta)) {
         throw new BadRequestException(
@@ -296,12 +330,15 @@ export class AuditoriaService {
     if (auditoria.status === StatusAuditoria.FINALIZADA) {
       throw new BadRequestException('Auditoria já finalizada');
     }
-    const itensNaoAvaliados = auditoria.itens.filter(
-      (item) => item.resposta === RespostaItem.NAO_AVALIADO,
+    // Validar apenas itens obrigatórios não avaliados
+    const itensObrigatoriosNaoAvaliados = auditoria.itens.filter(
+      (item) => 
+        item.templateItem?.obrigatorio === true &&
+        (item.resposta === RespostaItem.NAO_AVALIADO || !item.resposta),
     );
-    if (itensNaoAvaliados.length > 0) {
+    if (itensObrigatoriosNaoAvaliados.length > 0) {
       throw new BadRequestException(
-        `Existem ${itensNaoAvaliados.length} itens não avaliados`,
+        `Existem ${itensObrigatoriosNaoAvaliados.length} itens obrigatórios não avaliados`,
       );
     }
     const pontuacaoObtida = auditoria.itens.reduce(
@@ -361,11 +398,13 @@ export class AuditoriaService {
     auditoria.status = StatusAuditoria.EM_ANDAMENTO;
     
     // Limpar dados de finalização usando update para permitir null
+    // Também limpa o resumo executivo, pois pode mudar se a auditoria for alterada
     await this.auditoriaRepository.update(id, {
       status: StatusAuditoria.EM_ANDAMENTO,
       dataFim: null as any,
       latitudeFim: null as any,
       longitudeFim: null as any,
+      resumoExecutivo: null as any,
     });
     
     return this.buscarAuditoriaPorId(id, usuarioAutenticado);
@@ -420,6 +459,130 @@ export class AuditoriaService {
     }
     // Remover a auditoria
     await this.auditoriaRepository.remove(auditoria);
+  }
+
+  /**
+   * Gera resumo executivo de uma auditoria finalizada usando IA.
+   * Se o resumo já foi gerado anteriormente, retorna o resumo salvo.
+   * Caso contrário, gera um novo resumo e salva na auditoria.
+   */
+  async gerarResumoExecutivo(
+    auditoriaId: string,
+    usuarioAutenticado?: { id: string; perfil: PerfilUsuario; gestorId?: string },
+  ): Promise<{
+    resumo: string;
+    pontosFortes: string[];
+    pontosFracos: string[];
+    recomendacoesPrioritarias: string[];
+    riscoGeral: 'baixo' | 'medio' | 'alto' | 'critico';
+    tendencias: string[];
+  }> {
+    this.logger.log(`[gerarResumoExecutivo] Iniciando geração de resumo para auditoria ${auditoriaId}`);
+    try {
+      this.logger.log(`[gerarResumoExecutivo] Buscando auditoria ${auditoriaId}`);
+      const auditoria = await this.buscarAuditoriaPorId(auditoriaId, usuarioAutenticado);
+      this.logger.log(`[gerarResumoExecutivo] Auditoria encontrada. Status: ${auditoria.status}`);
+      
+      if (auditoria.status !== StatusAuditoria.FINALIZADA) {
+        this.logger.warn(`[gerarResumoExecutivo] Auditoria não está finalizada. Status: ${auditoria.status}`);
+        throw new BadRequestException('Apenas auditorias finalizadas podem gerar resumo executivo');
+      }
+      
+      if (auditoria.resumoExecutivo) {
+        this.logger.log(`[gerarResumoExecutivo] Resumo já existe, retornando resumo salvo`);
+        return auditoria.resumoExecutivo;
+      }
+      
+      this.logger.log(`[gerarResumoExecutivo] Processando ${auditoria.itens?.length || 0} itens da auditoria`);
+      const itensPorGrupo = new Map<string, AuditoriaItem[]>();
+      auditoria.itens.forEach((item) => {
+        const grupoId = item.templateItem?.grupoId || 'sem-grupo';
+        const grupoNome = item.templateItem?.grupo?.nome || 'Sem Grupo';
+        if (!itensPorGrupo.has(grupoId)) {
+          itensPorGrupo.set(grupoId, []);
+        }
+        itensPorGrupo.get(grupoId)!.push(item);
+      });
+      
+      this.logger.log(`[gerarResumoExecutivo] Agrupados ${itensPorGrupo.size} grupos`);
+      const grupos = Array.from(itensPorGrupo.entries()).map(([grupoId, itens]) => {
+        const primeiroItem = itens[0];
+        const grupoNome = primeiroItem.templateItem?.grupo?.nome || 'Sem Grupo';
+        const pontuacaoPossivel = itens.reduce(
+          (acc, item) => acc + (item.templateItem?.peso ?? 1),
+          0,
+        );
+        const pontuacaoObtida = itens.reduce((acc, item) => acc + item.pontuacao, 0);
+        const naoConformidades = itens.filter(
+          (item) => item.resposta === RespostaItem.NAO_CONFORME,
+        ).length;
+        return {
+          nome: grupoNome,
+          pontuacaoPossivel,
+          pontuacaoObtida,
+          naoConformidades,
+          itens: itens.map((item) => ({
+            pergunta: item.templateItem?.pergunta || '',
+            resposta: item.resposta,
+            observacao: item.observacao,
+            descricaoNaoConformidade: item.descricaoNaoConformidade,
+            descricaoIa: item.descricaoIa,
+            criticidade: item.templateItem?.criticidade || 'media',
+          })),
+        };
+      });
+      
+      this.logger.log(`[gerarResumoExecutivo] Processados ${grupos.length} grupos`);
+      
+      const itensNaoConformes = auditoria.itens
+        .filter((item) => item.resposta === RespostaItem.NAO_CONFORME)
+        .map((item) => ({
+          pergunta: item.templateItem?.pergunta || '',
+          observacao: item.observacao,
+          descricaoNaoConformidade: item.descricaoNaoConformidade,
+          descricaoIa: item.descricaoIa,
+          criticidade: item.templateItem?.criticidade || 'media',
+        }));
+      
+      this.logger.log(`[gerarResumoExecutivo] Encontradas ${itensNaoConformes.length} não conformidades`);
+      
+      const dadosAuditoria = {
+        unidade: auditoria.unidade?.nome || 'Unidade',
+        cliente: auditoria.unidade?.cliente?.nomeFantasia || auditoria.unidade?.cliente?.razaoSocial || 'Cliente',
+        tipoAtividade: auditoria.template?.tipoAtividade || 'serviço de alimentação',
+        pontuacaoTotal: auditoria.pontuacaoTotal || 0,
+        grupos,
+        itensNaoConformes,
+        observacoesGerais: auditoria.observacoesGerais,
+      };
+      
+      this.logger.log(`[gerarResumoExecutivo] Chamando IA para gerar resumo. Unidade: ${dadosAuditoria.unidade}, Cliente: ${dadosAuditoria.cliente}`);
+      
+      const resumo = await this.iaService.gerarResumoExecutivo(dadosAuditoria, usuarioAutenticado);
+      
+      this.logger.log(`[gerarResumoExecutivo] Resumo gerado com sucesso. Salvando na auditoria...`);
+      
+      auditoria.resumoExecutivo = resumo;
+      await this.auditoriaRepository.save(auditoria);
+      
+      this.logger.log(`[gerarResumoExecutivo] Resumo salvo com sucesso na auditoria ${auditoriaId}`);
+      
+      return resumo;
+    } catch (error) {
+      this.logger.error(`[gerarResumoExecutivo] Erro ao gerar resumo executivo para auditoria ${auditoriaId}:`, error);
+      this.logger.error(`[gerarResumoExecutivo] Stack trace:`, error?.stack);
+      throw error;
+    }
+  }
+
+  /**
+   * Atualiza a URL do PDF gerado na auditoria.
+   */
+  async atualizarPdfUrl(auditoriaId: string, pdfUrl: string): Promise<void> {
+    await this.auditoriaRepository.update(auditoriaId, {
+      pdfUrl,
+      pdfGeradoEm: new Date(),
+    });
   }
 }
 

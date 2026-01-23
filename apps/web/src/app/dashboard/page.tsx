@@ -168,7 +168,11 @@ export default function DashboardPage() {
                 {ultimasAuditorias.map((auditoria, index) => (
                   <Link
                     key={auditoria.id}
-                    href={`/auditoria/${auditoria.id}`}
+                    href={
+                      auditoria.status === 'finalizada'
+                        ? `/auditoria/${auditoria.id}/relatorio`
+                        : `/auditoria/${auditoria.id}`
+                    }
                     className="flex items-center gap-4 p-4 hover:bg-base-200/50 transition-colors"
                   >
                     <div className="flex-1 min-w-0">

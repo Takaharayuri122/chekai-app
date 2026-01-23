@@ -13,7 +13,9 @@ import {
   UseInterceptors,
   UploadedFile,
   BadRequestException,
+  Res,
 } from '@nestjs/common';
+import { Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import {
   ApiTags,
@@ -23,7 +25,10 @@ import {
   ApiConsumes,
   ApiBody,
 } from '@nestjs/swagger';
+import { ConfigService } from '@nestjs/config';
 import { AuditoriaService } from './auditoria.service';
+import { RelatorioPdfPuppeteerService } from './services/relatorio-pdf-puppeteer.service';
+import { SupabaseService } from '../supabase/supabase.service';
 import {
   IniciarAuditoriaDto,
   ResponderItemDto,
@@ -46,7 +51,18 @@ import { PaginatedResult } from '../../shared/types/pagination.interface';
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class AuditoriaController {
-  constructor(private readonly auditoriaService: AuditoriaService) {}
+  private readonly bucketName: string;
+
+  constructor(
+    private readonly auditoriaService: AuditoriaService,
+    private readonly relatorioPdfPuppeteerService: RelatorioPdfPuppeteerService,
+    private readonly supabaseService: SupabaseService,
+    private readonly configService: ConfigService,
+  ) {
+    this.bucketName =
+      this.configService.get<string>('SUPABASE_STORAGE_BUCKET_RELATORIOS') ||
+      'relatorios';
+  }
 
   @Post()
   @UseGuards(RolesGuard)
@@ -74,16 +90,6 @@ export class AuditoriaController {
       { page, limit },
       usuario,
     );
-  }
-
-  @Get(':id')
-  @ApiOperation({ summary: 'Busca uma auditoria pelo ID' })
-  @ApiResponse({ status: 200, description: 'Auditoria encontrada' })
-  async buscarAuditoriaPorId(
-    @Param('id', ParseUUIDPipe) id: string,
-    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; gestorId?: string },
-  ): Promise<Auditoria> {
-    return this.auditoriaService.buscarAuditoriaPorId(id, usuario);
   }
 
   @Put(':id/itens/:itemId')
@@ -198,6 +204,116 @@ export class AuditoriaController {
   ): Promise<{ success: boolean }> {
     await this.auditoriaService.removerAuditoria(id, usuario);
     return { success: true };
+  }
+
+  @Get(':id/resumo-executivo')
+  @ApiOperation({ summary: 'Gera resumo executivo de uma auditoria finalizada usando IA' })
+  @ApiResponse({ status: 200, description: 'Resumo executivo gerado' })
+  @ApiResponse({ status: 400, description: 'Auditoria não está finalizada' })
+  async gerarResumoExecutivo(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; gestorId?: string },
+  ): Promise<{
+    resumo: string;
+    pontosFortes: string[];
+    pontosFracos: string[];
+    recomendacoesPrioritarias: string[];
+    riscoGeral: 'baixo' | 'medio' | 'alto' | 'critico';
+    tendencias: string[];
+  }> {
+    return this.auditoriaService.gerarResumoExecutivo(id, usuario);
+  }
+
+  @Get(':id/pdf')
+  @ApiOperation({ summary: 'Gera ou retorna PDF do relatório de auditoria' })
+  @ApiResponse({ status: 200, description: 'PDF gerado/recuperado com sucesso', content: { 'application/pdf': {} } })
+  @ApiResponse({ status: 400, description: 'Auditoria não está finalizada' })
+  async gerarPdf(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; gestorId?: string },
+    @Res() res: Response,
+  ): Promise<void> {
+    const auditoria = await this.auditoriaService.buscarAuditoriaPorId(id, usuario);
+    
+    if (auditoria.status !== 'finalizada') {
+      throw new BadRequestException('Apenas auditorias finalizadas podem gerar PDF');
+    }
+
+    let pdfBuffer: Buffer;
+    let pdfUrl = auditoria.pdfUrl;
+
+    if (pdfUrl && auditoria.pdfGeradoEm) {
+      const diasDesdeGeracao = Math.floor(
+        (new Date().getTime() - new Date(auditoria.pdfGeradoEm).getTime()) /
+          (1000 * 60 * 60 * 24),
+      );
+
+      if (diasDesdeGeracao < 30) {
+        const pdfExistente = await this.relatorioPdfPuppeteerService.verificarPdfExistente(id);
+        if (pdfExistente) {
+          pdfUrl = pdfExistente;
+        }
+      }
+    }
+
+    if (!pdfUrl || !auditoria.pdfGeradoEm) {
+      pdfBuffer = await this.relatorioPdfPuppeteerService.gerarPdf(auditoria);
+      pdfUrl = await this.relatorioPdfPuppeteerService.salvarPdfNoStorage(id, pdfBuffer);
+      
+      await this.auditoriaService.atualizarPdfUrl(id, pdfUrl);
+    } else {
+      const supabase = this.supabaseService.getClient();
+      const urlParts = pdfUrl.split(`/storage/v1/object/public/${this.bucketName}/`);
+      const filePath = urlParts.length > 1 ? urlParts[1] : null;
+      
+      if (filePath) {
+        const { data, error } = await supabase.storage
+          .from(this.bucketName)
+          .download(filePath);
+        
+        if (error || !data) {
+          pdfBuffer = await this.relatorioPdfPuppeteerService.gerarPdf(auditoria);
+          pdfUrl = await this.relatorioPdfPuppeteerService.salvarPdfNoStorage(id, pdfBuffer);
+          await this.auditoriaService.atualizarPdfUrl(id, pdfUrl);
+        } else {
+          pdfBuffer = Buffer.from(await data.arrayBuffer());
+        }
+      } else {
+        pdfBuffer = await this.relatorioPdfPuppeteerService.gerarPdf(auditoria);
+        pdfUrl = await this.relatorioPdfPuppeteerService.salvarPdfNoStorage(id, pdfBuffer);
+        await this.auditoriaService.atualizarPdfUrl(id, pdfUrl);
+      }
+    }
+    
+    const nomeArquivo = `relatorio-auditoria-${auditoria.unidade?.nome || 'unidade'}-${new Date().toISOString().split('T')[0]}.pdf`;
+    
+    // Validar buffer antes de enviar
+    if (!pdfBuffer || pdfBuffer.length === 0) {
+      throw new BadRequestException('Erro ao gerar PDF: buffer vazio');
+    }
+    
+    // Validar que é um PDF válido (deve começar com %PDF)
+    if (pdfBuffer.toString('utf8', 0, 4) !== '%PDF') {
+      console.error(`PDF inválido gerado para auditoria ${id}. Primeiros bytes: ${pdfBuffer.toString('hex', 0, 20)}`);
+      throw new BadRequestException('Erro ao gerar PDF: arquivo corrompido');
+    }
+    
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(nomeArquivo)}"`);
+    res.setHeader('Content-Length', pdfBuffer.length.toString());
+    res.setHeader('Cache-Control', 'no-cache');
+    
+    res.send(pdfBuffer);
+  }
+
+  @Get(':id')
+  @ApiOperation({ summary: 'Busca uma auditoria pelo ID' })
+  @ApiResponse({ status: 200, description: 'Auditoria encontrada' })
+  async buscarAuditoriaPorId(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; gestorId?: string },
+  ): Promise<Auditoria> {
+    return this.auditoriaService.buscarAuditoriaPorId(id, usuario);
   }
 }
 

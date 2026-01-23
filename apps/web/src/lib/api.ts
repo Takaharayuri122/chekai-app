@@ -686,11 +686,21 @@ export interface Auditoria {
   dataFim?: string;
   unidade: Unidade & { cliente: Cliente };
   template: ChecklistTemplate;
+  consultor?: { id: string; nome: string; email: string };
   pontuacaoTotal: number;
   itens: AuditoriaItem[];
+  resumoExecutivo?: {
+    resumo: string;
+    pontosFortes: string[];
+    pontosFracos: string[];
+    recomendacoesPrioritarias: string[];
+    riscoGeral: 'baixo' | 'medio' | 'alto' | 'critico';
+    tendencias: string[];
+  } | null;
 }
 
 export interface AuditoriaItem {
+  pontuacao?: number;
   id: string;
   resposta: string;
   observacao: string;
@@ -802,6 +812,43 @@ export const auditoriaService = {
     await api.put(`/auditorias/${auditoriaId}/itens/${itemId}/fotos/${fotoId}/analise`, {
       analiseIa,
     });
+  },
+
+  async gerarResumoExecutivo(id: string): Promise<{
+    resumo: string;
+    pontosFortes: string[];
+    pontosFracos: string[];
+    recomendacoesPrioritarias: string[];
+    riscoGeral: 'baixo' | 'medio' | 'alto' | 'critico';
+    tendencias: string[];
+  }> {
+    const response = await api.get(`/auditorias/${id}/resumo-executivo`);
+    return response.data.data;
+  },
+
+  async baixarPdf(id: string): Promise<void> {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${API_URL}/auditorias/${id}/pdf`, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Erro ao baixar PDF');
+    }
+
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `relatorio-auditoria-${id}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
   },
 };
 

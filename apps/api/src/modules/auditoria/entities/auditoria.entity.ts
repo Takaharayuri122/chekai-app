@@ -62,6 +62,22 @@ export class Auditoria {
   @Column({ type: 'decimal', precision: 5, scale: 2, nullable: true })
   pontuacaoTotal: number;
 
+  @Column({ type: 'jsonb', nullable: true })
+  resumoExecutivo: {
+    resumo: string;
+    pontosFortes: string[];
+    pontosFracos: string[];
+    recomendacoesPrioritarias: string[];
+    riscoGeral: 'baixo' | 'medio' | 'alto' | 'critico';
+    tendencias: string[];
+  } | null;
+
+  @Column({ type: 'text', nullable: true })
+  pdfUrl: string | null;
+
+  @Column({ type: 'timestamp', nullable: true })
+  pdfGeradoEm: Date | null;
+
   @ManyToOne(() => Usuario)
   @JoinColumn({ name: 'consultor_id' })
   consultor: Usuario;
