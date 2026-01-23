@@ -1,0 +1,8 @@
+---
+name: auditoria-tokens
+description: Regra para implementação de qualquer funcionalidade que envolva IA
+---
+
+# Overview
+
+Qualquer funcionalidade que envolva IA na nossa plataforma deve passar diretamente pela regra de auditoria de tokens, tudo que for processado por IA tem que ser computado, calculo e subtraido das contas necessárias.
