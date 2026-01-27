@@ -2,7 +2,7 @@ import { Injectable, NotFoundException, ForbiddenException, BadRequestException 
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ChecklistTemplate } from './entities/checklist-template.entity';
-import { TemplateItem } from './entities/template-item.entity';
+import { TemplateItem, TipoRespostaCustomizada } from './entities/template-item.entity';
 import { ChecklistGrupo } from './entities/checklist-grupo.entity';
 import { Auditoria } from '../auditoria/entities/auditoria.entity';
 import {
@@ -271,6 +271,10 @@ export class ChecklistService {
       templateId,
       ordem: dto.ordem ?? (maxOrdem?.max ?? 0) + 1,
     });
+
+    // Normalizar configs antes de salvar
+    this.normalizarOpcoesConfig(item);
+
     return this.itemRepository.save(item);
   }
 
@@ -283,6 +287,10 @@ export class ChecklistService {
       throw new NotFoundException('Item não encontrado');
     }
     Object.assign(item, dto);
+
+    // Normalizar configs antes de salvar
+    this.normalizarOpcoesConfig(item);
+
     return this.itemRepository.save(item);
   }
 
@@ -358,6 +366,52 @@ export class ChecklistService {
     await this.buscarTemplatePorId(templateId);
     for (let i = 0; i < grupoIds.length; i++) {
       await this.grupoRepository.update(grupoIds[i], { ordem: i });
+    }
+  }
+
+  /**
+   * Normaliza opcoesRespostaConfig para garantir sincronia com opcoesResposta.
+   * Garante que cada opção tenha uma configuração correspondente.
+   */
+  private normalizarOpcoesConfig(item: Partial<TemplateItem>): void {
+    // Respostas padrão
+    const RESPOSTAS_PADRAO = [
+      'conforme',
+      'nao_conforme',
+      'nao_aplicavel',
+      'nao_avaliado',
+    ];
+
+    const usaRespostasPersonalizadas =
+      item.usarRespostasPersonalizadas ||
+      item.tipoRespostaCustomizada === TipoRespostaCustomizada.SELECT;
+
+    if (usaRespostasPersonalizadas && item.opcoesResposta) {
+      // Para respostas personalizadas, sincronizar com opcoesResposta
+      const configExistente = item.opcoesRespostaConfig || [];
+      item.opcoesRespostaConfig = item.opcoesResposta.map((opcao) => {
+        const config = configExistente.find((c) => c.valor === opcao);
+        return (
+          config || {
+            valor: opcao,
+            fotoObrigatoria: false,
+            observacaoObrigatoria: false,
+          }
+        );
+      });
+    } else {
+      // Para respostas padrão
+      const configExistente = item.opcoesRespostaConfig || [];
+      item.opcoesRespostaConfig = RESPOSTAS_PADRAO.map((valor) => {
+        const config = configExistente.find((c) => c.valor === valor);
+        return (
+          config || {
+            valor,
+            fotoObrigatoria: false,
+            observacaoObrigatoria: false,
+          }
+        );
+      });
     }
   }
 }
