@@ -13,7 +13,10 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:e2e": "jest --config ./test/jest-e2e.json",
-    "db:migrate": "typeorm migration:run -d ./src/config/typeorm.config.ts",
+    "typeorm:run": "typeorm-ts-node-commonjs migration:run -d ./src/config/typeorm.config.ts",
+    "typeorm:revert": "typeorm-ts-node-commonjs migration:revert -d ./src/config/typeorm.config.ts",
+    "typeorm:generate": "typeorm-ts-node-commonjs migration:generate -d ./src/config/typeorm.config.ts",
+    "db:migrate": "npm run typeorm:run",
     "db:seed": "ts-node ./src/database/seeds/run-seeds.ts"
   },
   "dependencies": {

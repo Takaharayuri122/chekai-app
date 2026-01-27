@@ -91,6 +91,13 @@ export class TemplateItem {
   @Column({ type: 'simple-array', nullable: true })
   opcoesResposta: string[];
 
+  @Column({ type: 'jsonb', default: [] })
+  opcoesRespostaConfig: Array<{
+    valor: string;
+    fotoObrigatoria: boolean;
+    observacaoObrigatoria: boolean;
+  }>;
+
   @Column({ default: false })
   usarRespostasPersonalizadas: boolean;
 
