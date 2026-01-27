@@ -445,6 +445,11 @@ export default function EditarTemplatePage() {
       obrigatorio: true,
       opcoesResposta: [],
       usarRespostasPersonalizadas: false,
+      opcoesRespostaConfig: RESPOSTAS_PADRAO.map(resp => ({
+        valor: resp.valor,
+        fotoObrigatoria: false,
+        observacaoObrigatoria: false,
+      })),
       grupoId: undefined,
       secao: '',
     });
@@ -462,6 +467,25 @@ export default function EditarTemplatePage() {
 
   const handleAbrirModalEditarItem = (item: TemplateItem) => {
     setEditingItem(item);
+
+    // Inicializar configs se não existirem
+    let configs = item.opcoesRespostaConfig;
+    if (!configs || configs.length === 0) {
+      if (item.usarRespostasPersonalizadas || item.tipoRespostaCustomizada === TipoRespostaCustomizada.SELECT) {
+        configs = (item.opcoesResposta || []).map(opcao => ({
+          valor: opcao,
+          fotoObrigatoria: false,
+          observacaoObrigatoria: false,
+        }));
+      } else {
+        configs = RESPOSTAS_PADRAO.map(resp => ({
+          valor: resp.valor,
+          fotoObrigatoria: false,
+          observacaoObrigatoria: false,
+        }));
+      }
+    }
+
     setItemForm({
       id: item.id,
       pergunta: item.pergunta,
@@ -474,6 +498,7 @@ export default function EditarTemplatePage() {
       opcoesResposta: item.opcoesResposta || [],
       usarRespostasPersonalizadas: item.usarRespostasPersonalizadas || false,
       tipoRespostaCustomizada: item.tipoRespostaCustomizada,
+      opcoesRespostaConfig: configs,
       grupoId: item.grupoId,
       secao: item.secao || '',
     });
@@ -560,6 +585,18 @@ export default function EditarTemplatePage() {
     setItemForm({
       ...itemForm,
       opcoesResposta: (itemForm.opcoesResposta || []).filter((o) => o !== opcao),
+    });
+  };
+
+  const handleAtualizarOpcaoConfig = (valor: string, campo: 'fotoObrigatoria' | 'observacaoObrigatoria', checked: boolean) => {
+    setItemForm(prev => {
+      const configs = prev.opcoesRespostaConfig || [];
+      const novasConfigs = configs.map(config =>
+        config.valor === valor
+          ? { ...config, [campo]: checked }
+          : config
+      );
+      return { ...prev, opcoesRespostaConfig: novasConfigs };
     });
   };
 
@@ -1134,13 +1171,38 @@ export default function EditarTemplatePage() {
                 </div>
               )}
 
-              {!itemForm.usarRespostasPersonalizadas && (
+              {!itemForm.usarRespostasPersonalizadas && !itemForm.tipoRespostaCustomizada && (
                 <div className="bg-base-200/50 rounded-lg p-4">
-                  <span className="text-xs text-base-content/60">Respostas padrão:</span>
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {RESPOSTAS_PADRAO.map((resp) => (
-                      <span key={resp.valor} className="badge badge-ghost">{resp.label}</span>
-                    ))}
+                  <span className="text-xs text-base-content/60 font-medium">Configuração de Obrigatoriedade:</span>
+                  <div className="space-y-2 mt-3">
+                    {RESPOSTAS_PADRAO.map((resp) => {
+                      const config = itemForm.opcoesRespostaConfig?.find(c => c.valor === resp.valor);
+                      return (
+                        <div key={resp.valor} className="flex items-center justify-between bg-base-100 rounded p-3">
+                          <span className="badge badge-ghost">{resp.label}</span>
+                          <div className="flex gap-4">
+                            <label className="label cursor-pointer gap-2">
+                              <input
+                                type="checkbox"
+                                className="checkbox checkbox-sm"
+                                checked={config?.fotoObrigatoria || false}
+                                onChange={(e) => handleAtualizarOpcaoConfig(resp.valor, 'fotoObrigatoria', e.target.checked)}
+                              />
+                              <span className="label-text text-xs">Foto obrigatória</span>
+                            </label>
+                            <label className="label cursor-pointer gap-2">
+                              <input
+                                type="checkbox"
+                                className="checkbox checkbox-sm"
+                                checked={config?.observacaoObrigatoria || false}
+                                onChange={(e) => handleAtualizarOpcaoConfig(resp.valor, 'observacaoObrigatoria', e.target.checked)}
+                              />
+                              <span className="label-text text-xs">Observação obrigatória</span>
+                            </label>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}
