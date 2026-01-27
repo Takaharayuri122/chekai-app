@@ -489,6 +489,7 @@ export interface TemplateItem {
   textoLegal?: string;
   obrigatorio: boolean;
   opcoesResposta?: string[];
+  opcoesRespostaConfig?: OpcaoRespostaConfig[];
   usarRespostasPersonalizadas: boolean;
   tipoRespostaCustomizada?: TipoRespostaCustomizada;
   grupoId?: string;
@@ -521,6 +522,12 @@ export const TIPO_RESPOSTA_LABELS: Record<TipoRespostaCustomizada, string> = {
   [TipoRespostaCustomizada.SELECT]: 'Seleção',
 };
 
+export interface OpcaoRespostaConfig {
+  valor: string;
+  fotoObrigatoria: boolean;
+  observacaoObrigatoria: boolean;
+}
+
 export interface CriarTemplateItemRequest {
   pergunta: string;
   categoria?: CategoriaItem;
@@ -536,6 +543,7 @@ export interface CriarTemplateItemRequest {
   tipoRespostaCustomizada?: TipoRespostaCustomizada;
   grupoId?: string;
   secao?: string;
+  opcoesRespostaConfig?: OpcaoRespostaConfig[];
 }
 
 export interface CriarGrupoRequest {
