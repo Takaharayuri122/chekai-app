@@ -443,7 +443,7 @@ export default function AuditoriaPage() {
       return;
     }
     const fotoParaRemover = itemModal.fotos[index];
-    
+
     // Remove do estado local imediatamente
     setItemModal((prev) => {
       if (!prev) return null;
@@ -458,7 +458,7 @@ export default function AuditoriaPage() {
         await auditoriaService.removerFoto(auditoria.id, itemModal.item.id, fotoParaRemover.id);
         setUltimaHoraSalva(new Date());
         setSalvando(false);
-        
+
         // Atualiza o estado global também
         setAuditoria((prev) => {
           if (!prev) return prev;
@@ -487,6 +487,23 @@ export default function AuditoriaPage() {
     }
   };
 
+  const getOpcaoConfig = (item: AuditoriaItem, resposta: string) => {
+    const configs = item.templateItem.opcoesRespostaConfig;
+    if (!configs || configs.length === 0) {
+      // Comportamento legado: observação sempre obrigatória, foto opcional
+      return {
+        fotoObrigatoria: false,
+        observacaoObrigatoria: true,
+      };
+    }
+
+    const config = configs.find(c => c.valor === resposta);
+    return config || {
+      fotoObrigatoria: false,
+      observacaoObrigatoria: false,
+    };
+  };
+
   const handleSaveItemModal = async () => {
     if (!itemModal || !auditoria) return;
     // Verificar se a auditoria está finalizada
@@ -494,14 +511,39 @@ export default function AuditoriaPage() {
       toastService.warning('Não é possível editar uma auditoria finalizada. Reabra a auditoria para fazer alterações.');
       return;
     }
-    
-    // Validar se a observação foi preenchida
-    if (!itemModal.observacao || itemModal.observacao.trim() === '') {
-      toastService.warning('A observação do auditor é obrigatória');
-      setItemModal((prev) => prev ? { ...prev, isSaving: false } : null);
+
+    if (!itemModal.item.resposta) {
+      toastService.error('Selecione uma resposta');
       return;
     }
-    
+
+    // Buscar configuração da opção selecionada
+    const opcaoConfig = getOpcaoConfig(itemModal.item, itemModal.item.resposta);
+
+    // Validar foto obrigatória
+    if (opcaoConfig.fotoObrigatoria && itemModal.fotos.length === 0) {
+      toastService.error('Esta resposta requer pelo menos uma foto');
+      return;
+    }
+
+    // Validar observação obrigatória
+    if (opcaoConfig.observacaoObrigatoria && (!itemModal.observacao || itemModal.observacao.trim() === '')) {
+      toastService.error('Esta resposta requer uma observação');
+      return;
+    }
+
+    // Validar imagens não relevantes
+    const imagensNaoRelevantes = itemModal.fotos.filter(
+      (f) => f.analiseIa && !f.analiseIa.imagemRelevante
+    );
+
+    if (imagensNaoRelevantes.length > 0 && (!itemModal.observacao || itemModal.observacao.trim() === '')) {
+      toastService.error(
+        'Por favor, remova as imagens inadequadas ou adicione uma observação explicando por que a imagem é relevante.'
+      );
+      return;
+    }
+
     setItemModal((prev) => prev ? { ...prev, isSaving: true } : null);
     // Preserva a resposta atual do item
     const respostaAtual = itemModal.item.resposta || 'nao_avaliado';
@@ -999,16 +1041,27 @@ export default function AuditoriaPage() {
               </div>
 
               {/* Área de fotos */}
-              <div className="mb-4">
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-sm font-medium">
-                    <Camera className="w-4 h-4 inline mr-1" />
-                    Fotos da Evidência
-                  </label>
-                  <span className="text-xs text-base-content/60">
-                    {itemModal.fotos.length}/{MAX_FOTOS_POR_ITEM}
-                  </span>
-                </div>
+              {(() => {
+                const opcaoConfigModal = itemModal ? getOpcaoConfig(itemModal.item, itemModal.item.resposta || '') : null;
+                const fotoObrigatoria = opcaoConfigModal?.fotoObrigatoria || false;
+
+                return (
+                  <div className="mb-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-sm font-medium text-base-content flex items-center gap-2">
+                        Fotos
+                        {fotoObrigatoria && itemModal.fotos.length === 0 && (
+                          <span className="badge badge-error badge-sm">Obrigatório</span>
+                        )}
+                      </label>
+                      <label className="btn btn-sm btn-ghost gap-2 cursor-pointer">
+                        <Camera className="w-4 h-4" />
+                        Adicionar Foto
+                        <input type="file" className="hidden" accept="image/*" onChange={(e) => {
+                          handleImageSelect(e);
+                        }} />
+                      </label>
+                    </div>
 
                 {/* Grid de fotos */}
                 <div className="grid grid-cols-3 gap-2 mb-3">
@@ -1083,7 +1136,9 @@ export default function AuditoriaPage() {
                     <p>Nenhuma foto foi adicionada a este item</p>
                   </div>
                 )}
-              </div>
+                  </div>
+                );
+              })()}
 
               {/* Análises individuais de cada foto */}
               {itemModal.fotos.some((f) => f.analiseIa) && (
@@ -1187,66 +1242,84 @@ export default function AuditoriaPage() {
               )}
 
               {/* Observação */}
-              <div className="form-control mb-6">
-                <label className="label">
-                  <span className="label-text font-medium">
-                    <MessageSquare className="w-4 h-4 inline mr-1" />
-                    Observação do Auditor <span className="text-error">*</span>
-                  </span>
-                </label>
-                <textarea
-                  className={`textarea textarea-bordered ${!itemModal.observacao || itemModal.observacao.trim() === '' ? 'textarea-error' : ''}`}
-                  placeholder="Descreva o que foi observado neste item..."
-                  rows={3}
-                  value={itemModal.observacao}
-                  onChange={(e) => setItemModal((prev) => prev ? { ...prev, observacao: e.target.value } : null)}
-                  required
-                  disabled={auditoria.status === 'finalizada'}
-                  readOnly={auditoria.status === 'finalizada'}
-                />
-                {(!itemModal.observacao || itemModal.observacao.trim() === '') && (
-                  <label className="label">
-                    <span className="label-text-alt text-error">A observação é obrigatória</span>
-                  </label>
-                )}
-              </div>
+              {(() => {
+                const opcaoConfigModal = itemModal ? getOpcaoConfig(itemModal.item, itemModal.item.resposta || '') : null;
+                const observacaoObrigatoria = opcaoConfigModal?.observacaoObrigatoria || false;
+                const imagensNaoRelevantes = itemModal?.fotos.some((f) => f.analiseIa && !f.analiseIa.imagemRelevante) || false;
+
+                return (
+                  <div className="form-control mb-6">
+                    <label className="label">
+                      <span className="label-text font-medium">
+                        <MessageSquare className="w-4 h-4 inline mr-1" />
+                        Observação do Auditor {observacaoObrigatoria && <span className="text-error">*</span>}
+                      </span>
+                    </label>
+                    <textarea
+                      placeholder="Adicione observações sobre este item..."
+                      className={`textarea textarea-bordered ${
+                        observacaoObrigatoria && (!itemModal.observacao || itemModal.observacao.trim() === '')
+                          ? 'textarea-error'
+                          : ''
+                      }`}
+                      rows={4}
+                      value={itemModal.observacao}
+                      onChange={(e) => setItemModal((prev) => prev ? { ...prev, observacao: e.target.value } : null)}
+                      disabled={auditoria.status === 'finalizada'}
+                      readOnly={auditoria.status === 'finalizada'}
+                    />
+                    {observacaoObrigatoria && (!itemModal.observacao || itemModal.observacao.trim() === '') && (
+                      <label className="label">
+                        <span className="label-text-alt text-error">Observação obrigatória para esta resposta</span>
+                      </label>
+                    )}
+                  </div>
+                );
+              })()}
 
               {/* Ações */}
-              <div className="modal-action">
-                {auditoria.status !== 'finalizada' ? (
-                  <>
-                    <button className="btn btn-ghost" onClick={() => setItemModal(null)}>
-                      Cancelar
-                    </button>
-                    <button
-                      className="btn btn-primary gap-2"
-                      onClick={handleSaveItemModal}
-                      disabled={
-                        itemModal.isSaving || 
-                        itemModal.fotos.some((f) => f.isAnalyzing) ||
-                        !itemModal.observacao || 
-                        itemModal.observacao.trim() === ''
-                      }
-                    >
-                      {itemModal.isSaving ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                          Salvando...
-                        </>
-                      ) : (
-                        <>
-                          <Save className="w-4 h-4" />
-                          Salvar
-                        </>
-                      )}
-                    </button>
-                  </>
-                ) : (
-                  <button className="btn btn-ghost" onClick={() => setItemModal(null)}>
-                    Fechar
-                  </button>
-                )}
-              </div>
+              {(() => {
+                const opcaoConfigModal = itemModal ? getOpcaoConfig(itemModal.item, itemModal.item.resposta || '') : null;
+                const imagensNaoRelevantes = itemModal?.fotos.some((f) => f.analiseIa && !f.analiseIa.imagemRelevante) || false;
+
+                return (
+                  <div className="modal-action">
+                    {auditoria.status !== 'finalizada' ? (
+                      <>
+                        <button className="btn btn-ghost" onClick={() => setItemModal(null)}>
+                          Cancelar
+                        </button>
+                        <button
+                          className="btn btn-primary w-full"
+                          onClick={handleSaveItemModal}
+                          disabled={
+                            !itemModal.item.resposta ||
+                            (opcaoConfigModal?.observacaoObrigatoria && (!itemModal.observacao || itemModal.observacao.trim() === '')) ||
+                            (opcaoConfigModal?.fotoObrigatoria && itemModal.fotos.length === 0) ||
+                            (imagensNaoRelevantes && (!itemModal.observacao || itemModal.observacao.trim() === ''))
+                          }
+                        >
+                          {itemModal.isSaving ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              Salvando...
+                            </>
+                          ) : (
+                            <>
+                              <Save className="w-4 h-4" />
+                              Salvar Resposta
+                            </>
+                          )}
+                        </button>
+                      </>
+                    ) : (
+                      <button className="btn btn-ghost" onClick={() => setItemModal(null)}>
+                        Fechar
+                      </button>
+                    )}
+                  </div>
+                );
+              })()}
             </motion.div>
             <div 
               className="modal-backdrop" 
