@@ -572,19 +572,28 @@ export default function EditarTemplatePage() {
   };
 
   const handleAdicionarOpcaoResposta = () => {
-    if (!novaOpcaoResposta.trim()) return;
-    if (itemForm.opcoesResposta?.includes(novaOpcaoResposta.trim())) return;
-    setItemForm({
-      ...itemForm,
-      opcoesResposta: [...(itemForm.opcoesResposta || []), novaOpcaoResposta.trim()],
-    });
-    setNovaOpcaoResposta('');
+    if (novaOpcaoResposta.trim()) {
+      setItemForm({
+        ...itemForm,
+        opcoesResposta: [...(itemForm.opcoesResposta || []), novaOpcaoResposta.trim()],
+        opcoesRespostaConfig: [
+          ...(itemForm.opcoesRespostaConfig || []),
+          {
+            valor: novaOpcaoResposta.trim(),
+            fotoObrigatoria: false,
+            observacaoObrigatoria: false,
+          }
+        ],
+      });
+      setNovaOpcaoResposta('');
+    }
   };
 
   const handleRemoverOpcaoResposta = (opcao: string) => {
     setItemForm({
       ...itemForm,
-      opcoesResposta: (itemForm.opcoesResposta || []).filter((o) => o !== opcao),
+      opcoesResposta: itemForm.opcoesResposta?.filter((o) => o !== opcao),
+      opcoesRespostaConfig: itemForm.opcoesRespostaConfig?.filter((c) => c.valor !== opcao),
     });
   };
 
@@ -601,10 +610,17 @@ export default function EditarTemplatePage() {
   };
 
   const handleAdicionarSugestao = (sugestao: string) => {
-    if (itemForm.opcoesResposta?.includes(sugestao)) return;
     setItemForm({
       ...itemForm,
       opcoesResposta: [...(itemForm.opcoesResposta || []), sugestao],
+      opcoesRespostaConfig: [
+        ...(itemForm.opcoesRespostaConfig || []),
+        {
+          valor: sugestao,
+          fotoObrigatoria: false,
+          observacaoObrigatoria: false,
+        }
+      ],
     });
   };
 
@@ -1134,15 +1150,43 @@ export default function EditarTemplatePage() {
                 <div className="space-y-3 bg-base-200/50 rounded-lg p-4">
                   <label className="label"><span className="label-text font-medium">Opções de Resposta</span></label>
                   {itemForm.opcoesResposta && itemForm.opcoesResposta.length > 0 && (
-                    <div className="flex flex-wrap gap-2">
-                      {itemForm.opcoesResposta.map((opcao, idx) => (
-                        <div key={idx} className="badge badge-lg gap-1 pr-1 border-2 border-primary">
-                          {opcao}
-                          <button onClick={() => handleRemoverOpcaoResposta(opcao)} className="btn btn-ghost btn-xs btn-circle">
-                            <X className="w-3 h-3" />
-                          </button>
-                        </div>
-                      ))}
+                    <div className="space-y-2">
+                      {itemForm.opcoesResposta.map((opcao, idx) => {
+                        const config = itemForm.opcoesRespostaConfig?.find(c => c.valor === opcao);
+                        return (
+                          <div key={idx} className="bg-base-100 rounded-lg p-3 space-y-2">
+                            <div className="flex items-center justify-between">
+                              <div className="badge badge-lg border-2 border-primary">{opcao}</div>
+                              <button
+                                onClick={() => handleRemoverOpcaoResposta(opcao)}
+                                className="btn btn-ghost btn-xs btn-circle"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            </div>
+                            <div className="flex gap-4 pl-2">
+                              <label className="label cursor-pointer gap-2">
+                                <input
+                                  type="checkbox"
+                                  className="checkbox checkbox-sm"
+                                  checked={config?.fotoObrigatoria || false}
+                                  onChange={(e) => handleAtualizarOpcaoConfig(opcao, 'fotoObrigatoria', e.target.checked)}
+                                />
+                                <span className="label-text text-xs">Foto obrigatória</span>
+                              </label>
+                              <label className="label cursor-pointer gap-2">
+                                <input
+                                  type="checkbox"
+                                  className="checkbox checkbox-sm"
+                                  checked={config?.observacaoObrigatoria || false}
+                                  onChange={(e) => handleAtualizarOpcaoConfig(opcao, 'observacaoObrigatoria', e.target.checked)}
+                                />
+                                <span className="label-text text-xs">Observação obrigatória</span>
+                              </label>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                   <div className="flex gap-2">
