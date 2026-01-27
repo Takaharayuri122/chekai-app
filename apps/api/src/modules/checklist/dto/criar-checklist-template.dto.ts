@@ -13,6 +13,17 @@ import { Type } from 'class-transformer';
 import { TipoAtividade } from '../../cliente/entities/cliente.entity';
 import { CategoriaItem, CriticidadeItem, TipoRespostaCustomizada } from '../entities/template-item.entity';
 
+export class OpcaoRespostaConfigDto {
+  @IsString()
+  valor: string;
+
+  @IsBoolean()
+  fotoObrigatoria: boolean;
+
+  @IsBoolean()
+  observacaoObrigatoria: boolean;
+}
+
 /**
  * DTO para criar um item do template.
  */
@@ -80,6 +91,12 @@ export class CriarTemplateItemDto {
   @IsEnum(TipoRespostaCustomizada)
   @IsOptional()
   tipoRespostaCustomizada?: TipoRespostaCustomizada;
+
+  @ApiPropertyOptional({ description: 'Configurações granulares de foto e observação por opção de resposta' })
+  @IsOptional()
+  @ValidateNested({ each: true })
+  @Type(() => OpcaoRespostaConfigDto)
+  opcoesRespostaConfig?: OpcaoRespostaConfigDto[];
 
   @ApiPropertyOptional({ description: 'ID do grupo ao qual o item pertence' })
   @IsString()
