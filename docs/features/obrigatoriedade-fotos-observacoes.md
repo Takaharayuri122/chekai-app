@@ -20,6 +20,32 @@ Sistema de configuração granular que permite definir obrigatoriedade de fotos 
 - Feedback visual indica campos obrigatórios
 - Botão "Salvar" desabilitado até requisitos atendidos
 
+## Interface de Auditoria
+
+### Tabs de Fotos e Observações
+
+Durante a auditoria, fotos e observações são organizadas em abas (tabs) separadas:
+
+- **Tab Fotos**: Aparece apenas se alguma opção de resposta exigir foto
+  - Badge "Obrigatório" quando foto é necessária e não foi adicionada
+  - Contador mostra quantas fotos foram adicionadas
+  - Atalho: Alt+1
+
+- **Tab Observação**: Sempre visível
+  - Badge "Obrigatório" quando observação é necessária e está vazia
+  - Atalho: Alt+2
+
+### Validação Automática
+
+- Sistema valida automaticamente ao tentar salvar
+- Se campo obrigatório estiver vazio, muda automaticamente para a tab correspondente
+- Mensagem de erro clara indica o que está faltando
+
+### Relatório
+
+- No relatório (visualização), fotos e observações continuam em layout linear
+- Tabs são usadas apenas durante a edição/auditoria
+
 ## Arquitetura
 
 ### Backend
