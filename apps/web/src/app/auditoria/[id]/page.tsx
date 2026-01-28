@@ -1067,242 +1067,52 @@ export default function AuditoriaPage() {
                 <p className="font-medium">{itemModal.item.templateItem.pergunta}</p>
               </div>
 
-              {/* Área de fotos */}
-              {(() => {
-                const opcaoConfigModal = itemModal ? getOpcaoConfig(itemModal.item, itemModal.item.resposta || '') : null;
-                const fotoObrigatoria = opcaoConfigModal?.fotoObrigatoria || false;
+              {/* Tabs para Fotos e Observação */}
+              <div className="mb-6">
+                {/* Tab Headers */}
+                <div className="tabs tabs-boxed bg-base-200 mb-4">
+                  {algmaOpcaoExigeFoto(itemModal.item) && (() => {
+                    const opcaoConfigModal = getOpcaoConfig(itemModal.item, itemModal.item.resposta || '');
+                    const fotoObrigatoria = opcaoConfigModal?.fotoObrigatoria || false;
 
-                return (
-                  <div className="mb-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <label className="text-sm font-medium text-base-content flex items-center gap-2">
+                    return (
+                      <button
+                        className={`tab gap-2 ${activeTab === 'fotos' ? 'tab-active' : ''}`}
+                        onClick={() => setActiveTab('fotos')}
+                      >
+                        <Camera className="w-4 h-4" />
                         Fotos
                         {fotoObrigatoria && itemModal.fotos.length === 0 && (
                           <span className="badge badge-error badge-sm">Obrigatório</span>
                         )}
-                      </label>
-                      <label className="btn btn-sm btn-ghost gap-2 cursor-pointer">
-                        <Camera className="w-4 h-4" />
-                        Adicionar Foto
-                        <input type="file" className="hidden" accept="image/*" onChange={(e) => {
-                          handleImageSelect(e);
-                        }} />
-                      </label>
-                    </div>
+                      </button>
+                    );
+                  })()}
 
-                {/* Grid de fotos */}
-                <div className="grid grid-cols-3 gap-2 mb-3">
-                  {itemModal.fotos.map((foto, index) => (
-                    <div key={index} className="relative aspect-square">
-                      <img
-                        src={foto.preview}
-                        alt={`Foto ${index + 1}`}
-                        className="w-full h-full object-cover rounded-lg"
-                      />
-                      {foto.isAnalyzing && (
-                        <div className="absolute inset-0 bg-black/50 rounded-lg flex items-center justify-center">
-                          <Loader2 className="w-6 h-6 animate-spin text-white" />
-                        </div>
-                      )}
-                      {foto.analiseIa && (
-                        <div className="absolute bottom-1 left-1 flex gap-1 flex-wrap">
-                          {!foto.analiseIa.imagemRelevante && (
-                            <span className="badge badge-xs badge-error" title="Imagem não relacionada ao item do checklist">
-                              <AlertCircle className="w-2 h-2 mr-1" />
-                              Não relevante
-                            </span>
-                          )}
-                          {foto.analiseIa.imagemRelevante && (
-                            <span className={`badge badge-xs ${
-                              foto.analiseIa.tipoNaoConformidade === 'Nenhuma identificada' 
-                                ? 'badge-success' 
-                                : foto.analiseIa.gravidade === 'critica' ? 'badge-error' 
-                                : foto.analiseIa.gravidade === 'alta' ? 'badge-warning' 
-                                : 'badge-info'
-                            }`}>
-                              <Sparkles className="w-2 h-2" />
-                            </span>
-                          )}
-                        </div>
-                      )}
-                      {auditoria.status !== 'finalizada' && (
-                        <button
-                          onClick={() => handleRemoveFoto(index)}
-                          className="absolute top-1 right-1 btn btn-circle btn-xs btn-error"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                      )}
-                    </div>
-                  ))}
+                  {(() => {
+                    const opcaoConfigModal = getOpcaoConfig(itemModal.item, itemModal.item.resposta || '');
+                    const observacaoObrigatoria = opcaoConfigModal?.observacaoObrigatoria || false;
 
-                  {/* Botão adicionar mais */}
-                  {itemModal.fotos.length < MAX_FOTOS_POR_ITEM && auditoria.status !== 'finalizada' && (
-                    <button
-                      onClick={() => fileInputRef.current?.click()}
-                      className="aspect-square border-2 border-dashed border-base-300 rounded-lg flex flex-col items-center justify-center gap-1 hover:border-primary hover:bg-primary/5 transition-colors"
-                    >
-                      <ImageIcon className="w-6 h-6 text-base-content/40" />
-                      <span className="text-xs text-base-content/60">Adicionar</span>
-                    </button>
-                  )}
+                    return (
+                      <button
+                        className={`tab gap-2 ${activeTab === 'observacao' ? 'tab-active' : ''}`}
+                        onClick={() => setActiveTab('observacao')}
+                      >
+                        <MessageSquare className="w-4 h-4" />
+                        Observação
+                        {observacaoObrigatoria && (!itemModal.observacao || itemModal.observacao.trim() === '') && (
+                          <span className="badge badge-error badge-sm">Obrigatório</span>
+                        )}
+                      </button>
+                    );
+                  })()}
                 </div>
 
-                {itemModal.fotos.length === 0 && auditoria.status !== 'finalizada' && (
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                    className="w-full h-24 border-2 border-dashed border-base-300 rounded-lg flex flex-col items-center justify-center gap-2 hover:border-primary hover:bg-primary/5 transition-colors"
-                  >
-                    <Camera className="w-8 h-8 text-base-content/40" />
-                    <span className="text-sm text-base-content/60">Clique para adicionar fotos (até {MAX_FOTOS_POR_ITEM})</span>
-                  </button>
-                )}
-                {itemModal.fotos.length === 0 && auditoria.status === 'finalizada' && (
-                  <div className="text-center py-8 text-base-content/60">
-                    <Camera className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                    <p>Nenhuma foto foi adicionada a este item</p>
-                  </div>
-                )}
-                  </div>
-                );
-              })()}
-
-              {/* Análises individuais de cada foto */}
-              {itemModal.fotos.some((f) => f.analiseIa) && (
-                <div className="space-y-3 mb-4">
-                  <p className="text-sm font-medium flex items-center gap-1">
-                    <Sparkles className="w-4 h-4 text-primary" />
-                    Análises das Imagens
-                  </p>
-                  {itemModal.fotos.map((foto, index) => (
-                    foto.analiseIa && (
-                      <div key={foto.id || index} className={`rounded-lg p-3 text-sm ${
-                        !foto.analiseIa.imagemRelevante 
-                          ? 'bg-error/10 border-2 border-error/50' 
-                          : 'bg-primary/10 border border-primary/20'
-                      }`}>
-                        <div className="flex items-start gap-3">
-                          <img src={foto.preview} alt="" className="w-16 h-16 object-cover rounded flex-shrink-0" />
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-2 flex-wrap">
-                              <span className="font-medium text-xs text-base-content/60">
-                                {foto.isExisting ? 'Foto existente' : 'Nova foto'}
-                              </span>
-                              {!foto.analiseIa.imagemRelevante && (
-                                <span className="badge badge-sm badge-error" title="Esta imagem não parece estar relacionada ao item do checklist">
-                                  <AlertCircle className="w-3 h-3 mr-1" />
-                                  IMAGEM NÃO RELEVANTE
-                                </span>
-                              )}
-                              {foto.analiseIa.tipoNaoConformidade !== 'Nenhuma identificada' && foto.analiseIa.imagemRelevante && (
-                                <span className={`badge badge-xs ${
-                                  foto.analiseIa.gravidade === 'critica' ? 'badge-error' :
-                                  foto.analiseIa.gravidade === 'alta' ? 'badge-warning' :
-                                  foto.analiseIa.gravidade === 'media' ? 'badge-info' : 'badge-ghost'
-                                }`}>
-                                  {foto.analiseIa.gravidade}
-                                </span>
-                              )}
-                            </div>
-                            {!foto.analiseIa.imagemRelevante ? (
-                              <div className="space-y-2">
-                                <div className="bg-error/20 border border-error/30 rounded p-2">
-                                  <p className="text-error font-semibold text-sm mb-1">
-                                    ⚠️ IMAGEM NÃO RELACIONADA AO ITEM
-                                  </p>
-                                  <p className="text-error text-xs mb-2">
-                                    Esta imagem não parece estar relacionada ao item do checklist "{itemModal.item.templateItem.pergunta}". 
-                                    Por favor, remova esta imagem ou adicione uma observação explicando sua relevância.
-                                  </p>
-                                  {foto.analiseIa.descricaoIa && (
-                                    <div className="mt-2 pt-2 border-t border-error/30">
-                                      <p className="text-error text-xs font-medium mb-1">Motivo da não relevância:</p>
-                                      <p className="text-error/90 text-xs whitespace-pre-line">{foto.analiseIa.descricaoIa}</p>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            ) : (
-                              <div className="space-y-2">
-                                <p className="text-base-content/90 whitespace-pre-line">{foto.analiseIa.descricaoIa}</p>
-                                {foto.analiseIa.tipoNaoConformidade !== 'Nenhuma identificada' && (
-                                  <p className="text-xs text-warning">⚠️ {foto.analiseIa.tipoNaoConformidade}</p>
-                                )}
-                                {foto.analiseIa.referenciaLegal && (
-                                  <p className="text-xs text-info">📋 {foto.analiseIa.referenciaLegal}</p>
-                                )}
-                                {foto.analiseIa.sugestoes && foto.analiseIa.sugestoes.length > 0 && (
-                                  <div className="mt-2 pt-2 border-t border-primary/20">
-                                    <p className="text-xs font-medium mb-1">Sugestões:</p>
-                                    <ul className="text-xs space-y-1">
-                                      {foto.analiseIa.sugestoes.map((s, i) => (
-                                        <li key={i} className="flex items-start gap-2">
-                                          <span className="text-primary">•</span>
-                                          <span>{s}</span>
-                                        </li>
-                                      ))}
-                                    </ul>
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    )
-                  ))}
+                {/* Tab Content */}
+                <div className="min-h-[300px]">
+                  {/* Conteúdo será movido aqui nas próximas etapas */}
                 </div>
-              )}
-
-              {/* Alerta se houver imagens não relevantes */}
-              {itemModal.fotos.some((f) => f.analiseIa && !f.analiseIa.imagemRelevante) && (
-                <div className="alert alert-warning mb-4">
-                  <AlertCircle className="w-5 h-5" />
-                  <div>
-                    <h3 className="font-bold">Atenção: Imagem não relevante</h3>
-                    <div className="text-sm">
-                      Uma ou mais imagens não parecem estar relacionadas ao item do checklist. 
-                      Por favor, remova as imagens inadequadas ou adicione uma observação explicando por que a imagem é relevante.
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Observação */}
-              {(() => {
-                const opcaoConfigModal = itemModal ? getOpcaoConfig(itemModal.item, itemModal.item.resposta || '') : null;
-                const observacaoObrigatoria = opcaoConfigModal?.observacaoObrigatoria || false;
-                const imagensNaoRelevantes = itemModal?.fotos.some((f) => f.analiseIa && !f.analiseIa.imagemRelevante) || false;
-
-                return (
-                  <div className="form-control mb-6">
-                    <label className="label">
-                      <span className="label-text font-medium">
-                        <MessageSquare className="w-4 h-4 inline mr-1" />
-                        Observação do Auditor {observacaoObrigatoria && <span className="text-error">*</span>}
-                      </span>
-                    </label>
-                    <textarea
-                      placeholder="Adicione observações sobre este item..."
-                      className={`textarea textarea-bordered ${
-                        observacaoObrigatoria && (!itemModal.observacao || itemModal.observacao.trim() === '')
-                          ? 'textarea-error'
-                          : ''
-                      }`}
-                      rows={4}
-                      value={itemModal.observacao}
-                      onChange={(e) => setItemModal((prev) => prev ? { ...prev, observacao: e.target.value } : null)}
-                      disabled={auditoria.status === 'finalizada'}
-                      readOnly={auditoria.status === 'finalizada'}
-                    />
-                    {observacaoObrigatoria && (!itemModal.observacao || itemModal.observacao.trim() === '') && (
-                      <label className="label">
-                        <span className="label-text-alt text-error">Observação obrigatória para esta resposta</span>
-                      </label>
-                    )}
-                  </div>
-                );
-              })()}
+              </div>
 
               {/* Ações */}
               {(() => {
