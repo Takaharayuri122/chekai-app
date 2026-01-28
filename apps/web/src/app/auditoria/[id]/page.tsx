@@ -535,7 +535,16 @@ export default function AuditoriaPage() {
 
   const getOpcaoConfig = (item: AuditoriaItem, resposta: string) => {
     const configs = item.templateItem.opcoesRespostaConfig;
+
+    console.log('🔍 getOpcaoConfig DEBUG:', {
+      resposta,
+      configs,
+      configsLength: configs?.length,
+      templateItemId: item.templateItem.id,
+    });
+
     if (!configs || configs.length === 0) {
+      console.log('⚠️ Usando comportamento legado (sem configs)');
       // Comportamento legado: observação sempre obrigatória, foto opcional
       return {
         fotoObrigatoria: false,
@@ -544,10 +553,15 @@ export default function AuditoriaPage() {
     }
 
     const config = configs.find(c => c.valor === resposta);
-    return config || {
+    console.log('📌 Config encontrado:', config);
+
+    const resultado = config || {
       fotoObrigatoria: false,
       observacaoObrigatoria: false,
     };
+
+    console.log('✅ Retornando config:', resultado);
+    return resultado;
   };
 
   const handleSaveItemModal = async () => {
@@ -1278,6 +1292,27 @@ export default function AuditoriaPage() {
                 const opcaoConfigModal = itemModal ? getOpcaoConfig(itemModal.item, itemModal.item.resposta || '') : null;
                 const imagensNaoRelevantes = itemModal?.fotos.some((f) => f.analiseIa && !f.analiseIa.imagemRelevante) || false;
 
+                const isDisabled = !itemModal.item.resposta ||
+                  (opcaoConfigModal?.observacaoObrigatoria && (!itemModal.observacao || itemModal.observacao.trim() === '')) ||
+                  (opcaoConfigModal?.fotoObrigatoria && itemModal.fotos.length === 0) ||
+                  (imagensNaoRelevantes && (!itemModal.observacao || itemModal.observacao.trim() === ''));
+
+                console.log('🔘 Botão Salvar DEBUG:', {
+                  resposta: itemModal.item.resposta,
+                  opcaoConfigModal,
+                  hasObservacao: !!itemModal.observacao,
+                  observacaoTrim: itemModal.observacao?.trim(),
+                  numFotos: itemModal.fotos.length,
+                  imagensNaoRelevantes,
+                  isDisabled,
+                  validacoes: {
+                    semResposta: !itemModal.item.resposta,
+                    observacaoObrigatoriaFaltando: opcaoConfigModal?.observacaoObrigatoria && (!itemModal.observacao || itemModal.observacao.trim() === ''),
+                    fotoObrigatoriaFaltando: opcaoConfigModal?.fotoObrigatoria && itemModal.fotos.length === 0,
+                    imagensNaoRelevantesSemObservacao: imagensNaoRelevantes && (!itemModal.observacao || itemModal.observacao.trim() === ''),
+                  }
+                });
+
                 return (
                   <div className="modal-action">
                     {auditoria.status !== 'finalizada' ? (
@@ -1288,12 +1323,7 @@ export default function AuditoriaPage() {
                         <button
                           className="btn btn-primary w-full"
                           onClick={handleSaveItemModal}
-                          disabled={
-                            !itemModal.item.resposta ||
-                            (opcaoConfigModal?.observacaoObrigatoria && (!itemModal.observacao || itemModal.observacao.trim() === '')) ||
-                            (opcaoConfigModal?.fotoObrigatoria && itemModal.fotos.length === 0) ||
-                            (imagensNaoRelevantes && (!itemModal.observacao || itemModal.observacao.trim() === ''))
-                          }
+                          disabled={isDisabled}
                         >
                           {itemModal.isSaving ? (
                             <>
