@@ -549,12 +549,14 @@ export default function AuditoriaPage() {
 
     // Validar foto obrigatória
     if (opcaoConfig.fotoObrigatoria && itemModal.fotos.length === 0) {
+      setActiveTab('fotos'); // Mudar para tab de fotos
       toastService.error('Esta resposta requer pelo menos uma foto');
       return;
     }
 
     // Validar observação obrigatória
     if (opcaoConfig.observacaoObrigatoria && (!itemModal.observacao || itemModal.observacao.trim() === '')) {
+      setActiveTab('observacao'); // Mudar para tab de observação
       toastService.error('Esta resposta requer uma observação');
       return;
     }
@@ -565,6 +567,7 @@ export default function AuditoriaPage() {
     );
 
     if (imagensNaoRelevantes.length > 0 && (!itemModal.observacao || itemModal.observacao.trim() === '')) {
+      setActiveTab('observacao'); // Mudar para tab de observação
       toastService.error(
         'Por favor, remova as imagens inadequadas ou adicione uma observação explicando por que a imagem é relevante.'
       );
