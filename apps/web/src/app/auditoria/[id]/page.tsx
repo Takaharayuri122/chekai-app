@@ -139,6 +139,23 @@ export default function AuditoriaPage() {
     }
   }, [itemModal]);
 
+  // Keyboard shortcuts for tab navigation
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (!itemModal) return;
+
+      // Alt+1 = Fotos, Alt+2 = Observação
+      if (e.altKey && e.key === '1' && algmaOpcaoExigeFoto(itemModal.item)) {
+        setActiveTab('fotos');
+      } else if (e.altKey && e.key === '2') {
+        setActiveTab('observacao');
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [itemModal]);
+
   // Scroll automático até o último item respondido quando a auditoria carregar
   useEffect(() => {
     if (!loading && auditoria && auditoria.status === 'em_andamento' && !scrollRealizado.current) {
@@ -1082,9 +1099,13 @@ export default function AuditoriaPage() {
                       <button
                         className={`tab gap-2 ${activeTab === 'fotos' ? 'tab-active' : ''}`}
                         onClick={() => setActiveTab('fotos')}
+                        title="Alt+1 para alternar"
                       >
                         <Camera className="w-4 h-4" />
                         Fotos
+                        {itemModal.fotos.length > 0 && (
+                          <span className="badge badge-neutral badge-sm">{itemModal.fotos.length}</span>
+                        )}
                         {fotoObrigatoria && itemModal.fotos.length === 0 && (
                           <span className="badge badge-error badge-sm">Obrigatório</span>
                         )}
@@ -1100,6 +1121,7 @@ export default function AuditoriaPage() {
                       <button
                         className={`tab gap-2 ${activeTab === 'observacao' ? 'tab-active' : ''}`}
                         onClick={() => setActiveTab('observacao')}
+                        title="Alt+2 para alternar"
                       >
                         <MessageSquare className="w-4 h-4" />
                         Observação
