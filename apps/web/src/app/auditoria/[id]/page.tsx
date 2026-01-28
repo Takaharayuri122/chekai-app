@@ -74,6 +74,7 @@ export default function AuditoriaPage() {
 
   // Modal de foto + IA
   const [itemModal, setItemModal] = useState<ItemModalState | null>(null);
+  const [activeTab, setActiveTab] = useState<'fotos' | 'observacao'>('fotos');
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Refs para scroll automático até o último item respondido
@@ -111,6 +112,18 @@ export default function AuditoriaPage() {
   useEffect(() => {
     carregarAuditoria();
   }, [carregarAuditoria]);
+
+  // Quando abrir modal, definir tab inicial
+  useEffect(() => {
+    if (itemModal) {
+      // Se tem fotos disponíveis, começa em fotos, senão em observação
+      if (algmaOpcaoExigeFoto(itemModal.item)) {
+        setActiveTab('fotos');
+      } else {
+        setActiveTab('observacao');
+      }
+    }
+  }, [itemModal?.item.id]);
 
   // Scroll automático até o último item respondido quando a auditoria carregar
   useEffect(() => {
@@ -502,6 +515,12 @@ export default function AuditoriaPage() {
       fotoObrigatoria: false,
       observacaoObrigatoria: false,
     };
+  };
+
+  const algmaOpcaoExigeFoto = (item: AuditoriaItem): boolean => {
+    const configs = item.templateItem.opcoesRespostaConfig;
+    if (!configs || configs.length === 0) return false;
+    return configs.some(c => c.fotoObrigatoria);
   };
 
   const handleSaveItemModal = async () => {
