@@ -55,6 +55,13 @@ interface ItemModalState {
 
 const MAX_FOTOS_POR_ITEM = 5;
 
+// Helper function to check if any option requires a photo
+const algmaOpcaoExigeFoto = (item: AuditoriaItem): boolean => {
+  const configs = item.templateItem.opcoesRespostaConfig;
+  if (!configs || configs.length === 0) return false;
+  return configs.some(c => c.fotoObrigatoria);
+};
+
 export default function AuditoriaPage() {
   const params = useParams();
   const router = useRouter();
@@ -76,10 +83,11 @@ export default function AuditoriaPage() {
   const [itemModal, setItemModal] = useState<ItemModalState | null>(null);
   const [activeTab, setActiveTab] = useState<'fotos' | 'observacao'>('fotos');
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   // Refs para scroll automático até o último item respondido
   const itemRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const scrollRealizado = useRef(false);
+  const prevItemIdRef = useRef<string | null>(null);
 
   const formatarHora = (data: Date) => {
     return data.toLocaleTimeString('pt-BR', {
@@ -116,14 +124,20 @@ export default function AuditoriaPage() {
   // Quando abrir modal, definir tab inicial
   useEffect(() => {
     if (itemModal) {
-      // Se tem fotos disponíveis, começa em fotos, senão em observação
-      if (algmaOpcaoExigeFoto(itemModal.item)) {
-        setActiveTab('fotos');
-      } else {
-        setActiveTab('observacao');
+      // Only reset tab if this is a new item (modal just opened or switched items)
+      if (prevItemIdRef.current !== itemModal.item.id) {
+        if (algmaOpcaoExigeFoto(itemModal.item)) {
+          setActiveTab('fotos');
+        } else {
+          setActiveTab('observacao');
+        }
+        prevItemIdRef.current = itemModal.item.id;
       }
+    } else {
+      // Reset when modal closes
+      prevItemIdRef.current = null;
     }
-  }, [itemModal?.item.id]);
+  }, [itemModal]);
 
   // Scroll automático até o último item respondido quando a auditoria carregar
   useEffect(() => {
@@ -515,12 +529,6 @@ export default function AuditoriaPage() {
       fotoObrigatoria: false,
       observacaoObrigatoria: false,
     };
-  };
-
-  const algmaOpcaoExigeFoto = (item: AuditoriaItem): boolean => {
-    const configs = item.templateItem.opcoesRespostaConfig;
-    if (!configs || configs.length === 0) return false;
-    return configs.some(c => c.fotoObrigatoria);
   };
 
   const handleSaveItemModal = async () => {
