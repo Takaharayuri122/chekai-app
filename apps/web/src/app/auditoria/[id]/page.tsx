@@ -1090,7 +1090,7 @@ export default function AuditoriaPage() {
               {/* Tabs para Fotos e Observação */}
               <div className="mb-6">
                 {/* Tab Headers */}
-                <div className="tabs tabs-lifted mb-4">
+                <div className="tabs tabs-bordered">
                   {algmaOpcaoExigeFoto(itemModal.item) && (() => {
                     const opcaoConfigModal = getOpcaoConfig(itemModal.item, itemModal.item.resposta || '');
                     const fotoObrigatoria = opcaoConfigModal?.fotoObrigatoria || false;
@@ -1136,7 +1136,7 @@ export default function AuditoriaPage() {
                 </div>
 
                 {/* Tab Content */}
-                <div className="tab-content bg-base-100 border-base-300 rounded-box p-6 min-h-[300px]">
+                <div className="bg-base-100 border-x border-b border-base-300 rounded-b-box p-6 min-h-[300px]">
                   {/* Tab Fotos */}
                   {activeTab === 'fotos' && algmaOpcaoExigeFoto(itemModal.item) && (() => {
                     const opcaoConfigModal = getOpcaoConfig(itemModal.item, itemModal.item.resposta || '');
