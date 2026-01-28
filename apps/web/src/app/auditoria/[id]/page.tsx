@@ -1210,6 +1210,47 @@ export default function AuditoriaPage() {
                       </div>
                     );
                   })()}
+
+                  {/* Tab Observação */}
+                  {activeTab === 'observacao' && (() => {
+                    const opcaoConfigModal = getOpcaoConfig(itemModal.item, itemModal.item.resposta || '');
+                    const observacaoObrigatoria = opcaoConfigModal?.observacaoObrigatoria || false;
+                    const imagensNaoRelevantes = itemModal?.fotos.some((f) => f.analiseIa && !f.analiseIa.imagemRelevante) || false;
+
+                    return (
+                      <div className="form-control">
+                        <label className="label">
+                          <span className="label-text font-medium">
+                            Observação do Auditor {observacaoObrigatoria && <span className="text-error">*</span>}
+                          </span>
+                        </label>
+                        <textarea
+                          placeholder="Adicione observações sobre este item..."
+                          className={`textarea textarea-bordered ${
+                            observacaoObrigatoria && (!itemModal.observacao || itemModal.observacao.trim() === '')
+                              ? 'textarea-error'
+                              : ''
+                          }`}
+                          rows={8}
+                          value={itemModal.observacao}
+                          onChange={(e) => setItemModal((prev) => prev ? { ...prev, observacao: e.target.value } : null)}
+                          disabled={auditoria.status === 'finalizada'}
+                          readOnly={auditoria.status === 'finalizada'}
+                        />
+                        {observacaoObrigatoria && (!itemModal.observacao || itemModal.observacao.trim() === '') && (
+                          <label className="label">
+                            <span className="label-text-alt text-error">Observação obrigatória para esta resposta</span>
+                          </label>
+                        )}
+                        {imagensNaoRelevantes && (
+                          <div className="alert alert-warning mt-2 text-sm">
+                            <AlertCircle className="w-4 h-4" />
+                            <span>Há fotos marcadas como não relevantes. Adicione uma observação explicando sua relevância.</span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
 
