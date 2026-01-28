@@ -921,16 +921,14 @@ export default function AuditoriaPage() {
                     disabled={!auditoria.status || (auditoria.status !== 'finalizada' && (!item.resposta || item.resposta === 'nao_avaliado'))}
                     title={
                       auditoria.status === 'finalizada'
-                        ? item.fotos?.length > 0
-                          ? 'Visualizar fotos da auditoria finalizada'
-                          : 'Nenhuma foto adicionada nesta auditoria'
+                        ? 'Visualizar documentação do item'
                         : (!item.resposta || item.resposta === 'nao_avaliado')
-                        ? 'Marque uma resposta antes de adicionar fotos'
-                        : ''
+                        ? 'Marque uma resposta antes de documentar'
+                        : 'Adicionar fotos e observações'
                     }
                   >
                     <Camera className="w-4 h-4" />
-                    {item.fotos?.length > 0 ? `Ver Fotos (${item.fotos.length})` : auditoria.status === 'finalizada' ? 'Ver Fotos' : 'Adicionar Foto'}
+                    {auditoria.status === 'finalizada' ? 'Ver Documentação' : 'Documentar Item'}
                   </button>
                 </div>
 
@@ -1092,7 +1090,7 @@ export default function AuditoriaPage() {
               {/* Tabs para Fotos e Observação */}
               <div className="mb-6">
                 {/* Tab Headers */}
-                <div className="tabs tabs-boxed bg-base-200 mb-4">
+                <div className="tabs tabs-lifted mb-4">
                   {algmaOpcaoExigeFoto(itemModal.item) && (() => {
                     const opcaoConfigModal = getOpcaoConfig(itemModal.item, itemModal.item.resposta || '');
                     const fotoObrigatoria = opcaoConfigModal?.fotoObrigatoria || false;
@@ -1138,7 +1136,7 @@ export default function AuditoriaPage() {
                 </div>
 
                 {/* Tab Content */}
-                <div className="min-h-[300px]">
+                <div className="tab-content bg-base-100 border-base-300 rounded-box p-6 min-h-[300px]">
                   {/* Tab Fotos */}
                   {activeTab === 'fotos' && algmaOpcaoExigeFoto(itemModal.item) && (() => {
                     const opcaoConfigModal = getOpcaoConfig(itemModal.item, itemModal.item.resposta || '');
@@ -1191,26 +1189,18 @@ export default function AuditoriaPage() {
                               )}
                             </div>
                           ))}
-
-                          {/* Botão adicionar mais */}
-                          {itemModal.fotos.length < MAX_FOTOS_POR_ITEM && auditoria.status !== 'finalizada' && (
-                            <button
-                              onClick={() => fileInputRef.current?.click()}
-                              className="aspect-square border-2 border-dashed border-base-300 rounded-lg flex flex-col items-center justify-center gap-1 hover:border-primary hover:bg-primary/5 transition-colors"
-                            >
-                              <ImageIcon className="w-6 h-6 text-base-content/40" />
-                              <span className="text-xs text-base-content/60">Adicionar</span>
-                            </button>
-                          )}
                         </div>
 
-                        {itemModal.fotos.length === 0 && auditoria.status !== 'finalizada' && (
+                        {/* Botão para adicionar fotos */}
+                        {itemModal.fotos.length < MAX_FOTOS_POR_ITEM && auditoria.status !== 'finalizada' && (
                           <button
                             onClick={() => fileInputRef.current?.click()}
-                            className="w-full h-24 border-2 border-dashed border-base-300 rounded-lg flex flex-col items-center justify-center gap-2 hover:border-primary hover:bg-primary/5 transition-colors"
+                            className="w-full mt-3 h-20 border-2 border-dashed border-base-300 rounded-lg flex flex-col items-center justify-center gap-2 hover:border-primary hover:bg-primary/5 transition-colors"
                           >
-                            <Camera className="w-8 h-8 text-base-content/40" />
-                            <span className="text-sm text-base-content/60">Clique para adicionar fotos (até {MAX_FOTOS_POR_ITEM})</span>
+                            <Camera className="w-6 h-6 text-base-content/40" />
+                            <span className="text-sm text-base-content/60">
+                              Clique para adicionar fotos (até {MAX_FOTOS_POR_ITEM} • máx. 5MB cada)
+                            </span>
                           </button>
                         )}
                         {itemModal.fotos.length === 0 && auditoria.status === 'finalizada' && (
