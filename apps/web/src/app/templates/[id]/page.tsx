@@ -520,6 +520,7 @@ export default function EditarTemplatePage() {
         opcoesResposta: itemForm.usarRespostasPersonalizadas && !itemForm.tipoRespostaCustomizada ? itemForm.opcoesResposta : (itemForm.tipoRespostaCustomizada === TipoRespostaCustomizada.SELECT ? itemForm.opcoesResposta : undefined),
         usarRespostasPersonalizadas: itemForm.usarRespostasPersonalizadas,
         tipoRespostaCustomizada: itemForm.tipoRespostaCustomizada,
+        opcoesRespostaConfig: itemForm.opcoesRespostaConfig,
         grupoId: itemForm.grupoId || undefined,
         secao: itemForm.secao || undefined,
       };
