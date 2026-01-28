@@ -1110,7 +1110,106 @@ export default function AuditoriaPage() {
 
                 {/* Tab Content */}
                 <div className="min-h-[300px]">
-                  {/* Conteúdo será movido aqui nas próximas etapas */}
+                  {/* Tab Fotos */}
+                  {activeTab === 'fotos' && algmaOpcaoExigeFoto(itemModal.item) && (() => {
+                    const opcaoConfigModal = getOpcaoConfig(itemModal.item, itemModal.item.resposta || '');
+                    const fotoObrigatoria = opcaoConfigModal?.fotoObrigatoria || false;
+
+                    return (
+                      <div>
+                        {/* Grid de fotos */}
+                        <div className="grid grid-cols-3 gap-2 mb-3">
+                          {itemModal.fotos.map((foto, index) => (
+                            <div key={index} className="relative aspect-square">
+                              <img
+                                src={foto.preview}
+                                alt={`Foto ${index + 1}`}
+                                className="w-full h-full object-cover rounded-lg"
+                              />
+                              {foto.isAnalyzing && (
+                                <div className="absolute inset-0 bg-black/50 rounded-lg flex items-center justify-center">
+                                  <Loader2 className="w-6 h-6 animate-spin text-white" />
+                                </div>
+                              )}
+                              {foto.analiseIa && (
+                                <div className="absolute bottom-1 left-1 flex gap-1 flex-wrap">
+                                  {!foto.analiseIa.imagemRelevante && (
+                                    <span className="badge badge-xs badge-error" title="Imagem não relacionada ao item do checklist">
+                                      <AlertCircle className="w-2 h-2 mr-1" />
+                                      Não relevante
+                                    </span>
+                                  )}
+                                  {foto.analiseIa.imagemRelevante && (
+                                    <span className={`badge badge-xs ${
+                                      foto.analiseIa.tipoNaoConformidade === 'Nenhuma identificada'
+                                        ? 'badge-success'
+                                        : foto.analiseIa.gravidade === 'critica' ? 'badge-error'
+                                        : foto.analiseIa.gravidade === 'alta' ? 'badge-warning'
+                                        : 'badge-info'
+                                    }`}>
+                                      <Sparkles className="w-2 h-2" />
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+                              {auditoria.status !== 'finalizada' && (
+                                <button
+                                  onClick={() => handleRemoveFoto(index)}
+                                  className="absolute top-1 right-1 btn btn-circle btn-xs btn-error"
+                                >
+                                  <X className="w-3 h-3" />
+                                </button>
+                              )}
+                            </div>
+                          ))}
+
+                          {/* Botão adicionar mais */}
+                          {itemModal.fotos.length < MAX_FOTOS_POR_ITEM && auditoria.status !== 'finalizada' && (
+                            <button
+                              onClick={() => fileInputRef.current?.click()}
+                              className="aspect-square border-2 border-dashed border-base-300 rounded-lg flex flex-col items-center justify-center gap-1 hover:border-primary hover:bg-primary/5 transition-colors"
+                            >
+                              <ImageIcon className="w-6 h-6 text-base-content/40" />
+                              <span className="text-xs text-base-content/60">Adicionar</span>
+                            </button>
+                          )}
+                        </div>
+
+                        {itemModal.fotos.length === 0 && auditoria.status !== 'finalizada' && (
+                          <button
+                            onClick={() => fileInputRef.current?.click()}
+                            className="w-full h-24 border-2 border-dashed border-base-300 rounded-lg flex flex-col items-center justify-center gap-2 hover:border-primary hover:bg-primary/5 transition-colors"
+                          >
+                            <Camera className="w-8 h-8 text-base-content/40" />
+                            <span className="text-sm text-base-content/60">Clique para adicionar fotos (até {MAX_FOTOS_POR_ITEM})</span>
+                          </button>
+                        )}
+                        {itemModal.fotos.length === 0 && auditoria.status === 'finalizada' && (
+                          <div className="text-center py-8 text-base-content/60">
+                            <Camera className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                            <p>Nenhuma foto foi adicionada a este item</p>
+                          </div>
+                        )}
+
+                        {/* Análises de fotos (se houver) */}
+                        {itemModal.fotos.some(f => f.analiseIa) && (
+                          <div className="mt-4 space-y-3">
+                            {itemModal.fotos.map((foto, index) =>
+                              foto.analiseIa && (
+                                <div key={index} className="alert alert-info text-sm">
+                                  <Sparkles className="w-4 h-4" />
+                                  <div className="flex-1">
+                                    <p className="font-medium">Análise da Foto {index + 1}:</p>
+                                    <p className="text-xs mt-1">{foto.analiseIa.descricao}</p>
+                                  </div>
+                                </div>
+                              )
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
 
