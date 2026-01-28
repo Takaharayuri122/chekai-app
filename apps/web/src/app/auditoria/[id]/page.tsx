@@ -146,8 +146,10 @@ export default function AuditoriaPage() {
 
       // Alt+1 = Fotos, Alt+2 = Observação
       if (e.altKey && e.key === '1' && algmaOpcaoExigeFoto(itemModal.item)) {
+        e.preventDefault();
         setActiveTab('fotos');
       } else if (e.altKey && e.key === '2') {
+        e.preventDefault();
         setActiveTab('observacao');
       }
     };
@@ -1100,6 +1102,7 @@ export default function AuditoriaPage() {
                         className={`tab gap-2 ${activeTab === 'fotos' ? 'tab-active' : ''}`}
                         onClick={() => setActiveTab('fotos')}
                         title="Alt+1 para alternar"
+                        aria-keyshortcuts="Alt+1"
                       >
                         <Camera className="w-4 h-4" />
                         Fotos
@@ -1122,6 +1125,7 @@ export default function AuditoriaPage() {
                         className={`tab gap-2 ${activeTab === 'observacao' ? 'tab-active' : ''}`}
                         onClick={() => setActiveTab('observacao')}
                         title="Alt+2 para alternar"
+                        aria-keyshortcuts="Alt+2"
                       >
                         <MessageSquare className="w-4 h-4" />
                         Observação
@@ -1225,7 +1229,7 @@ export default function AuditoriaPage() {
                                   <Sparkles className="w-4 h-4" />
                                   <div className="flex-1">
                                     <p className="font-medium">Análise da Foto {index + 1}:</p>
-                                    <p className="text-xs mt-1">{foto.analiseIa.descricao}</p>
+                                    <p className="text-xs mt-1">{foto.analiseIa.descricaoIa}</p>
                                   </div>
                                 </div>
                               )
