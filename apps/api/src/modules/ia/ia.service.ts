@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
 import { LegislacaoService } from '../legislacao/legislacao.service';
 import { CreditoService } from '../credito/credito.service';
+import { RateLimitAnaliseImagemService } from './rate-limit-analise-imagem.service';
 import { PerfilUsuario } from '../usuario/entities/usuario.entity';
 import { ProvedorIa } from '../credito/entities/uso-credito.entity';
 
@@ -40,6 +41,7 @@ export class IaService {
     private readonly configService: ConfigService,
     private readonly legislacaoService: LegislacaoService,
     private readonly creditoService: CreditoService,
+    private readonly rateLimitAnaliseImagemService: RateLimitAnaliseImagemService,
   ) {
     // Cliente DeepSeek para textos
     const deepseekApiKey = this.configService.get<string>('DEEPSEEK_API_KEY');
@@ -80,10 +82,9 @@ Retorne APENAS um JSON válido (sem markdown, sem backticks) com:
 Se não identificar não conformidades, retorne:
 {"tipoNaoConformidade": "Nenhuma identificada", "descricao": "A imagem não apresenta não conformidades visíveis", "gravidade": "baixa", "sugestoes": []}`;
 
-    let gestorId: string | undefined;
     if (usuario && usuario.perfil !== PerfilUsuario.MASTER) {
-      gestorId = this.creditoService.identificarGestorId(usuario);
-      await this.creditoService.validarSaldoDisponivel(gestorId);
+      const gestorId = this.creditoService.identificarGestorId(usuario);
+      this.rateLimitAnaliseImagemService.verificarEPregistrar(gestorId);
     }
 
     const response = await this.openaiVision.chat.completions.create({
@@ -107,19 +108,6 @@ Se não identificar não conformidades, retorne:
     });
 
     const content = response.choices[0]?.message?.content || '{}';
-    const usage = response.usage;
-    if (gestorId && usuario && usage) {
-      await this.creditoService.registrarUso({
-        gestorId,
-        usuarioId: usuario.id,
-        provedor: ProvedorIa.OPENAI,
-        modelo: 'gpt-4o-mini',
-        tokensInput: usage.prompt_tokens || 0,
-        tokensOutput: usage.completion_tokens || 0,
-        metodoChamado: 'analisarImagem',
-        contexto: `Análise de imagem: ${contexto}`,
-      });
-    }
     try {
       // Remove possíveis backticks de markdown
       const cleanContent = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();

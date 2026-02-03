@@ -147,7 +147,7 @@ export default function HomePage() {
 
   useEffect(() => {
     if (_hasHydrated && isAuthenticated) {
-      router.push('/dashboard');
+      router.push('/admin/dashboard');
     }
   }, [isAuthenticated, _hasHydrated, router]);
 

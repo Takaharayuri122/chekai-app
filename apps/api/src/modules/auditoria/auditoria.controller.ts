@@ -28,6 +28,8 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { AuditoriaService } from './auditoria.service';
 import { RelatorioPdfPuppeteerService } from './services/relatorio-pdf-puppeteer.service';
+import { ComprimirImagemService } from './services/comprimir-imagem.service';
+import { ExtrairExifService } from './services/extrair-exif.service';
 import { SupabaseService } from '../supabase/supabase.service';
 import {
   IniciarAuditoriaDto,
@@ -56,6 +58,8 @@ export class AuditoriaController {
   constructor(
     private readonly auditoriaService: AuditoriaService,
     private readonly relatorioPdfPuppeteerService: RelatorioPdfPuppeteerService,
+    private readonly comprimirImagemService: ComprimirImagemService,
+    private readonly extrairExifService: ExtrairExifService,
     private readonly supabaseService: SupabaseService,
     private readonly configService: ConfigService,
   ) {
@@ -126,13 +130,27 @@ export class AuditoriaController {
     if (!file) {
       throw new BadRequestException('Arquivo de imagem é obrigatório');
     }
-    // Converte para base64 data URL para armazenamento
-    const mimeType = file.mimetype || 'image/jpeg';
-    const base64 = file.buffer.toString('base64');
-    const dataUrl = `data:${mimeType};base64,${base64}`;
+    const mimeTypeEntrada = file.mimetype || 'image/jpeg';
+    if (!mimeTypeEntrada.startsWith('image/')) {
+      throw new BadRequestException('O arquivo deve ser uma imagem (JPEG, PNG, WebP, etc.)');
+    }
+    const exif = await this.extrairExifService.extrair(file.buffer);
+    let resultado;
+    try {
+      resultado = await this.comprimirImagemService.comprimir(file.buffer, mimeTypeEntrada);
+    } catch {
+      throw new BadRequestException(
+        'Não foi possível processar a imagem. Envie um arquivo de imagem válido (JPEG, PNG ou WebP).',
+      );
+    }
+    const base64 = resultado.buffer.toString('base64');
+    const dataUrl = `data:${resultado.mimeType};base64,${base64}`;
     const foto = await this.auditoriaService.adicionarFoto(itemId, {
       url: dataUrl,
       nomeOriginal: file.originalname,
+      mimeType: resultado.mimeType,
+      tamanhoBytes: resultado.buffer.length,
+      exif: exif ?? undefined,
       latitude: body.latitude ? parseFloat(body.latitude) : undefined,
       longitude: body.longitude ? parseFloat(body.longitude) : undefined,
     });
@@ -234,77 +252,75 @@ export class AuditoriaController {
     @Res() res: Response,
   ): Promise<void> {
     const auditoria = await this.auditoriaService.buscarAuditoriaPorId(id, usuario);
-    
+
     if (auditoria.status !== 'finalizada') {
       throw new BadRequestException('Apenas auditorias finalizadas podem gerar PDF');
     }
 
+    const pdfGeradoEm = auditoria.pdfGeradoEm ? new Date(auditoria.pdfGeradoEm) : null;
+    const atualizadoEm = auditoria.atualizadoEm ? new Date(auditoria.atualizadoEm) : null;
+    const auditoriaAlteradaAposPdf =
+      !pdfGeradoEm || (atualizadoEm && atualizadoEm.getTime() > pdfGeradoEm.getTime());
+
     let pdfBuffer: Buffer;
     let pdfUrl = auditoria.pdfUrl;
 
-    // Primeiro, verificar se já existe PDF no bucket
-    const pdfExistenteNoBucket = await this.relatorioPdfPuppeteerService.verificarPdfExistente(id);
-    
-    if (pdfExistenteNoBucket) {
-      // Se existe no bucket, apenas baixar
-      const supabase = this.supabaseService.getClient();
-      const urlParts = pdfExistenteNoBucket.split(`/storage/v1/object/public/${this.bucketName}/`);
-      const filePath = urlParts.length > 1 ? urlParts[1] : null;
-      
-      if (filePath) {
-        const { data, error } = await supabase.storage
-          .from(this.bucketName)
-          .download(filePath);
-        
-        if (!error && data) {
-          pdfBuffer = Buffer.from(await data.arrayBuffer());
-          pdfUrl = pdfExistenteNoBucket;
-          
-          // Atualizar URL e data no banco se necessário
-          if (!auditoria.pdfUrl || auditoria.pdfUrl !== pdfExistenteNoBucket) {
-            await this.auditoriaService.atualizarPdfUrl(id, pdfExistenteNoBucket);
-          }
-        } else {
-          // Se não conseguiu baixar, gerar novo
-          pdfBuffer = await this.relatorioPdfPuppeteerService.gerarPdf(auditoria);
-          pdfUrl = await this.relatorioPdfPuppeteerService.salvarPdfNoStorage(id, pdfBuffer);
-          await this.auditoriaService.atualizarPdfUrl(id, pdfUrl);
-        }
-      } else {
-        // Se não conseguiu extrair o caminho, gerar novo
-        pdfBuffer = await this.relatorioPdfPuppeteerService.gerarPdf(auditoria);
-        pdfUrl = await this.relatorioPdfPuppeteerService.salvarPdfNoStorage(id, pdfBuffer);
-        await this.auditoriaService.atualizarPdfUrl(id, pdfUrl);
-      }
+    if (auditoriaAlteradaAposPdf) {
+      pdfBuffer = await this.relatorioPdfPuppeteerService.gerarPdf(auditoria);
+      pdfUrl = await this.relatorioPdfPuppeteerService.salvarPdfNoStorage(id, pdfBuffer);
+      await this.auditoriaService.atualizarPdfUrl(id, pdfUrl);
     } else {
-      // Se não existe no bucket, verificar se tem URL no banco e tentar baixar
-      if (pdfUrl) {
+      const pdfExistenteNoBucket = await this.relatorioPdfPuppeteerService.verificarPdfExistente(id);
+
+      if (pdfExistenteNoBucket) {
         const supabase = this.supabaseService.getClient();
-        const urlParts = pdfUrl.split(`/storage/v1/object/public/${this.bucketName}/`);
+        const urlParts = pdfExistenteNoBucket.split(`/storage/v1/object/public/${this.bucketName}/`);
         const filePath = urlParts.length > 1 ? urlParts[1] : null;
-        
+
         if (filePath) {
           const { data, error } = await supabase.storage
             .from(this.bucketName)
             .download(filePath);
-          
+
           if (!error && data) {
-            // PDF existe e foi baixado com sucesso
             pdfBuffer = Buffer.from(await data.arrayBuffer());
+            pdfUrl = pdfExistenteNoBucket;
+            if (!auditoria.pdfUrl || auditoria.pdfUrl !== pdfExistenteNoBucket) {
+              await this.auditoriaService.atualizarPdfUrl(id, pdfExistenteNoBucket);
+            }
           } else {
-            // PDF não existe mais no bucket, gerar novo
             pdfBuffer = await this.relatorioPdfPuppeteerService.gerarPdf(auditoria);
             pdfUrl = await this.relatorioPdfPuppeteerService.salvarPdfNoStorage(id, pdfBuffer);
             await this.auditoriaService.atualizarPdfUrl(id, pdfUrl);
           }
         } else {
-          // URL inválida, gerar novo
+          pdfBuffer = await this.relatorioPdfPuppeteerService.gerarPdf(auditoria);
+          pdfUrl = await this.relatorioPdfPuppeteerService.salvarPdfNoStorage(id, pdfBuffer);
+          await this.auditoriaService.atualizarPdfUrl(id, pdfUrl);
+        }
+      } else if (pdfUrl) {
+        const supabase = this.supabaseService.getClient();
+        const urlParts = pdfUrl.split(`/storage/v1/object/public/${this.bucketName}/`);
+        const filePath = urlParts.length > 1 ? urlParts[1] : null;
+
+        if (filePath) {
+          const { data, error } = await supabase.storage
+            .from(this.bucketName)
+            .download(filePath);
+
+          if (!error && data) {
+            pdfBuffer = Buffer.from(await data.arrayBuffer());
+          } else {
+            pdfBuffer = await this.relatorioPdfPuppeteerService.gerarPdf(auditoria);
+            pdfUrl = await this.relatorioPdfPuppeteerService.salvarPdfNoStorage(id, pdfBuffer);
+            await this.auditoriaService.atualizarPdfUrl(id, pdfUrl);
+          }
+        } else {
           pdfBuffer = await this.relatorioPdfPuppeteerService.gerarPdf(auditoria);
           pdfUrl = await this.relatorioPdfPuppeteerService.salvarPdfNoStorage(id, pdfBuffer);
           await this.auditoriaService.atualizarPdfUrl(id, pdfUrl);
         }
       } else {
-        // Não existe PDF, gerar novo
         pdfBuffer = await this.relatorioPdfPuppeteerService.gerarPdf(auditoria);
         pdfUrl = await this.relatorioPdfPuppeteerService.salvarPdfNoStorage(id, pdfBuffer);
         await this.auditoriaService.atualizarPdfUrl(id, pdfUrl);

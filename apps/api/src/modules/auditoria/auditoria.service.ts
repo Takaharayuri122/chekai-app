@@ -12,6 +12,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Auditoria, StatusAuditoria } from './entities/auditoria.entity';
 import { AuditoriaItem, RespostaItem } from './entities/auditoria-item.entity';
+import { TemplateItem } from '../checklist/entities/template-item.entity';
 import { Foto } from './entities/foto.entity';
 import { ChecklistService } from '../checklist/checklist.service';
 import { PerfilUsuario } from '../usuario/entities/usuario.entity';
@@ -242,20 +243,19 @@ export class AuditoriaService {
     item.complementoDescricao = dto.complementoDescricao ?? item.complementoDescricao;
     item.planoAcaoSugerido = dto.planoAcaoSugerido ?? item.planoAcaoSugerido;
     item.referenciaLegal = dto.referenciaLegal ?? item.referenciaLegal;
-    // Calcular pontuação: apenas "conforme" recebe pontuação
-    // Para opções personalizadas, assumimos que apenas a primeira opção é "conforme"
-    // (pode ser ajustado no futuro com um campo específico no template)
-    if (dto.resposta === RespostaItem.CONFORME) {
-      item.pontuacao = item.templateItem?.peso ?? 1;
-    } else if (templateItem?.usarRespostasPersonalizadas && templateItem?.opcoesResposta && templateItem.opcoesResposta.length > 0) {
-      // Para opções personalizadas, a primeira opção é considerada "conforme"
-      if (dto.resposta === templateItem.opcoesResposta[0]) {
-        item.pontuacao = item.templateItem?.peso ?? 1;
-      } else {
-        item.pontuacao = 0;
-      }
+    const configOpcao = templateItem?.opcoesRespostaConfig?.find(
+      (c) => c.valor === dto.resposta,
+    );
+    if (configOpcao?.pontuacao != null) {
+      item.pontuacao = configOpcao.pontuacao;
     } else {
-      item.pontuacao = 0;
+      const peso = item.templateItem?.peso ?? 1;
+      const isConforme =
+        dto.resposta === RespostaItem.CONFORME ||
+        (templateItem?.usarRespostasPersonalizadas &&
+          templateItem?.opcoesResposta?.length > 0 &&
+          dto.resposta === templateItem.opcoesResposta[0]);
+      item.pontuacao = isConforme ? (peso > 0 ? peso : 0) : peso < 0 ? peso : 0;
     }
     return this.itemRepository.save(item);
   }
@@ -269,6 +269,8 @@ export class AuditoriaService {
       url: string;
       nomeOriginal?: string;
       mimeType?: string;
+      tamanhoBytes?: number;
+      exif?: Record<string, unknown> | null;
       latitude?: number;
       longitude?: number;
     },
@@ -320,6 +322,22 @@ export class AuditoriaService {
   }
 
   /**
+   * Retorna a pontuação máxima possível para um item (por opções ou pelo peso).
+   */
+  private getPontuacaoMaximaItem(templateItem: TemplateItem | null | undefined): number {
+    if (!templateItem) return 0;
+    const configs = templateItem.opcoesRespostaConfig || [];
+    const peso = templateItem.peso ?? 1;
+    const todasComPontuacao =
+      configs.length > 0 &&
+      configs.every((c) => c.pontuacao != null && c.pontuacao !== undefined);
+    if (todasComPontuacao) {
+      return Math.max(0, ...configs.map((c) => Number(c.pontuacao)));
+    }
+    return Math.max(0, peso);
+  }
+
+  /**
    * Finaliza uma auditoria.
    */
   async finalizarAuditoria(
@@ -346,7 +364,7 @@ export class AuditoriaService {
       0,
     );
     const pontuacaoMaxima = auditoria.itens.reduce(
-      (acc, item) => acc + (item.templateItem?.peso ?? 1),
+      (acc, item) => acc + this.getPontuacaoMaximaItem(item.templateItem),
       0,
     );
     const pontuacaoPercentual =
@@ -487,12 +505,7 @@ export class AuditoriaService {
         this.logger.warn(`[gerarResumoExecutivo] Auditoria não está finalizada. Status: ${auditoria.status}`);
         throw new BadRequestException('Apenas auditorias finalizadas podem gerar resumo executivo');
       }
-      
-      if (auditoria.resumoExecutivo) {
-        this.logger.log(`[gerarResumoExecutivo] Resumo já existe, retornando resumo salvo`);
-        return auditoria.resumoExecutivo;
-      }
-      
+
       this.logger.log(`[gerarResumoExecutivo] Processando ${auditoria.itens?.length || 0} itens da auditoria`);
       const itensPorGrupo = new Map<string, AuditoriaItem[]>();
       auditoria.itens.forEach((item) => {
@@ -509,7 +522,7 @@ export class AuditoriaService {
         const primeiroItem = itens[0];
         const grupoNome = primeiroItem.templateItem?.grupo?.nome || 'Sem Grupo';
         const pontuacaoPossivel = itens.reduce(
-          (acc, item) => acc + (item.templateItem?.peso ?? 1),
+          (acc, item) => acc + this.getPontuacaoMaximaItem(item.templateItem),
           0,
         );
         const pontuacaoObtida = itens.reduce((acc, item) => acc + item.pontuacao, 0);
@@ -563,6 +576,7 @@ export class AuditoriaService {
       this.logger.log(`[gerarResumoExecutivo] Resumo gerado com sucesso. Salvando na auditoria...`);
       
       auditoria.resumoExecutivo = resumo;
+      auditoria.resumoExecutivoGeradoEm = new Date();
       await this.auditoriaRepository.save(auditoria);
       
       this.logger.log(`[gerarResumoExecutivo] Resumo salvo com sucesso na auditoria ${auditoriaId}`);

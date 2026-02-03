@@ -94,7 +94,7 @@ export default function LoginPage() {
       setAuth(response.accessToken, response.usuario);
       toastService.success('Login realizado com sucesso!');
       analyticsEvents.login('otp');
-      router.push('/dashboard');
+      router.push('/admin/dashboard');
     } catch (error) {
       analyticsEvents.error('validar_otp_failed', error instanceof Error ? error.message : 'Erro desconhecido');
     } finally {

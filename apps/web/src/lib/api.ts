@@ -526,6 +526,7 @@ export interface OpcaoRespostaConfig {
   valor: string;
   fotoObrigatoria: boolean;
   observacaoObrigatoria: boolean;
+  pontuacao?: number;
 }
 
 export interface CriarTemplateItemRequest {
@@ -705,6 +706,8 @@ export interface Auditoria {
     riscoGeral: 'baixo' | 'medio' | 'alto' | 'critico';
     tendencias: string[];
   } | null;
+  resumoExecutivoGeradoEm?: string | null;
+  atualizadoEm?: string;
 }
 
 export interface AuditoriaItem {
@@ -718,7 +721,7 @@ export interface AuditoriaItem {
   planoAcaoSugerido: string;
   referenciaLegal: string;
   templateItem: TemplateItem;
-  fotos: { id: string; url: string; analiseIa?: string }[];
+  fotos: { id: string; url: string; analiseIa?: string; exif?: Record<string, unknown> | null }[];
 }
 
 export interface AnaliseChecklistResponse {

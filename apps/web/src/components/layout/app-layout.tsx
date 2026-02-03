@@ -20,10 +20,8 @@ export function AppLayout({ children }: AppLayoutProps) {
       return;
     }
     if (!isAuthenticated && !redirectAttempted.current) {
-      const isLoginPage = pathname === '/login';
-      const isCadastroPage = pathname === '/cadastro';
-      const isPublicPage = isLoginPage || isCadastroPage;
-      if (!isPublicPage) {
+      const isAdminRoute = pathname.startsWith('/admin');
+      if (isAdminRoute) {
         redirectAttempted.current = true;
         router.push('/login');
       }
@@ -42,11 +40,6 @@ export function AppLayout({ children }: AppLayoutProps) {
   }
 
   if (!isAuthenticated) {
-    const isLoginPage = pathname === '/login';
-    const isCadastroPage = pathname === '/cadastro';
-    if (isLoginPage || isCadastroPage) {
-      return <>{children}</>;
-    }
     return (
       <div className="min-h-screen flex items-center justify-center bg-base-200">
         <span className="loading loading-spinner loading-lg text-primary"></span>

@@ -7,6 +7,8 @@ import {
   ValidateNested,
   IsNumber,
   IsBoolean,
+  Min,
+  Max,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
@@ -22,6 +24,13 @@ export class OpcaoRespostaConfigDto {
 
   @IsBoolean()
   observacaoObrigatoria: boolean;
+
+  @ApiPropertyOptional({ description: 'Pontuação desta opção de resposta (-10 a 10)' })
+  @IsNumber()
+  @Min(-10)
+  @Max(10)
+  @IsOptional()
+  pontuacao?: number;
 }
 
 /**
@@ -43,8 +52,10 @@ export class CriarTemplateItemDto {
   @IsOptional()
   criticidade?: CriticidadeItem;
 
-  @ApiPropertyOptional({ description: 'Peso do item para pontuação', example: 1 })
+  @ApiPropertyOptional({ description: 'Peso do item (positivo soma ao conforme, negativo penaliza o não conforme)', example: 1 })
   @IsNumber()
+  @Min(-10)
+  @Max(10)
   @IsOptional()
   peso?: number;
 

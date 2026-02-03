@@ -69,13 +69,74 @@ export class RelatorioPdfPuppeteerService {
       
       this.logger.log(`Convertendo HTML para PDF para auditoria ${auditoria.id} (HTML: ${html.length} caracteres)`);
       
-      // Configurar encoding UTF-8 explicitamente
       await page.setContent(html, {
-        waitUntil: 'networkidle0',
+        waitUntil: 'domcontentloaded',
         timeout: 60000,
       });
 
-      // Aguardar um pouco para garantir que tudo foi renderizado
+      const fotos: { id: string; url: string }[] = [];
+      auditoria.itens?.forEach((item) => {
+        item.fotos?.forEach((foto) => {
+          if (foto.id && foto.url) {
+            fotos.push({ id: foto.id, url: foto.url });
+          }
+        });
+      });
+      for (const { id, url } of fotos) {
+        await page.evaluate(
+          (fotoId: string, fotoUrl: string) => {
+            const img = Array.from(document.querySelectorAll<HTMLImageElement>('img[data-foto-id]'))
+              .find((el) => el.getAttribute('data-foto-id') === fotoId);
+            if (img) {
+              img.src = fotoUrl;
+            }
+          },
+          id,
+          url,
+        );
+      }
+      if (fotos.length > 0) {
+        await page.evaluate(() => Promise.all(
+          Array.from(document.images)
+            .filter((img) => img.dataset.fotoId)
+            .map((img) => (img.complete ? Promise.resolve() : new Promise((r) => { img.onload = r; img.onerror = r; }))),
+        ));
+        await page.evaluate(() => {
+          const maxSize = 200;
+          document.querySelectorAll<HTMLImageElement>('img[data-foto-id]').forEach((img) => {
+            if (!img.complete || !img.naturalWidth) return;
+            const w = img.naturalWidth;
+            const h = img.naturalHeight;
+            let cw = w;
+            let ch = h;
+            if (w > maxSize || h > maxSize) {
+              if (w > h) {
+                cw = maxSize;
+                ch = Math.round((h * maxSize) / w);
+              } else {
+                ch = maxSize;
+                cw = Math.round((w * maxSize) / h);
+              }
+            }
+            const canvas = document.createElement('canvas');
+            canvas.width = cw;
+            canvas.height = ch;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return;
+            ctx.drawImage(img, 0, 0, cw, ch);
+            try {
+              const dataUrl = canvas.toDataURL('image/jpeg', 0.78);
+              if (dataUrl && dataUrl.length > 0) {
+                img.src = dataUrl;
+              }
+            } catch {
+              // mantém src original se canvas falhar
+            }
+          });
+        });
+        await new Promise((r) => setTimeout(r, 200));
+      }
+
       await page.evaluateHandle('document.fonts.ready');
 
       const pdfBuffer = await page.pdf({
@@ -130,7 +191,7 @@ export class RelatorioPdfPuppeteerService {
         this.bucketName,
         {
           public: true,
-          fileSizeLimit: 50 * 1024 * 1024, // 50MB
+          fileSizeLimit: 100 * 1024 * 1024, // 100MB
           allowedMimeTypes: ['application/pdf'],
         },
       );

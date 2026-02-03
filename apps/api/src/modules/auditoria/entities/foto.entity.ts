@@ -37,6 +37,9 @@ export class Foto {
   @Column({ type: 'timestamp', nullable: true })
   dataCaptura: Date;
 
+  @Column({ type: 'jsonb', nullable: true })
+  exif: Record<string, unknown> | null;
+
   @Column({ type: 'text', nullable: true })
   analiseIa: string;
 

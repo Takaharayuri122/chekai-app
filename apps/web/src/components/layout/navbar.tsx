@@ -24,21 +24,21 @@ import {
 import { useAuthStore, PerfilUsuario } from '@/lib/store';
 
 const allNavItems = [
-  { href: '/dashboard', label: 'Início', icon: Home, roles: [PerfilUsuario.MASTER, PerfilUsuario.GESTOR, PerfilUsuario.AUDITOR] },
-  { href: '/auditoria/nova', label: 'Nova', icon: Plus, roles: [PerfilUsuario.AUDITOR] },
-  { href: '/clientes', label: 'Clientes', icon: Building2, roles: [PerfilUsuario.MASTER, PerfilUsuario.GESTOR] },
-  { href: '/templates', label: 'Checklists', icon: FileText, roles: [PerfilUsuario.MASTER, PerfilUsuario.GESTOR] },
-  { href: '/auditorias', label: 'Auditorias', icon: ClipboardCheck, roles: [PerfilUsuario.MASTER, PerfilUsuario.GESTOR, PerfilUsuario.AUDITOR] },
-  { href: '/usuarios', label: 'Usuários', icon: User, roles: [PerfilUsuario.MASTER, PerfilUsuario.GESTOR] },
-  { href: '/gestor/limites', label: 'Meus Limites', icon: TrendingUp, roles: [PerfilUsuario.GESTOR] },
-  { href: '/gestor/creditos', label: 'Meus Créditos', icon: Coins, roles: [PerfilUsuario.GESTOR] },
+  { href: '/admin/dashboard', label: 'Início', icon: Home, roles: [PerfilUsuario.MASTER, PerfilUsuario.GESTOR, PerfilUsuario.AUDITOR] },
+  { href: '/admin/auditoria/nova', label: 'Nova', icon: Plus, roles: [PerfilUsuario.AUDITOR] },
+  { href: '/admin/clientes', label: 'Clientes', icon: Building2, roles: [PerfilUsuario.MASTER, PerfilUsuario.GESTOR] },
+  { href: '/admin/templates', label: 'Checklists', icon: FileText, roles: [PerfilUsuario.MASTER, PerfilUsuario.GESTOR] },
+  { href: '/admin/auditorias', label: 'Auditorias', icon: ClipboardCheck, roles: [PerfilUsuario.MASTER, PerfilUsuario.GESTOR, PerfilUsuario.AUDITOR] },
+  { href: '/admin/usuarios', label: 'Usuários', icon: User, roles: [PerfilUsuario.MASTER, PerfilUsuario.GESTOR] },
+  { href: '/admin/gestor/limites', label: 'Meus Limites', icon: TrendingUp, roles: [PerfilUsuario.GESTOR] },
+  { href: '/admin/gestor/creditos', label: 'Meus Créditos', icon: Coins, roles: [PerfilUsuario.GESTOR] },
 ];
 
 const administrativoItems = [
-  { href: '/planos', label: 'Planos', icon: Package },
-  { href: '/planos/assinaturas', label: 'Assinaturas', icon: UserCheck },
-  { href: '/configuracoes-credito', label: 'Config Créditos', icon: Settings },
-  { href: '/auditoria-tokens', label: 'Auditoria Tokens', icon: BarChart3 },
+  { href: '/admin/planos', label: 'Planos', icon: Package },
+  { href: '/admin/planos/assinaturas', label: 'Assinaturas', icon: UserCheck },
+  { href: '/admin/configuracoes-credito', label: 'Config Créditos', icon: Settings },
+  { href: '/admin/auditoria-tokens', label: 'Auditoria Tokens', icon: BarChart3 },
 ];
 
 export function Navbar() {
@@ -62,7 +62,7 @@ export function Navbar() {
       {/* Top Navbar - Desktop */}
       <div className="navbar bg-base-100 border-b border-base-300 px-4 lg:px-8 hidden md:flex sticky top-0 z-40">
         <div className="flex-1">
-          <Link href="/dashboard" className="flex items-center gap-2">
+          <Link href="/admin/dashboard" className="flex items-center gap-2">
             <Image
               src="/images/logo-large.png"
               alt="ChekAI"
@@ -148,7 +148,7 @@ export function Navbar() {
                 <span>{usuario?.nome || 'Usuário'}</span>
               </li>
               <li>
-                <Link href="/perfil">
+                <Link href="/admin/perfil">
                   <User className="w-4 h-4" />
                   Meu Perfil
                 </Link>
@@ -156,25 +156,25 @@ export function Navbar() {
               {isMaster() && (
                 <>
                   <li>
-                    <Link href="/usuarios">
+                    <Link href="/admin/usuarios">
                       <User className="w-4 h-4" />
                       Usuários
                     </Link>
                   </li>
                   <li>
-                    <Link href="/planos">
+                    <Link href="/admin/planos">
                       <Package className="w-4 h-4" />
                       Planos
                     </Link>
                   </li>
                   <li>
-                    <Link href="/planos/assinaturas">
+                    <Link href="/admin/planos/assinaturas">
                       <UserCheck className="w-4 h-4" />
                       Assinaturas
                     </Link>
                   </li>
                   <li>
-                    <Link href="/configuracoes-credito">
+                    <Link href="/admin/configuracoes-credito">
                       <Settings className="w-4 h-4" />
                       Config. Créditos
                     </Link>
@@ -184,13 +184,13 @@ export function Navbar() {
               {isGestor() && !isMaster() && (
                 <>
                   <li>
-                    <Link href="/gestor/limites">
+                    <Link href="/admin/gestor/limites">
                       <TrendingUp className="w-4 h-4" />
                       Meus Limites
                     </Link>
                   </li>
                   <li>
-                    <Link href="/gestor/creditos">
+                    <Link href="/admin/gestor/creditos">
                       <Coins className="w-4 h-4" />
                       Meus Créditos
                     </Link>
@@ -211,7 +211,7 @@ export function Navbar() {
       {/* Mobile Header */}
       <div className="navbar bg-base-100 border-b border-base-300 px-4 md:hidden safe-top sticky top-0 z-40">
         <div className="flex-1">
-          <Link href="/dashboard" className="flex items-center gap-2">
+          <Link href="/admin/dashboard" className="flex items-center gap-2">
             <Image
               src="/images/logo-large.png"
               alt="ChekAI"
@@ -279,7 +279,7 @@ export function Navbar() {
               )}
               <div className="divider my-2"></div>
               <li>
-                <Link href="/perfil" className="text-base py-3">
+                <Link href="/admin/perfil" className="text-base py-3">
                   <User className="w-5 h-5" />
                   Meu Perfil
                 </Link>
@@ -287,19 +287,19 @@ export function Navbar() {
               {isMaster() && (
                 <>
                   <li>
-                    <Link href="/planos" className="text-base py-3">
+                    <Link href="/admin/planos" className="text-base py-3">
                       <Package className="w-5 h-5" />
                       Planos
                     </Link>
                   </li>
                   <li>
-                    <Link href="/planos/assinaturas" className="text-base py-3">
+                    <Link href="/admin/planos/assinaturas" className="text-base py-3">
                       <UserCheck className="w-5 h-5" />
                       Assinaturas
                     </Link>
                   </li>
                   <li>
-                    <Link href="/configuracoes-credito" className="text-base py-3">
+                    <Link href="/admin/configuracoes-credito" className="text-base py-3">
                       <Settings className="w-5 h-5" />
                       Config. Créditos
                     </Link>
@@ -309,13 +309,13 @@ export function Navbar() {
               {isGestor() && !isMaster() && (
                 <>
                   <li>
-                    <Link href="/gestor/limites" className="text-base py-3">
+                    <Link href="/admin/gestor/limites" className="text-base py-3">
                       <TrendingUp className="w-5 h-5" />
                       Meus Limites
                     </Link>
                   </li>
                   <li>
-                    <Link href="/gestor/creditos" className="text-base py-3">
+                    <Link href="/admin/gestor/creditos" className="text-base py-3">
                       <Coins className="w-5 h-5" />
                       Meus Créditos
                     </Link>

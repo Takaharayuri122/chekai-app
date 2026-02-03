@@ -8,6 +8,8 @@ import { AuditoriaService } from './auditoria.service';
 import { AuditoriaController } from './auditoria.controller';
 import { RelatorioPdfPuppeteerService } from './services/relatorio-pdf-puppeteer.service';
 import { RelatorioHtmlService } from './services/relatorio-html.service';
+import { ComprimirImagemService } from './services/comprimir-imagem.service';
+import { ExtrairExifService } from './services/extrair-exif.service';
 import { ChecklistModule } from '../checklist/checklist.module';
 import { PlanoModule } from '../plano/plano.module';
 import { IaModule } from '../ia/ia.module';
@@ -28,7 +30,13 @@ import { SupabaseModule } from '../supabase/supabase.module';
     SupabaseModule,
   ],
   controllers: [AuditoriaController],
-  providers: [AuditoriaService, RelatorioPdfPuppeteerService, RelatorioHtmlService],
+  providers: [
+    AuditoriaService,
+    RelatorioPdfPuppeteerService,
+    RelatorioHtmlService,
+    ComprimirImagemService,
+    ExtrairExifService,
+  ],
   exports: [AuditoriaService],
 })
 export class AuditoriaModule {}

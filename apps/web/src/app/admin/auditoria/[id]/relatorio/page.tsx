@@ -84,7 +84,7 @@ export default function RelatorioPage() {
       const data = await auditoriaService.buscarPorId(id);
       if (data.status !== 'finalizada') {
         toastService.warning('Esta auditoria ainda não foi finalizada');
-        router.push(`/auditoria/${id}`);
+        router.push(`/admin/auditoria/${id}`);
         return;
       }
       setAuditoria(data);
@@ -95,25 +95,10 @@ export default function RelatorioPage() {
         setResumoExecutivo(null);
       }
     } catch {
-      router.push('/dashboard');
+      router.push('/admin/dashboard');
     } finally {
       setLoading(false);
     }
-  };
-
-  const getPontuacaoMaximaItem = (
-    templateItem: { opcoesRespostaConfig?: Array<{ pontuacao?: number }>; peso?: number } | null | undefined,
-  ): number => {
-    if (!templateItem) return 0;
-    const configs = templateItem.opcoesRespostaConfig || [];
-    const peso = templateItem.peso ?? 1;
-    const todasComPontuacao =
-      configs.length > 0 &&
-      configs.every((c) => c.pontuacao != null && c.pontuacao !== undefined);
-    if (todasComPontuacao) {
-      return Math.max(0, ...configs.map((c) => Number(c.pontuacao)));
-    }
-    return Math.max(0, peso);
   };
 
   const calcularMetricas = (aud: Auditoria) => {
@@ -130,7 +115,7 @@ export default function RelatorioPage() {
       const primeiroItem = itens[0];
       const grupoNome = primeiroItem.templateItem?.grupo?.nome || 'Sem Grupo';
       const pontuacaoPossivel = itens.reduce(
-        (acc, item) => acc + getPontuacaoMaximaItem(item.templateItem),
+        (acc, item) => acc + Math.max(0, Number(item.templateItem?.peso ?? 1)),
         0,
       );
       const pontuacaoObtida = itens.reduce((acc, item) => acc + Number(item.pontuacao || 0), 0);
@@ -608,7 +593,7 @@ export default function RelatorioPage() {
           <div className="card-body p-4 sm:p-6">
             <div className="flex items-center justify-between gap-4 mb-4 pb-4 border-b border-base-300">
               <button
-                onClick={() => router.push('/auditorias')}
+                onClick={() => router.push('/admin/auditorias')}
                 className="btn btn-ghost btn-sm"
               >
                 <ArrowLeft className="w-4 h-4" />

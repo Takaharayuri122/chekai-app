@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { IaService } from './ia.service';
 import { IaController } from './ia.controller';
+import { RateLimitAnaliseImagemService } from './rate-limit-analise-imagem.service';
 import { LegislacaoModule } from '../legislacao/legislacao.module';
 import { CreditoModule } from '../credito/credito.module';
 
@@ -10,7 +11,7 @@ import { CreditoModule } from '../credito/credito.module';
 @Module({
   imports: [LegislacaoModule, CreditoModule],
   controllers: [IaController],
-  providers: [IaService],
+  providers: [IaService, RateLimitAnaliseImagemService],
   exports: [IaService],
 })
 export class IaModule {}

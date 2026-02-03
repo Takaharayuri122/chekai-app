@@ -72,6 +72,9 @@ export class Auditoria {
     tendencias: string[];
   } | null;
 
+  @Column({ type: 'timestamp', nullable: true })
+  resumoExecutivoGeradoEm: Date | null;
+
   @Column({ type: 'text', nullable: true })
   pdfUrl: string | null;
 

@@ -351,6 +351,22 @@ export class RelatorioHtmlService {
       padding-top: 8px;
       border-top: 1px solid #E5E9F0;
     }
+    .item-fotos {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 6px;
+    }
+    .item-foto {
+      display: block;
+      max-width: 180px;
+      max-height: 180px;
+      width: auto;
+      height: auto;
+      object-fit: cover;
+      border: 1px solid #E5E9F0;
+      border-radius: 4px;
+    }
     .items {
       display: flex;
       flex-direction: column;
@@ -641,7 +657,14 @@ export class RelatorioHtmlService {
                   ${item.fotos && item.fotos.length > 0
                     ? `<div class="item-detail">
                         <span class="item-detail-label">Fotos: </span>
-                        <span class="item-detail-value">${item.fotos.length} anexada(s)</span>
+                        <div class="item-fotos">
+                          ${item.fotos
+                            .map(
+                              (foto) =>
+                                `<img class="item-foto" data-foto-id="${this.escapeHtml(foto.id)}" alt="Foto do item" />`,
+                            )
+                            .join('')}
+                        </div>
                       </div>`
                     : ''}
                 </div>
@@ -741,6 +764,24 @@ export class RelatorioHtmlService {
   }
 
   /**
+   * Retorna a pontuação máxima possível para um item (por opções ou pelo peso).
+   */
+  private getPontuacaoMaximaItem(
+    templateItem: { opcoesRespostaConfig?: Array<{ pontuacao?: number }>; peso?: number } | null | undefined,
+  ): number {
+    if (!templateItem) return 0;
+    const configs = templateItem.opcoesRespostaConfig || [];
+    const peso = templateItem.peso ?? 1;
+    const todasComPontuacao =
+      configs.length > 0 &&
+      configs.every((c) => c.pontuacao != null && c.pontuacao !== undefined);
+    if (todasComPontuacao) {
+      return Math.max(0, ...configs.map((c) => Number(c.pontuacao)));
+    }
+    return Math.max(0, peso);
+  }
+
+  /**
    * Calcula os grupos de métricas.
    */
   private calcularGruposMetricas(auditoria: Auditoria): GrupoMetricas[] {
@@ -759,7 +800,7 @@ export class RelatorioHtmlService {
         const grupoNome =
           primeiroItem.templateItem?.grupo?.nome || 'Sem Grupo';
         const pontuacaoPossivel = itens.reduce(
-          (acc, item) => acc + Number(item.templateItem?.peso ?? 1),
+          (acc, item) => acc + this.getPontuacaoMaximaItem(item.templateItem),
           0,
         );
         const pontuacaoObtida = itens.reduce(
@@ -842,6 +883,7 @@ export class RelatorioHtmlService {
    * Retorna a classificação do aproveitamento.
    */
   private getClassificacao(aproveitamento: number): string {
+    if (aproveitamento < 0) return 'Abaixo do mínimo';
     if (aproveitamento >= 90) return 'Com Excelência';
     if (aproveitamento >= 80) return 'Bom';
     if (aproveitamento >= 70) return 'Regular';
