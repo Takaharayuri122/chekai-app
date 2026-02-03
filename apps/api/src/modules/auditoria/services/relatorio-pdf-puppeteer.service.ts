@@ -26,27 +26,52 @@ export class RelatorioPdfPuppeteerService {
 
   /**
    * Inicializa o navegador Puppeteer (reutilizável para performance).
+   * Se a conexão estiver fechada, descarta a instância e cria uma nova.
    */
   private async getBrowser(): Promise<Browser> {
-    if (!this.browser) {
-      this.browser = await puppeteer.launch({
-        headless: true,
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-          '--disable-accelerated-2d-canvas',
-          '--disable-gpu',
-        ],
-      });
+    if (this.browser && this.browser.connected) {
+      return this.browser;
     }
+    if (this.browser) {
+      try {
+        await this.browser.close();
+      } catch {
+        // ignora erro ao fechar
+      }
+      this.browser = null;
+    }
+    this.browser = await puppeteer.launch({
+      headless: true,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-accelerated-2d-canvas',
+        '--disable-gpu',
+      ],
+    });
     return this.browser;
+  }
+
+  private resetBrowser(): void {
+    if (this.browser) {
+      this.browser = null;
+    }
   }
 
   /**
    * Gera o PDF do relatório de auditoria a partir do HTML gerado.
+   * @param historico - Lista de auditorias finalizadas da mesma unidade (para seção de evolução no PDF)
    */
-  async gerarPdf(auditoria: Auditoria): Promise<Buffer> {
+  async gerarPdf(auditoria: Auditoria, historico?: Auditoria[]): Promise<Buffer> {
+    return this.executarGeracaoPdf(auditoria, historico, false);
+  }
+
+  private async executarGeracaoPdf(
+    auditoria: Auditoria,
+    historico: Auditoria[] | undefined,
+    jaTentouRecuperar: boolean,
+  ): Promise<Buffer> {
     const browser = await this.getBrowser();
     let page: Page | null = null;
 
@@ -60,7 +85,7 @@ export class RelatorioPdfPuppeteerService {
       });
       
       this.logger.log(`Gerando HTML do relatório para auditoria ${auditoria.id}`);
-      const html = this.relatorioHtmlService.gerarHtml(auditoria);
+      const html = this.relatorioHtmlService.gerarHtml(auditoria, historico);
       
       // Validar que o HTML foi gerado
       if (!html || html.length === 0) {
@@ -159,12 +184,31 @@ export class RelatorioPdfPuppeteerService {
       }
       
       return Buffer.from(pdfBuffer);
-    } catch (error) {
+    } catch (error: unknown) {
+      const isConnectionClosed =
+        error instanceof Error &&
+        (error.name === 'ConnectionClosedError' || error.message?.includes('Connection closed'));
+      if (isConnectionClosed && !jaTentouRecuperar) {
+        this.logger.warn(`Conexão do browser fechada. Reiniciando e tentando novamente para auditoria ${auditoria.id}`);
+        this.resetBrowser();
+        if (page) {
+          try {
+            await page.close();
+          } catch {
+            // ignora
+          }
+        }
+        return this.executarGeracaoPdf(auditoria, historico, true);
+      }
       this.logger.error(`Erro ao gerar PDF para auditoria ${auditoria.id}:`, error);
       throw error;
     } finally {
       if (page) {
-        await page.close();
+        try {
+          await page.close();
+        } catch {
+          // ignora erro ao fechar página
+        }
       }
     }
   }

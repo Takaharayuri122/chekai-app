@@ -20,8 +20,9 @@ interface GrupoMetricas {
 export class RelatorioHtmlService {
   /**
    * Gera o HTML completo do relatório de auditoria.
+   * @param historico - Lista de auditorias finalizadas da mesma unidade (para seção de evolução)
    */
-  gerarHtml(auditoria: Auditoria): string {
+  gerarHtml(auditoria: Auditoria, historico?: Auditoria[]): string {
     const grupos = this.calcularGruposMetricas(auditoria);
     const metricasGerais = this.calcularMetricasGerais(grupos, auditoria);
     const aproveitamento = Number(auditoria.pontuacaoTotal) || 0;
@@ -351,6 +352,147 @@ export class RelatorioHtmlService {
       padding-top: 8px;
       border-top: 1px solid #E5E9F0;
     }
+    .chart-section {
+      margin-top: 6px;
+      padding-top: 6px;
+      border-top: 1px solid #E5E9F0;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .chart-section:first-child {
+      margin-top: 0;
+      padding-top: 0;
+      border-top: none;
+    }
+    .chart-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #1B2A4A;
+      margin-bottom: 6px;
+    }
+    .chart-bars {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .chart-bar-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+    }
+    .chart-bar-label {
+      min-width: 120px;
+      color: #1B2A4A;
+      font-weight: 500;
+    }
+    .chart-bar-track {
+      flex: 1;
+      height: 20px;
+      background: #E5E9F0;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .chart-bar-fill {
+      height: 100%;
+      border-radius: 4px;
+      min-width: 2px;
+    }
+    .chart-bar-value {
+      min-width: 44px;
+      text-align: right;
+      font-weight: 600;
+      color: #1B2A4A;
+    }
+    .chart-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 10px;
+      font-size: 10px;
+      color: #1B2A4A;
+      opacity: 0.8;
+    }
+    .chart-legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .chart-legend-color {
+      width: 12px;
+      height: 12px;
+      border-radius: 2px;
+    }
+    .chart-svg-wrap {
+      margin-top: 2px;
+      margin-bottom: 2px;
+      overflow: visible;
+    }
+    .chart-svg-wrap svg {
+      display: block;
+      overflow: visible;
+      max-width: 100%;
+      height: auto;
+    }
+    .charts-block {
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .distrib-chart {
+      display: flex;
+      width: 100%;
+      align-items: center;
+      margin-top: 10px;
+      gap: 0;
+      min-height: 32px;
+    }
+    .distrib-bar {
+      height: 32px;
+      border-radius: 2px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 600;
+      color: #fff;
+      min-width: 0;
+    }
+    .distrib-bar:first-child { border-radius: 4px 0 0 4px; }
+    .distrib-bar:last-child { border-radius: 0 4px 4px 0; }
+    .distrib-bar:only-child { border-radius: 4px; }
+    .historico-section {
+      margin-top: 16px;
+      padding: 12px;
+      border: 1px solid #E5E9F0;
+      border-radius: 6px;
+      background: #F9FAFB;
+    }
+    .historico-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #1B2A4A;
+      margin-bottom: 10px;
+    }
+    .historico-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .historico-list li {
+      padding: 6px 8px;
+      font-size: 11px;
+      color: #1B2A4A;
+      border-bottom: 1px solid #E5E9F0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .historico-list li:last-child { border-bottom: none; }
+    .historico-list li.atual {
+      background: rgba(0, 184, 169, 0.1);
+      font-weight: 600;
+    }
     .item-fotos {
       display: flex;
       flex-wrap: wrap;
@@ -380,6 +522,14 @@ export class RelatorioHtmlService {
         page-break-after: auto;
         page-break-inside: auto;
       }
+      .charts-block {
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
+      .chart-section {
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
       .grupo-section {
         page-break-inside: auto;
         break-inside: auto;
@@ -403,6 +553,7 @@ export class RelatorioHtmlService {
   <div class="container">
     ${this.gerarCabecalho(auditoria)}
     ${this.gerarMetricasGerais(metricasGerais, aproveitamento, grupos)}
+    ${historico?.length ? this.gerarHistoricoEvolucao(historico, auditoria.id) : ''}
     ${this.gerarDetalhamentoPorGrupo(grupos)}
     ${this.gerarResumoExecutivo(auditoria.resumoExecutivo)}
   </div>
@@ -494,8 +645,229 @@ export class RelatorioHtmlService {
         </div>
       </div>
       ${this.gerarTabelaMetricas(grupos, metricas, aproveitamento)}
+      <div class="charts-block">
+        ${this.gerarGraficoAproveitamentoGrupos(grupos, aproveitamento)}
+        ${this.gerarGraficoDistribuicaoPontos(metricas)}
+      </div>
     </div>
     `;
+  }
+
+  private corBarraAproveitamento(ap: number): string {
+    if (ap >= 70) return '#10b981';
+    if (ap >= 60) return '#f59e0b';
+    return '#ef4444';
+  }
+
+  private gerarGraficoAproveitamentoGrupos(grupos: GrupoMetricas[], aproveitamentoGeral: number): string {
+    const barrasGrupos = grupos.map((g, idx) => ({
+      indice: idx + 1,
+      valor: Math.min(100, Math.max(0, Number(g.aproveitamento ?? 0))),
+      cor: this.corBarraAproveitamento(Number(g.aproveitamento ?? 0)),
+    }));
+    const barras = [
+      ...barrasGrupos,
+      {
+        indice: 'GERAL',
+        valor: Math.min(100, Math.max(0, aproveitamentoGeral)),
+        cor: this.corBarraAproveitamento(aproveitamentoGeral),
+      },
+    ] as { indice: number | string; valor: number; cor: string }[];
+    const w = 560;
+    const h = 260;
+    const margin = { top: 16, right: 16, bottom: 40, left: 44 };
+    const chartW = w - margin.left - margin.right;
+    const chartH = h - margin.top - margin.bottom;
+    const n = barras.length;
+    const barMaxWidth = 48;
+    const gap = n > 0 ? (chartW - n * barMaxWidth) / (n + 1) : 0;
+    const scaleY = (v: number) => margin.top + chartH - (v / 100) * chartH;
+    const gridLines = [0, 25, 50, 75, 100]
+      .map(
+        (tick) =>
+          `<line x1="${margin.left}" y1="${scaleY(tick)}" x2="${margin.left + chartW}" y2="${scaleY(tick)}" stroke="#e5e7eb" stroke-dasharray="3 3" stroke-width="1"/>`,
+      )
+      .join('');
+    const yTicks = [0, 25, 50, 75, 100]
+      .map(
+        (tick) =>
+          `<text x="${margin.left - 8}" y="${scaleY(tick) + 4}" text-anchor="end" font-size="12" fill="#6b7280">${tick}%</text>`,
+      )
+      .join('');
+    const barsSvg = barras
+      .map((b, i) => {
+        const x = margin.left + gap + i * (barMaxWidth + gap);
+        const barH = (b.valor / 100) * chartH;
+        const y = margin.top + chartH - barH;
+        const label = typeof b.indice === 'number' ? String(b.indice) : 'GERAL';
+        return `<g>
+          <rect x="${x}" y="${y}" width="${barMaxWidth}" height="${Math.max(barH, 0)}" fill="${b.cor}" rx="4" ry="4"/>
+          <text x="${x + barMaxWidth / 2}" y="${margin.top + chartH + 18}" text-anchor="middle" font-size="11" fill="#374151">${this.escapeHtml(label)}</text>
+          <text x="${x + barMaxWidth / 2}" y="${y - 6}" text-anchor="middle" font-size="11" font-weight="600" fill="#1f2937">${b.valor.toFixed(1)}%</text>
+        </g>`;
+      })
+      .join('');
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" style="max-width:100%;height:auto;">
+      ${gridLines}
+      ${yTicks}
+      ${barsSvg}
+    </svg>`;
+    return `
+      <div class="chart-section">
+        <h3 class="chart-title">% de aproveitamento por grupo do formulário</h3>
+        <div class="chart-svg-wrap">${svg}</div>
+        <div class="chart-legend">
+          <span class="chart-legend-item"><span class="chart-legend-color" style="background:#10b981;"></span> ≥70% (Bom)</span>
+          <span class="chart-legend-item"><span class="chart-legend-color" style="background:#f59e0b;"></span> 60–70% (Atenção)</span>
+          <span class="chart-legend-item"><span class="chart-legend-color" style="background:#ef4444;"></span> &lt;60% (Crítico)</span>
+        </div>
+      </div>`;
+  }
+
+  private gerarGraficoDistribuicaoPontos(metricas: {
+    pontosPossiveis: number;
+    pontosRealizados: number;
+  }): string {
+    const realizados = metricas.pontosRealizados;
+    const naoObtidos = Math.max(0, metricas.pontosPossiveis - realizados);
+    const total = metricas.pontosPossiveis || 1;
+    const pctReal = total > 0 ? (realizados / total) * 100 : 0;
+    const pctNao = total > 0 ? (naoObtidos / total) * 100 : 0;
+    const w = 400;
+    const h = 200;
+    const cx = w / 2;
+    const cy = 68;
+    const outerR = 52;
+    const innerR = 34;
+    const angleReal = (pctReal / 100) * 360;
+    const angleNao = (pctNao / 100) * 360;
+    const toRad = (deg: number) => (deg * Math.PI) / 180;
+    const arc = (startAngle: number, endAngle: number, r: number) => {
+      const x1 = cx + r * Math.sin(toRad(startAngle));
+      const y1 = cy - r * Math.cos(toRad(startAngle));
+      const x2 = cx + r * Math.sin(toRad(endAngle));
+      const y2 = cy - r * Math.cos(toRad(endAngle));
+      const large = endAngle - startAngle > 180 ? 1 : 0;
+      return `M ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2}`;
+    };
+    const pathReal = angleReal > 0 ? `${arc(0, angleReal, outerR)} L ${cx + innerR * Math.sin(toRad(angleReal))} ${cy - innerR * Math.cos(toRad(angleReal))} ${arc(angleReal, 0, innerR)} Z` : '';
+    const pathNao = angleNao > 0 ? `${arc(angleReal, angleReal + angleNao, outerR)} L ${cx + innerR * Math.sin(toRad(angleReal + angleNao))} ${cy - innerR * Math.cos(toRad(angleReal + angleNao))} ${arc(angleReal + angleNao, angleReal, innerR)} Z` : '';
+    const labelY = 158;
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" style="max-width:100%;height:auto;overflow:visible;">
+      ${pathReal ? `<path d="${pathReal}" fill="#10b981" stroke="#fff" stroke-width="2"/>` : ''}
+      ${pathNao ? `<path d="${pathNao}" fill="#ef4444" stroke="#fff" stroke-width="2"/>` : ''}
+      <circle cx="${cx}" cy="${cy}" r="${innerR - 2}" fill="#fff"/>
+      <text x="${cx}" y="${cy - 4}" text-anchor="middle" font-size="14" font-weight="600" fill="#1f2937">${total}</text>
+      <text x="${cx}" y="${cy + 11}" text-anchor="middle" font-size="11" fill="#6b7280">total</text>
+      <g transform="translate(0, ${labelY})">
+        <g transform="translate(40, 0)">
+          <circle cx="0" cy="0" r="4" fill="#10b981"/>
+          <text x="10" y="3" font-size="11" fill="#374151">Pontos realizados</text>
+        </g>
+        <g transform="translate(220, 0)">
+          <circle cx="0" cy="0" r="4" fill="#ef4444"/>
+          <text x="10" y="3" font-size="11" fill="#374151">Pontos não obtidos</text>
+        </g>
+      </g>
+    </svg>`;
+    return `
+      <div class="chart-section">
+        <h3 class="chart-title">Distribuição de pontos</h3>
+        <div class="chart-svg-wrap">${svg}</div>
+        <p class="legend" style="margin-top:4px;">Legenda: quantidade de pontos e percentual em relação ao total possível.</p>
+      </div>`;
+  }
+
+  private gerarHistoricoEvolucao(historico: Auditoria[], auditoriaId: string): string {
+    const itensOrdenados = [...historico]
+      .filter((a) => a.dataFim != null)
+      .sort((a, b) => new Date(a.dataFim!).getTime() - new Date(b.dataFim!).getTime())
+      .map((a) => ({
+        data: a.dataFim
+          ? new Date(a.dataFim).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })
+          : '—',
+        valor: Math.min(100, Math.max(0, Number(a.pontuacaoTotal) ?? 0)),
+      }));
+    const lineChartSvg =
+      itensOrdenados.length >= 2
+        ? this.gerarSvgGraficoLinhaEvolucao(itensOrdenados)
+        : '';
+    const itens = historico.slice(0, 10).map((a) => {
+      const dataFim = a.dataFim
+        ? new Date(a.dataFim).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })
+        : '—';
+      const valor = Number(a.pontuacaoTotal) ?? 0;
+      const nome = (a.template as { nome?: string })?.nome ?? 'Auditoria';
+      const isAtual = a.id === auditoriaId;
+      return { dataFim, valor, nome, isAtual };
+    });
+    const linhas = itens
+      .map(
+        (i) =>
+          `<li class="${i.isAtual ? 'atual' : ''}"><span>${i.dataFim} — ${this.escapeHtml(i.nome)}${i.isAtual ? ' (esta)' : ''}</span><strong>${i.valor.toFixed(1)}%</strong></li>`,
+      )
+      .join('');
+    return `
+      <div class="section">
+        <h2 class="section-title">Histórico de evolução</h2>
+        ${lineChartSvg}
+        <p class="legend" style="margin-top:4px;">Legenda: linha tracejada = 70% (meta mínima). Ordenado da mais antiga à mais recente.</p>
+        <div class="historico-section" style="margin-top:12px;">
+          <p class="historico-title">Relatórios anteriores (mais recente primeiro)</p>
+          <ul class="historico-list">${linhas}</ul>
+          ${historico.length > 10 ? `<p class="legend">Exibindo as 10 mais recentes de ${historico.length}.</p>` : ''}
+        </div>
+      </div>`;
+  }
+
+  private gerarSvgGraficoLinhaEvolucao(
+    itens: { data: string; valor: number }[],
+  ): string {
+    const w = 600;
+    const h = 260;
+    const margin = { top: 16, right: 16, bottom: 40, left: 44 };
+    const chartW = w - margin.left - margin.right;
+    const chartH = h - margin.top - margin.bottom;
+    const scaleY = (v: number) => margin.top + chartH - (v / 100) * chartH;
+    const scaleX = (i: number) => margin.left + (i / Math.max(1, itens.length - 1)) * chartW;
+    const refY = scaleY(70);
+    const gridLines = [0, 25, 50, 75, 100]
+      .map(
+        (tick) =>
+          `<line x1="${margin.left}" y1="${scaleY(tick)}" x2="${margin.left + chartW}" y2="${scaleY(tick)}" stroke="#e5e7eb" stroke-dasharray="3 3" stroke-width="1"/>`,
+      )
+      .join('');
+    const yTicks = [0, 25, 50, 75, 100]
+      .map(
+        (tick) =>
+          `<text x="${margin.left - 8}" y="${scaleY(tick) + 4}" text-anchor="end" font-size="11" fill="#6b7280">${tick}%</text>`,
+      )
+      .join('');
+    const points = itens.map((p, i) => `${scaleX(i)},${scaleY(p.valor)}`).join(' ');
+    const linePath = itens.length >= 2 ? `M ${points.replace(/ /g, ' L ')}` : '';
+    const dots = itens
+      .map(
+        (p, i) =>
+          `<circle cx="${scaleX(i)}" cy="${scaleY(p.valor)}" r="4" fill="#6366f1"/><text x="${scaleX(i)}" y="${scaleY(p.valor) - 8}" text-anchor="middle" font-size="10" font-weight="600" fill="#1f2937">${p.valor.toFixed(1)}%</text>`,
+      )
+      .join('');
+    const xLabels = itens
+      .map(
+        (p, i) =>
+          `<text x="${scaleX(i)}" y="${margin.top + chartH + 18}" text-anchor="middle" font-size="10" fill="#374151">${this.escapeHtml(p.data)}</text>`,
+      )
+      .join('');
+    return `
+      <div class="chart-svg-wrap">
+        <svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" style="max-width:100%;height:auto;">
+          ${gridLines}
+          <line x1="${margin.left}" y1="${refY}" x2="${margin.left + chartW}" y2="${refY}" stroke="#f59e0b" stroke-dasharray="2 2" stroke-width="1"/>
+          ${yTicks}
+          ${linePath ? `<polyline points="${points}" fill="none" stroke="#6366f1" stroke-width="2"/>` : ''}
+          ${dots}
+          ${xLabels}
+        </svg>
+      </div>`;
   }
 
   /**

@@ -710,6 +710,14 @@ export interface Auditoria {
   atualizadoEm?: string;
 }
 
+export interface AuditoriaHistoricoItem {
+  id: string;
+  dataFim?: string;
+  dataInicio?: string;
+  pontuacaoTotal: number | string;
+  template?: { nome?: string };
+}
+
 export interface AuditoriaItem {
   pontuacao?: number;
   id: string;
@@ -737,6 +745,12 @@ export const auditoriaService = {
   async listar(page = 1, limit = 100): Promise<{ items: Auditoria[] }> {
     const response = await api.get('/auditorias', { params: { page, limit } });
     return response.data.data;
+  },
+
+  async listarHistoricoUnidade(unidadeId: string): Promise<AuditoriaHistoricoItem[]> {
+    const response = await api.get(`/auditorias/historico-unidade/${unidadeId}`);
+    const raw = response.data?.data ?? response.data;
+    return Array.isArray(raw) ? raw : [];
   },
 
   async iniciar(unidadeId: string, templateId: string, latitude?: number, longitude?: number): Promise<Auditoria> {

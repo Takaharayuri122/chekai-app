@@ -21,10 +21,14 @@ import {
   Image as ImageIcon,
 } from 'lucide-react';
 import { AppLayout, PageHeader } from '@/components';
+import { GraficoAproveitamentoGrupos } from '@/components/relatorio/grafico-aproveitamento-grupos';
+import { GraficoDistribuicaoPontos } from '@/components/relatorio/grafico-distribuicao-pontos';
+import { HistoricoEvolucao } from '@/components/relatorio/historico-evolucao';
 import {
   auditoriaService,
   type Auditoria,
   type AuditoriaItem,
+  type AuditoriaHistoricoItem,
 } from '@/lib/api';
 import { toastService } from '@/lib/toast';
 
@@ -78,6 +82,7 @@ export default function RelatorioPage() {
     naoRespondidas: 0,
   });
   const [fotoModal, setFotoModal] = useState<{ url: string; exif?: Record<string, unknown> | null } | null>(null);
+  const [historicoEvolucao, setHistoricoEvolucao] = useState<AuditoriaHistoricoItem[]>([]);
 
   const carregarAuditoria = async () => {
     try {
@@ -223,6 +228,14 @@ export default function RelatorioPage() {
   useEffect(() => {
     carregarAuditoria();
   }, [id]);
+
+  useEffect(() => {
+    if (!auditoria?.unidade?.id) return;
+    auditoriaService
+      .listarHistoricoUnidade(auditoria.unidade.id)
+      .then(setHistoricoEvolucao)
+      .catch(() => setHistoricoEvolucao([]));
+  }, [auditoria?.unidade?.id]);
 
   const formatDate = (date: string) => {
     return new Date(date).toLocaleDateString('pt-BR', {
@@ -424,6 +437,55 @@ export default function RelatorioPage() {
                 </tr>
               </tbody>
             </table>
+
+            <div className="mt-6 pt-6 border-t border-gray-200">
+              <h3 className="text-base font-bold mb-3 text-gray-900">% de aproveitamento por grupo do formulário</h3>
+              <div className="h-[320px] w-full">
+                <GraficoAproveitamentoGrupos
+                  grupos={gruposMetricas.map((g) => ({
+                    grupoId: g.grupoId,
+                    nome: g.nome,
+                    aproveitamento: Number(g.aproveitamento ?? 0),
+                  }))}
+                  aproveitamentoGeral={aproveitamentoSeguro}
+                />
+              </div>
+              <div className="flex flex-wrap justify-center gap-4 mt-3 pt-3 border-t border-gray-200">
+                <span className="text-xs font-medium text-gray-600">Legenda (faixa de aproveitamento):</span>
+                <div className="flex items-center gap-2">
+                  <span className="inline-block w-3 h-3 rounded-sm bg-green-500 shrink-0" aria-hidden />
+                  <span className="text-xs text-gray-700">≥70% (Bom)</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="inline-block w-3 h-3 rounded-sm bg-yellow-500 shrink-0" aria-hidden />
+                  <span className="text-xs text-gray-700">60–70% (Atenção)</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="inline-block w-3 h-3 rounded-sm bg-red-500 shrink-0" aria-hidden />
+                  <span className="text-xs text-gray-700">&lt;60% (Crítico)</span>
+                </div>
+              </div>
+            </div>
+            <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div>
+                <h3 className="text-base font-bold mb-3 text-gray-900">Distribuição de pontos</h3>
+                <div className="h-[280px] w-full">
+                  <GraficoDistribuicaoPontos
+                    pontosPossiveis={metricasGerais.pontosPossiveis}
+                    pontosRealizados={metricasGerais.pontosRealizados}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Histórico de evolução (PDF) */}
+          <div className="border rounded-lg p-6">
+            <HistoricoEvolucao
+              historico={historicoEvolucao}
+              auditoriaAtualId={id}
+              linkBase="/auditoria"
+            />
           </div>
 
           {/* Detalhamento por Grupo */}
@@ -764,6 +826,27 @@ export default function RelatorioPage() {
               </div>
             </div>
 
+            <div className="mt-6 pt-6 border-t border-base-300">
+              <h3 className="text-base font-bold mb-4">% de aproveitamento por grupo do formulário</h3>
+              <GraficoAproveitamentoGrupos
+                grupos={gruposMetricas.map((g) => ({
+                  grupoId: g.grupoId,
+                  nome: g.nome,
+                  aproveitamento: Number(g.aproveitamento ?? 0),
+                }))}
+                aproveitamentoGeral={aproveitamentoSeguro}
+              />
+            </div>
+            <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div>
+                <h3 className="text-base font-bold mb-4">Distribuição de pontos</h3>
+                <GraficoDistribuicaoPontos
+                  pontosPossiveis={metricasGerais.pontosPossiveis}
+                  pontosRealizados={metricasGerais.pontosRealizados}
+                />
+              </div>
+            </div>
+
             {/* Cards de Métricas por Grupo - Mobile */}
             <div className="sm:hidden space-y-3">
               {gruposMetricas.map((grupo) => (
@@ -838,6 +921,17 @@ export default function RelatorioPage() {
                 </p>
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* Histórico de evolução */}
+        <div className="card bg-base-100 shadow-sm border border-base-300">
+          <div className="card-body p-4 sm:p-6">
+            <HistoricoEvolucao
+              historico={historicoEvolucao}
+              auditoriaAtualId={id}
+              linkBase="/auditoria"
+            />
           </div>
         </div>
 

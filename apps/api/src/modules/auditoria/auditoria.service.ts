@@ -124,6 +124,36 @@ export class AuditoriaService {
   }
 
   /**
+   * Lista auditorias finalizadas de uma unidade para exibir histórico de evolução no relatório.
+   * Respeita as mesmas regras de permissão (auditor vê só as suas, gestor as suas e da equipe, master todas).
+   */
+  async listarHistoricoPorUnidade(
+    unidadeId: string,
+    usuarioAutenticado: { id: string; perfil: PerfilUsuario; gestorId?: string },
+  ): Promise<Auditoria[]> {
+    const queryBuilder = this.auditoriaRepository
+      .createQueryBuilder('auditoria')
+      .leftJoinAndSelect('auditoria.template', 'template')
+      .where('auditoria.unidadeId = :unidadeId', { unidadeId })
+      .andWhere('auditoria.status = :status', { status: StatusAuditoria.FINALIZADA });
+    if (usuarioAutenticado.perfil === PerfilUsuario.AUDITOR) {
+      queryBuilder.andWhere('auditoria.consultorId = :consultorId', {
+        consultorId: usuarioAutenticado.id,
+      });
+    } else if (usuarioAutenticado.perfil === PerfilUsuario.GESTOR) {
+      queryBuilder.andWhere(
+        '(auditoria.consultor_id = :gestorId OR EXISTS (SELECT 1 FROM usuarios u WHERE u.id = auditoria.consultor_id AND u.gestor_id = :gestorId))',
+        { gestorId: usuarioAutenticado.id },
+      );
+    }
+    return queryBuilder
+      .orderBy('auditoria.dataFim', 'DESC')
+      .addOrderBy('auditoria.criadoEm', 'DESC')
+      .take(30)
+      .getMany();
+  }
+
+  /**
    * Busca uma auditoria pelo ID, verificando permissões de acesso.
    */
   async buscarAuditoriaPorId(

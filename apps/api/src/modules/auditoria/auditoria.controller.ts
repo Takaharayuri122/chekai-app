@@ -96,6 +96,18 @@ export class AuditoriaController {
     );
   }
 
+  @Get('historico-unidade/:unidadeId')
+  @UseGuards(RolesGuard)
+  @Roles(PerfilUsuario.MASTER, PerfilUsuario.GESTOR, PerfilUsuario.AUDITOR)
+  @ApiOperation({ summary: 'Lista histórico de auditorias finalizadas da unidade (evolução)' })
+  @ApiResponse({ status: 200, description: 'Lista de auditorias finalizadas ordenadas por data' })
+  async listarHistoricoUnidade(
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; gestorId?: string },
+    @Param('unidadeId', ParseUUIDPipe) unidadeId: string,
+  ): Promise<Auditoria[]> {
+    return this.auditoriaService.listarHistoricoPorUnidade(unidadeId, usuario);
+  }
+
   @Put(':id/itens/:itemId')
   @ApiOperation({ summary: 'Responde um item da auditoria' })
   @ApiResponse({ status: 200, description: 'Item respondido' })
@@ -257,6 +269,8 @@ export class AuditoriaController {
       throw new BadRequestException('Apenas auditorias finalizadas podem gerar PDF');
     }
 
+    const historico = await this.auditoriaService.listarHistoricoPorUnidade(auditoria.unidadeId, usuario);
+
     const pdfGeradoEm = auditoria.pdfGeradoEm ? new Date(auditoria.pdfGeradoEm) : null;
     const atualizadoEm = auditoria.atualizadoEm ? new Date(auditoria.atualizadoEm) : null;
     const auditoriaAlteradaAposPdf =
@@ -266,7 +280,7 @@ export class AuditoriaController {
     let pdfUrl = auditoria.pdfUrl;
 
     if (auditoriaAlteradaAposPdf) {
-      pdfBuffer = await this.relatorioPdfPuppeteerService.gerarPdf(auditoria);
+      pdfBuffer = await this.relatorioPdfPuppeteerService.gerarPdf(auditoria, historico);
       pdfUrl = await this.relatorioPdfPuppeteerService.salvarPdfNoStorage(id, pdfBuffer);
       await this.auditoriaService.atualizarPdfUrl(id, pdfUrl);
     } else {
@@ -289,12 +303,12 @@ export class AuditoriaController {
               await this.auditoriaService.atualizarPdfUrl(id, pdfExistenteNoBucket);
             }
           } else {
-            pdfBuffer = await this.relatorioPdfPuppeteerService.gerarPdf(auditoria);
+            pdfBuffer = await this.relatorioPdfPuppeteerService.gerarPdf(auditoria, historico);
             pdfUrl = await this.relatorioPdfPuppeteerService.salvarPdfNoStorage(id, pdfBuffer);
             await this.auditoriaService.atualizarPdfUrl(id, pdfUrl);
           }
         } else {
-          pdfBuffer = await this.relatorioPdfPuppeteerService.gerarPdf(auditoria);
+          pdfBuffer = await this.relatorioPdfPuppeteerService.gerarPdf(auditoria, historico);
           pdfUrl = await this.relatorioPdfPuppeteerService.salvarPdfNoStorage(id, pdfBuffer);
           await this.auditoriaService.atualizarPdfUrl(id, pdfUrl);
         }
@@ -311,17 +325,17 @@ export class AuditoriaController {
           if (!error && data) {
             pdfBuffer = Buffer.from(await data.arrayBuffer());
           } else {
-            pdfBuffer = await this.relatorioPdfPuppeteerService.gerarPdf(auditoria);
+            pdfBuffer = await this.relatorioPdfPuppeteerService.gerarPdf(auditoria, historico);
             pdfUrl = await this.relatorioPdfPuppeteerService.salvarPdfNoStorage(id, pdfBuffer);
             await this.auditoriaService.atualizarPdfUrl(id, pdfUrl);
           }
         } else {
-          pdfBuffer = await this.relatorioPdfPuppeteerService.gerarPdf(auditoria);
+          pdfBuffer = await this.relatorioPdfPuppeteerService.gerarPdf(auditoria, historico);
           pdfUrl = await this.relatorioPdfPuppeteerService.salvarPdfNoStorage(id, pdfBuffer);
           await this.auditoriaService.atualizarPdfUrl(id, pdfUrl);
         }
       } else {
-        pdfBuffer = await this.relatorioPdfPuppeteerService.gerarPdf(auditoria);
+        pdfBuffer = await this.relatorioPdfPuppeteerService.gerarPdf(auditoria, historico);
         pdfUrl = await this.relatorioPdfPuppeteerService.salvarPdfNoStorage(id, pdfBuffer);
         await this.auditoriaService.atualizarPdfUrl(id, pdfUrl);
       }

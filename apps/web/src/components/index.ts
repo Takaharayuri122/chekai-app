@@ -10,6 +10,11 @@ export { ConfirmDialog } from './ui/confirm-dialog';
 export { Emoji } from './ui/emoji';
 export { Tooltip } from './ui/tooltip';
 
+// Relatório
+export { GraficoAproveitamentoGrupos } from './relatorio/grafico-aproveitamento-grupos';
+export { GraficoDistribuicaoPontos } from './relatorio/grafico-distribuicao-pontos';
+export { HistoricoEvolucao } from './relatorio/historico-evolucao';
+
 // Analytics
 export { GoogleAnalytics } from './analytics/google-analytics';
 
