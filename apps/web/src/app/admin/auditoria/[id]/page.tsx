@@ -64,13 +64,6 @@ interface ItemModalState {
 
 const MAX_FOTOS_POR_ITEM = 5;
 
-// Helper function to check if any option requires a photo
-const algmaOpcaoExigeFoto = (item: AuditoriaItem): boolean => {
-  const configs = item.templateItem.opcoesRespostaConfig;
-  if (!configs || configs.length === 0) return false;
-  return configs.some(c => c.fotoObrigatoria);
-};
-
 export default function AuditoriaPage() {
   const params = useParams();
   const router = useRouter();
@@ -129,20 +122,14 @@ export default function AuditoriaPage() {
     carregarAuditoria();
   }, [carregarAuditoria]);
 
-  // Quando abrir modal, definir tab inicial
+  // Quando abrir modal, definir tab inicial (sempre fotos; obrigatoriedade não esconde a tab)
   useEffect(() => {
     if (itemModal) {
-      // Only reset tab if this is a new item (modal just opened or switched items)
       if (prevItemIdRef.current !== itemModal.item.id) {
-        if (algmaOpcaoExigeFoto(itemModal.item)) {
-          setActiveTab('fotos');
-        } else {
-          setActiveTab('observacao');
-        }
+        setActiveTab('fotos');
         prevItemIdRef.current = itemModal.item.id;
       }
     } else {
-      // Reset when modal closes
       prevItemIdRef.current = null;
     }
   }, [itemModal]);
@@ -153,7 +140,7 @@ export default function AuditoriaPage() {
       if (!itemModal) return;
 
       // Alt+1 = Fotos, Alt+2 = Observação
-      if (e.altKey && e.key === '1' && algmaOpcaoExigeFoto(itemModal.item)) {
+      if (e.altKey && e.key === '1') {
         e.preventDefault();
         setActiveTab('fotos');
       } else if (e.altKey && e.key === '2') {
@@ -1158,7 +1145,7 @@ export default function AuditoriaPage() {
               <div className="mb-6">
                 {/* Tab Headers */}
                 <div className="tabs tabs-bordered">
-                  {algmaOpcaoExigeFoto(itemModal.item) && (() => {
+                  {(() => {
                     const opcaoConfigModal = getOpcaoConfig(itemModal.item, itemModal.item.resposta || '');
                     const fotoObrigatoria = opcaoConfigModal?.fotoObrigatoria || false;
 
@@ -1204,8 +1191,8 @@ export default function AuditoriaPage() {
 
                 {/* Tab Content */}
                 <div className="bg-base-100 border-x border-b border-base-300 rounded-b-box p-6 min-h-[300px]">
-                  {/* Tab Fotos */}
-                  {activeTab === 'fotos' && algmaOpcaoExigeFoto(itemModal.item) && (() => {
+                  {/* Tab Fotos - sempre visível; fotoObrigatoria só define se exige pelo menos uma imagem */}
+                  {activeTab === 'fotos' && (() => {
                     const opcaoConfigModal = getOpcaoConfig(itemModal.item, itemModal.item.resposta || '');
                     const fotoObrigatoria = opcaoConfigModal?.fotoObrigatoria || false;
 
