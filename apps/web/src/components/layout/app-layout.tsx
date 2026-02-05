@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
+import { TutorialInstalacaoModal } from '@/components/ui/tutorial-instalacao-modal';
 import { Navbar } from './navbar';
 
 interface AppLayoutProps {
@@ -57,6 +58,7 @@ export function AppLayout({ children }: AppLayoutProps) {
       <main className="pb-20 md:pb-8">
         {children}
       </main>
+      <TutorialInstalacaoModal />
     </div>
   );
 }
