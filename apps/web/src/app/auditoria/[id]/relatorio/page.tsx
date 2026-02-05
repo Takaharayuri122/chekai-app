@@ -31,6 +31,7 @@ import {
   type AuditoriaHistoricoItem,
 } from '@/lib/api';
 import { toastService } from '@/lib/toast';
+import { getPontuacaoMaximaItem } from '@/lib/utils';
 
 const RespostaItem = {
   CONFORME: 'conforme',
@@ -104,21 +105,6 @@ export default function RelatorioPage() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const getPontuacaoMaximaItem = (
-    templateItem: { opcoesRespostaConfig?: Array<{ pontuacao?: number }>; peso?: number } | null | undefined,
-  ): number => {
-    if (!templateItem) return 0;
-    const configs = templateItem.opcoesRespostaConfig || [];
-    const peso = templateItem.peso ?? 1;
-    const todasComPontuacao =
-      configs.length > 0 &&
-      configs.every((c) => c.pontuacao != null && c.pontuacao !== undefined);
-    if (todasComPontuacao) {
-      return Math.max(0, ...configs.map((c) => Number(c.pontuacao)));
-    }
-    return Math.max(0, peso);
   };
 
   const calcularMetricas = (aud: Auditoria) => {

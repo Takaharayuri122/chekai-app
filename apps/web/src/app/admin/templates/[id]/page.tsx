@@ -56,6 +56,7 @@ import {
 } from '@/lib/api';
 import { toastService } from '@/lib/toast';
 import { useAuthStore } from '@/lib/store';
+import { calcularPontuacoesEmSequencia } from '@/lib/utils';
 
 interface ItemFormData extends CriarTemplateItemRequest {
   id?: string;
@@ -573,21 +574,23 @@ export default function EditarTemplatePage() {
   };
 
   const handleAdicionarOpcaoResposta = () => {
-    if (novaOpcaoResposta.trim()) {
-      setItemForm({
-        ...itemForm,
-        opcoesResposta: [...(itemForm.opcoesResposta || []), novaOpcaoResposta.trim()],
-        opcoesRespostaConfig: [
-          ...(itemForm.opcoesRespostaConfig || []),
-          {
-            valor: novaOpcaoResposta.trim(),
-            fotoObrigatoria: false,
-            observacaoObrigatoria: false,
-          }
-        ],
-      });
-      setNovaOpcaoResposta('');
-    }
+    if (!novaOpcaoResposta.trim()) return;
+    if (itemForm.opcoesResposta?.includes(novaOpcaoResposta.trim())) return;
+    const novasOpcoes = [...(itemForm.opcoesResposta || []), novaOpcaoResposta.trim()];
+    const configsExistentes = itemForm.opcoesRespostaConfig || [];
+    const pontuacaoPrimeira = configsExistentes[0]?.pontuacao;
+    const novaConfig = {
+      valor: novaOpcaoResposta.trim(),
+      fotoObrigatoria: false,
+      observacaoObrigatoria: false,
+      pontuacao: pontuacaoPrimeira != null ? pontuacaoPrimeira - (novasOpcoes.length - 1) : undefined,
+    };
+    setItemForm({
+      ...itemForm,
+      opcoesResposta: novasOpcoes,
+      opcoesRespostaConfig: [...configsExistentes, novaConfig],
+    });
+    setNovaOpcaoResposta('');
   };
 
   const handleRemoverOpcaoResposta = (opcao: string) => {
@@ -605,6 +608,24 @@ export default function EditarTemplatePage() {
   ) => {
     setItemForm((prev) => {
       const configs = prev.opcoesRespostaConfig || [];
+      const opcoesOrdenadas = prev.usarRespostasPersonalizadas
+        ? (prev.opcoesResposta || [])
+        : RESPOSTAS_PADRAO.map((r) => r.valor);
+      const idxOpcao = opcoesOrdenadas.indexOf(valor);
+      if (campo === 'pontuacao' && idxOpcao === 0 && typeof value === 'number') {
+        const pontuacoes = calcularPontuacoesEmSequencia(value, opcoesOrdenadas.length);
+        const novasConfigs = opcoesOrdenadas.map((op, i) => {
+          const cfg = configs.find((c) => c.valor === op);
+          return {
+            ...cfg,
+            valor: op,
+            fotoObrigatoria: cfg?.fotoObrigatoria ?? false,
+            observacaoObrigatoria: cfg?.observacaoObrigatoria ?? false,
+            pontuacao: pontuacoes[i],
+          };
+        });
+        return { ...prev, opcoesRespostaConfig: novasConfigs };
+      }
       const novasConfigs = configs.map((config) =>
         config.valor === valor ? { ...config, [campo]: value } : config,
       );
@@ -613,17 +634,20 @@ export default function EditarTemplatePage() {
   };
 
   const handleAdicionarSugestao = (sugestao: string) => {
+    if (itemForm.opcoesResposta?.includes(sugestao)) return;
+    const novasOpcoes = [...(itemForm.opcoesResposta || []), sugestao];
+    const configsExistentes = itemForm.opcoesRespostaConfig || [];
+    const pontuacaoPrimeira = configsExistentes[0]?.pontuacao;
+    const novaConfig = {
+      valor: sugestao,
+      fotoObrigatoria: false,
+      observacaoObrigatoria: false,
+      pontuacao: pontuacaoPrimeira != null ? pontuacaoPrimeira - (novasOpcoes.length - 1) : undefined,
+    };
     setItemForm({
       ...itemForm,
-      opcoesResposta: [...(itemForm.opcoesResposta || []), sugestao],
-      opcoesRespostaConfig: [
-        ...(itemForm.opcoesRespostaConfig || []),
-        {
-          valor: sugestao,
-          fotoObrigatoria: false,
-          observacaoObrigatoria: false,
-        }
-      ],
+      opcoesResposta: novasOpcoes,
+      opcoesRespostaConfig: [...configsExistentes, novaConfig],
     });
   };
 
@@ -1159,6 +1183,11 @@ export default function EditarTemplatePage() {
                     <div className="space-y-2">
                       {itemForm.opcoesResposta.map((opcao, idx) => {
                         const config = itemForm.opcoesRespostaConfig?.find(c => c.valor === opcao);
+                        const primeiraOpcao = itemForm.opcoesResposta?.[0];
+                        const pontuacaoPrimeira = primeiraOpcao
+                          ? itemForm.opcoesRespostaConfig?.find((c) => c.valor === primeiraOpcao)?.pontuacao
+                          : undefined;
+                        const pontuacaoExibida = config?.pontuacao ?? (idx > 0 && pontuacaoPrimeira != null ? pontuacaoPrimeira - idx : '');
                         return (
                           <div key={idx} className="bg-base-100 rounded-lg p-3 space-y-2">
                             <div className="flex items-center justify-between">
@@ -1197,7 +1226,7 @@ export default function EditarTemplatePage() {
                                   max={10}
                                   className="input input-bordered input-sm w-24"
                                   placeholder="—"
-                                  value={config?.pontuacao ?? ''}
+                                  value={pontuacaoExibida}
                                   onChange={(e) => {
                                     const v = e.target.value === '' ? undefined : parseInt(e.target.value, 10);
                                     handleAtualizarOpcaoConfig(opcao, 'pontuacao', v === undefined || Number.isNaN(v) ? undefined : v);
@@ -1240,8 +1269,10 @@ export default function EditarTemplatePage() {
                 <div className="bg-base-200/50 rounded-lg p-4">
                   <span className="text-xs text-base-content/60 font-medium">Configuração de Obrigatoriedade:</span>
                   <div className="space-y-2 mt-3">
-                    {RESPOSTAS_PADRAO.map((resp) => {
+                    {RESPOSTAS_PADRAO.map((resp, idx) => {
                       const config = itemForm.opcoesRespostaConfig?.find(c => c.valor === resp.valor);
+                      const pontuacaoPrimeira = itemForm.opcoesRespostaConfig?.find((c) => c.valor === RESPOSTAS_PADRAO[0].valor)?.pontuacao;
+                      const pontuacaoExibida = config?.pontuacao ?? (idx > 0 && pontuacaoPrimeira != null ? pontuacaoPrimeira - idx : '');
                       return (
                         <div key={resp.valor} className="flex items-center justify-between bg-base-100 rounded p-3">
                           <span className="badge badge-ghost">{resp.label}</span>
@@ -1272,7 +1303,7 @@ export default function EditarTemplatePage() {
                                 max={10}
                                 className="input input-bordered input-sm w-24"
                                 placeholder="—"
-                                value={config?.pontuacao ?? ''}
+                                value={pontuacaoExibida}
                                 onChange={(e) => {
                                   const v = e.target.value === '' ? undefined : parseInt(e.target.value, 10);
                                   handleAtualizarOpcaoConfig(resp.valor, 'pontuacao', v === undefined || Number.isNaN(v) ? undefined : v);

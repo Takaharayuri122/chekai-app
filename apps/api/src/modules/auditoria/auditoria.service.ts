@@ -279,13 +279,14 @@ export class AuditoriaService {
     if (configOpcao?.pontuacao != null) {
       item.pontuacao = configOpcao.pontuacao;
     } else {
-      const peso = item.templateItem?.peso ?? 1;
-      const isConforme =
-        dto.resposta === RespostaItem.CONFORME ||
-        (templateItem?.usarRespostasPersonalizadas &&
-          templateItem?.opcoesResposta?.length > 0 &&
-          dto.resposta === templateItem.opcoesResposta[0]);
-      item.pontuacao = isConforme ? (peso > 0 ? peso : 0) : peso < 0 ? peso : 0;
+      const opcoesOrdenadas = templateItem?.usarRespostasPersonalizadas && templateItem?.opcoesResposta?.length
+        ? templateItem.opcoesResposta
+        : ['conforme', 'nao_conforme', 'nao_aplicavel', 'nao_avaliado'];
+      const indice = opcoesOrdenadas.indexOf(dto.resposta);
+      const configs = templateItem?.opcoesRespostaConfig || [];
+      const configPrimeira = configs.find((c) => c.valor === opcoesOrdenadas[0]);
+      const base = configPrimeira?.pontuacao != null ? configPrimeira.pontuacao : 1;
+      item.pontuacao = indice >= 0 ? base - indice : 0;
     }
     return this.itemRepository.save(item);
   }
@@ -352,19 +353,23 @@ export class AuditoriaService {
   }
 
   /**
-   * Retorna a pontuação máxima possível para um item (por opções ou pelo peso).
+   * Retorna a pontuação máxima possível para um item (por opções ou pela base sequencial).
    */
   private getPontuacaoMaximaItem(templateItem: TemplateItem | null | undefined): number {
     if (!templateItem) return 0;
     const configs = templateItem.opcoesRespostaConfig || [];
-    const peso = templateItem.peso ?? 1;
     const todasComPontuacao =
       configs.length > 0 &&
       configs.every((c) => c.pontuacao != null && c.pontuacao !== undefined);
     if (todasComPontuacao) {
-      return Math.max(0, ...configs.map((c) => Number(c.pontuacao)));
+      return Math.max(...configs.map((c) => Number(c.pontuacao)));
     }
-    return Math.max(0, peso);
+    const opcoesOrdenadas = templateItem.usarRespostasPersonalizadas && templateItem.opcoesResposta?.length
+      ? templateItem.opcoesResposta
+      : ['conforme', 'nao_conforme', 'nao_aplicavel', 'nao_avaliado'];
+    const configPrimeira = configs.find((c) => c.valor === opcoesOrdenadas[0]);
+    const base = configPrimeira?.pontuacao != null ? configPrimeira.pontuacao : 1;
+    return base;
   }
 
   /**

@@ -31,6 +31,7 @@ import {
   type AuditoriaHistoricoItem,
 } from '@/lib/api';
 import { toastService } from '@/lib/toast';
+import { getPontuacaoMaximaItem } from '@/lib/utils';
 
 const RespostaItem = {
   CONFORME: 'conforme',
@@ -120,7 +121,7 @@ export default function RelatorioPage() {
       const primeiroItem = itens[0];
       const grupoNome = primeiroItem.templateItem?.grupo?.nome || 'Sem Grupo';
       const pontuacaoPossivel = itens.reduce(
-        (acc, item) => acc + Math.max(0, Number(item.templateItem?.peso ?? 1)),
+        (acc, item) => acc + getPontuacaoMaximaItem(item.templateItem),
         0,
       );
       const pontuacaoObtida = itens.reduce((acc, item) => acc + Number(item.pontuacao || 0), 0);
