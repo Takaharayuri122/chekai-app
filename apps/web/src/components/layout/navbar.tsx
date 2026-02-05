@@ -22,6 +22,7 @@ import {
   BarChart3,
 } from 'lucide-react';
 import { useAuthStore, PerfilUsuario } from '@/lib/store';
+import { SyncStatus } from '@/components/pwa/sync-status';
 
 const allNavItems = [
   { href: '/admin/dashboard', label: 'Início', icon: Home, roles: [PerfilUsuario.MASTER, PerfilUsuario.GESTOR, PerfilUsuario.AUDITOR] },
@@ -75,6 +76,9 @@ export function Navbar() {
         </div>
 
         <div className="flex-none gap-2">
+          <div className="flex items-center pr-2">
+            <SyncStatus />
+          </div>
           <ul className="menu menu-horizontal px-1 gap-1">
             {navItems.map((item) => {
               const isActive = pathname === item.href || pathname.startsWith(item.href + '/');

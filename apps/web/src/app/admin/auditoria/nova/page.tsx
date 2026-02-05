@@ -12,14 +12,16 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { AppLayout, PageHeader } from '@/components';
-import { 
-  clienteService, 
-  checklistService, 
-  auditoriaService, 
+import {
+  clienteService,
+  checklistService,
   Cliente,
-  ChecklistTemplate 
+  ChecklistTemplate,
 } from '@/lib/api';
 import { toastService } from '@/lib/toast';
+import * as cache from '@/lib/offline/cache';
+import { iniciarAuditoria } from '@/lib/offline/auditoria-offline';
+import { useOfflineStore } from '@/lib/store-offline';
 
 export default function NovaAuditoriaPage() {
   const router = useRouter();
@@ -39,14 +41,35 @@ export default function NovaAuditoriaPage() {
 
   useEffect(() => {
     const carregarDados = async () => {
+      const isOnline = useOfflineStore.getState().isOnline;
       try {
-        const [clientesRes, templatesRes] = await Promise.all([
-          clienteService.listar(),
-          checklistService.listarTemplates(),
-        ]);
-        setClientes(clientesRes.items || []);
-        setTemplates(templatesRes.items || []);
-      } catch (error) {
+        if (isOnline) {
+          const [clientesRes, templatesRes] = await Promise.all([
+            clienteService.listar(),
+            checklistService.listarTemplates(),
+          ]);
+          const clientesItems = clientesRes.items || [];
+          const templatesItems = templatesRes.items || [];
+          setClientes(clientesItems);
+          setTemplates(templatesItems);
+          await cache.salvarClientes(clientesRes);
+          await cache.salvarListaTemplates(templatesRes);
+          for (const t of templatesItems) {
+            await cache.salvarTemplate(t.id, t);
+          }
+        } else {
+          const [clientesCached, templatesCached] = await Promise.all([
+            cache.obterClientes(),
+            cache.obterListaTemplates(),
+          ]);
+          if (clientesCached && typeof clientesCached === 'object' && 'items' in clientesCached) {
+            setClientes((clientesCached as { items: Cliente[] }).items);
+          }
+          if (templatesCached && typeof templatesCached === 'object' && 'items' in templatesCached) {
+            setTemplates((templatesCached as { items: ChecklistTemplate[] }).items);
+          }
+        }
+      } catch {
         // Erro já é tratado pelo interceptor
       } finally {
         setLoading(false);
@@ -75,23 +98,28 @@ export default function NovaAuditoriaPage() {
     );
   };
 
-  const iniciarAuditoria = async () => {
+  const handleIniciarAuditoria = async () => {
     if (!unidadeId || !templateId) return;
 
     setSubmitting(true);
     setError('');
 
     try {
-      const auditoria = await auditoriaService.iniciar(
+      const auditoria = await iniciarAuditoria(
         unidadeId,
         templateId,
         location?.lat,
         location?.lng
       );
-      toastService.success('Auditoria iniciada com sucesso!');
+      const isOnline = useOfflineStore.getState().isOnline;
+      toastService.success(
+        isOnline
+          ? 'Auditoria iniciada com sucesso!'
+          : 'Auditoria salva localmente. Será sincronizada quando você estiver online.'
+      );
       router.push(`/admin/auditoria/${auditoria.id}`);
-    } catch (error) {
-      // Erro já é tratado pelo interceptor
+    } catch (err) {
+      toastService.error(err instanceof Error ? err.message : 'Erro ao iniciar auditoria');
       setSubmitting(false);
     }
   };
@@ -364,7 +392,7 @@ export default function NovaAuditoriaPage() {
                     Voltar
                   </button>
                   <button
-                    onClick={iniciarAuditoria}
+                    onClick={handleIniciarAuditoria}
                     className="btn btn-primary flex-1"
                     disabled={submitting}
                   >

@@ -604,7 +604,7 @@ export default function EditarTemplatePage() {
   const handleAtualizarOpcaoConfig = (
     valor: string,
     campo: 'fotoObrigatoria' | 'observacaoObrigatoria' | 'pontuacao',
-    value: boolean | number | undefined,
+    value: boolean | number | null | undefined,
   ) => {
     setItemForm((prev) => {
       const configs = prev.opcoesRespostaConfig || [];
@@ -1187,7 +1187,11 @@ export default function EditarTemplatePage() {
                         const pontuacaoPrimeira = primeiraOpcao
                           ? itemForm.opcoesRespostaConfig?.find((c) => c.valor === primeiraOpcao)?.pontuacao
                           : undefined;
-                        const pontuacaoExibida = config?.pontuacao ?? (idx > 0 && pontuacaoPrimeira != null ? pontuacaoPrimeira - idx : '');
+                        const pontuacaoExibida = config?.pontuacao === null
+                          ? ''
+                          : (typeof config?.pontuacao === 'number'
+                            ? config.pontuacao
+                            : (idx > 0 && pontuacaoPrimeira != null ? pontuacaoPrimeira - idx : ''));
                         return (
                           <div key={idx} className="bg-base-100 rounded-lg p-3 space-y-2">
                             <div className="flex items-center justify-between">
@@ -1228,8 +1232,8 @@ export default function EditarTemplatePage() {
                                   placeholder="—"
                                   value={pontuacaoExibida}
                                   onChange={(e) => {
-                                    const v = e.target.value === '' ? undefined : parseInt(e.target.value, 10);
-                                    handleAtualizarOpcaoConfig(opcao, 'pontuacao', v === undefined || Number.isNaN(v) ? undefined : v);
+                                    const v = e.target.value === '' ? null : parseInt(e.target.value, 10);
+                                    handleAtualizarOpcaoConfig(opcao, 'pontuacao', v === null || Number.isNaN(v) ? null : v);
                                   }}
                                 />
                               </div>
@@ -1272,7 +1276,11 @@ export default function EditarTemplatePage() {
                     {RESPOSTAS_PADRAO.map((resp, idx) => {
                       const config = itemForm.opcoesRespostaConfig?.find(c => c.valor === resp.valor);
                       const pontuacaoPrimeira = itemForm.opcoesRespostaConfig?.find((c) => c.valor === RESPOSTAS_PADRAO[0].valor)?.pontuacao;
-                      const pontuacaoExibida = config?.pontuacao ?? (idx > 0 && pontuacaoPrimeira != null ? pontuacaoPrimeira - idx : '');
+                      const pontuacaoExibida = config?.pontuacao === null
+                        ? ''
+                        : (typeof config?.pontuacao === 'number'
+                          ? config.pontuacao
+                          : (idx > 0 && pontuacaoPrimeira != null ? pontuacaoPrimeira - idx : ''));
                       return (
                         <div key={resp.valor} className="flex items-center justify-between bg-base-100 rounded p-3">
                           <span className="badge badge-ghost">{resp.label}</span>
@@ -1305,8 +1313,8 @@ export default function EditarTemplatePage() {
                                 placeholder="—"
                                 value={pontuacaoExibida}
                                 onChange={(e) => {
-                                  const v = e.target.value === '' ? undefined : parseInt(e.target.value, 10);
-                                  handleAtualizarOpcaoConfig(resp.valor, 'pontuacao', v === undefined || Number.isNaN(v) ? undefined : v);
+                                  const v = e.target.value === '' ? null : parseInt(e.target.value, 10);
+                                  handleAtualizarOpcaoConfig(resp.valor, 'pontuacao', v === null || Number.isNaN(v) ? null : v);
                                 }}
                               />
                             </div>

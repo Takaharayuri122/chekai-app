@@ -273,21 +273,7 @@ export class AuditoriaService {
     item.complementoDescricao = dto.complementoDescricao ?? item.complementoDescricao;
     item.planoAcaoSugerido = dto.planoAcaoSugerido ?? item.planoAcaoSugerido;
     item.referenciaLegal = dto.referenciaLegal ?? item.referenciaLegal;
-    const configOpcao = templateItem?.opcoesRespostaConfig?.find(
-      (c) => c.valor === dto.resposta,
-    );
-    if (configOpcao?.pontuacao != null) {
-      item.pontuacao = configOpcao.pontuacao;
-    } else {
-      const opcoesOrdenadas = templateItem?.usarRespostasPersonalizadas && templateItem?.opcoesResposta?.length
-        ? templateItem.opcoesResposta
-        : ['conforme', 'nao_conforme', 'nao_aplicavel', 'nao_avaliado'];
-      const indice = opcoesOrdenadas.indexOf(dto.resposta);
-      const configs = templateItem?.opcoesRespostaConfig || [];
-      const configPrimeira = configs.find((c) => c.valor === opcoesOrdenadas[0]);
-      const base = configPrimeira?.pontuacao != null ? configPrimeira.pontuacao : 1;
-      item.pontuacao = indice >= 0 ? base - indice : 0;
-    }
+    item.pontuacao = this.calcularPontuacaoOpcao(templateItem, dto.resposta);
     return this.itemRepository.save(item);
   }
 
@@ -353,23 +339,42 @@ export class AuditoriaService {
   }
 
   /**
-   * Retorna a pontuação máxima possível para um item (por opções ou pela base sequencial).
+   * Calcula a pontuação de uma opção de resposta: usa valor explícito da config quando existir,
+   * senão usa o algoritmo sequencial (base da primeira opção menos o índice).
    */
-  private getPontuacaoMaximaItem(templateItem: TemplateItem | null | undefined): number {
+  private calcularPontuacaoOpcao(templateItem: TemplateItem | null | undefined, valorResposta: string): number {
     if (!templateItem) return 0;
     const configs = templateItem.opcoesRespostaConfig || [];
-    const todasComPontuacao =
-      configs.length > 0 &&
-      configs.every((c) => c.pontuacao != null && c.pontuacao !== undefined);
-    if (todasComPontuacao) {
-      return Math.max(...configs.map((c) => Number(c.pontuacao)));
+    const configOpcao = configs.find((c) => c.valor === valorResposta);
+    if (configOpcao?.pontuacao != null && typeof configOpcao.pontuacao === 'number') {
+      return configOpcao.pontuacao;
     }
+    if (configOpcao && configOpcao.pontuacao === null) return 0;
     const opcoesOrdenadas = templateItem.usarRespostasPersonalizadas && templateItem.opcoesResposta?.length
       ? templateItem.opcoesResposta
       : ['conforme', 'nao_conforme', 'nao_aplicavel', 'nao_avaliado'];
+    const indice = opcoesOrdenadas.indexOf(valorResposta);
     const configPrimeira = configs.find((c) => c.valor === opcoesOrdenadas[0]);
-    const base = configPrimeira?.pontuacao != null ? configPrimeira.pontuacao : 1;
-    return base;
+    const base = configPrimeira?.pontuacao != null && typeof configPrimeira.pontuacao === 'number'
+      ? configPrimeira.pontuacao
+      : 1;
+    return indice >= 0 ? base - indice : 0;
+  }
+
+  /**
+   * Retorna a pontuação máxima possível para um item: máximo entre as pontuações
+   * de cada opção, usando a mesma regra de cálculo (explícita ou sequencial).
+   */
+  private getPontuacaoMaximaItem(templateItem: TemplateItem | null | undefined): number {
+    if (!templateItem) return 0;
+    const opcoesOrdenadas = templateItem.usarRespostasPersonalizadas && templateItem.opcoesResposta?.length
+      ? templateItem.opcoesResposta
+      : ['conforme', 'nao_conforme', 'nao_aplicavel', 'nao_avaliado'];
+    if (opcoesOrdenadas.length === 0) return 0;
+    const pontuacoes = opcoesOrdenadas.map((valor) =>
+      this.calcularPontuacaoOpcao(templateItem, valor),
+    );
+    return Math.max(...pontuacoes);
   }
 
   /**

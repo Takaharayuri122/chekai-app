@@ -31,6 +31,15 @@ import {
   TipoRespostaCustomizada,
 } from '@/lib/api';
 import { toastService } from '@/lib/toast';
+import {
+  buscarAuditoriaPorId,
+  responderItemAuditoria,
+  adicionarFotoAuditoria,
+  finalizarAuditoria,
+  ehIdLocal,
+} from '@/lib/offline/auditoria-offline';
+import { useOfflineStore } from '@/lib/store-offline';
+import * as cache from '@/lib/offline/cache';
 import { renderEmoji } from '@/lib/emoji';
 
 type RespostaType = 'conforme' | 'nao_conforme' | 'nao_aplicavel' | string;
@@ -99,9 +108,8 @@ export default function AuditoriaPage() {
 
   const carregarAuditoria = useCallback(async () => {
     try {
-      // Resetar flag de scroll ao carregar nova auditoria
       scrollRealizado.current = false;
-      const data = await auditoriaService.buscarPorId(id);
+      const data = await buscarAuditoriaPorId(id);
       setAuditoria(data);
       const customizadas: Record<string, string> = {};
       data.itens.forEach((item) => {
@@ -210,7 +218,7 @@ export default function AuditoriaPage() {
     });
     try {
       setSalvando(true);
-      await auditoriaService.responderItem(auditoria.id, itemId, resposta);
+      await responderItemAuditoria(auditoria.id, itemId, resposta);
       setUltimaHoraSalva(new Date());
       // Remove o item da lista de obrigatórios não avaliados se foi respondido
       if (resposta && resposta !== 'nao_avaliado') {
@@ -254,7 +262,7 @@ export default function AuditoriaPage() {
     });
     try {
       setSalvando(true);
-      await auditoriaService.responderItem(auditoria.id, itemId, valor);
+      await responderItemAuditoria(auditoria.id, itemId, valor);
       setUltimaHoraSalva(new Date());
       // Remove o item da lista de obrigatórios não avaliados se foi respondido
       if (valor && valor.trim() !== '') {
@@ -353,7 +361,7 @@ export default function AuditoriaPage() {
     try {
       // Salva a foto automaticamente no backend (sempre salva, mesmo sem créditos)
       setSalvando(true);
-      fotoSalva = await auditoriaService.adicionarFoto(
+      fotoSalva = await adicionarFotoAuditoria(
         auditoria.id,
         itemModal.item.id,
         file
@@ -394,9 +402,9 @@ export default function AuditoriaPage() {
         };
       });
 
-      // Tenta analisar a imagem com IA (pode falhar se não houver créditos)
-      try {
-        const analise = await iaService.analisarImagemChecklist(
+      if (useOfflineStore.getState().isOnline) {
+        try {
+          const analise = await iaService.analisarImagemChecklist(
           file,
           itemModal.item.templateItem.pergunta,
           itemModal.item.templateItem.categoria || 'geral',
@@ -464,10 +472,11 @@ export default function AuditoriaPage() {
           };
           return { ...prev, fotos: fotosAtualizadas };
         });
+        }
       }
-    } catch (error: any) {
-      // Se der erro ao salvar a foto, remove do estado
-      const errorMessage = error?.response?.data?.message || error?.message || 'Erro ao salvar foto';
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } }; message?: string };
+      const errorMessage = err?.response?.data?.message || err?.message || 'Erro ao salvar foto';
       toastService.error(`Erro ao salvar foto: ${errorMessage}`);
       
       setItemModal((prev) => {
@@ -497,38 +506,50 @@ export default function AuditoriaPage() {
       return { ...prev, fotos: fotosAtualizadas };
     });
 
-    // Se a foto já foi salva no backend (tem id), deleta
-    if (fotoParaRemover.id && fotoParaRemover.isExisting) {
-      try {
-        setSalvando(true);
-        await auditoriaService.removerFoto(auditoria.id, itemModal.item.id, fotoParaRemover.id);
-        setUltimaHoraSalva(new Date());
-        setSalvando(false);
+    const auditoriaAtualizada = (prev: Auditoria | null): Auditoria | null => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        itens: prev.itens.map((item) =>
+          item.id === itemModal.item.id
+            ? {
+                ...item,
+                fotos: (item.fotos || []).filter((f) => f.id !== fotoParaRemover.id),
+              }
+            : item
+        ),
+      };
+    };
 
-        // Atualiza o estado global também
-        setAuditoria((prev) => {
-          if (!prev) return prev;
-          return {
-            ...prev,
-            itens: prev.itens.map((item) =>
-              item.id === itemModal.item.id
-                ? {
-                    ...item,
-                    fotos: (item.fotos || []).filter((f) => f.id !== fotoParaRemover.id),
-                  }
-                : item
-            ),
-          };
-        });
-      } catch (error) {
-        // Erro já é tratado pelo interceptor
-        // Se falhar, restaura a foto no estado
-        setItemModal((prev) => {
-          if (!prev) return null;
-          const fotosAtualizadas = [...prev.fotos];
-          fotosAtualizadas.splice(index, 0, fotoParaRemover);
-          return { ...prev, fotos: fotosAtualizadas };
-        });
+    const aplicarRemocao = () => {
+      setAuditoria((prev) => {
+        const next = auditoriaAtualizada(prev);
+        if (next && !useOfflineStore.getState().isOnline) {
+          cache.salvarAuditoria(next.id, next);
+        }
+        return next;
+      });
+    };
+
+    if (fotoParaRemover.id && fotoParaRemover.isExisting) {
+      const fotoLocal = ehIdLocal(fotoParaRemover.id) || fotoParaRemover.id.startsWith('local-');
+      if (fotoLocal || !useOfflineStore.getState().isOnline) {
+        aplicarRemocao();
+      } else {
+        try {
+          setSalvando(true);
+          await auditoriaService.removerFoto(auditoria.id, itemModal.item.id, fotoParaRemover.id);
+          setUltimaHoraSalva(new Date());
+          setSalvando(false);
+          aplicarRemocao();
+        } catch {
+          setItemModal((prev) => {
+            if (!prev) return null;
+            const fotosAtualizadas = [...prev.fotos];
+            fotosAtualizadas.splice(index, 0, fotoParaRemover);
+            return { ...prev, fotos: fotosAtualizadas };
+          });
+        }
       }
     }
   };
@@ -613,7 +634,7 @@ export default function AuditoriaPage() {
     try {
       // Salva a observação e a descrição da IA (se existir)
       setSalvando(true);
-      await auditoriaService.responderItem(
+      await responderItemAuditoria(
         auditoria.id,
         itemModal.item.id,
         respostaAtual,
@@ -652,8 +673,13 @@ export default function AuditoriaPage() {
     setFinalizando(true);
     setErroFinalizar('');
     try {
-      await auditoriaService.finalizar(auditoria.id, observacoesGerais);
-      toastService.success('Auditoria finalizada com sucesso!');
+      await finalizarAuditoria(auditoria.id, observacoesGerais);
+      const isOnline = useOfflineStore.getState().isOnline;
+      toastService.success(
+        isOnline
+          ? 'Auditoria finalizada com sucesso!'
+          : 'Auditoria salva localmente. Será finalizada no servidor quando você estiver online.'
+      );
       setShowFinalModal(false);
       setItensObrigatoriosNaoAvaliados(new Set());
       router.push('/admin/dashboard');
@@ -696,24 +722,34 @@ export default function AuditoriaPage() {
     };
   };
 
+  const getPontuacaoParaOpcao = (item: AuditoriaItem, opcao: string): number | null | undefined => {
+    const configs = item.templateItem?.opcoesRespostaConfig ?? [];
+    const opcoesOrdenadas = item.templateItem?.usarRespostasPersonalizadas && item.templateItem?.opcoesResposta?.length
+      ? item.templateItem.opcoesResposta
+      : ['conforme', 'nao_conforme', 'nao_aplicavel', 'nao_avaliado'];
+    const config = configs.find((c) => c.valor === opcao);
+    if (typeof config?.pontuacao === 'number') return config.pontuacao;
+    if (config?.pontuacao === null) return null;
+    const idx = opcoesOrdenadas.indexOf(opcao);
+    if (idx < 0) return undefined;
+    const configPrimeira = configs.find((c) => c.valor === opcoesOrdenadas[0]);
+    const base = typeof configPrimeira?.pontuacao === 'number' ? configPrimeira.pontuacao : 1;
+    return base - idx;
+  };
+
+  const getClassePorPontuacao = (pontuacao: number | null | undefined): string => {
+    if (pontuacao == null || (typeof pontuacao !== 'number')) return 'btn-warning';
+    if (pontuacao >= 1) return 'btn-success';
+    if (pontuacao === 0) return 'btn-warning';
+    return 'btn-error';
+  };
+
   const getRespostaStyle = (item: AuditoriaItem, tipo: RespostaType, isPersonalizada: boolean = false) => {
     const isSelected = item.resposta === tipo;
     const base = 'btn btn-sm flex-1';
     if (!isSelected) return `${base} btn-ghost`;
-    if (isPersonalizada) {
-      // Para opções personalizadas, usar estilo neutro
-      return `${base} btn-primary`;
-    }
-    switch (tipo) {
-      case 'conforme':
-        return `${base} btn-success`;
-      case 'nao_conforme':
-        return `${base} btn-error`;
-      case 'nao_aplicavel':
-        return `${base} btn-warning`;
-      default:
-        return `${base} btn-primary`;
-    }
+    const pontuacao = getPontuacaoParaOpcao(item, tipo);
+    return `${base} ${getClassePorPontuacao(pontuacao)}`;
   };
 
   if (loading) {
@@ -822,7 +858,10 @@ export default function AuditoriaPage() {
                       <textarea
                         className="textarea textarea-bordered w-full"
                         placeholder="Digite sua resposta..."
-                        value={respostasCustomizadas[item.id] ?? item.resposta ?? ''}
+                        value={(() => {
+                          const raw = respostasCustomizadas[item.id] ?? item.resposta ?? '';
+                          return raw === 'nao_avaliado' ? '' : raw;
+                        })()}
                         onChange={(e) => {
                           setRespostasCustomizadas((prev) => ({ ...prev, [item.id]: e.target.value }));
                         }}
@@ -840,7 +879,12 @@ export default function AuditoriaPage() {
                         type="number"
                         className="input input-bordered w-full"
                         placeholder="Digite um número..."
-                        value={respostasCustomizadas[item.id] ?? item.resposta ?? ''}
+                        value={(() => {
+                          const raw = respostasCustomizadas[item.id] ?? item.resposta ?? '';
+                          if (raw === '' || raw === 'nao_avaliado') return '';
+                          const n = Number(raw);
+                          return Number.isNaN(n) ? '' : raw;
+                        })()}
                         onChange={(e) => {
                           setRespostasCustomizadas((prev) => ({ ...prev, [item.id]: e.target.value }));
                         }}
@@ -856,7 +900,11 @@ export default function AuditoriaPage() {
                       <input
                         type="date"
                         className="input input-bordered w-full"
-                        value={respostasCustomizadas[item.id] ?? item.resposta ?? ''}
+                        value={(() => {
+                          const raw = respostasCustomizadas[item.id] ?? item.resposta ?? '';
+                          if (raw === '' || raw === 'nao_avaliado') return '';
+                          return /^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw : '';
+                        })()}
                         onChange={(e) => handleRespostaCustomizada(item.id, e.target.value)}
                         disabled={auditoria.status === 'finalizada'}
                       />
@@ -864,7 +912,12 @@ export default function AuditoriaPage() {
                     {item.templateItem.tipoRespostaCustomizada === TipoRespostaCustomizada.SELECT && (
                       <select
                         className="select select-bordered w-full"
-                        value={respostasCustomizadas[item.id] ?? item.resposta ?? ''}
+                        value={(() => {
+                          const raw = respostasCustomizadas[item.id] ?? item.resposta ?? '';
+                          if (raw === '' || raw === 'nao_avaliado') return '';
+                          const opcoes = item.templateItem.opcoesResposta ?? [];
+                          return opcoes.includes(raw) ? raw : '';
+                        })()}
                         onChange={(e) => handleRespostaCustomizada(item.id, e.target.value)}
                         disabled={auditoria.status === 'finalizada'}
                       >

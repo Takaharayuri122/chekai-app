@@ -526,7 +526,7 @@ export interface OpcaoRespostaConfig {
   valor: string;
   fotoObrigatoria: boolean;
   observacaoObrigatoria: boolean;
-  pontuacao?: number;
+  pontuacao?: number | null;
 }
 
 export interface CriarTemplateItemRequest {

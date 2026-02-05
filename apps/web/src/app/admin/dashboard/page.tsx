@@ -13,7 +13,8 @@ import {
   Calendar,
 } from 'lucide-react';
 import { AppLayout, StatCard, EmptyState } from '@/components';
-import { auditoriaService, type Auditoria } from '@/lib/api';
+import { type Auditoria } from '@/lib/api';
+import { listarAuditorias } from '@/lib/offline/auditoria-offline';
 import { useAuthStore } from '@/lib/store';
 import { toastService } from '@/lib/toast';
 
@@ -25,7 +26,7 @@ export default function DashboardPage() {
   useEffect(() => {
     const carregarDados = async () => {
       try {
-        const response = await auditoriaService.listar();
+        const response = await listarAuditorias(1, 100);
         setAuditorias(response.items || []);
       } catch (error) {
         // Erro já é tratado pelo interceptor

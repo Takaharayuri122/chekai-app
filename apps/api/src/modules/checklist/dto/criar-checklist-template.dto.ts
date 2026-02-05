@@ -9,6 +9,7 @@ import {
   IsBoolean,
   Min,
   Max,
+  ValidateIf,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
@@ -25,12 +26,13 @@ export class OpcaoRespostaConfigDto {
   @IsBoolean()
   observacaoObrigatoria: boolean;
 
-  @ApiPropertyOptional({ description: 'Pontuação desta opção de resposta (-10 a 10)' })
+  @ApiPropertyOptional({ description: 'Pontuação desta opção (-10 a 10). Null = sem pontuação' })
+  @ValidateIf((o) => o.pontuacao != null)
   @IsNumber()
   @Min(-10)
   @Max(10)
   @IsOptional()
-  pontuacao?: number;
+  pontuacao?: number | null;
 }
 
 /**

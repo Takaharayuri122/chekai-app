@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { AppLayout, PageHeader, EmptyState, ConfirmDialog } from '@/components';
 import { auditoriaService, type Auditoria } from '@/lib/api';
+import { listarAuditorias } from '@/lib/offline/auditoria-offline';
 import { toastService } from '@/lib/toast';
 import { useAuthStore, PerfilUsuario } from '@/lib/store';
 
@@ -38,7 +39,7 @@ export default function AuditoriasPage() {
 
   const carregarAuditorias = async () => {
     try {
-      const response = await auditoriaService.listar();
+      const response = await listarAuditorias(1, 100);
       setAuditorias(response.items || []);
     } catch (error) {
       // Erro já é tratado pelo interceptor

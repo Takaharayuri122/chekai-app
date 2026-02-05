@@ -96,7 +96,7 @@ export class TemplateItem {
     valor: string;
     fotoObrigatoria: boolean;
     observacaoObrigatoria: boolean;
-    pontuacao?: number;
+    pontuacao?: number | null;
   }>;
 
   @Column({ default: false })
