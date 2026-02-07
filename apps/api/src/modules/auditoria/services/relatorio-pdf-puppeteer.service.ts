@@ -40,7 +40,8 @@ export class RelatorioPdfPuppeteerService {
       }
       this.browser = null;
     }
-    this.browser = await puppeteer.launch({
+    const executablePath = this.configService.get<string>('PUPPETEER_EXECUTABLE_PATH');
+    const launchOptions: Parameters<typeof puppeteer.launch>[0] = {
       headless: true,
       args: [
         '--no-sandbox',
@@ -49,7 +50,11 @@ export class RelatorioPdfPuppeteerService {
         '--disable-accelerated-2d-canvas',
         '--disable-gpu',
       ],
-    });
+    };
+    if (executablePath) {
+      launchOptions.executablePath = executablePath;
+    }
+    this.browser = await puppeteer.launch(launchOptions);
     return this.browser;
   }
 
