@@ -1093,7 +1093,6 @@ export default function AuditoriaPage() {
         type="file"
         ref={fileInputRef}
         accept="image/*"
-        capture="environment"
         className="hidden"
         onChange={handleImageSelect}
       />
