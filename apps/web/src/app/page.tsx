@@ -23,11 +23,13 @@ import {
   Star,
   ChevronDown,
   Play,
-  Brain,
-  Search,
   FileCheck,
-  MessageSquare,
   HelpCircle,
+  FileDown,
+  Upload,
+  Smartphone,
+  Coins,
+  Instagram,
 } from 'lucide-react';
 import { useAuthStore } from '@/lib/store';
 import { CookieConsent } from '@/components/ui/cookie-consent';
@@ -74,6 +76,26 @@ const features = [
     icon: CheckCircle,
     title: 'Controle Total',
     description: 'Acompanhe status, pontuações e histórico. Reabra auditorias para correções quando necessário.',
+  },
+  {
+    icon: FileDown,
+    title: 'Exportação em PDF',
+    description: 'Gere relatórios profissionais em PDF prontos para enviar aos clientes. Histórico de evolução incluído.',
+  },
+  {
+    icon: Upload,
+    title: 'Importação de Checklists',
+    description: 'Importe seus checklists existentes a partir de planilhas Excel. Migre facilmente para o ChekAI.',
+  },
+  {
+    icon: Smartphone,
+    title: 'Funciona Offline',
+    description: 'PWA instalável no celular. Realize auditorias em campo sem internet e sincronize quando voltar.',
+  },
+  {
+    icon: Coins,
+    title: 'Sistema de Créditos',
+    description: 'Controle o uso de IA com créditos. Gestores distribuam créditos para sua equipe de auditores.',
   },
 ];
 
@@ -175,7 +197,7 @@ export default function HomePage() {
               className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium mb-6 backdrop-blur-sm"
             >
               <Sparkles className="w-4 h-4" />
-              <span>Plataforma de Auditoria com IA</span>
+              <span>Sistema para Consultorias com IA</span>
             </motion.div>
 
             <motion.h1
@@ -185,19 +207,27 @@ export default function HomePage() {
               style={{ opacity: heroOpacity, y: heroY }}
               className="text-4xl md:text-5xl lg:text-7xl font-bold text-base-content mb-6 font-display leading-tight"
             >
-              <span className="text-primary">ChekAI</span> - Sua Consultoria Sanitária com o Poder da{' '}
+              <span className="text-primary">ChekAI</span> - Sistema Completo para Consultorias em{' '}
               <br />
-              <span className="text-3xl md:text-4xl lg:text-5xl text-primary">Inteligência Artificial</span>
+              <span className="text-3xl md:text-4xl lg:text-5xl text-primary">Segurança de Alimentos</span>
             </motion.h1>
 
             <motion.p
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="text-lg md:text-xl text-base-content/70 max-w-3xl mx-auto mb-10"
+              className="text-lg md:text-xl text-base-content/70 max-w-3xl mx-auto mb-4"
             >
-              A solução completa para consultores em segurança de alimentos. Automatize auditorias,
-              identifique não conformidades e gere relatórios técnicos profissionais em minutos e entrtue muito mais valor para seus clientes.
+              Plataforma para consultorias automatizarem auditorias, identificarem não conformidades
+              e gerarem relatórios técnicos profissionais em minutos. Entregue muito mais valor aos seus clientes.
+            </motion.p>
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.25 }}
+              className="text-xl md:text-2xl font-semibold text-primary mb-10 italic"
+            >
+              Fácil no check, inteligente no controle.
             </motion.p>
 
             <motion.div
@@ -249,7 +279,7 @@ export default function HomePage() {
       </section>
 
       {/* Demo Section */}
-      <section className="px-4 py-20 lg:px-8 bg-base-100 relative">
+      <section id="demo" className="px-4 py-20 lg:px-8 bg-base-100 relative">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <motion.h2
@@ -296,7 +326,7 @@ export default function HomePage() {
       </section>
 
       {/* Features Section */}
-      <section className="px-4 py-20 lg:px-8 bg-base-200">
+      <section id="features" className="px-4 py-20 lg:px-8 bg-base-200">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <motion.h2
@@ -389,7 +419,7 @@ export default function HomePage() {
               O que nossos clientes dizem
             </h2>
             <p className="text-lg text-base-content/70 max-w-2xl mx-auto">
-              Confira o feedback de consultores que já estão usando o ChekAI
+              Confira o feedback de quem já usa o ChekAI em suas auditorias
             </p>
           </motion.div>
 
@@ -473,7 +503,7 @@ export default function HomePage() {
       </section>
 
       {/* FAQ Section */}
-      <section className="px-4 py-20 lg:px-8 bg-base-100">
+      <section id="faq" className="px-4 py-20 lg:px-8 bg-base-100">
         <div className="max-w-4xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -579,7 +609,10 @@ export default function HomePage() {
                 />
               </div>
               <p className="text-sm text-base-content/60 text-center md:text-left">
-                Plataforma de auditoria em segurança de alimentos com inteligência artificial.
+                Sistema para consultorias em segurança de alimentos com inteligência artificial.
+              </p>
+              <p className="text-sm font-medium text-primary italic mt-2 text-center md:text-left">
+                Fácil no check, inteligente no controle.
               </p>
             </div>
 
@@ -624,6 +657,17 @@ export default function HomePage() {
               <h4 className="font-semibold mb-4">Empresa</h4>
               <ul className="space-y-2 text-sm text-base-content/60">
                 <li>Meta Consultoria</li>
+                <li>
+                  <a
+                    href="https://instagram.com/chekai.app"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 hover:text-primary transition-colors"
+                  >
+                    <Instagram className="w-4 h-4" />
+                    @chekai.app
+                  </a>
+                </li>
                 <li className="text-xs">© {new Date().getFullYear()} Todos os direitos reservados</li>
               </ul>
             </div>

@@ -1,7 +1,7 @@
 {
   "name": "ChekAI - Segurança de Alimentos",
   "short_name": "ChekAI",
-  "description": "Consultoria em Segurança de Alimentos com IA",
+  "description": "Sistema para consultorias em segurança de alimentos com IA",
   "start_url": "/",
   "scope": "/",
   "id": "/",

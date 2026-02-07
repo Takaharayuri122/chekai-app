@@ -18,8 +18,8 @@ const montserrat = Montserrat({
 });
 
 export const metadata: Metadata = {
-  title: 'ChekAI - Consultoria em Segurança de Alimentos',
-  description: 'Aplicativo para auditorias e consultorias em segurança de alimentos com IA',
+  title: 'ChekAI - Sistema para Consultorias em Segurança de Alimentos',
+  description: 'Plataforma para consultorias automatizarem auditorias em segurança de alimentos com IA',
   manifest: '/manifest.json',
   icons: {
     icon: [
