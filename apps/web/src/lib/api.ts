@@ -216,6 +216,7 @@ export interface Usuario {
   ativo: boolean;
   gestorId?: string;
   tenantId?: string;
+  logoUrl?: string | null;
   criadoEm: string;
   atualizadoEm: string;
 }
@@ -250,6 +251,20 @@ export const usuarioService = {
 
   async atualizar(id: string, data: Partial<CriarUsuarioRequest>): Promise<Usuario> {
     const response = await api.put(`/usuarios/${id}`, data);
+    return response.data.data;
+  },
+
+  async uploadLogo(id: string, file: File): Promise<Usuario> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await api.put(`/usuarios/${id}/logo`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data.data;
+  },
+
+  async removerLogo(id: string): Promise<Usuario> {
+    const response = await api.delete(`/usuarios/${id}/logo`);
     return response.data.data;
   },
 
@@ -295,6 +310,7 @@ export interface Cliente {
   tipoAtividade: TipoAtividade;
   responsavelTecnico?: string;
   ativo: boolean;
+  logoUrl?: string | null;
   unidades: Unidade[];
   criadoEm: string;
   atualizadoEm: string;
@@ -359,6 +375,20 @@ export const clienteService = {
 
   async atualizar(id: string, data: Partial<CriarClienteRequest>): Promise<Cliente> {
     const response = await api.put(`/clientes/${id}`, data);
+    return response.data.data;
+  },
+
+  async uploadLogo(id: string, file: File): Promise<Cliente> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await api.put(`/clientes/${id}/logo`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data.data;
+  },
+
+  async removerLogo(id: string): Promise<Cliente> {
+    const response = await api.delete(`/clientes/${id}/logo`);
     return response.data.data;
   },
 

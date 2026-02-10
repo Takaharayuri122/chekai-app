@@ -72,7 +72,7 @@ export class ChecklistController {
   async listarTemplates(
     @Query('page') page = 1,
     @Query('limit') limit = 10,
-    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario },
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
   ): Promise<PaginatedResult<ChecklistTemplate>> {
     return this.checklistService.listarTemplates({ page, limit }, usuario);
   }
@@ -82,7 +82,7 @@ export class ChecklistController {
   @ApiResponse({ status: 200, description: 'Lista de templates filtrada' })
   async listarTemplatesPorTipo(
     @Param('tipo') tipo: TipoAtividade,
-    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario },
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
   ): Promise<ChecklistTemplate[]> {
     return this.checklistService.listarTemplatesPorTipo(tipo, usuario);
   }
@@ -92,7 +92,7 @@ export class ChecklistController {
   @ApiResponse({ status: 200, description: 'Template encontrado' })
   async buscarTemplatePorId(
     @Param('id', ParseUUIDPipe) id: string,
-    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario },
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
   ): Promise<ChecklistTemplate> {
     return this.checklistService.buscarTemplatePorId(id, usuario);
   }
@@ -105,7 +105,7 @@ export class ChecklistController {
   async atualizarTemplate(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: Partial<CriarChecklistTemplateDto>,
-    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario },
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
   ): Promise<ChecklistTemplate> {
     return this.checklistService.atualizarTemplate(id, dto, usuario);
   }
@@ -118,7 +118,7 @@ export class ChecklistController {
   @ApiResponse({ status: 400, description: 'Template está vinculado a auditorias' })
   async removerTemplate(
     @Param('id', ParseUUIDPipe) id: string,
-    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario },
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
   ): Promise<void> {
     return this.checklistService.removerTemplate(id, usuario);
   }
@@ -131,7 +131,7 @@ export class ChecklistController {
   async alterarStatusTemplate(
     @Param('id', ParseUUIDPipe) id: string,
     @Body('ativo') ativo: boolean,
-    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario },
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
   ): Promise<ChecklistTemplate> {
     return this.checklistService.alterarStatusTemplate(id, ativo, usuario);
   }
@@ -142,8 +142,9 @@ export class ChecklistController {
   async adicionarItem(
     @Param('templateId', ParseUUIDPipe) templateId: string,
     @Body() dto: CriarTemplateItemDto,
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
   ): Promise<TemplateItem> {
-    return this.checklistService.adicionarItem(templateId, dto);
+    return this.checklistService.adicionarItem(templateId, dto, usuario);
   }
 
   @Put('itens/:itemId')
@@ -152,15 +153,19 @@ export class ChecklistController {
   async atualizarItem(
     @Param('itemId', ParseUUIDPipe) itemId: string,
     @Body() dto: Partial<CriarTemplateItemDto>,
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
   ): Promise<TemplateItem> {
-    return this.checklistService.atualizarItem(itemId, dto);
+    return this.checklistService.atualizarItem(itemId, dto, usuario);
   }
 
   @Delete('itens/:itemId')
   @ApiOperation({ summary: 'Remove um item do template' })
   @ApiResponse({ status: 200, description: 'Item removido' })
-  async removerItem(@Param('itemId', ParseUUIDPipe) itemId: string): Promise<void> {
-    return this.checklistService.removerItem(itemId);
+  async removerItem(
+    @Param('itemId', ParseUUIDPipe) itemId: string,
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
+  ): Promise<void> {
+    return this.checklistService.removerItem(itemId, usuario);
   }
 
   @Get('templates/:templateId/grupos')
@@ -168,8 +173,9 @@ export class ChecklistController {
   @ApiResponse({ status: 200, description: 'Lista de grupos' })
   async listarGrupos(
     @Param('templateId', ParseUUIDPipe) templateId: string,
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
   ): Promise<ChecklistGrupo[]> {
-    return this.checklistService.listarGrupos(templateId);
+    return this.checklistService.listarGrupos(templateId, usuario);
   }
 
   @Post('templates/:templateId/grupos')
@@ -178,8 +184,9 @@ export class ChecklistController {
   async adicionarGrupo(
     @Param('templateId', ParseUUIDPipe) templateId: string,
     @Body() dto: CriarChecklistGrupoDto,
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
   ): Promise<ChecklistGrupo> {
-    return this.checklistService.adicionarGrupo(templateId, dto);
+    return this.checklistService.adicionarGrupo(templateId, dto, usuario);
   }
 
   @Put('grupos/:grupoId')
@@ -188,15 +195,19 @@ export class ChecklistController {
   async atualizarGrupo(
     @Param('grupoId', ParseUUIDPipe) grupoId: string,
     @Body() dto: Partial<CriarChecklistGrupoDto>,
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
   ): Promise<ChecklistGrupo> {
-    return this.checklistService.atualizarGrupo(grupoId, dto);
+    return this.checklistService.atualizarGrupo(grupoId, dto, usuario);
   }
 
   @Delete('grupos/:grupoId')
   @ApiOperation({ summary: 'Remove um grupo do template' })
   @ApiResponse({ status: 200, description: 'Grupo removido' })
-  async removerGrupo(@Param('grupoId', ParseUUIDPipe) grupoId: string): Promise<void> {
-    return this.checklistService.removerGrupo(grupoId);
+  async removerGrupo(
+    @Param('grupoId', ParseUUIDPipe) grupoId: string,
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
+  ): Promise<void> {
+    return this.checklistService.removerGrupo(grupoId, usuario);
   }
 
   @Put('templates/:templateId/grupos/reordenar')
@@ -205,8 +216,9 @@ export class ChecklistController {
   async reordenarGrupos(
     @Param('templateId', ParseUUIDPipe) templateId: string,
     @Body() grupoIds: string[],
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
   ): Promise<void> {
-    return this.checklistService.reordenarGrupos(templateId, grupoIds);
+    return this.checklistService.reordenarGrupos(templateId, grupoIds, usuario);
   }
 
   @Post('importar/checklist/preview')

@@ -69,6 +69,9 @@ export class Cliente {
   @Column({ name: 'gestor_id', nullable: true })
   gestorId: string | null;
 
+  @Column({ name: 'logo_url', type: 'text', nullable: true })
+  logoUrl: string | null;
+
   @OneToMany(() => Unidade, (unidade) => unidade.cliente)
   unidades: Unidade[];
 

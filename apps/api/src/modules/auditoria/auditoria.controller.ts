@@ -196,8 +196,9 @@ export class AuditoriaController {
   async finalizarAuditoria(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: FinalizarAuditoriaDto,
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; gestorId?: string },
   ): Promise<Auditoria> {
-    return this.auditoriaService.finalizarAuditoria(id, dto);
+    return this.auditoriaService.finalizarAuditoria(id, dto, usuario);
   }
 
   @Put(':id/reabrir')

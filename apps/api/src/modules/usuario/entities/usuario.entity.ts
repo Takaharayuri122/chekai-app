@@ -58,6 +58,9 @@ export class Usuario {
   @Column({ name: 'tenant_id', type: 'uuid', nullable: true })
   tenantId: string | null;
 
+  @Column({ name: 'logo_url', type: 'text', nullable: true })
+  logoUrl: string | null;
+
   @Column({ name: 'otp_code', type: 'varchar', length: 6, nullable: true })
   otpCode: string | null;
 

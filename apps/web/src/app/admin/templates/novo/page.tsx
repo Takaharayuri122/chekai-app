@@ -45,9 +45,11 @@ import {
   TipoAtividade,
   CategoriaItem,
   CriticidadeItem,
+  TipoRespostaCustomizada,
   TIPO_ATIVIDADE_LABELS,
   CATEGORIA_ITEM_LABELS,
   CRITICIDADE_LABELS,
+  TIPO_RESPOSTA_LABELS,
   CriarTemplateItemRequest,
   CriarGrupoRequest,
   RESPOSTAS_PADRAO,
@@ -200,6 +202,7 @@ export default function NovoTemplatePage() {
       observacaoObrigatoria: false,
     })),
     usarRespostasPersonalizadas: false,
+    tipoRespostaCustomizada: undefined,
     grupoId: undefined,
     secao: '',
   });
@@ -456,6 +459,7 @@ export default function NovoTemplatePage() {
         observacaoObrigatoria: false,
       })),
       usarRespostasPersonalizadas: false,
+      tipoRespostaCustomizada: undefined,
       grupoId: undefined,
       secao: '',
     });
@@ -490,13 +494,14 @@ export default function NovoTemplatePage() {
       pergunta: item.pergunta,
       categoria: item.categoria,
       criticidade: item.criticidade,
-      peso: item.peso,
+      peso: item.tipoRespostaCustomizada === TipoRespostaCustomizada.TEXTO ? 0 : item.peso,
       legislacaoReferencia: item.legislacaoReferencia || '',
       artigo: item.artigo || '',
       obrigatorio: item.obrigatorio,
       opcoesResposta: item.opcoesResposta || [],
       opcoesRespostaConfig: configs,
       usarRespostasPersonalizadas: item.usarRespostasPersonalizadas || false,
+      tipoRespostaCustomizada: item.tipoRespostaCustomizada,
       grupoId: item.grupoId,
       secao: item.secao || '',
     });
@@ -511,12 +516,13 @@ export default function NovoTemplatePage() {
         pergunta: itemForm.pergunta,
         categoria: itemForm.categoria,
         criticidade: itemForm.criticidade,
-        peso: itemForm.peso,
+        peso: itemForm.tipoRespostaCustomizada === TipoRespostaCustomizada.TEXTO ? 0 : itemForm.peso,
         legislacaoReferencia: itemForm.legislacaoReferencia,
         artigo: itemForm.artigo,
         obrigatorio: itemForm.obrigatorio,
-        opcoesResposta: itemForm.usarRespostasPersonalizadas ? itemForm.opcoesResposta : undefined,
+        opcoesResposta: itemForm.usarRespostasPersonalizadas && !itemForm.tipoRespostaCustomizada ? itemForm.opcoesResposta : (itemForm.tipoRespostaCustomizada === TipoRespostaCustomizada.SELECT ? itemForm.opcoesResposta : undefined),
         usarRespostasPersonalizadas: itemForm.usarRespostasPersonalizadas,
+        tipoRespostaCustomizada: itemForm.tipoRespostaCustomizada,
         opcoesRespostaConfig: itemForm.opcoesRespostaConfig,
         grupoId: itemForm.grupoId || undefined,
         secao: itemForm.secao || undefined,
@@ -1087,20 +1093,22 @@ export default function NovoTemplatePage() {
 
               {/* Peso e Obrigatório */}
               <div className="grid grid-cols-2 gap-3">
-                <div className="form-control">
-                  <label className="label"><span className="label-text">Peso</span></label>
-                  <input
-                    type="number"
-                    min="-10"
-                    max="10"
-                    className="input input-bordered"
-                    value={itemForm.peso}
-                    onChange={(e) => {
-                      const v = e.target.value === '' ? 1 : parseInt(e.target.value, 10);
-                      setItemForm({ ...itemForm, peso: Number.isNaN(v) ? 1 : v });
-                    }}
-                  />
-                </div>
+                {itemForm.tipoRespostaCustomizada !== TipoRespostaCustomizada.TEXTO && (
+                  <div className="form-control">
+                    <label className="label"><span className="label-text">Peso</span></label>
+                    <input
+                      type="number"
+                      min="-10"
+                      max="10"
+                      className="input input-bordered"
+                      value={itemForm.peso}
+                      onChange={(e) => {
+                        const v = e.target.value === '' ? 1 : parseInt(e.target.value, 10);
+                        setItemForm({ ...itemForm, peso: Number.isNaN(v) ? 1 : v });
+                      }}
+                    />
+                  </div>
+                )}
                 <div className="form-control">
                   <label className="label cursor-pointer">
                     <span className="label-text">Obrigatório</span>
@@ -1140,36 +1148,73 @@ export default function NovoTemplatePage() {
 
               <div className="divider">Opções de Resposta</div>
 
-              {/* Toggle Respostas Personalizadas */}
-              <div className="form-control bg-base-200 rounded-lg p-4">
-                <label className="label cursor-pointer justify-start gap-3">
-                  <input
-                    type="checkbox"
-                    className="toggle toggle-secondary"
-                    checked={itemForm.usarRespostasPersonalizadas}
-                    onChange={(e) => {
-                      const checked = e.target.checked;
-                      setItemForm({
-                        ...itemForm,
-                        usarRespostasPersonalizadas: checked,
-                        opcoesRespostaConfig: checked
-                          ? (itemForm.opcoesRespostaConfig || []).filter((c) =>
-                              itemForm.opcoesResposta?.includes(c.valor),
-                            )
-                          : RESPOSTAS_PADRAO.map((r) => ({
-                              valor: r.valor,
-                              fotoObrigatoria: false,
-                              observacaoObrigatoria: false,
-                            })),
-                      });
-                    }}
-                  />
-                  <div>
-                    <span className="label-text font-medium">Usar respostas personalizadas</span>
-                    <p className="text-xs text-base-content/60 mt-0.5">Padrão: Conforme, Não Conforme, Não Aplicável, Não Avaliado</p>
-                  </div>
+              {/* Tipo de Resposta Customizada */}
+              <div className="form-control">
+                <label className="label">
+                  <span className="label-text font-medium">Tipo de Resposta</span>
+                </label>
+                <select
+                  className="select select-bordered"
+                  value={itemForm.tipoRespostaCustomizada || ''}
+                  onChange={(e) => {
+                    const valor = e.target.value ? (e.target.value as TipoRespostaCustomizada) : undefined;
+                    setItemForm({
+                      ...itemForm,
+                      tipoRespostaCustomizada: valor,
+                      usarRespostasPersonalizadas: valor !== undefined,
+                      peso: valor === TipoRespostaCustomizada.TEXTO ? 0 : itemForm.peso,
+                    });
+                  }}
+                >
+                  <option value="">Padrão (Botões: Conforme/Não Conforme/Não Aplicável)</option>
+                  <option value={TipoRespostaCustomizada.TEXTO}>{TIPO_RESPOSTA_LABELS[TipoRespostaCustomizada.TEXTO]}</option>
+                  <option value={TipoRespostaCustomizada.NUMERO}>{TIPO_RESPOSTA_LABELS[TipoRespostaCustomizada.NUMERO]}</option>
+                  <option value={TipoRespostaCustomizada.DATA}>{TIPO_RESPOSTA_LABELS[TipoRespostaCustomizada.DATA]}</option>
+                  <option value={TipoRespostaCustomizada.SELECT}>{TIPO_RESPOSTA_LABELS[TipoRespostaCustomizada.SELECT]}</option>
+                </select>
+                <label className="label">
+                  <span className="label-text-alt text-base-content/60">
+                    {itemForm.tipoRespostaCustomizada === TipoRespostaCustomizada.SELECT && 'Configure as opções abaixo'}
+                    {itemForm.tipoRespostaCustomizada === TipoRespostaCustomizada.TEXTO && 'Campo de texto livre (não pontua)'}
+                    {itemForm.tipoRespostaCustomizada === TipoRespostaCustomizada.NUMERO && 'Campo numérico'}
+                    {itemForm.tipoRespostaCustomizada === TipoRespostaCustomizada.DATA && 'Seletor de data'}
+                    {!itemForm.tipoRespostaCustomizada && 'Use botões de resposta padrão'}
+                  </span>
                 </label>
               </div>
+
+              {/* Toggle Respostas Personalizadas (apenas quando não for tipo customizado) */}
+              {!itemForm.tipoRespostaCustomizada && (
+                <div className="form-control bg-base-200 rounded-lg p-4">
+                  <label className="label cursor-pointer justify-start gap-3">
+                    <input
+                      type="checkbox"
+                      className="toggle toggle-secondary"
+                      checked={itemForm.usarRespostasPersonalizadas}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        setItemForm({
+                          ...itemForm,
+                          usarRespostasPersonalizadas: checked,
+                          opcoesRespostaConfig: checked
+                            ? (itemForm.opcoesRespostaConfig || []).filter((c) =>
+                                itemForm.opcoesResposta?.includes(c.valor),
+                              )
+                            : RESPOSTAS_PADRAO.map((r) => ({
+                                valor: r.valor,
+                                fotoObrigatoria: false,
+                                observacaoObrigatoria: false,
+                              })),
+                        });
+                      }}
+                    />
+                    <div>
+                      <span className="label-text font-medium">Usar respostas personalizadas</span>
+                      <p className="text-xs text-base-content/60 mt-0.5">Padrão: Conforme, Não Conforme, Não Aplicável, Não Avaliado</p>
+                    </div>
+                  </label>
+                </div>
+              )}
 
               {/* Respostas Personalizadas */}
               {itemForm.usarRespostasPersonalizadas && (

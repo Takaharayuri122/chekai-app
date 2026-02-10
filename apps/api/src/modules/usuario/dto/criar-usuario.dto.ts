@@ -6,6 +6,7 @@ import {
   IsString,
   MinLength,
   IsUUID,
+  ValidateIf,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { PerfilUsuario } from '../entities/usuario.entity';
@@ -59,5 +60,11 @@ export class CriarUsuarioDto {
   @IsUUID('4', { message: 'ID do plano inválido' })
   @IsOptional()
   planoId?: string;
+
+  @ApiPropertyOptional({ description: 'URL da logo da consultoria (exibida no relatório). Enviar null para remover.' })
+  @ValidateIf((o) => o.logoUrl != null)
+  @IsString()
+  @IsOptional()
+  logoUrl?: string | null;
 }
 

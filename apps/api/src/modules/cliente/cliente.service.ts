@@ -64,22 +64,21 @@ export class ClienteService {
     const cliente = this.clienteRepository.create({
       ...dto,
       cnpj: cnpjNormalizado,
-      gestorId: usuarioAutenticado?.perfil === PerfilUsuario.GESTOR ? usuarioAutenticado.id : undefined,
+      gestorId: usuarioAutenticado?.id ?? undefined,
     });
     return this.clienteRepository.save(cliente);
   }
 
   /**
-   * Lista todos os clientes com paginação, filtrados por tenant.
+   * Lista clientes com paginação. Cada usuário vê apenas clientes em que é o gestor.
    */
   async listarClientes(
     params: PaginationParams,
     usuarioAutenticado?: { id: string; perfil: PerfilUsuario },
   ): Promise<PaginatedResult<Cliente>> {
-    let where: any = {};
-    if (usuarioAutenticado && usuarioAutenticado.perfil === PerfilUsuario.GESTOR) {
-      where = { gestorId: usuarioAutenticado.id };
-    }
+    const where: { gestorId?: string } = usuarioAutenticado
+      ? { gestorId: usuarioAutenticado.id }
+      : {};
     const [items, total] = await this.clienteRepository.findAndCount({
       where,
       skip: (params.page - 1) * params.limit,
@@ -91,7 +90,7 @@ export class ClienteService {
   }
 
   /**
-   * Busca um cliente pelo ID, verificando permissões de acesso.
+   * Busca um cliente pelo ID. Acesso apenas se o usuário for o gestor do cliente.
    */
   async buscarClientePorId(
     id: string,
@@ -104,7 +103,7 @@ export class ClienteService {
     if (!cliente) {
       throw new NotFoundException('Cliente não encontrado');
     }
-    if (usuarioAutenticado && usuarioAutenticado.perfil === PerfilUsuario.GESTOR && cliente.gestorId !== usuarioAutenticado.id) {
+    if (usuarioAutenticado && cliente.gestorId !== usuarioAutenticado.id) {
       throw new ForbiddenException('Acesso negado a este cliente');
     }
     return cliente;
@@ -113,8 +112,12 @@ export class ClienteService {
   /**
    * Atualiza um cliente.
    */
-  async atualizarCliente(id: string, dto: Partial<CriarClienteDto>): Promise<Cliente> {
-    const cliente = await this.buscarClientePorId(id);
+  async atualizarCliente(
+    id: string,
+    dto: Partial<CriarClienteDto>,
+    usuarioAutenticado?: { id: string; perfil: PerfilUsuario },
+  ): Promise<Cliente> {
+    const cliente = await this.buscarClientePorId(id, usuarioAutenticado);
     Object.assign(cliente, dto);
     return this.clienteRepository.save(cliente);
   }
@@ -122,8 +125,11 @@ export class ClienteService {
   /**
    * Remove um cliente (soft delete).
    */
-  async removerCliente(id: string): Promise<void> {
-    const cliente = await this.buscarClientePorId(id);
+  async removerCliente(
+    id: string,
+    usuarioAutenticado?: { id: string; perfil: PerfilUsuario },
+  ): Promise<void> {
+    const cliente = await this.buscarClientePorId(id, usuarioAutenticado);
     cliente.ativo = false;
     await this.clienteRepository.save(cliente);
   }
@@ -131,8 +137,11 @@ export class ClienteService {
   /**
    * Cria uma nova unidade para um cliente.
    */
-  async criarUnidade(dto: CriarUnidadeDto): Promise<Unidade> {
-    await this.buscarClientePorId(dto.clienteId);
+  async criarUnidade(
+    dto: CriarUnidadeDto,
+    usuarioAutenticado?: { id: string; perfil: PerfilUsuario },
+  ): Promise<Unidade> {
+    await this.buscarClientePorId(dto.clienteId, usuarioAutenticado);
     const unidade = this.unidadeRepository.create(dto);
     return this.unidadeRepository.save(unidade);
   }
@@ -148,9 +157,16 @@ export class ClienteService {
   }
 
   /**
-   * Lista todas as unidades ativas.
+   * Lista unidades ativas. Com usuário, apenas unidades de clientes em que ele é gestor.
    */
-  async listarTodasUnidades(): Promise<Unidade[]> {
+  async listarTodasUnidades(usuarioAutenticado?: { id: string; perfil: PerfilUsuario }): Promise<Unidade[]> {
+    if (usuarioAutenticado) {
+      return this.unidadeRepository.find({
+        where: { ativo: true, cliente: { gestorId: usuarioAutenticado.id } },
+        relations: ['cliente'],
+        order: { nome: 'ASC' },
+      });
+    }
     return this.unidadeRepository.find({
       where: { ativo: true },
       relations: ['cliente'],
@@ -159,9 +175,12 @@ export class ClienteService {
   }
 
   /**
-   * Busca uma unidade pelo ID.
+   * Busca uma unidade pelo ID. Com usuário, apenas se for gestor do cliente da unidade.
    */
-  async buscarUnidadePorId(id: string): Promise<Unidade> {
+  async buscarUnidadePorId(
+    id: string,
+    usuarioAutenticado?: { id: string; perfil: PerfilUsuario },
+  ): Promise<Unidade> {
     const unidade = await this.unidadeRepository.findOne({
       where: { id },
       relations: ['cliente'],
@@ -169,14 +188,21 @@ export class ClienteService {
     if (!unidade) {
       throw new NotFoundException('Unidade não encontrada');
     }
+    if (usuarioAutenticado && unidade.cliente?.gestorId !== usuarioAutenticado.id) {
+      throw new ForbiddenException('Acesso negado a esta unidade');
+    }
     return unidade;
   }
 
   /**
    * Atualiza uma unidade.
    */
-  async atualizarUnidade(id: string, dto: Partial<CriarUnidadeDto>): Promise<Unidade> {
-    const unidade = await this.buscarUnidadePorId(id);
+  async atualizarUnidade(
+    id: string,
+    dto: Partial<CriarUnidadeDto>,
+    usuarioAutenticado?: { id: string; perfil: PerfilUsuario },
+  ): Promise<Unidade> {
+    const unidade = await this.buscarUnidadePorId(id, usuarioAutenticado);
     Object.assign(unidade, dto);
     return this.unidadeRepository.save(unidade);
   }
@@ -184,8 +210,11 @@ export class ClienteService {
   /**
    * Remove uma unidade (soft delete).
    */
-  async removerUnidade(id: string): Promise<void> {
-    const unidade = await this.buscarUnidadePorId(id);
+  async removerUnidade(
+    id: string,
+    usuarioAutenticado?: { id: string; perfil: PerfilUsuario },
+  ): Promise<void> {
+    const unidade = await this.buscarUnidadePorId(id, usuarioAutenticado);
     unidade.ativo = false;
     await this.unidadeRepository.save(unidade);
   }

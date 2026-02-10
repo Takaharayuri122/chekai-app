@@ -12,7 +12,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Auditoria, StatusAuditoria } from './entities/auditoria.entity';
 import { AuditoriaItem, RespostaItem } from './entities/auditoria-item.entity';
-import { TemplateItem } from '../checklist/entities/template-item.entity';
+import { TemplateItem, TipoRespostaCustomizada } from '../checklist/entities/template-item.entity';
 import { Foto } from './entities/foto.entity';
 import { ChecklistService } from '../checklist/checklist.service';
 import { PerfilUsuario } from '../usuario/entities/usuario.entity';
@@ -64,7 +64,7 @@ export class AuditoriaService {
         await this.validacaoLimites.validarLimiteAuditorias(gestorId);
       }
     }
-    const template = await this.checklistService.buscarTemplatePorId(dto.templateId, { id: consultorId, perfil: PerfilUsuario.AUDITOR });
+    const template = await this.checklistService.buscarTemplatePorId(dto.templateId, usuario);
     const auditoria = this.auditoriaRepository.create({
       consultorId,
       unidadeId: dto.unidadeId,
@@ -85,36 +85,22 @@ export class AuditoriaService {
         }),
       );
     await this.itemRepository.save(itens);
-    return this.buscarAuditoriaPorId(savedAuditoria.id);
+    return this.buscarAuditoriaPorId(savedAuditoria.id, usuario);
   }
 
   /**
-   * Lista auditorias, filtradas por perfil do usuário autenticado.
-   * Retorna todas as auditorias (em andamento e finalizadas) do usuário.
+   * Lista auditorias do usuário. Cada usuário vê apenas auditorias em que é o consultor.
    */
   async listarAuditorias(
     params: PaginationParams,
-    usuarioAutenticado: { id: string; perfil: PerfilUsuario; gestorId?: string },
+    usuarioAutenticado: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
   ): Promise<PaginatedResult<Auditoria>> {
     const queryBuilder = this.auditoriaRepository.createQueryBuilder('auditoria')
       .leftJoinAndSelect('auditoria.unidade', 'unidade')
       .leftJoinAndSelect('unidade.cliente', 'cliente')
       .leftJoinAndSelect('auditoria.template', 'template')
-      .leftJoinAndSelect('auditoria.consultor', 'consultor');
-    
-    if (usuarioAutenticado.perfil === PerfilUsuario.AUDITOR) {
-      // Auditor vê apenas suas próprias auditorias (todas, independente do status)
-      queryBuilder.where('auditoria.consultorId = :consultorId', { consultorId: usuarioAutenticado.id });
-    } else if (usuarioAutenticado.perfil === PerfilUsuario.GESTOR) {
-      // Gestor vê auditorias criadas por ele OU por seus auditores vinculados
-      // Usa subquery para garantir que funcione mesmo se o consultor não estiver carregado
-      queryBuilder.where(
-        '(auditoria.consultor_id = :gestorId OR EXISTS (SELECT 1 FROM usuarios u WHERE u.id = auditoria.consultor_id AND u.gestor_id = :gestorId))',
-        { gestorId: usuarioAutenticado.id }
-      );
-    }
-    // Master vê todas as auditorias (sem filtro adicional)
-    
+      .leftJoinAndSelect('auditoria.consultor', 'consultor')
+      .where('auditoria.consultorId = :consultorId', { consultorId: usuarioAutenticado.id });
     const [items, total] = await queryBuilder
       .skip((params.page - 1) * params.limit)
       .take(params.limit)
@@ -124,29 +110,18 @@ export class AuditoriaService {
   }
 
   /**
-   * Lista auditorias finalizadas de uma unidade para exibir histórico de evolução no relatório.
-   * Respeita as mesmas regras de permissão (auditor vê só as suas, gestor as suas e da equipe, master todas).
+   * Lista auditorias finalizadas de uma unidade (histórico). Apenas do consultor autenticado.
    */
   async listarHistoricoPorUnidade(
     unidadeId: string,
-    usuarioAutenticado: { id: string; perfil: PerfilUsuario; gestorId?: string },
+    usuarioAutenticado: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
   ): Promise<Auditoria[]> {
-    const queryBuilder = this.auditoriaRepository
+    return this.auditoriaRepository
       .createQueryBuilder('auditoria')
       .leftJoinAndSelect('auditoria.template', 'template')
       .where('auditoria.unidadeId = :unidadeId', { unidadeId })
-      .andWhere('auditoria.status = :status', { status: StatusAuditoria.FINALIZADA });
-    if (usuarioAutenticado.perfil === PerfilUsuario.AUDITOR) {
-      queryBuilder.andWhere('auditoria.consultorId = :consultorId', {
-        consultorId: usuarioAutenticado.id,
-      });
-    } else if (usuarioAutenticado.perfil === PerfilUsuario.GESTOR) {
-      queryBuilder.andWhere(
-        '(auditoria.consultor_id = :gestorId OR EXISTS (SELECT 1 FROM usuarios u WHERE u.id = auditoria.consultor_id AND u.gestor_id = :gestorId))',
-        { gestorId: usuarioAutenticado.id },
-      );
-    }
-    return queryBuilder
+      .andWhere('auditoria.status = :status', { status: StatusAuditoria.FINALIZADA })
+      .andWhere('auditoria.consultorId = :consultorId', { consultorId: usuarioAutenticado.id })
       .orderBy('auditoria.dataFim', 'DESC')
       .addOrderBy('auditoria.criadoEm', 'DESC')
       .take(30)
@@ -154,11 +129,11 @@ export class AuditoriaService {
   }
 
   /**
-   * Busca uma auditoria pelo ID, verificando permissões de acesso.
+   * Busca uma auditoria pelo ID. Acesso apenas se o usuário for o consultor da auditoria.
    */
   async buscarAuditoriaPorId(
     id: string,
-    usuarioAutenticado?: { id: string; perfil: PerfilUsuario; gestorId?: string },
+    usuarioAutenticado?: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
   ): Promise<Auditoria> {
     const auditoria = await this.auditoriaRepository.findOne({
       where: { id },
@@ -166,6 +141,7 @@ export class AuditoriaService {
         'consultor',
         'unidade',
         'unidade.cliente',
+        'unidade.cliente.gestor',
         'template',
         'itens',
         'itens.templateItem',
@@ -175,22 +151,8 @@ export class AuditoriaService {
     if (!auditoria) {
       throw new NotFoundException('Auditoria não encontrada');
     }
-    if (usuarioAutenticado) {
-      if (usuarioAutenticado.perfil === PerfilUsuario.AUDITOR && auditoria.consultorId !== usuarioAutenticado.id) {
-        throw new ForbiddenException('Acesso negado a esta auditoria');
-      }
-      if (usuarioAutenticado.perfil === PerfilUsuario.GESTOR) {
-        // Gestor pode acessar se:
-        // 1. Ele mesmo criou a auditoria (consultorId === gestor.id), OU
-        // 2. O consultor é um Auditor vinculado a ele (consultor.gestorId === gestor.id)
-        const consultor = auditoria.consultor;
-        const podeAcessar = 
-          auditoria.consultorId === usuarioAutenticado.id || 
-          (consultor && consultor.gestorId === usuarioAutenticado.id);
-        if (!podeAcessar) {
-          throw new ForbiddenException('Acesso negado a esta auditoria');
-        }
-      }
+    if (usuarioAutenticado && auditoria.consultorId !== usuarioAutenticado.id) {
+      throw new ForbiddenException('Acesso negado a esta auditoria');
     }
     return auditoria;
   }
@@ -344,6 +306,7 @@ export class AuditoriaService {
    */
   private calcularPontuacaoOpcao(templateItem: TemplateItem | null | undefined, valorResposta: string): number {
     if (!templateItem) return 0;
+    if (templateItem.tipoRespostaCustomizada === TipoRespostaCustomizada.TEXTO) return 0;
     const configs = templateItem.opcoesRespostaConfig || [];
     const configOpcao = configs.find((c) => c.valor === valorResposta);
     if (configOpcao?.pontuacao != null && typeof configOpcao.pontuacao === 'number') {
@@ -367,6 +330,7 @@ export class AuditoriaService {
    */
   private getPontuacaoMaximaItem(templateItem: TemplateItem | null | undefined): number {
     if (!templateItem) return 0;
+    if (templateItem.tipoRespostaCustomizada === TipoRespostaCustomizada.TEXTO) return 0;
     const opcoesOrdenadas = templateItem.usarRespostasPersonalizadas && templateItem.opcoesResposta?.length
       ? templateItem.opcoesResposta
       : ['conforme', 'nao_conforme', 'nao_aplicavel', 'nao_avaliado'];
@@ -383,8 +347,9 @@ export class AuditoriaService {
   async finalizarAuditoria(
     id: string,
     dto: FinalizarAuditoriaDto,
+    usuarioAutenticado: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
   ): Promise<Auditoria> {
-    const auditoria = await this.buscarAuditoriaPorId(id);
+    const auditoria = await this.buscarAuditoriaPorId(id, usuarioAutenticado);
     if (auditoria.status === StatusAuditoria.FINALIZADA) {
       throw new BadRequestException('Auditoria já finalizada');
     }
@@ -429,7 +394,7 @@ export class AuditoriaService {
    */
   async reabrirAuditoria(
     id: string,
-    usuarioAutenticado?: { id: string; perfil: PerfilUsuario; gestorId?: string },
+    usuarioAutenticado?: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
   ): Promise<Auditoria> {
     const auditoria = await this.buscarAuditoriaPorId(id, usuarioAutenticado);
     
@@ -484,7 +449,7 @@ export class AuditoriaService {
    */
   async removerAuditoria(
     id: string,
-    usuarioAutenticado: { id: string; perfil: PerfilUsuario; gestorId?: string },
+    usuarioAutenticado: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
   ): Promise<void> {
     const auditoria = await this.buscarAuditoriaPorId(id, usuarioAutenticado);
     // Verificar permissões - apenas GESTOR ou superior podem remover
@@ -526,7 +491,7 @@ export class AuditoriaService {
    */
   async gerarResumoExecutivo(
     auditoriaId: string,
-    usuarioAutenticado?: { id: string; perfil: PerfilUsuario; gestorId?: string },
+    usuarioAutenticado?: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
   ): Promise<{
     resumo: string;
     pontosFortes: string[];

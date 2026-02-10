@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import {
   Building2,
@@ -11,8 +11,10 @@ import {
   Loader2,
   Edit,
   Trash2,
+  ImagePlus,
 } from 'lucide-react';
 import { AppLayout, PageHeader, EmptyState } from '@/components';
+import { LogoCropperModal } from '@/components/ui/logo-cropper-modal';
 import {
   clienteService,
   unidadeService,
@@ -34,6 +36,19 @@ export default function ClientesPage() {
   const [editingUnidade, setEditingUnidade] = useState<{ clienteId: string; unidadeId: string } | null>(null);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [cropperOpen, setCropperOpen] = useState(false);
+  const [cropperImageUrl, setCropperImageUrl] = useState<string>('');
+  const [pendingLogoBlob, setPendingLogoBlob] = useState<Blob | null>(null);
+  const [pendingLogoPreviewUrl, setPendingLogoPreviewUrl] = useState<string>('');
+  const [pendingLogoRemover, setPendingLogoRemover] = useState(false);
+  const logoFileInputRef = useRef<HTMLInputElement>(null);
+
+  const clearPendingLogo = () => {
+    if (pendingLogoPreviewUrl) URL.revokeObjectURL(pendingLogoPreviewUrl);
+    setPendingLogoBlob(null);
+    setPendingLogoPreviewUrl('');
+    setPendingLogoRemover(false);
+  };
 
   // Form state
   const [clienteForm, setClienteForm] = useState({
@@ -86,6 +101,28 @@ export default function ClientesPage() {
     return valor.replace(/\D/g, '');
   };
 
+  const aplicarMascaraTelefone = (valor: string) => {
+    const apenasNumeros = valor.replace(/\D/g, '');
+    if (apenasNumeros.length <= 10) {
+      return apenasNumeros
+        .replace(/^(\d{2})(\d)/, '($1) $2')
+        .replace(/(\d{4})(\d)/, '$1-$2');
+    }
+    if (apenasNumeros.length <= 11) {
+      return apenasNumeros
+        .replace(/^(\d{2})(\d)/, '($1) $2')
+        .replace(/(\d{5})(\d)/, '$1-$2');
+    }
+    return valor;
+  };
+
+  const removerMascaraTelefone = (valor: string) => valor.replace(/\D/g, '');
+
+  const emailValido = (valor: string) => {
+    if (!valor.trim()) return true;
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(valor.trim());
+  };
+
   // Função para formatar CNPJ para exibição
   const formatarCNPJ = (cnpj: string) => {
     if (!cnpj) return '';
@@ -97,19 +134,25 @@ export default function ClientesPage() {
   };
 
   const handleCriarCliente = async () => {
-    if (!clienteForm.razaoSocial || !clienteForm.cnpj || !clienteForm.telefone) return;
+    const telefoneNumeros = removerMascaraTelefone(clienteForm.telefone);
+    if (!clienteForm.razaoSocial || !clienteForm.cnpj || !clienteForm.telefone || telefoneNumeros.length < 10) return;
+    if (clienteForm.email?.trim() && !emailValido(clienteForm.email)) return;
     setSaving(true);
-
     try {
-      // Remover máscara do CNPJ antes de enviar
       const dadosParaEnviar = {
         ...clienteForm,
         cnpj: removerMascaraCNPJ(clienteForm.cnpj),
-        email: clienteForm.email || undefined, // Enviar undefined se vazio
+        telefone: removerMascaraTelefone(clienteForm.telefone),
+        email: clienteForm.email?.trim() || undefined,
       };
-      await clienteService.criar(dadosParaEnviar);
+      const novoCliente = await clienteService.criar(dadosParaEnviar);
+      if (pendingLogoBlob) {
+        const file = new File([pendingLogoBlob], 'logo-cliente.jpg', { type: 'image/jpeg' });
+        await clienteService.uploadLogo(novoCliente.id, file);
+      }
       toastService.success('Cliente cadastrado com sucesso!');
       await carregarClientes();
+      clearPendingLogo();
       setShowModal(false);
       setClienteForm({
         razaoSocial: '',
@@ -119,8 +162,8 @@ export default function ClientesPage() {
         email: '',
         tipoAtividade: TipoAtividade.OUTRO,
       });
-    } catch (error) {
-      // Erro já é tratado pelo interceptor
+    } catch {
+      // Erro já tratado pelo interceptor
     } finally {
       setSaving(false);
     }
@@ -151,15 +194,61 @@ export default function ClientesPage() {
 
   const handleEditarCliente = (cliente: Cliente) => {
     setEditingCliente(cliente);
+    const telefoneBruto = cliente.telefone || '';
     setClienteForm({
       razaoSocial: cliente.razaoSocial,
       nomeFantasia: cliente.nomeFantasia || '',
       cnpj: formatarCNPJ(cliente.cnpj),
-      telefone: cliente.telefone || '',
+      telefone: telefoneBruto ? aplicarMascaraTelefone(telefoneBruto) : '',
       email: cliente.email || '',
       tipoAtividade: cliente.tipoAtividade,
     });
+    clearPendingLogo();
     setShowModal(true);
+  };
+
+  const handleLogoFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toastService.error('Selecione uma imagem (JPEG, PNG, WebP ou GIF)');
+      e.target.value = '';
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toastService.error('A imagem deve ter no máximo 10MB para edição');
+      e.target.value = '';
+      return;
+    }
+    setPendingLogoRemover(false);
+    const url = URL.createObjectURL(file);
+    setCropperImageUrl(url);
+    setCropperOpen(true);
+    e.target.value = '';
+  };
+
+  const handleCropperClose = () => {
+    if (cropperImageUrl) URL.revokeObjectURL(cropperImageUrl);
+    setCropperOpen(false);
+    setCropperImageUrl('');
+  };
+
+  const handleCropperConfirm = (blob: Blob) => {
+    if (pendingLogoPreviewUrl) URL.revokeObjectURL(pendingLogoPreviewUrl);
+    setPendingLogoBlob(blob);
+    setPendingLogoPreviewUrl(URL.createObjectURL(blob));
+    setCropperOpen(false);
+    if (cropperImageUrl) URL.revokeObjectURL(cropperImageUrl);
+    setCropperImageUrl('');
+  };
+
+  const handleRemoverLogoNoModal = () => {
+    if (pendingLogoBlob || pendingLogoPreviewUrl) {
+      if (pendingLogoPreviewUrl) URL.revokeObjectURL(pendingLogoPreviewUrl);
+      setPendingLogoBlob(null);
+      setPendingLogoPreviewUrl('');
+    }
+    setPendingLogoRemover(true);
   };
 
   const handleEditarUnidade = (clienteId: string, unidadeId: string) => {
@@ -179,18 +268,28 @@ export default function ClientesPage() {
   };
 
   const handleAtualizarCliente = async () => {
-    if (!editingCliente || !clienteForm.razaoSocial || !clienteForm.cnpj || !clienteForm.telefone) return;
+    const telefoneNumeros = removerMascaraTelefone(clienteForm.telefone);
+    if (!editingCliente || !clienteForm.razaoSocial || !clienteForm.cnpj || !clienteForm.telefone || telefoneNumeros.length < 10) return;
+    if (clienteForm.email?.trim() && !emailValido(clienteForm.email)) return;
     setSaving(true);
-
     try {
       const dadosParaEnviar = {
         ...clienteForm,
         cnpj: removerMascaraCNPJ(clienteForm.cnpj),
-        email: clienteForm.email || undefined,
+        telefone: removerMascaraTelefone(clienteForm.telefone),
+        email: clienteForm.email?.trim() || undefined,
       };
       await clienteService.atualizar(editingCliente.id, dadosParaEnviar);
+      if (pendingLogoBlob) {
+        const file = new File([pendingLogoBlob], 'logo-cliente.jpg', { type: 'image/jpeg' });
+        await clienteService.uploadLogo(editingCliente.id, file);
+      }
+      if (pendingLogoRemover) {
+        await clienteService.removerLogo(editingCliente.id);
+      }
       toastService.success('Cliente atualizado com sucesso!');
       await carregarClientes();
+      clearPendingLogo();
       setShowModal(false);
       setEditingCliente(null);
       setClienteForm({
@@ -201,8 +300,8 @@ export default function ClientesPage() {
         email: '',
         tipoAtividade: TipoAtividade.OUTRO,
       });
-    } catch (error) {
-      // Erro já é tratado pelo interceptor
+    } catch {
+      // Erro já tratado pelo interceptor
     } finally {
       setSaving(false);
     }
@@ -240,7 +339,10 @@ export default function ClientesPage() {
         subtitle="Gerencie seus clientes e unidades"
         action={
           <button
-            onClick={() => setShowModal(true)}
+            onClick={() => {
+              clearPendingLogo();
+              setShowModal(true);
+            }}
             className="btn btn-primary btn-sm gap-1"
           >
             <Plus className="w-4 h-4" />
@@ -262,7 +364,10 @@ export default function ClientesPage() {
             title="Nenhum cliente cadastrado"
             description="Cadastre seu primeiro cliente para começar."
             actionLabel="Cadastrar Cliente"
-            actionOnClick={() => setShowModal(true)}
+            actionOnClick={() => {
+              clearPendingLogo();
+              setShowModal(true);
+            }}
           />
         ) : (
           <div className="space-y-3">
@@ -477,7 +582,7 @@ export default function ClientesPage() {
                   ))}
                 </select>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-3">
                 <div className="form-control">
                   <label className="label">
                     <span className="label-text">Telefone *</span>
@@ -487,20 +592,24 @@ export default function ClientesPage() {
                     placeholder="(00) 00000-0000"
                     className="input input-bordered"
                     value={clienteForm.telefone}
-                    onChange={(e) =>
-                      setClienteForm({ ...clienteForm, telefone: e.target.value })
-                    }
-                    required
+                    onChange={(e) => {
+                      const valorFormatado = aplicarMascaraTelefone(e.target.value);
+                      setClienteForm({ ...clienteForm, telefone: valorFormatado });
+                    }}
+                    maxLength={15}
                   />
                 </div>
                 <div className="form-control">
                   <label className="label">
                     <span className="label-text">E-mail (opcional)</span>
+                    {clienteForm.email && !emailValido(clienteForm.email) && (
+                      <span className="label-text-alt text-error">E-mail inválido</span>
+                    )}
                   </label>
                   <input
                     type="email"
                     placeholder="email@exemplo.com"
-                    className="input input-bordered"
+                    className={`input input-bordered ${clienteForm.email && !emailValido(clienteForm.email) ? 'input-error' : ''}`}
                     value={clienteForm.email}
                     onChange={(e) =>
                       setClienteForm({ ...clienteForm, email: e.target.value })
@@ -508,11 +617,67 @@ export default function ClientesPage() {
                   />
                 </div>
               </div>
+              <div className="form-control pt-2 border-t border-base-200">
+                <label className="label">
+                  <span className="label-text">Logo do cliente</span>
+                </label>
+                <p className="text-sm text-base-content/60 mb-3">
+                  A logo aparece no cabeçalho dos relatórios em formato quadrado.
+                </p>
+                <input
+                  ref={logoFileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  className="hidden"
+                  onChange={(e) => handleLogoFileSelect(e)}
+                />
+                {!pendingLogoRemover && (pendingLogoPreviewUrl || (editingCliente?.logoUrl && !pendingLogoBlob)) ? (
+                  <div className="flex flex-col items-start gap-3">
+                    <div className="w-40 h-40 rounded-lg border border-base-300 overflow-hidden bg-base-200 flex-shrink-0">
+                      <img
+                        src={pendingLogoPreviewUrl || editingCliente?.logoUrl || ''}
+                        alt="Logo do cliente"
+                        className="w-full h-full object-contain"
+                      />
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        className="btn btn-outline btn-sm gap-2"
+                        onClick={() => logoFileInputRef.current?.click()}
+                      >
+                        <ImagePlus className="w-4 h-4" />
+                        Alterar imagem
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-sm gap-2 text-error hover:bg-error/10"
+                        onClick={handleRemoverLogoNoModal}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        Remover imagem
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => logoFileInputRef.current?.click()}
+                    className="w-full h-24 border-2 border-dashed border-base-300 rounded-lg flex flex-col items-center justify-center gap-2 hover:border-primary hover:bg-primary/5 transition-colors"
+                  >
+                    <ImagePlus className="w-8 h-8 text-base-content/40" />
+                    <span className="text-sm text-base-content/60">
+                      Clique para adicionar imagem da logo
+                    </span>
+                  </button>
+                )}
+              </div>
             </div>
             <div className="modal-action">
               <button
                 className="btn btn-ghost"
                 onClick={() => {
+                  clearPendingLogo();
                   setShowModal(false);
                   setEditingCliente(null);
                   setClienteForm({
@@ -534,7 +699,9 @@ export default function ClientesPage() {
                   saving ||
                   !clienteForm.razaoSocial ||
                   !clienteForm.cnpj ||
-                  !clienteForm.telefone
+                  !clienteForm.telefone ||
+                  removerMascaraTelefone(clienteForm.telefone).length < 10 ||
+                  (clienteForm.email?.trim() ? !emailValido(clienteForm.email) : false)
                 }
               >
                 {saving ? (
@@ -557,6 +724,14 @@ export default function ClientesPage() {
           ></div>
         </div>
       )}
+
+      <LogoCropperModal
+        open={cropperOpen}
+        imageSource={cropperImageUrl}
+        onClose={handleCropperClose}
+        onConfirm={handleCropperConfirm}
+        title="Ajustar imagem da logo do cliente"
+      />
 
       {/* Modal Nova Unidade */}
       {showUnidadeModal && (

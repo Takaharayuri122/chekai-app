@@ -224,7 +224,7 @@ export default function ImportarChecklistPage() {
                   }}
                 />
 
-                <div className="divider max-w-md">Formato do arquivo</div>
+                <div className="divider max-w-md mx-auto justify-center text-center">Formato do arquivo</div>
                 <ol className="text-left text-sm text-base-content/70 max-w-md space-y-2">
                   <li className="flex gap-2">
                     <span className="badge badge-sm badge-ghost">1</span>

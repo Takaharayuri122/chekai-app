@@ -276,14 +276,7 @@ export default function AuditoriaPage() {
   };
 
   const openPhotoModal = (item: AuditoriaItem) => {
-    // Se a auditoria está finalizada, permitir apenas visualização
     const isFinalizada = auditoria?.status === 'finalizada';
-    
-    // Se não está finalizada, verificar se o item tem resposta antes de abrir o modal
-    if (!isFinalizada && (!item.resposta || item.resposta === 'nao_avaliado')) {
-      toastService.warning('Por favor, marque uma resposta antes de adicionar fotos');
-      return;
-    }
     // Carregar fotos existentes do item com suas análises
     const fotosExistentes: FotoPreview[] = (item.fotos || []).map((foto) => {
       let analiseIa: AnaliseChecklistResponse | undefined;
@@ -325,12 +318,6 @@ export default function AuditoriaPage() {
     // Verificar se a auditoria está finalizada
     if (auditoria.status === 'finalizada') {
       toastService.warning('Não é possível adicionar fotos em uma auditoria finalizada. Reabra a auditoria para fazer alterações.');
-      if (e.target) e.target.value = '';
-      return;
-    }
-    // Verificar se o item tem resposta antes de processar a imagem
-    if (!itemModal.item.resposta || itemModal.item.resposta === 'nao_avaliado') {
-      toastService.warning('Por favor, marque uma resposta antes de adicionar fotos');
       if (e.target) e.target.value = '';
       return;
     }
@@ -580,26 +567,25 @@ export default function AuditoriaPage() {
       return;
     }
 
-    if (!itemModal.item.resposta) {
-      toastService.error('Selecione uma resposta');
+    const temResposta = Boolean(itemModal.item.resposta && itemModal.item.resposta !== 'nao_avaliado');
+    const temFotos = itemModal.fotos.length > 0;
+    if (!temResposta && !temFotos) {
+      toastService.error('Adicione pelo menos uma foto ou selecione uma resposta');
       return;
     }
 
-    // Buscar configuração da opção selecionada
-    const opcaoConfig = getOpcaoConfig(itemModal.item, itemModal.item.resposta);
-
-    // Validar foto obrigatória
-    if (opcaoConfig.fotoObrigatoria && itemModal.fotos.length === 0) {
-      setActiveTab('fotos'); // Mudar para tab de fotos
-      toastService.error('Esta resposta requer pelo menos uma foto');
-      return;
-    }
-
-    // Validar observação obrigatória
-    if (opcaoConfig.observacaoObrigatoria && (!itemModal.observacao || itemModal.observacao.trim() === '')) {
-      setActiveTab('observacao'); // Mudar para tab de observação
-      toastService.error('Esta resposta requer uma observação');
-      return;
+    if (temResposta) {
+      const opcaoConfig = getOpcaoConfig(itemModal.item, itemModal.item.resposta);
+      if (opcaoConfig.fotoObrigatoria && itemModal.fotos.length === 0) {
+        setActiveTab('fotos');
+        toastService.error('Esta resposta requer pelo menos uma foto');
+        return;
+      }
+      if (opcaoConfig.observacaoObrigatoria && (!itemModal.observacao || itemModal.observacao.trim() === '')) {
+        setActiveTab('observacao');
+        toastService.error('Esta resposta requer uma observação');
+        return;
+      }
     }
 
     // Validar imagens não relevantes
@@ -972,12 +958,10 @@ export default function AuditoriaPage() {
                   <button
                     className="btn btn-outline btn-sm gap-1 flex-1 border-primary text-primary hover:bg-primary hover:text-primary-content"
                     onClick={() => openPhotoModal(item)}
-                    disabled={!auditoria.status || (auditoria.status !== 'finalizada' && (!item.resposta || item.resposta === 'nao_avaliado'))}
+                    disabled={!auditoria.status}
                     title={
                       auditoria.status === 'finalizada'
                         ? 'Visualizar documentação do item'
-                        : (!item.resposta || item.resposta === 'nao_avaliado')
-                        ? 'Marque uma resposta antes de documentar'
                         : 'Adicionar fotos e observações'
                     }
                   >
@@ -1328,29 +1312,17 @@ export default function AuditoriaPage() {
 
               {/* Ações */}
               {(() => {
+                const temResposta = Boolean(itemModal.item.resposta && itemModal.item.resposta !== 'nao_avaliado');
+                const temFotos = itemModal.fotos.length > 0;
                 const opcaoConfigModal = itemModal ? getOpcaoConfig(itemModal.item, itemModal.item.resposta || '') : null;
                 const imagensNaoRelevantes = itemModal?.fotos.some((f) => f.analiseIa && !f.analiseIa.imagemRelevante) || false;
+                const faltaObservacaoParaImagens = imagensNaoRelevantes && (!itemModal.observacao || itemModal.observacao.trim() === '');
 
-                const isDisabled = !itemModal.item.resposta ||
-                  (opcaoConfigModal?.observacaoObrigatoria && (!itemModal.observacao || itemModal.observacao.trim() === '')) ||
-                  (opcaoConfigModal?.fotoObrigatoria && itemModal.fotos.length === 0) ||
-                  (imagensNaoRelevantes && (!itemModal.observacao || itemModal.observacao.trim() === ''));
-
-                console.log('🔘 Botão Salvar DEBUG:', {
-                  resposta: itemModal.item.resposta,
-                  opcaoConfigModal,
-                  hasObservacao: !!itemModal.observacao,
-                  observacaoTrim: itemModal.observacao?.trim(),
-                  numFotos: itemModal.fotos.length,
-                  imagensNaoRelevantes,
-                  isDisabled,
-                  validacoes: {
-                    semResposta: !itemModal.item.resposta,
-                    observacaoObrigatoriaFaltando: opcaoConfigModal?.observacaoObrigatoria && (!itemModal.observacao || itemModal.observacao.trim() === ''),
-                    fotoObrigatoriaFaltando: opcaoConfigModal?.fotoObrigatoria && itemModal.fotos.length === 0,
-                    imagensNaoRelevantesSemObservacao: imagensNaoRelevantes && (!itemModal.observacao || itemModal.observacao.trim() === ''),
-                  }
-                });
+                const isDisabled = temResposta
+                  ? (opcaoConfigModal?.observacaoObrigatoria && (!itemModal.observacao || itemModal.observacao.trim() === '')) ||
+                    (opcaoConfigModal?.fotoObrigatoria && !temFotos) ||
+                    faltaObservacaoParaImagens
+                  : !temFotos || faltaObservacaoParaImagens;
 
                 return (
                   <div className="modal-action">

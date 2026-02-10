@@ -15,6 +15,7 @@ export interface Usuario {
   telefone?: string;
   gestorId?: string;
   tenantId?: string;
+  logoUrl?: string | null;
 }
 
 interface AuthState {

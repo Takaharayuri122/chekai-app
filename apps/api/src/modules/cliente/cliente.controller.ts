@@ -9,13 +9,21 @@ import {
   Query,
   UseGuards,
   ParseUUIDPipe,
+  BadRequestException,
+  ForbiddenException,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import {
   ApiTags,
   ApiOperation,
   ApiResponse,
   ApiBearerAuth,
+  ApiConsumes,
+  ApiBody,
 } from '@nestjs/swagger';
+import { ParseFilePipe, MaxFileSizeValidator, FileTypeValidator } from '@nestjs/common';
 import { ClienteService } from './cliente.service';
 import { CriarClienteDto } from './dto/criar-cliente.dto';
 import { CriarUnidadeDto } from './dto/criar-unidade.dto';
@@ -28,6 +36,7 @@ import { PerfilUsuario } from '../usuario/entities/usuario.entity';
 import { Cliente } from './entities/cliente.entity';
 import { Unidade } from './entities/unidade.entity';
 import { PaginatedResult } from '../../shared/types/pagination.interface';
+import { UploadLogoService } from '../supabase/upload-logo.service';
 
 /**
  * Controller para gestão de clientes e unidades.
@@ -37,7 +46,10 @@ import { PaginatedResult } from '../../shared/types/pagination.interface';
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class ClienteController {
-  constructor(private readonly clienteService: ClienteService) {}
+  constructor(
+    private readonly clienteService: ClienteService,
+    private readonly uploadLogoService: UploadLogoService,
+  ) {}
 
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -68,8 +80,71 @@ export class ClienteController {
   @ApiResponse({ status: 200, description: 'Cliente encontrado' })
   async buscarClientePorId(
     @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario },
   ): Promise<Cliente> {
-    return this.clienteService.buscarClientePorId(id);
+    return this.clienteService.buscarClientePorId(id, usuario);
+  }
+
+  @Put(':id/logo')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(PerfilUsuario.MASTER, PerfilUsuario.GESTOR)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Upload da logo/imagem do cliente (para relatório)' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: { file: { type: 'string', format: 'binary' } },
+    },
+  })
+  @ApiResponse({ status: 200, description: 'Logo do cliente atualizada' })
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadLogoCliente(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario },
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({ maxSize: 2 * 1024 * 1024 }),
+          new FileTypeValidator({ fileType: /(jpg|jpeg|png|webp|gif)$/i }),
+        ],
+      }),
+    )
+    file: Express.Multer.File,
+  ): Promise<Cliente> {
+    const cliente = await this.clienteService.buscarClientePorId(id, usuario);
+    if (usuario.perfil === PerfilUsuario.GESTOR && cliente.gestorId !== usuario.id) {
+      throw new ForbiddenException('Acesso negado a este cliente');
+    }
+    try {
+      this.uploadLogoService.validarArquivo(file.buffer, file.mimetype || '');
+    } catch (e) {
+      throw new BadRequestException(e instanceof Error ? e.message : 'Arquivo inválido');
+    }
+    const url = await this.uploadLogoService.uploadLogo(
+      'logos-clientes',
+      id,
+      file.buffer,
+      file.mimetype || 'image/jpeg',
+    );
+    return this.clienteService.atualizarCliente(id, { logoUrl: url });
+  }
+
+  @Delete(':id/logo')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(PerfilUsuario.MASTER, PerfilUsuario.GESTOR)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Remove a logo do cliente' })
+  @ApiResponse({ status: 200, description: 'Logo removida' })
+  async removerLogoCliente(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario },
+  ): Promise<Cliente> {
+    const cliente = await this.clienteService.buscarClientePorId(id, usuario);
+    if (usuario.perfil === PerfilUsuario.GESTOR && cliente.gestorId !== usuario.id) {
+      throw new ForbiddenException('Acesso negado a este cliente');
+    }
+    return this.clienteService.atualizarCliente(id, { logoUrl: null });
   }
 
   @Put(':id')
@@ -78,15 +153,19 @@ export class ClienteController {
   async atualizarCliente(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: Partial<CriarClienteDto>,
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario },
   ): Promise<Cliente> {
-    return this.clienteService.atualizarCliente(id, dto);
+    return this.clienteService.atualizarCliente(id, dto, usuario);
   }
 
   @Delete(':id')
   @ApiOperation({ summary: 'Remove um cliente' })
   @ApiResponse({ status: 200, description: 'Cliente removido' })
-  async removerCliente(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
-    return this.clienteService.removerCliente(id);
+  async removerCliente(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario },
+  ): Promise<void> {
+    return this.clienteService.removerCliente(id, usuario);
   }
 
   @Post(':id/unidades')
@@ -95,8 +174,9 @@ export class ClienteController {
   async criarUnidade(
     @Param('id', ParseUUIDPipe) clienteId: string,
     @Body() dto: CriarUnidadeParaClienteDto,
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario },
   ): Promise<Unidade> {
-    return this.clienteService.criarUnidade({ ...dto, clienteId });
+    return this.clienteService.criarUnidade({ ...dto, clienteId }, usuario);
   }
 
   @Get(':id/unidades')
@@ -104,7 +184,9 @@ export class ClienteController {
   @ApiResponse({ status: 200, description: 'Lista de unidades' })
   async listarUnidades(
     @Param('id', ParseUUIDPipe) clienteId: string,
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario },
   ): Promise<Unidade[]> {
+    await this.clienteService.buscarClientePorId(clienteId, usuario);
     return this.clienteService.listarUnidadesPorCliente(clienteId);
   }
 }
@@ -122,15 +204,20 @@ export class UnidadeController {
   @Post()
   @ApiOperation({ summary: 'Cria uma nova unidade' })
   @ApiResponse({ status: 201, description: 'Unidade criada com sucesso' })
-  async criarUnidade(@Body() dto: CriarUnidadeDto): Promise<Unidade> {
-    return this.clienteService.criarUnidade(dto);
+  async criarUnidade(
+    @Body() dto: CriarUnidadeDto,
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario },
+  ): Promise<Unidade> {
+    return this.clienteService.criarUnidade(dto, usuario);
   }
 
   @Get()
   @ApiOperation({ summary: 'Lista todas as unidades' })
   @ApiResponse({ status: 200, description: 'Lista de unidades' })
-  async listarUnidades(): Promise<Unidade[]> {
-    return this.clienteService.listarTodasUnidades();
+  async listarUnidades(
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario },
+  ): Promise<Unidade[]> {
+    return this.clienteService.listarTodasUnidades(usuario);
   }
 
   @Get(':id')
@@ -138,8 +225,9 @@ export class UnidadeController {
   @ApiResponse({ status: 200, description: 'Unidade encontrada' })
   async buscarUnidadePorId(
     @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario },
   ): Promise<Unidade> {
-    return this.clienteService.buscarUnidadePorId(id);
+    return this.clienteService.buscarUnidadePorId(id, usuario);
   }
 
   @Put(':id')
@@ -148,15 +236,19 @@ export class UnidadeController {
   async atualizarUnidade(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: Partial<CriarUnidadeDto>,
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario },
   ): Promise<Unidade> {
-    return this.clienteService.atualizarUnidade(id, dto);
+    return this.clienteService.atualizarUnidade(id, dto, usuario);
   }
 
   @Delete(':id')
   @ApiOperation({ summary: 'Remove uma unidade' })
   @ApiResponse({ status: 200, description: 'Unidade removida' })
-  async removerUnidade(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
-    return this.clienteService.removerUnidade(id);
+  async removerUnidade(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario },
+  ): Promise<void> {
+    return this.clienteService.removerUnidade(id, usuario);
   }
 }
 

@@ -5,6 +5,7 @@ import {
   IsOptional,
   IsString,
   Matches,
+  ValidateIf,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { TipoAtividade } from '../entities/cliente.entity';
@@ -54,5 +55,11 @@ export class CriarClienteDto {
   @IsString()
   @IsOptional()
   responsavelTecnico?: string;
+
+  @ApiPropertyOptional({ description: 'URL da logo/imagem do cliente (exibida no relatório). Enviar null para remover.' })
+  @ValidateIf((o) => o.logoUrl != null)
+  @IsString()
+  @IsOptional()
+  logoUrl?: string | null;
 }
 

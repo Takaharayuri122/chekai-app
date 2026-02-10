@@ -9,15 +9,21 @@ import {
   Query,
   UseGuards,
   ParseUUIDPipe,
-  Request,
   ForbiddenException,
+  BadRequestException,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import {
   ApiTags,
   ApiOperation,
   ApiResponse,
   ApiBearerAuth,
+  ApiConsumes,
+  ApiBody,
 } from '@nestjs/swagger';
+import { ParseFilePipe, MaxFileSizeValidator, FileTypeValidator } from '@nestjs/common';
 import { UsuarioService } from './usuario.service';
 import { CriarUsuarioDto } from './dto/criar-usuario.dto';
 import { AtualizarUsuarioDto } from './dto/atualizar-usuario.dto';
@@ -25,9 +31,9 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../core/guards/roles.guard';
 import { Roles } from '../../core/decorators/roles.decorator';
 import { CurrentUser } from '../../core/decorators/current-user.decorator';
-import { AuthenticatedRequest } from '../../core/interfaces/authenticated-request.interface';
 import { Usuario, PerfilUsuario } from './entities/usuario.entity';
 import { PaginatedResult } from '../../shared/types/pagination.interface';
+import { UploadLogoService } from '../supabase/upload-logo.service';
 
 /**
  * Controller para gestão de usuários.
@@ -35,7 +41,10 @@ import { PaginatedResult } from '../../shared/types/pagination.interface';
 @ApiTags('Usuários')
 @Controller('usuarios')
 export class UsuarioController {
-  constructor(private readonly usuarioService: UsuarioService) {}
+  constructor(
+    private readonly usuarioService: UsuarioService,
+    private readonly uploadLogoService: UploadLogoService,
+  ) {}
 
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -83,6 +92,74 @@ export class UsuarioController {
       throw new ForbiddenException('Acesso negado');
     }
     return usuarioEncontrado;
+  }
+
+  @Put(':id/logo')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Upload da logo da consultoria (gestor)' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: { file: { type: 'string', format: 'binary' } },
+    },
+  })
+  @ApiResponse({ status: 200, description: 'Logo atualizada' })
+  @ApiResponse({ status: 403, description: 'Apenas o próprio gestor ou Master pode alterar a logo' })
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadLogo(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario },
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({ maxSize: 2 * 1024 * 1024 }),
+          new FileTypeValidator({ fileType: /(jpg|jpeg|png|webp|gif)$/i }),
+        ],
+      }),
+    )
+    file: Express.Multer.File,
+  ): Promise<Usuario> {
+    const alvo = await this.usuarioService.buscarPorId(id);
+    if (alvo.perfil !== PerfilUsuario.GESTOR) {
+      throw new BadRequestException('Apenas usuários com perfil Gestor podem ter logo da consultoria');
+    }
+    if (usuario.perfil !== PerfilUsuario.MASTER && usuario.id !== id) {
+      throw new ForbiddenException('Apenas o próprio gestor ou Master pode alterar a logo');
+    }
+    try {
+      this.uploadLogoService.validarArquivo(file.buffer, file.mimetype || '');
+    } catch (e) {
+      throw new BadRequestException(e instanceof Error ? e.message : 'Arquivo inválido');
+    }
+    const url = await this.uploadLogoService.uploadLogo(
+      'logos-consultoria',
+      id,
+      file.buffer,
+      file.mimetype || 'image/jpeg',
+    );
+    return this.usuarioService.atualizar(id, { logoUrl: url });
+  }
+
+  @Delete(':id/logo')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Remove a logo da consultoria' })
+  @ApiResponse({ status: 200, description: 'Logo removida' })
+  @ApiResponse({ status: 403, description: 'Apenas o próprio gestor ou Master pode remover a logo' })
+  async removerLogo(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario },
+  ): Promise<Usuario> {
+    const alvo = await this.usuarioService.buscarPorId(id);
+    if (alvo.perfil !== PerfilUsuario.GESTOR) {
+      throw new BadRequestException('Apenas usuários com perfil Gestor possuem logo da consultoria');
+    }
+    if (usuario.perfil !== PerfilUsuario.MASTER && usuario.id !== id) {
+      throw new ForbiddenException('Apenas o próprio gestor ou Master pode remover a logo');
+    }
+    return this.usuarioService.atualizar(id, { logoUrl: null });
   }
 
   @Put(':id')

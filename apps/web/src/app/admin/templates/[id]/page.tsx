@@ -492,7 +492,7 @@ export default function EditarTemplatePage() {
       pergunta: item.pergunta,
       categoria: item.categoria,
       criticidade: item.criticidade,
-      peso: item.peso,
+      peso: item.tipoRespostaCustomizada === TipoRespostaCustomizada.TEXTO ? 0 : item.peso,
       legislacaoReferencia: item.legislacaoReferencia || '',
       artigo: item.artigo || '',
       obrigatorio: item.obrigatorio,
@@ -514,7 +514,7 @@ export default function EditarTemplatePage() {
         pergunta: itemForm.pergunta,
         categoria: itemForm.categoria,
         criticidade: itemForm.criticidade,
-        peso: itemForm.peso,
+        peso: itemForm.tipoRespostaCustomizada === TipoRespostaCustomizada.TEXTO ? 0 : itemForm.peso,
         legislacaoReferencia: itemForm.legislacaoReferencia,
         artigo: itemForm.artigo,
         obrigatorio: itemForm.obrigatorio,
@@ -1069,20 +1069,22 @@ export default function EditarTemplatePage() {
 
               {/* Peso e Obrigatório */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="form-control">
-                  <label className="label"><span className="label-text">Peso</span></label>
-                  <input
-                    type="number"
-                    min="-10"
-                    max="10"
-                    className="input input-bordered"
-                    value={itemForm.peso}
-                    onChange={(e) => {
-                      const v = e.target.value === '' ? 1 : parseInt(e.target.value, 10);
-                      setItemForm({ ...itemForm, peso: Number.isNaN(v) ? 1 : v });
-                    }}
-                  />
-                </div>
+                {itemForm.tipoRespostaCustomizada !== TipoRespostaCustomizada.TEXTO && (
+                  <div className="form-control">
+                    <label className="label"><span className="label-text">Peso</span></label>
+                    <input
+                      type="number"
+                      min="-10"
+                      max="10"
+                      className="input input-bordered"
+                      value={itemForm.peso}
+                      onChange={(e) => {
+                        const v = e.target.value === '' ? 1 : parseInt(e.target.value, 10);
+                        setItemForm({ ...itemForm, peso: Number.isNaN(v) ? 1 : v });
+                      }}
+                    />
+                  </div>
+                )}
                 <div className="form-control">
                   <label className="label cursor-pointer">
                     <span className="label-text">Obrigatório</span>
@@ -1136,6 +1138,7 @@ export default function EditarTemplatePage() {
                       ...itemForm,
                       tipoRespostaCustomizada: valor,
                       usarRespostasPersonalizadas: valor !== undefined,
+                      peso: valor === TipoRespostaCustomizada.TEXTO ? 0 : itemForm.peso,
                     });
                   }}
                 >

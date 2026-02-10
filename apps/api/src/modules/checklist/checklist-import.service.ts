@@ -255,7 +255,7 @@ export class ChecklistImportService {
       descricao: dto.descricao,
       tipoAtividade: dto.tipoAtividade || TipoAtividade.OUTRO,
       versao: dto.versao || '1.0',
-      gestorId: usuarioAutenticado?.perfil === PerfilUsuario.GESTOR ? usuarioAutenticado.id : undefined,
+      gestorId: usuarioAutenticado?.id ?? undefined,
     });
     const savedTemplate = await this.templateRepository.save(template);
     

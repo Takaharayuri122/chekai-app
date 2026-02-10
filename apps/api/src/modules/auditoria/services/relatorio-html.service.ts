@@ -82,6 +82,19 @@ export class RelatorioHtmlService {
       align-items: center;
       gap: 4px;
     }
+    .header-logos {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+      margin-bottom: 8px;
+    }
+    .header-logo-consultoria,
+    .header-logo-cliente {
+      width: 56px;
+      height: 56px;
+      object-fit: contain;
+    }
     .section {
       margin-bottom: 12px;
     }
@@ -580,9 +593,19 @@ export class RelatorioHtmlService {
           year: 'numeric',
         })
       : 'N/A';
+    const gestor = auditoria.unidade?.cliente?.gestor as { logoUrl?: string | null } | undefined;
+    const logoConsultoriaUrl = gestor?.logoUrl || null;
+    const logoClienteUrl = (auditoria.unidade?.cliente as { logoUrl?: string | null })?.logoUrl || null;
+    const temAlgumaLogo = !!(logoConsultoriaUrl || logoClienteUrl);
 
     return `
     <div class="header">
+      ${temAlgumaLogo ? `
+      <div class="header-logos">
+        ${logoConsultoriaUrl ? `<img class="header-logo-consultoria" data-logo="consultoria" alt="Logo da consultoria" />` : ''}
+        ${logoClienteUrl ? `<img class="header-logo-cliente" data-logo="cliente" alt="Logo do cliente" />` : ''}
+      </div>
+      ` : ''}
       <h1>${this.escapeHtml(auditoria.unidade?.nome || 'Unidade')}</h1>
       <div class="subtitle">
         ${this.escapeHtml(
@@ -1170,9 +1193,11 @@ export class RelatorioHtmlService {
       opcoesRespostaConfig?: Array<{ valor?: string; pontuacao?: number | null }>;
       opcoesResposta?: string[];
       usarRespostasPersonalizadas?: boolean;
+      tipoRespostaCustomizada?: string;
     } | null | undefined,
   ): number {
     if (!templateItem) return 0;
+    if (templateItem.tipoRespostaCustomizada === 'texto') return 0;
     const opcoesOrdenadas = templateItem.usarRespostasPersonalizadas && templateItem.opcoesResposta?.length
       ? templateItem.opcoesResposta
       : ['conforme', 'nao_conforme', 'nao_aplicavel', 'nao_avaliado'];

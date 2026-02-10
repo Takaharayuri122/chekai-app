@@ -104,6 +104,31 @@ export class RelatorioPdfPuppeteerService {
         timeout: 60000,
       });
 
+      const logoConsultoria = (auditoria.unidade?.cliente?.gestor as { logoUrl?: string | null })?.logoUrl;
+      const logoCliente = (auditoria.unidade?.cliente as { logoUrl?: string | null })?.logoUrl;
+      if (logoConsultoria) {
+        await page.evaluate((url: string) => {
+          const img = document.querySelector<HTMLImageElement>('img[data-logo="consultoria"]');
+          if (img) img.src = url;
+        }, logoConsultoria);
+      }
+      if (logoCliente) {
+        await page.evaluate((url: string) => {
+          const img = document.querySelector<HTMLImageElement>('img[data-logo="cliente"]');
+          if (img) img.src = url;
+        }, logoCliente);
+      }
+      if (logoConsultoria || logoCliente) {
+        await page.evaluate(() =>
+          Promise.all(
+            Array.from(document.querySelectorAll<HTMLImageElement>('img[data-logo]'))
+              .filter((img) => img.src && !img.complete)
+              .map((img) => new Promise<void>((r) => { img.onload = () => r(); img.onerror = () => r(); })),
+          ),
+        );
+        await new Promise((r) => setTimeout(r, 300));
+      }
+
       const fotos: { id: string; url: string }[] = [];
       auditoria.itens?.forEach((item) => {
         item.fotos?.forEach((foto) => {
