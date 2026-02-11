@@ -20,6 +20,7 @@ import {
   Shield,
   ChevronDown,
   BarChart3,
+  ClipboardList,
 } from 'lucide-react';
 import { useAuthStore, PerfilUsuario } from '@/lib/store';
 import { SyncStatus } from '@/components/pwa/sync-status';
@@ -36,6 +37,7 @@ const allNavItems = [
 ];
 
 const administrativoItems = [
+  { href: '/admin/lista-espera', label: 'Lista de Espera', icon: ClipboardList },
   { href: '/admin/planos', label: 'Planos', icon: Package },
   { href: '/admin/planos/assinaturas', label: 'Assinaturas', icon: UserCheck },
   { href: '/admin/configuracoes-credito', label: 'Config Créditos', icon: Settings },

@@ -13,6 +13,7 @@ import { CreditoModule } from './modules/credito/credito.module';
 import { CoreModule } from './core/core.module';
 import { SupabaseModule } from './modules/supabase/supabase.module';
 import { EmailModule } from './modules/email/email.module';
+import { ListaEsperaModule } from './modules/lista-espera/lista-espera.module';
 
 /**
  * Módulo principal da aplicação.
@@ -62,6 +63,7 @@ import { EmailModule } from './modules/email/email.module';
     IaModule,
     PlanoModule,
     CreditoModule,
+    ListaEsperaModule,
   ],
 })
 export class AppModule {}

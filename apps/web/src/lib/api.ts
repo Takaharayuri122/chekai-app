@@ -114,13 +114,19 @@ api.interceptors.response.use(
       }
     }
 
-    // Exibir toast de erro para outros status codes
     if (typeof window !== 'undefined') {
-      // Se conseguimos extrair uma mensagem, usar ela
+      const requestUrl = error.config?.url || '';
+      const isListaEspera409 =
+        requestUrl.includes('/lista-espera') && error.response?.status === 409;
+      if (isListaEspera409) {
+        toastService.warning(
+          'Você já está na nossa lista de espera. Em breve entraremos em contato.',
+        );
+        return Promise.reject(error);
+      }
       if (errorMessage) {
         toastService.error(errorMessage);
       } else {
-        // Se não conseguimos extrair a mensagem, exibir uma genérica baseada no status
         const statusMessages: Record<number, string> = {
           400: 'Dados inválidos. Verifique os campos preenchidos.',
           403: 'Acesso negado.',
@@ -204,6 +210,43 @@ export const authService = {
   async me(): Promise<{ id: string; email: string; perfil: string }> {
     const response = await api.get('/auth/me');
     return response.data.data;
+  },
+};
+
+export interface ListaEsperaItem {
+  id: string;
+  email: string;
+  telefone: string | null;
+  criadoEm: string;
+}
+
+export interface ListaEsperaPaginada {
+  items: ListaEsperaItem[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+  hasNext: boolean;
+  hasPrevious: boolean;
+}
+
+export const listaEsperaService = {
+  async inscrever(data: { email: string; telefone?: string }): Promise<{ message: string }> {
+    const response = await api.post<{ message: string } | { data: { message: string } }>(
+      '/lista-espera',
+      { email: data.email, telefone: data.telefone || undefined },
+    );
+    const body = response.data as { message?: string; data?: { message: string } };
+    if (body.data) return body.data;
+    return { message: body.message ?? 'Inscrição realizada com sucesso.' };
+  },
+
+  async listar(page = 1, limit = 20): Promise<ListaEsperaPaginada> {
+    const response = await api.get<ListaEsperaPaginada | { data: ListaEsperaPaginada }>(
+      `/lista-espera?page=${page}&limit=${limit}`,
+    );
+    const body = response.data as ListaEsperaPaginada & { data?: ListaEsperaPaginada };
+    return body.data ?? body;
   },
 };
 

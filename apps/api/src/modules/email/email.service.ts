@@ -190,6 +190,15 @@ export class EmailService {
   }
 
   /**
+   * Envia e-mail de confirmação para quem entrou na lista de espera.
+   */
+  async enviarEmailListaEspera(destinatario: string): Promise<void> {
+    const assunto = 'Você está na lista de espera – ChekAI';
+    const html = this.getTemplateListaEspera(destinatario);
+    await this.enviarEmail(destinatario, assunto, html);
+  }
+
+  /**
    * Carrega um template HTML e substitui as variáveis.
    */
   private carregarTemplate(nomeArquivo: string, variaveis: Record<string, string>): string {
@@ -214,6 +223,13 @@ export class EmailService {
    */
   private getTemplateOTP(nome: string, codigoOTP: string): string {
     return this.carregarTemplate('otp.html', { nome, codigoOTP });
+  }
+
+  /**
+   * Retorna o template HTML da lista de espera.
+   */
+  private getTemplateListaEspera(email: string): string {
+    return this.carregarTemplate('lista-espera.html', { email });
   }
 }
 

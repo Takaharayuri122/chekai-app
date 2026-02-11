@@ -48,14 +48,19 @@ export const toastService = {
    * Exibe uma mensagem de aviso
    */
   warning: (message: string) => {
+    const warningBg = '#f59e0b';
     toast(message, {
       duration: 4000,
-      icon: '⚠️',
       style: {
-        background: 'hsl(var(--wa))',
-        color: 'hsl(var(--wac))',
+        background: warningBg,
+        color: '#ffffff',
         borderRadius: '0.5rem',
         padding: '1rem',
+        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+      },
+      iconTheme: {
+        primary: '#ffffff',
+        secondary: warningBg,
       },
     });
   },

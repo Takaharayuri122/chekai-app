@@ -5,7 +5,11 @@ import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { ArrowRight } from 'lucide-react';
 
-export function LandingHeader() {
+interface LandingHeaderProps {
+  onAbrirListaEspera?: () => void;
+}
+
+export function LandingHeader({ onAbrirListaEspera }: LandingHeaderProps) {
   return (
     <header className="sticky top-0 z-40 w-full bg-base-100/80 backdrop-blur-md border-b border-base-300">
       <div className="px-4 sm:px-6 lg:px-8">
@@ -41,14 +45,15 @@ export function LandingHeader() {
               >
                 Entrar
               </Link>
-              <Link
-                href="/cadastro"
+              <button
+                type="button"
+                onClick={onAbrirListaEspera}
                 className="btn btn-primary btn-sm gap-1.5 sm:gap-2 text-xs sm:text-sm"
               >
-                <span className="hidden sm:inline">Começar Grátis</span>
-                <span className="sm:hidden">Grátis</span>
+                <span className="hidden sm:inline">Conhecer agora</span>
+                <span className="sm:hidden">Conhecer</span>
                 <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-              </Link>
+              </button>
             </motion.div>
           </div>
         </div>

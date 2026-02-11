@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { motion, useScroll, useTransform } from 'framer-motion';
@@ -35,6 +35,7 @@ import { useAuthStore } from '@/lib/store';
 import { CookieConsent } from '@/components/ui/cookie-consent';
 import { LandingHeader } from '@/components/layout/landing-header';
 import { FloatingCloud } from '@/components/ui/floating-cloud';
+import { ListaEsperaModal } from '@/components/ui/lista-espera-modal';
 
 const features = [
   {
@@ -159,10 +160,12 @@ const faqs = [
   },
 ];
 
-export default function HomePage() {
+function HomePageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { isAuthenticated, _hasHydrated } = useAuthStore();
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [modalListaEsperaAberto, setModalListaEsperaAberto] = useState(false);
   const { scrollY } = useScroll();
   const heroOpacity = useTransform(scrollY, [0, 300], [1, 0]);
   const heroY = useTransform(scrollY, [0, 300], [0, 50]);
@@ -172,6 +175,12 @@ export default function HomePage() {
       router.push('/admin/dashboard');
     }
   }, [isAuthenticated, _hasHydrated, router]);
+
+  useEffect(() => {
+    if (searchParams.get('lista-espera') === '1') {
+      setModalListaEsperaAberto(true);
+    }
+  }, [searchParams]);
 
   if (_hasHydrated && isAuthenticated) {
     return (
@@ -183,7 +192,11 @@ export default function HomePage() {
 
   return (
     <>
-      <LandingHeader />
+      <LandingHeader onAbrirListaEspera={() => setModalListaEsperaAberto(true)} />
+      <ListaEsperaModal
+        open={modalListaEsperaAberto}
+        onClose={() => setModalListaEsperaAberto(false)}
+      />
       <main className="min-h-screen bg-gradient-to-b from-base-100 to-base-200 overflow-hidden">
         {/* Hero Section */}
       <section className="relative px-4 pt-8 pb-16 lg:px-8 lg:pt-12 lg:pb-32 min-h-[90vh] flex items-center overflow-hidden">
@@ -236,13 +249,14 @@ export default function HomePage() {
               transition={{ delay: 0.3 }}
               className="flex flex-col sm:flex-row gap-4 justify-center mb-12"
             >
-              <Link
-                href="/cadastro"
+              <button
+                type="button"
+                onClick={() => setModalListaEsperaAberto(true)}
                 className="btn btn-primary btn-lg gap-2 text-lg px-8 hover:scale-105 transition-transform"
               >
-                Começar grátis
+                Conhecer agora
                 <ArrowRight className="w-5 h-5" />
-              </Link>
+              </button>
               <Link
                 href="/login"
                 className="btn btn-outline btn-lg text-lg px-8 hover:scale-105 transition-transform"
@@ -576,13 +590,14 @@ export default function HomePage() {
               Comece hoje mesmo e veja a diferença que a inteligência artificial pode fazer no seu trabalho.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link
-                href="/cadastro"
+              <button
+                type="button"
+                onClick={() => setModalListaEsperaAberto(true)}
                 className="btn btn-lg bg-white text-primary hover:bg-base-200 text-lg px-8 gap-2 hover:scale-105 transition-transform"
               >
-                Criar conta gratuita
+                Conhecer agora
                 <ArrowRight className="w-5 h-5" />
-              </Link>
+              </button>
               <Link
                 href="/login"
                 className="btn btn-lg btn-outline border-white text-white hover:bg-white/10 text-lg px-8 hover:scale-105 transition-transform"
@@ -646,9 +661,13 @@ export default function HomePage() {
                   </Link>
                 </li>
                 <li>
-                  <Link href="/cadastro" className="hover:text-primary transition-colors">
-                    Criar conta
-                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => setModalListaEsperaAberto(true)}
+                    className="hover:text-primary transition-colors text-left"
+                  >
+                    Conhecer agora
+                  </button>
                 </li>
               </ul>
             </div>
@@ -681,5 +700,19 @@ export default function HomePage() {
       <CookieConsent />
       </main>
     </>
+  );
+}
+
+export default function HomePage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-base-200">
+          <span className="loading loading-spinner loading-lg text-primary" />
+        </div>
+      }
+    >
+      <HomePageContent />
+    </Suspense>
   );
 }

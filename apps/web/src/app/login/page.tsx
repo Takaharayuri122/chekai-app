@@ -13,6 +13,7 @@ import { authService } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
 import { toastService } from '@/lib/toast';
 import { analyticsEvents } from '@/lib/analytics';
+import { ListaEsperaModal } from '@/components/ui/lista-espera-modal';
 
 const emailSchema = z.object({
   email: z.string().email('E-mail inválido'),
@@ -35,6 +36,7 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
   const [otpExpired, setOtpExpired] = useState(false);
+  const [modalListaEsperaAberto, setModalListaEsperaAberto] = useState(false);
 
   const emailForm = useForm<EmailFormData>({
     resolver: zodResolver(emailSchema),
@@ -125,7 +127,12 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-base-100 via-base-200 to-base-100">
+    <>
+      <ListaEsperaModal
+        open={modalListaEsperaAberto}
+        onClose={() => setModalListaEsperaAberto(false)}
+      />
+      <main className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-base-100 via-base-200 to-base-100">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -295,9 +302,13 @@ export default function LoginPage() {
 
             <p className="text-center text-sm text-base-content/60">
               Não tem uma conta?{' '}
-              <Link href="/cadastro" className="link link-primary font-medium">
-                Cadastre-se
-              </Link>
+              <button
+                type="button"
+                onClick={() => setModalListaEsperaAberto(true)}
+                className="link link-primary font-medium"
+              >
+                Entrar na lista de espera
+              </button>
             </p>
 
             <Link
@@ -311,5 +322,6 @@ export default function LoginPage() {
         </div>
       </motion.div>
     </main>
+    </>
   );
 }
