@@ -38,6 +38,26 @@ export async function obterListaUnidades(): Promise<unknown | null> {
   return row.data;
 }
 
+const CACHE_KEY_UNIDADES_CLIENTE = (clienteId: string) => `unidades-${clienteId}`;
+
+export async function salvarUnidadesPorCliente(clienteId: string, data: unknown): Promise<void> {
+  const db = getOfflineDbIfAvailable();
+  if (!db) return;
+  await db.cache_unidades.put({
+    id: CACHE_KEY_UNIDADES_CLIENTE(clienteId),
+    data,
+    cachedAt: Date.now(),
+  });
+}
+
+export async function obterUnidadesPorCliente(clienteId: string): Promise<unknown | null> {
+  const db = getOfflineDbIfAvailable();
+  if (!db) return null;
+  const row = await db.cache_unidades.get(CACHE_KEY_UNIDADES_CLIENTE(clienteId));
+  if (!row || Date.now() - row.cachedAt > TTL_MS) return null;
+  return row.data;
+}
+
 export async function salvarListaAuditorias(data: unknown): Promise<void> {
   const db = getOfflineDbIfAvailable();
   if (!db) return;
