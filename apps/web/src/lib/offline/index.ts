@@ -4,3 +4,4 @@ export * from './cache';
 export * from './queue';
 export * from './sync';
 export * from './auditoria-offline';
+export * from './data-layer';
