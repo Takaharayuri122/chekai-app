@@ -22,6 +22,7 @@ import {
   TipoAtividade,
   TIPO_ATIVIDADE_LABELS,
 } from '@/lib/api';
+import { listarTemplates } from '@/lib/offline/data-layer';
 import { toastService } from '@/lib/toast';
 import { useAuthStore } from '@/lib/store';
 
@@ -43,7 +44,7 @@ export default function TemplatesPage() {
 
   const carregarTemplates = async () => {
     try {
-      const response = await checklistService.listarTemplates();
+      const response = await listarTemplates(1, 100);
       setTemplates(response.items || []);
     } catch (error) {
       // Erro já é tratado pelo interceptor

@@ -33,7 +33,7 @@ export async function listarTemplates(
   if (cached && typeof cached === 'object' && 'items' in cached) {
     return cached as PaginatedResult<ChecklistTemplate>;
   }
-  return { items: [], total: 0, page: 1, limit };
+  return { items: [], total: 0, page: 1, limit, totalPages: 0 };
 }
 
 export async function listarTemplatesPorTipo(tipo: TipoAtividade): Promise<ChecklistTemplate[]> {
@@ -72,7 +72,7 @@ export async function listarClientes(): Promise<PaginatedResult<Cliente>> {
   if (cached && typeof cached === 'object' && 'items' in cached) {
     return cached as PaginatedResult<Cliente>;
   }
-  return { items: [], total: 0, page: 1, limit };
+  return { items: [], total: 0, page: 1, limit: 10, totalPages: 0 };
 }
 
 export async function listarUnidadesPorCliente(clienteId: string): Promise<Unidade[]> {
