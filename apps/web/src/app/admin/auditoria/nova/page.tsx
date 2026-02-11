@@ -12,14 +12,9 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { AppLayout, PageHeader } from '@/components';
-import {
-  clienteService,
-  checklistService,
-  Cliente,
-  ChecklistTemplate,
-} from '@/lib/api';
+import { Cliente, ChecklistTemplate } from '@/lib/api';
 import { toastService } from '@/lib/toast';
-import * as cache from '@/lib/offline/cache';
+import { listarClientes, listarTemplates } from '@/lib/offline/data-layer';
 import { iniciarAuditoria } from '@/lib/offline/auditoria-offline';
 import { useOfflineStore } from '@/lib/store-offline';
 
@@ -41,34 +36,13 @@ export default function NovaAuditoriaPage() {
 
   useEffect(() => {
     const carregarDados = async () => {
-      const isOnline = useOfflineStore.getState().isOnline;
       try {
-        if (isOnline) {
-          const [clientesRes, templatesRes] = await Promise.all([
-            clienteService.listar(),
-            checklistService.listarTemplates(),
-          ]);
-          const clientesItems = clientesRes.items || [];
-          const templatesItems = templatesRes.items || [];
-          setClientes(clientesItems);
-          setTemplates(templatesItems);
-          await cache.salvarClientes(clientesRes);
-          await cache.salvarListaTemplates(templatesRes);
-          for (const t of templatesItems) {
-            await cache.salvarTemplate(t.id, t);
-          }
-        } else {
-          const [clientesCached, templatesCached] = await Promise.all([
-            cache.obterClientes(),
-            cache.obterListaTemplates(),
-          ]);
-          if (clientesCached && typeof clientesCached === 'object' && 'items' in clientesCached) {
-            setClientes((clientesCached as { items: Cliente[] }).items);
-          }
-          if (templatesCached && typeof templatesCached === 'object' && 'items' in templatesCached) {
-            setTemplates((templatesCached as { items: ChecklistTemplate[] }).items);
-          }
-        }
+        const [clientesRes, templatesRes] = await Promise.all([
+          listarClientes(),
+          listarTemplates(1, 100),
+        ]);
+        setClientes(clientesRes.items || []);
+        setTemplates(templatesRes.items || []);
       } catch {
         // Erro já é tratado pelo interceptor
       } finally {
