@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
 import { TutorialInstalacaoModal } from '@/components/ui/tutorial-instalacao-modal';
@@ -8,6 +8,12 @@ import { OfflineBanner } from '@/components/pwa/offline-banner';
 import { OfflineProvider } from '@/components/pwa/offline-provider';
 import { SyncOverlay } from '@/components/pwa/sync-overlay';
 import { Navbar } from './navbar';
+
+const LoadingScreen = () => (
+  <div className="min-h-screen flex items-center justify-center bg-base-200">
+    <span className="loading loading-spinner loading-lg text-primary" />
+  </div>
+);
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -18,9 +24,14 @@ export function AppLayout({ children }: AppLayoutProps) {
   const pathname = usePathname();
   const { isAuthenticated, _hasHydrated, usuario } = useAuthStore();
   const redirectAttempted = useRef(false);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    if (!_hasHydrated) {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted || !_hasHydrated) {
       return;
     }
     if (!isAuthenticated && !redirectAttempted.current) {
@@ -32,27 +43,18 @@ export function AppLayout({ children }: AppLayoutProps) {
     } else if (isAuthenticated) {
       redirectAttempted.current = false;
     }
-  }, [isAuthenticated, _hasHydrated, router, pathname]);
+  }, [mounted, isAuthenticated, _hasHydrated, router, pathname]);
 
-
-  if (!_hasHydrated) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-base-200">
-        <span className="loading loading-spinner loading-lg text-primary"></span>
-      </div>
-    );
+  if (!mounted || !_hasHydrated) {
+    return <LoadingScreen />;
   }
 
   if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-base-200">
-        <span className="loading loading-spinner loading-lg text-primary"></span>
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   if (!usuario) {
-    return null;
+    return <LoadingScreen />;
   }
 
   return (

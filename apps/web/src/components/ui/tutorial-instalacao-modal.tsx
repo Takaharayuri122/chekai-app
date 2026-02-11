@@ -29,6 +29,11 @@ const PASSOS_IOS: PassoTutorial[] = [
     descricao: 'O nome "ChekAI" já aparecerá. Toque em "Adicionar" no canto superior direito para instalar o app na sua tela inicial.',
     icone: <Smartphone className="w-8 h-8 text-primary" />,
   },
+  {
+    titulo: 'Uso offline no iPhone',
+    descricao: 'Para o app abrir pelo ícone quando estiver sem internet, abra o ChekAI pelo menos uma vez com conexão. Depois ele funcionará offline.',
+    icone: <Smartphone className="w-8 h-8 text-primary" />,
+  },
 ];
 
 const PASSOS_ANDROID: PassoTutorial[] = [
