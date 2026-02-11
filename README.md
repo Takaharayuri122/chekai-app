@@ -216,6 +216,10 @@ Documentação disponível em: `http://localhost:3001/api/docs`
 
 **Comparativo**: GPT-4o custa ~$2.50/1M tokens. DeepSeek é **~10x mais barato**.
 
+## Uso offline (PWA)
+
+O app funciona offline para auditorias em campo: listas e dados que você já abriu com internet ficam em cache e podem ser acessados sem conexão. Para que as telas abram offline, é necessário **abri-las pelo menos uma vez com internet**. No iPhone (Safari), siga a dica do tutorial de instalação: abra o app uma vez conectado antes de usar pelo ícone na tela inicial sem rede.
+
 ## Próximos Passos
 
 1. [ ] Seed de legislações (RDC 216, 275)
