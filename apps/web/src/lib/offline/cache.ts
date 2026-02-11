@@ -112,6 +112,26 @@ export async function obterListaTemplates(): Promise<unknown | null> {
   return row.data;
 }
 
+const CACHE_KEY_TEMPLATES_TIPO = (tipo: string) => `tipo-${tipo}`;
+
+export async function salvarListaTemplatesPorTipo(tipo: string, data: unknown): Promise<void> {
+  const db = getOfflineDbIfAvailable();
+  if (!db) return;
+  await db.cache_templates.put({
+    id: CACHE_KEY_TEMPLATES_TIPO(tipo),
+    data,
+    cachedAt: Date.now(),
+  });
+}
+
+export async function obterListaTemplatesPorTipo(tipo: string): Promise<unknown | null> {
+  const db = getOfflineDbIfAvailable();
+  if (!db) return null;
+  const row = await db.cache_templates.get(CACHE_KEY_TEMPLATES_TIPO(tipo));
+  if (!row || Date.now() - row.cachedAt > TTL_MS) return null;
+  return row.data;
+}
+
 export async function salvarAuditoria(id: string, data: unknown): Promise<void> {
   const db = getOfflineDbIfAvailable();
   if (!db) return;
