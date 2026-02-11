@@ -47,6 +47,7 @@ const pwaConfig = withPWA({
       },
     },
   ],
+  // fallbacks.document: usado só quando não houver resposta em cache para a URL (NetworkFirst já cacheia páginas visitadas)
   fallbacks: {
     document: '/offline.html',
   },
