@@ -150,20 +150,37 @@
 
       // Links
       var linksDiv = document.getElementById('links');
+      linksDiv.innerHTML = '';
       var podeAuditar = nTemplates > 0 && nUnidades > 0;
 
-      var html = '';
       if (podeAuditar) {
         document.getElementById('subtitle').textContent =
           'Você pode iniciar uma nova auditoria com os dados em cache.';
-        html += '<a href="/admin/auditoria/nova" class="btn">Nova Auditoria</a>';
+        var linkNova = document.createElement('a');
+        linkNova.href = '/admin/auditoria/nova';
+        linkNova.className = 'btn';
+        linkNova.textContent = 'Nova Auditoria';
+        linksDiv.appendChild(linkNova);
       } else {
         document.getElementById('subtitle').textContent =
           'Conecte-se à internet e abra o app para baixar os dados necessários.';
       }
-      html += '<a href="/admin/auditorias" class="btn btn-ghost">Ver Auditorias</a>';
-      html += '<a href="/" class="btn btn-ghost" onclick="location.reload();return false;">Tentar reconectar</a>';
-      linksDiv.innerHTML = html;
+
+      var linkAuditorias = document.createElement('a');
+      linkAuditorias.href = '/admin/auditorias';
+      linkAuditorias.className = 'btn btn-ghost';
+      linkAuditorias.textContent = 'Ver Auditorias';
+      linksDiv.appendChild(linkAuditorias);
+
+      var linkReconectar = document.createElement('a');
+      linkReconectar.href = '/';
+      linkReconectar.className = 'btn btn-ghost';
+      linkReconectar.textContent = 'Tentar reconectar';
+      linkReconectar.addEventListener('click', function(e) {
+        e.preventDefault();
+        location.reload();
+      });
+      linksDiv.appendChild(linkReconectar);
     }
 
     verificarStatus();
