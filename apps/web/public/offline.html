@@ -5,13 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ChekAI - Offline</title>
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       background: linear-gradient(135deg, #00B8A9 0%, #007A6E 100%);
       color: #fff;
       display: flex;
@@ -20,61 +16,156 @@
       min-height: 100vh;
       padding: 20px;
     }
-    .container {
-      text-align: center;
-      max-width: 500px;
-    }
-    .icon {
-      font-size: 80px;
-      margin-bottom: 20px;
-    }
-    h1 {
-      font-size: 28px;
+    .container { text-align: center; max-width: 480px; width: 100%; }
+    .icon { font-size: 64px; margin-bottom: 16px; }
+    h1 { font-size: 26px; margin-bottom: 8px; font-weight: 700; }
+    .subtitle { font-size: 15px; opacity: 0.85; margin-bottom: 24px; line-height: 1.5; }
+    .card {
+      background: rgba(255,255,255,0.15);
+      border-radius: 12px;
+      padding: 16px;
       margin-bottom: 16px;
+      text-align: left;
+    }
+    .card-title { font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.7; margin-bottom: 10px; }
+    .status-row { display: flex; align-items: center; gap: 8px; font-size: 14px; margin-bottom: 6px; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: #fff; flex-shrink: 0; }
+    .dot.ok { background: #a7f3d0; }
+    .dot.empty { background: #fca5a5; }
+    .links { display: flex; flex-direction: column; gap: 10px; }
+    .btn {
+      display: block;
+      background: #fff;
+      color: #00B8A9;
+      padding: 12px 20px;
+      border-radius: 10px;
+      text-decoration: none;
       font-weight: 600;
+      font-size: 15px;
+      transition: transform 0.15s;
     }
-    p {
-      font-size: 16px;
-      line-height: 1.6;
-      margin-bottom: 24px;
-      opacity: 0.9;
+    .btn:active { transform: scale(0.97); }
+    .btn-ghost {
+      background: rgba(255,255,255,0.2);
+      color: #fff;
     }
-    .button {
+    .pending-badge {
       display: inline-block;
       background: #fff;
       color: #00B8A9;
-      padding: 12px 32px;
-      border-radius: 8px;
-      text-decoration: none;
-      font-weight: 600;
-      transition: transform 0.2s;
+      border-radius: 999px;
+      padding: 1px 8px;
+      font-size: 12px;
+      font-weight: 700;
+      margin-left: 8px;
     }
-    .button:hover {
-      transform: scale(1.05);
-    }
-    .button:active {
-      transform: scale(0.95);
-    }
-    .dica {
-      font-size: 14px;
-      opacity: 0.9;
-      margin-bottom: 20px;
-      padding: 12px;
-      background: rgba(255,255,255,0.15);
-      border-radius: 8px;
-    }
+    #loading { opacity: 0.7; font-size: 14px; }
   </style>
 </head>
 <body>
   <div class="container">
     <div class="icon">📡</div>
     <h1>Você está offline</h1>
-    <p>Parece que você não está conectado à internet. Verifique sua conexão e tente novamente.</p>
-    <p class="dica">No iPhone (Safari): se você viu a mensagem "não está conectado à internet" ao abrir o app, conecte-se à internet, abra o ChekAI uma vez e feche. Depois o app poderá abrir pelo ícone na tela inicial mesmo offline.</p>
-    <a href="/" class="button">Tentar novamente</a>
+    <p class="subtitle" id="subtitle">Verificando dados disponíveis...</p>
+
+    <div id="status-card" class="card" style="display:none">
+      <div class="card-title">Dados disponíveis offline</div>
+      <div class="status-row">
+        <span class="dot" id="dot-templates"></span>
+        <span id="label-templates">Carregando templates...</span>
+      </div>
+      <div class="status-row">
+        <span class="dot" id="dot-clientes"></span>
+        <span id="label-clientes">Carregando clientes...</span>
+      </div>
+      <div class="status-row" id="row-pendentes" style="display:none">
+        <span class="dot ok"></span>
+        <span id="label-pendentes"></span>
+      </div>
+    </div>
+
+    <div class="links" id="links">
+      <p id="loading">Verificando...</p>
+    </div>
   </div>
+
   <script>
-    window.addEventListener('online', () => {
+    // Abre o banco IndexedDB do Dexie diretamente para ler status
+    function contarRegistros(dbName, storeName) {
+      return new Promise(function(resolve) {
+        try {
+          var req = indexedDB.open(dbName);
+          req.onsuccess = function(e) {
+            var db = e.target.result;
+            if (!db.objectStoreNames.contains(storeName)) { resolve(0); return; }
+            var tx = db.transaction(storeName, 'readonly');
+            var countReq = tx.objectStore(storeName).count();
+            countReq.onsuccess = function() { resolve(countReq.result); };
+            countReq.onerror = function() { resolve(0); };
+          };
+          req.onerror = function() { resolve(0); };
+        } catch(e) { resolve(0); }
+      });
+    }
+
+    async function verificarStatus() {
+      var nTemplates = await contarRegistros('chekai-offline', 'cache_templates');
+      var nUnidades = await contarRegistros('chekai-offline', 'cache_unidades');
+      var nFila = await contarRegistros('chekai-offline', 'sync_queue');
+
+      // Templates
+      var dotT = document.getElementById('dot-templates');
+      var lblT = document.getElementById('label-templates');
+      if (nTemplates > 0) {
+        dotT.className = 'dot ok';
+        lblT.textContent = nTemplates + ' template(s) de checklist disponíveis';
+      } else {
+        dotT.className = 'dot empty';
+        lblT.textContent = 'Nenhum template em cache (conecte-se para baixar)';
+      }
+
+      // Clientes/Unidades
+      var dotC = document.getElementById('dot-clientes');
+      var lblC = document.getElementById('label-clientes');
+      if (nUnidades > 0) {
+        dotC.className = 'dot ok';
+        lblC.textContent = nUnidades + ' cliente(s) e unidade(s) disponíveis';
+      } else {
+        dotC.className = 'dot empty';
+        lblC.textContent = 'Nenhum cliente em cache (conecte-se para baixar)';
+      }
+
+      // Fila de sync pendente
+      if (nFila > 0) {
+        document.getElementById('row-pendentes').style.display = 'flex';
+        document.getElementById('label-pendentes').innerHTML =
+          nFila + ' auditoria(s) aguardando envio' +
+          '<span class="pending-badge">' + nFila + '</span>';
+      }
+
+      document.getElementById('status-card').style.display = 'block';
+
+      // Links
+      var linksDiv = document.getElementById('links');
+      var podeAuditar = nTemplates > 0 && nUnidades > 0;
+
+      var html = '';
+      if (podeAuditar) {
+        document.getElementById('subtitle').textContent =
+          'Você pode iniciar uma nova auditoria com os dados em cache.';
+        html += '<a href="/admin/auditoria/nova" class="btn">Nova Auditoria</a>';
+      } else {
+        document.getElementById('subtitle').textContent =
+          'Conecte-se à internet e abra o app para baixar os dados necessários.';
+      }
+      html += '<a href="/admin/auditorias" class="btn btn-ghost">Ver Auditorias</a>';
+      html += '<a href="/" class="btn btn-ghost" onclick="location.reload();return false;">Tentar reconectar</a>';
+      linksDiv.innerHTML = html;
+    }
+
+    verificarStatus();
+
+    window.addEventListener('online', function() {
       window.location.reload();
     });
   </script>
