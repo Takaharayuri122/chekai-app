@@ -138,9 +138,12 @@
       // Fila de sync pendente
       if (nFila > 0) {
         document.getElementById('row-pendentes').style.display = 'flex';
-        document.getElementById('label-pendentes').innerHTML =
-          nFila + ' auditoria(s) aguardando envio' +
-          '<span class="pending-badge">' + nFila + '</span>';
+        var label = document.getElementById('label-pendentes');
+        label.textContent = nFila + ' auditoria(s) aguardando envio ';
+        var badge = document.createElement('span');
+        badge.className = 'pending-badge';
+        badge.textContent = nFila;
+        label.appendChild(badge);
       }
 
       document.getElementById('status-card').style.display = 'block';
