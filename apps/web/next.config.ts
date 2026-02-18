@@ -14,17 +14,11 @@ const pwaConfig = withPWA({
   skipWaiting: true,
   disable: isDev,
   sw: 'sw.js',
-  // Fallback de ÚLTIMO RECURSO (quando SWR falha: sem cache + sem rede)
+  // Fallback de ÚLTIMO RECURSO (quando StaleWhileRevalidate falha: sem cache + sem rede)
+  // Garante que offline.html é servido pelo SW em vez do erro nativo do Safari/Chrome
   fallbacks: {
     document: '/offline.html',
   },
-  // Serve offline.html para rotas /admin/* que nunca foram cacheadas
-  // @ts-ignore
-  navigateFallback: '/offline.html',
-  // @ts-ignore
-  navigateFallbackAllowlist: [/^\/admin\//],
-  // @ts-ignore
-  navigateFallbackDenylist: [/^\/_next\//, /^\/api\//],
   runtimeCaching: [
     // Auth: nunca cachear
     {
