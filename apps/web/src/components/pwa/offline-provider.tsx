@@ -20,16 +20,16 @@ export function OfflineProvider({ children }: { children: React.ReactNode }) {
     atualizarContadorPendentes().then(() => {
       tentarSincronizarAoCarregar();
     });
-    // Aquecer cache apenas se online
+    // Aquecer cache apenas se online (fire-and-forget: erros são ignorados internamente)
     if (navigator.onLine) {
-      esquentarCachePostLogin();
+      esquentarCachePostLogin().catch(() => {});
     }
   }, []);
 
   // Re-warming quando o dispositivo volta online após estar offline
   useEffect(() => {
     if (isOnline) {
-      esquentarCachePostLogin();
+      esquentarCachePostLogin().catch(() => {});
     }
   }, [isOnline]);
 
