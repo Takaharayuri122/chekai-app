@@ -1406,3 +1406,137 @@ export const iaService = {
   },
 };
 
+export interface RelatorioTecnicoResumo {
+  id: string;
+  clienteId: string;
+  unidadeId?: string | null;
+  identificacao: string;
+  status: 'rascunho' | 'finalizado';
+  atualizadoEm: string;
+  criadoEm: string;
+  cliente?: {
+    id: string;
+    razaoSocial: string;
+    nomeFantasia?: string;
+  };
+  unidade?: {
+    id: string;
+    nome: string;
+  };
+}
+
+export interface RelatorioTecnico extends RelatorioTecnicoResumo {
+  consultoraId: string;
+  descricaoOcorrenciaHtml: string;
+  avaliacaoTecnicaHtml: string;
+  acoesExecutadas: string[];
+  recomendacoesConsultoraHtml: string;
+  planoAcaoSugeridoHtml: string;
+  apoioAnaliticoChekAi?: string | null;
+  assinaturaNomeConsultora: string;
+  pdfUrl?: string | null;
+  fotos: Array<{
+    id: string;
+    url: string;
+    nomeOriginal?: string | null;
+    mimeType?: string | null;
+    tamanhoBytes?: number | null;
+    exif?: Record<string, unknown> | null;
+  }>;
+}
+
+export interface CriarRelatorioTecnicoRequest {
+  clienteId: string;
+  unidadeId?: string;
+  identificacao: string;
+  descricaoOcorrenciaHtml: string;
+  avaliacaoTecnicaHtml: string;
+  acoesExecutadas: string[];
+  recomendacoesConsultoraHtml: string;
+  planoAcaoSugeridoHtml: string;
+  assinaturaNomeConsultora?: string;
+  status?: 'rascunho' | 'finalizado';
+}
+
+export const relatorioTecnicoService = {
+  async listar(
+    page = 1,
+    limit = 10,
+    filtros?: {
+      clienteId?: string;
+      status?: 'rascunho' | 'finalizado';
+      dataInicio?: string;
+      dataFim?: string;
+    },
+  ): Promise<{ items: RelatorioTecnicoResumo[]; total: number; page: number; limit: number; totalPages: number }> {
+    const response = await api.get('/relatorios-tecnicos', {
+      params: {
+        page,
+        limit,
+        ...filtros,
+      },
+    });
+    return response.data.data;
+  },
+
+  async buscarPorId(id: string): Promise<RelatorioTecnico> {
+    const response = await api.get(`/relatorios-tecnicos/${id}`);
+    return response.data.data;
+  },
+
+  async criar(data: CriarRelatorioTecnicoRequest): Promise<RelatorioTecnico> {
+    const response = await api.post('/relatorios-tecnicos', data);
+    return response.data.data;
+  },
+
+  async atualizar(id: string, data: Partial<CriarRelatorioTecnicoRequest>): Promise<RelatorioTecnico> {
+    const response = await api.put(`/relatorios-tecnicos/${id}`, data);
+    return response.data.data;
+  },
+
+  async remover(id: string): Promise<void> {
+    await api.delete(`/relatorios-tecnicos/${id}`);
+  },
+
+  async adicionarFoto(id: string, file: File): Promise<{ id: string; url: string }> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await api.post(`/relatorios-tecnicos/${id}/fotos`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data.data;
+  },
+
+  async removerFoto(id: string, fotoId: string): Promise<void> {
+    await api.delete(`/relatorios-tecnicos/${id}/fotos/${fotoId}`);
+  },
+
+  async gerarApoioAnalitico(id: string, prompt?: string): Promise<RelatorioTecnico> {
+    const response = await api.post(`/relatorios-tecnicos/${id}/gerar-apoio-analitico`, { prompt });
+    return response.data.data;
+  },
+
+  async baixarPdf(id: string): Promise<void> {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${API_URL}/relatorios-tecnicos/${id}/pdf`, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Erro ao baixar PDF');
+    }
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `relatorio-tecnico-${id}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  },
+};
+
