@@ -46,10 +46,11 @@ type RespostaType = 'conforme' | 'nao_conforme' | 'nao_aplicavel' | string;
 
 interface FotoPreview {
   id?: string;
+  localId?: string;
   file?: File;
   preview: string;
   analiseIa?: AnaliseChecklistResponse;
-  isAnalyzing?: boolean;
+  statusUpload?: 'enviando' | 'processando' | 'pronta';
   isExisting?: boolean;
 }
 
@@ -313,8 +314,8 @@ export default function AuditoriaPage() {
   };
 
   const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !itemModal || !auditoria) return;
+    const files = Array.from(e.target.files || []);
+    if (!files.length || !itemModal || !auditoria) return;
     // Verificar se a auditoria está finalizada
     if (auditoria.status === 'finalizada') {
       toastService.warning('Não é possível adicionar fotos em uma auditoria finalizada. Reabra a auditoria para fazer alterações.');
@@ -326,140 +327,176 @@ export default function AuditoriaPage() {
       if (e.target) e.target.value = '';
       return;
     }
-    const preview = URL.createObjectURL(file);
-    const novaFoto: FotoPreview = { file, preview, isAnalyzing: true, isExisting: false };
-    const fotoIndex = itemModal.fotos.length;
-    setItemModal((prev) => prev ? { ...prev, fotos: [...prev.fotos, novaFoto] } : null);
-    let fotoSalva: { id: string; url: string } | null = null;
-    
-    try {
-      // Salva a foto automaticamente no backend (sempre salva, mesmo sem créditos)
-      setSalvando(true);
-      fotoSalva = await adicionarFotoAuditoria(
-        auditoria.id,
-        itemModal.item.id,
-        file
-      );
-      setUltimaHoraSalva(new Date());
-      setSalvando(false);
-      
-      // Atualiza o estado com a foto salva (sem análise ainda)
-      setItemModal((prev) => {
-        if (!prev) return null;
-        const fotosAtualizadas = [...prev.fotos];
-        fotosAtualizadas[fotoIndex] = { 
-          ...fotosAtualizadas[fotoIndex], 
-          id: fotoSalva!.id,
-          preview: fotoSalva!.url || preview,
-          isAnalyzing: true, // Continua analisando
-          isExisting: true, // Marca como existente pois já foi salva
-        };
-        return { ...prev, fotos: fotosAtualizadas };
-      });
-      
-      // Atualiza o estado global da auditoria com a nova foto
-      setAuditoria((prev) => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          itens: prev.itens.map((item) =>
-            item.id === itemModal.item.id
-              ? {
-                  ...item,
-                  fotos: [...(item.fotos || []), { 
-                    id: fotoSalva!.id, 
-                    url: fotoSalva!.url,
-                  }],
-                }
-              : item
-          ),
-        };
-      });
-
-      if (useOfflineStore.getState().isOnline) {
-        try {
-          const analise = await iaService.analisarImagemChecklist(
-          file,
-          itemModal.item.templateItem.pergunta,
-          itemModal.item.templateItem.categoria || 'geral',
-          auditoria?.template?.tipoAtividade || 'serviço de alimentação'
-        );
-        
-        // Salva a análise individual da foto
+    const vagasDisponiveis = MAX_FOTOS_POR_ITEM - itemModal.fotos.length;
+    const filesParaProcessar = files.slice(0, vagasDisponiveis);
+    if (files.length > vagasDisponiveis) {
+      toastService.warning(`Foram selecionadas muitas fotos. Apenas ${vagasDisponiveis} serão adicionadas agora.`);
+    }
+    const itemId = itemModal.item.id;
+    const perguntaChecklist = itemModal.item.templateItem.pergunta;
+    const categoriaChecklist = itemModal.item.templateItem.categoria || 'geral';
+    const tipoEstabelecimento = auditoria?.template?.tipoAtividade || 'serviço de alimentação';
+    const fotosSelecionadas = filesParaProcessar.map((file) => ({
+      file,
+      preview: URL.createObjectURL(file),
+      localId: `preview-${crypto.randomUUID()}`,
+    }));
+    setItemModal((prev) => {
+      if (!prev) return null;
+      const novasFotos: FotoPreview[] = fotosSelecionadas.map((fotoSelecionada) => ({
+        localId: fotoSelecionada.localId,
+        file: fotoSelecionada.file,
+        preview: fotoSelecionada.preview,
+        statusUpload: 'enviando',
+        isExisting: false,
+      }));
+      return {
+        ...prev,
+        fotos: [...prev.fotos, ...novasFotos],
+      };
+    });
+    for (const fotoSelecionada of fotosSelecionadas) {
+      const { file, preview, localId } = fotoSelecionada;
+      let fotoSalva: { id: string; url: string } | null = null;
+      try {
         setSalvando(true);
-        await auditoriaService.atualizarAnaliseFoto(
-          auditoria.id,
-          itemModal.item.id,
-          fotoSalva.id,
-          JSON.stringify(analise)
-        );
+        fotoSalva = await adicionarFotoAuditoria(auditoria.id, itemId, file);
         setUltimaHoraSalva(new Date());
         setSalvando(false);
-        
-        // Atualiza o estado com a análise
         setItemModal((prev) => {
           if (!prev) return null;
-          const fotosAtualizadas = [...prev.fotos];
-          fotosAtualizadas[fotoIndex] = { 
-            ...fotosAtualizadas[fotoIndex], 
-            analiseIa: analise, 
-            isAnalyzing: false,
+          return {
+            ...prev,
+            fotos: prev.fotos.map((foto) =>
+              foto.localId === localId
+                ? {
+                    ...foto,
+                    id: fotoSalva!.id,
+                    preview: fotoSalva!.url || preview,
+                    statusUpload: useOfflineStore.getState().isOnline ? 'processando' : 'pronta',
+                    isExisting: true,
+                  }
+                : foto
+            ),
           };
-          return { ...prev, fotos: fotosAtualizadas };
         });
-        
-        // Atualiza o estado global com a análise
         setAuditoria((prev) => {
           if (!prev) return prev;
           return {
             ...prev,
             itens: prev.itens.map((item) =>
-              item.id === itemModal.item.id
+              item.id === itemId
                 ? {
                     ...item,
-                    fotos: item.fotos.map((foto) =>
-                      foto.id === fotoSalva!.id
-                        ? { ...foto, analiseIa: JSON.stringify(analise) }
-                        : foto
-                    ),
+                    fotos: [...(item.fotos || []), {
+                      id: fotoSalva!.id,
+                      url: fotoSalva!.url,
+                    }],
                   }
                 : item
             ),
           };
         });
-      } catch (analiseError: any) {
-        // Se der erro na análise (ex: créditos insuficientes), apenas avisa mas mantém a foto
-        const errorMessage = analiseError?.response?.data?.message || analiseError?.message || 'Erro desconhecido';
-        if (errorMessage.includes('crédito') || errorMessage.includes('limite')) {
-          toastService.warning('Foto salva, mas não foi possível analisar: créditos insuficientes.');
+        if (useOfflineStore.getState().isOnline) {
+          try {
+            const analise = await iaService.analisarImagemChecklist(
+              file,
+              perguntaChecklist,
+              categoriaChecklist,
+              tipoEstabelecimento
+            );
+            setSalvando(true);
+            await auditoriaService.atualizarAnaliseFoto(
+              auditoria.id,
+              itemId,
+              fotoSalva.id,
+              JSON.stringify(analise)
+            );
+            setUltimaHoraSalva(new Date());
+            setSalvando(false);
+            setItemModal((prev) => {
+              if (!prev) return null;
+              return {
+                ...prev,
+                fotos: prev.fotos.map((foto) =>
+                  foto.localId === localId
+                    ? {
+                        ...foto,
+                        analiseIa: analise,
+                        statusUpload: 'pronta',
+                      }
+                    : foto
+                ),
+              };
+            });
+            setAuditoria((prev) => {
+              if (!prev) return prev;
+              return {
+                ...prev,
+                itens: prev.itens.map((item) =>
+                  item.id === itemId
+                    ? {
+                        ...item,
+                        fotos: item.fotos.map((foto) =>
+                          foto.id === fotoSalva!.id
+                            ? { ...foto, analiseIa: JSON.stringify(analise) }
+                            : foto
+                        ),
+                      }
+                    : item
+                ),
+              };
+            });
+          } catch (analiseError: any) {
+            const errorMessage = analiseError?.response?.data?.message || analiseError?.message || 'Erro desconhecido';
+            if (errorMessage.includes('crédito') || errorMessage.includes('limite')) {
+              toastService.warning('Foto salva, mas não foi possível analisar: créditos insuficientes.');
+            } else {
+              toastService.warning(`Foto salva, mas não foi possível analisar: ${errorMessage}`);
+            }
+            setItemModal((prev) => {
+              if (!prev) return null;
+              return {
+                ...prev,
+                fotos: prev.fotos.map((foto) =>
+                  foto.localId === localId
+                    ? {
+                        ...foto,
+                        statusUpload: 'pronta',
+                      }
+                    : foto
+                ),
+              };
+            });
+          }
         } else {
-          toastService.warning(`Foto salva, mas não foi possível analisar: ${errorMessage}`);
+          setItemModal((prev) => {
+            if (!prev) return null;
+            return {
+              ...prev,
+              fotos: prev.fotos.map((foto) =>
+                foto.localId === localId
+                  ? {
+                      ...foto,
+                      statusUpload: 'pronta',
+                    }
+                  : foto
+              ),
+            };
+          });
         }
-        
-        // Atualiza o estado removendo o indicador de análise
+      } catch (error: unknown) {
+        const err = error as { response?: { data?: { message?: string } }; message?: string };
+        const errorMessage = err?.response?.data?.message || err?.message || 'Erro ao salvar foto';
+        toastService.error(`Erro ao salvar foto: ${errorMessage}`);
         setItemModal((prev) => {
           if (!prev) return null;
-          const fotosAtualizadas = [...prev.fotos];
-          fotosAtualizadas[fotoIndex] = { 
-            ...fotosAtualizadas[fotoIndex], 
-            isAnalyzing: false,
+          return {
+            ...prev,
+            fotos: prev.fotos.filter((foto) => foto.localId !== localId),
           };
-          return { ...prev, fotos: fotosAtualizadas };
         });
-        }
       }
-    } catch (error: unknown) {
-      const err = error as { response?: { data?: { message?: string } }; message?: string };
-      const errorMessage = err?.response?.data?.message || err?.message || 'Erro ao salvar foto';
-      toastService.error(`Erro ao salvar foto: ${errorMessage}`);
-      
-      setItemModal((prev) => {
-        if (!prev) return null;
-        const fotosAtualizadas = [...prev.fotos];
-        // Remove a foto que falhou ao salvar
-        fotosAtualizadas.splice(fotoIndex, 1);
-        return { ...prev, fotos: fotosAtualizadas };
-      });
     }
     if (e.target) e.target.value = '';
   };
@@ -1077,6 +1114,7 @@ export default function AuditoriaPage() {
         type="file"
         ref={fileInputRef}
         accept="image/*"
+        multiple
         className="hidden"
         onChange={handleImageSelect}
       />
@@ -1182,39 +1220,57 @@ export default function AuditoriaPage() {
                     return (
                       <div>
                         {/* Grid de fotos */}
-                        <div className="grid grid-cols-3 gap-2 mb-3">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-3">
                           {itemModal.fotos.map((foto, index) => (
                             <div key={index} className="relative aspect-square">
                               <img
                                 src={foto.preview}
                                 alt={`Foto ${index + 1}`}
-                                className="w-full h-full object-cover rounded-lg"
+                                className={`w-full h-full object-cover rounded-lg transition-all duration-300 ${
+                                  foto.statusUpload === 'enviando'
+                                    ? 'grayscale blur-sm opacity-70'
+                                    : foto.statusUpload === 'processando'
+                                      ? 'grayscale blur-[1px] opacity-85'
+                                      : 'grayscale-0 blur-0 opacity-100'
+                                }`}
                               />
-                              {foto.isAnalyzing && (
+                              {foto.statusUpload && foto.statusUpload !== 'pronta' && (
                                 <div className="absolute inset-0 bg-black/50 rounded-lg flex items-center justify-center">
-                                  <Loader2 className="w-6 h-6 animate-spin text-white" />
+                                  <div className="flex flex-col items-center gap-2 text-white">
+                                    <Loader2 className="w-6 h-6 animate-spin" />
+                                    <span className="text-[10px] font-medium uppercase tracking-wide">
+                                      {foto.statusUpload === 'enviando' ? 'Enviando...' : 'Processando IA...'}
+                                    </span>
+                                  </div>
                                 </div>
                               )}
                               {foto.analiseIa && (
-                                <div className="absolute bottom-1 left-1 flex gap-1 flex-wrap">
+                                <>
                                   {!foto.analiseIa.imagemRelevante && (
-                                    <span className="badge badge-xs badge-error" title="Imagem não relacionada ao item do checklist">
-                                      <AlertCircle className="w-2 h-2 mr-1" />
-                                      Não relevante
-                                    </span>
+                                    <div className="absolute bottom-1 left-1 right-1">
+                                      <span
+                                        className="inline-flex w-full items-center justify-center gap-1 rounded-md bg-error px-2 py-1 text-[11px] font-semibold leading-none text-error-content shadow-sm"
+                                        title="Imagem não relacionada ao item do checklist"
+                                      >
+                                        <AlertCircle className="w-3 h-3 shrink-0" />
+                                        Não relevante
+                                      </span>
+                                    </div>
                                   )}
                                   {foto.analiseIa.imagemRelevante && (
-                                    <span className={`badge badge-xs ${
-                                      foto.analiseIa.tipoNaoConformidade === 'Nenhuma identificada'
-                                        ? 'badge-success'
-                                        : foto.analiseIa.gravidade === 'critica' ? 'badge-error'
-                                        : foto.analiseIa.gravidade === 'alta' ? 'badge-warning'
-                                        : 'badge-info'
-                                    }`}>
-                                      <Sparkles className="w-2 h-2" />
-                                    </span>
+                                    <div className="absolute bottom-1 left-1">
+                                      <span className={`badge badge-xs ${
+                                        foto.analiseIa.tipoNaoConformidade === 'Nenhuma identificada'
+                                          ? 'badge-success'
+                                          : foto.analiseIa.gravidade === 'critica' ? 'badge-error'
+                                          : foto.analiseIa.gravidade === 'alta' ? 'badge-warning'
+                                          : 'badge-info'
+                                      }`}>
+                                        <Sparkles className="w-2 h-2" />
+                                      </span>
+                                    </div>
                                   )}
-                                </div>
+                                </>
                               )}
                               {auditoria.status !== 'finalizada' && (
                                 <button
