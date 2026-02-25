@@ -35,10 +35,19 @@ export class ExtrairExifService {
     const out: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(obj)) {
       if (value === undefined || value === null) continue;
-      if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+      if (value instanceof Buffer || value instanceof Uint8Array) continue;
+      if (typeof value === 'string') {
+        out[key] = this.sanitizarString(value);
+      } else if (typeof value === 'number' || typeof value === 'boolean') {
         out[key] = value;
       } else if (Array.isArray(value)) {
-        out[key] = value.map((v) => (typeof v === 'object' && v !== null ? this.sanitizarParaJson(v) : v));
+        out[key] = value
+          .filter((v) => !(v instanceof Buffer || v instanceof Uint8Array))
+          .map((v) => {
+            if (typeof v === 'string') return this.sanitizarString(v);
+            if (typeof v === 'object' && v !== null) return this.sanitizarParaJson(v);
+            return v;
+          });
       } else if (typeof value === 'object' && (value as object).constructor?.name === 'Date') {
         out[key] = (value as Date).toISOString();
       } else if (typeof value === 'object') {
@@ -46,5 +55,12 @@ export class ExtrairExifService {
       }
     }
     return out;
+  }
+
+  /**
+   * Remove null bytes e caracteres de controle que o PostgreSQL não suporta em text/jsonb.
+   */
+  private sanitizarString(valor: string): string {
+    return valor.replace(/\0/g, '').replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '');
   }
 }

@@ -265,8 +265,12 @@ export class AuditoriaService {
     if (item.auditoria.status === StatusAuditoria.FINALIZADA) {
       throw new BadRequestException('Não é possível adicionar fotos em uma auditoria finalizada. Reabra a auditoria para fazer alterações.');
     }
+    const nomeOriginalSanitizado = fotoData.nomeOriginal
+      ?.replace(/\0/g, '')
+      .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '');
     const foto = this.fotoRepository.create({
       ...fotoData,
+      nomeOriginal: nomeOriginalSanitizado,
       auditoriaItemId: itemId,
       dataCaptura: new Date(),
     });
