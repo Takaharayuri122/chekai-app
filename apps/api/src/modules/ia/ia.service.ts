@@ -561,4 +561,85 @@ Retorne APENAS um JSON válido (sem markdown, sem backticks) com:
       throw error;
     }
   }
+
+  async gerarApoioAnaliticoRelatorioTecnico(
+    dadosRelatorio: {
+      identificacao: string;
+      descricaoOcorrenciaHtml: string;
+      avaliacaoTecnicaHtml: string;
+      acoesExecutadas: string[];
+      recomendacoesConsultoraHtml: string;
+      planoAcaoSugeridoHtml: string;
+      nomeConsultora: string;
+      contextoComplementar?: string;
+    },
+    usuario?: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
+  ): Promise<string> {
+    const promptTexto = `Você é um especialista técnico em segurança de alimentos e conformidade sanitária.
+Gere um apoio analítico objetivo, técnico e acionável para o relatório abaixo.
+
+IDENTIFICAÇÃO:
+${this.removerTagsHtml(dadosRelatorio.identificacao)}
+
+DESCRIÇÃO DA OCORRÊNCIA:
+${this.removerTagsHtml(dadosRelatorio.descricaoOcorrenciaHtml)}
+
+AVALIAÇÃO TÉCNICA:
+${this.removerTagsHtml(dadosRelatorio.avaliacaoTecnicaHtml)}
+
+AÇÕES EXECUTADAS NA VISITA:
+${dadosRelatorio.acoesExecutadas.map((acao, index) => `${index + 1}. ${this.removerTagsHtml(acao)}`).join('\n')}
+
+RECOMENDAÇÕES DA CONSULTORA:
+${this.removerTagsHtml(dadosRelatorio.recomendacoesConsultoraHtml)}
+
+PLANO DE AÇÃO SUGERIDO:
+${this.removerTagsHtml(dadosRelatorio.planoAcaoSugeridoHtml)}
+
+CONSULTORA RESPONSÁVEL:
+${this.removerTagsHtml(dadosRelatorio.nomeConsultora)}
+
+CONTEXTO COMPLEMENTAR:
+${this.removerTagsHtml(dadosRelatorio.contextoComplementar || '')}
+
+Retorne APENAS texto em português-BR, sem markdown, estruturado em:
+1) Diagnóstico consolidado
+2) Riscos e impactos prioritários
+3) Consistência entre ações executadas e recomendações
+4) Pontos críticos imediatos
+5) Próximos passos práticos (curto e médio prazo).`;
+
+    let gestorId: string | undefined;
+    if (usuario && usuario.perfil !== PerfilUsuario.MASTER) {
+      gestorId = this.creditoService.identificarGestorId(usuario);
+      await this.creditoService.validarSaldoDisponivel(gestorId);
+    }
+
+    const response = await this.deepseekText.chat.completions.create({
+      model: 'deepseek-chat',
+      messages: [{ role: 'user', content: promptTexto }],
+      max_tokens: 2200,
+      temperature: 0.3,
+    });
+
+    const content = response.choices[0]?.message?.content || '';
+    const usage = response.usage;
+    if (gestorId && usuario && usage) {
+      await this.creditoService.registrarUso({
+        gestorId,
+        usuarioId: usuario.id,
+        provedor: ProvedorIa.DEEPSEEK,
+        modelo: 'deepseek-chat',
+        tokensInput: usage.prompt_tokens || 0,
+        tokensOutput: usage.completion_tokens || 0,
+        metodoChamado: 'gerarApoioAnaliticoRelatorioTecnico',
+        contexto: `Apoio analítico relatório técnico - ${dadosRelatorio.identificacao.substring(0, 80)}`,
+      });
+    }
+    return content.replace(/```markdown\n?/g, '').replace(/```\n?/g, '').trim();
+  }
+
+  private removerTagsHtml(texto: string): string {
+    return (texto || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+  }
 }

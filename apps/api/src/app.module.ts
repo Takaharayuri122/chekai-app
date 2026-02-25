@@ -14,6 +14,7 @@ import { CoreModule } from './core/core.module';
 import { SupabaseModule } from './modules/supabase/supabase.module';
 import { EmailModule } from './modules/email/email.module';
 import { ListaEsperaModule } from './modules/lista-espera/lista-espera.module';
+import { RelatorioTecnicoModule } from './modules/relatorio-tecnico/relatorio-tecnico.module';
 
 /**
  * Módulo principal da aplicação.
@@ -64,6 +65,7 @@ import { ListaEsperaModule } from './modules/lista-espera/lista-espera.module';
     PlanoModule,
     CreditoModule,
     ListaEsperaModule,
+    RelatorioTecnicoModule,
   ],
 })
 export class AppModule {}
