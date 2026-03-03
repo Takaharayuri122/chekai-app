@@ -22,6 +22,7 @@ import { CurrentUser } from '../../core/decorators/current-user.decorator';
 import { PerfilUsuario } from '../usuario/entities/usuario.entity';
 import { PaginatedResult } from '../../shared/types/pagination.interface';
 import { CriarRelatorioTecnicoDto } from './dto/criar-relatorio-tecnico.dto';
+import { IniciarRelatorioTecnicoDto } from './dto/iniciar-relatorio-tecnico.dto';
 import { ListarRelatoriosTecnicosDto } from './dto/listar-relatorios-tecnicos.dto';
 import { GerarApoioAnaliticoDto } from './dto/gerar-apoio-analitico.dto';
 import { RelatorioTecnico } from './entities/relatorio-tecnico.entity';
@@ -50,6 +51,16 @@ export class RelatorioTecnicoController {
     @CurrentUser() usuario: { id: string; perfil: PerfilUsuario },
   ): Promise<RelatorioTecnico> {
     return this.relatorioTecnicoService.criar(dto, usuario);
+  }
+
+  @Post('iniciar')
+  @ApiOperation({ summary: 'Pré-cria um relatório técnico com cliente e unidade' })
+  @ApiResponse({ status: 201, description: 'Relatório técnico pré-criado com sucesso' })
+  async iniciar(
+    @Body() dto: IniciarRelatorioTecnicoDto,
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; nome?: string },
+  ): Promise<RelatorioTecnico> {
+    return this.relatorioTecnicoService.iniciar(dto, usuario);
   }
 
   @Get()

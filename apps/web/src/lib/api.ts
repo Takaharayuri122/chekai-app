@@ -1458,6 +1458,11 @@ export interface CriarRelatorioTecnicoRequest {
   status?: 'rascunho' | 'finalizado';
 }
 
+export interface IniciarRelatorioTecnicoRequest {
+  clienteId: string;
+  unidadeId: string;
+}
+
 export const relatorioTecnicoService = {
   async listar(
     page = 1,
@@ -1486,6 +1491,11 @@ export const relatorioTecnicoService = {
 
   async criar(data: CriarRelatorioTecnicoRequest): Promise<RelatorioTecnico> {
     const response = await api.post('/relatorios-tecnicos', data);
+    return response.data.data;
+  },
+
+  async iniciar(data: IniciarRelatorioTecnicoRequest): Promise<RelatorioTecnico> {
+    const response = await api.post('/relatorios-tecnicos/iniciar', data);
     return response.data.data;
   },
 

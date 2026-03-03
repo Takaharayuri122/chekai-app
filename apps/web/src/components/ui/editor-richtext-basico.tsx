@@ -1,6 +1,8 @@
 'use client';
 
-import { useMemo, useRef } from 'react';
+import { useEffect, useMemo } from 'react';
+import { EditorContent, useEditor } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
 
 interface EditorRichTextBasicoProps {
   label: string;
@@ -17,47 +19,88 @@ export function EditorRichTextBasico({
   placeholder,
   required = false,
 }: EditorRichTextBasicoProps) {
-  const editorRef = useRef<HTMLDivElement>(null);
   const editorId = useMemo(() => `editor-${Math.random().toString(36).slice(2, 9)}`, []);
+  const editor = useEditor({
+    extensions: [StarterKit],
+    content: value || '',
+    editorProps: {
+      attributes: {
+        class:
+          'min-h-[160px] p-3 text-sm bg-base-100 focus:outline-none prose prose-sm max-w-none',
+      },
+    },
+    onUpdate: ({ editor: tiptapEditor }) => {
+      onChange(tiptapEditor.getHTML());
+    },
+    immediatelyRender: false,
+  });
 
-  const handleExecCommand = (comando: string): void => {
-    editorRef.current?.focus();
-    document.execCommand(comando, false);
-    onChange(editorRef.current?.innerHTML || '');
-  };
+  useEffect(() => {
+    if (!editor) {
+      return;
+    }
+    const htmlAtual = editor.getHTML();
+    const htmlEsperado = value || '';
+    if (htmlAtual !== htmlEsperado) {
+      editor.commands.setContent(htmlEsperado, { emitUpdate: false });
+    }
+  }, [editor, value]);
+
+  if (!editor) {
+    return null;
+  }
 
   return (
-    <div className="form-control gap-2">
-      <label className="label py-0" htmlFor={editorId}>
-        <span className="label-text font-medium">
-          {label}
-          {required ? <span className="text-error ml-1">*</span> : null}
-        </span>
-      </label>
-      <div className="join">
-        <button type="button" className="btn btn-sm join-item" onClick={() => handleExecCommand('bold')}>
-          B
-        </button>
-        <button type="button" className="btn btn-sm join-item italic" onClick={() => handleExecCommand('italic')}>
-          I
-        </button>
-        <button type="button" className="btn btn-sm join-item" onClick={() => handleExecCommand('insertUnorderedList')}>
-          Lista
-        </button>
-        <button type="button" className="btn btn-sm join-item" onClick={() => handleExecCommand('insertOrderedList')}>
-          1.
-        </button>
+    <div className="form-control gap-2" id={editorId}>
+      <div className="rounded-lg border border-base-300 overflow-hidden">
+        <div className="bg-base-200 px-3 py-2 border-b border-base-300">
+          <label className="text-sm font-semibold">
+            {label}
+            {required ? <span className="text-error ml-1">*</span> : null}
+          </label>
+        </div>
+        <div className="border-b border-base-300 bg-base-50 px-2 py-2 flex flex-wrap gap-2">
+          <button
+            type="button"
+            className={`btn btn-xs ${editor.isActive('bold') ? 'btn-primary' : 'btn-ghost'}`}
+            onClick={() => editor.chain().focus().toggleBold().run()}
+          >
+            B
+          </button>
+          <button
+            type="button"
+            className={`btn btn-xs italic ${editor.isActive('italic') ? 'btn-primary' : 'btn-ghost'}`}
+            onClick={() => editor.chain().focus().toggleItalic().run()}
+          >
+            I
+          </button>
+          <button
+            type="button"
+            className={`btn btn-xs ${editor.isActive('bulletList') ? 'btn-primary' : 'btn-ghost'}`}
+            onClick={() => editor.chain().focus().toggleBulletList().run()}
+          >
+            Lista
+          </button>
+          <button
+            type="button"
+            className={`btn btn-xs ${editor.isActive('orderedList') ? 'btn-primary' : 'btn-ghost'}`}
+            onClick={() => editor.chain().focus().toggleOrderedList().run()}
+          >
+            1.
+          </button>
+          <button
+            type="button"
+            className="btn btn-xs btn-ghost"
+            onClick={() => editor.chain().focus().clearNodes().unsetAllMarks().run()}
+          >
+            Limpar
+          </button>
+        </div>
+        <EditorContent editor={editor} />
+        {placeholder && !value ? (
+          <p className="px-3 pb-3 text-xs text-base-content/50">{placeholder}</p>
+        ) : null}
       </div>
-      <div
-        id={editorId}
-        ref={editorRef}
-        className="min-h-[140px] rounded-lg border border-base-300 p-3 text-sm bg-base-100 focus:outline-none focus:border-primary"
-        contentEditable
-        suppressContentEditableWarning
-        onBlur={(event) => onChange(event.currentTarget.innerHTML)}
-        dangerouslySetInnerHTML={{ __html: value || '' }}
-        data-placeholder={placeholder || ''}
-      />
     </div>
   );
 }

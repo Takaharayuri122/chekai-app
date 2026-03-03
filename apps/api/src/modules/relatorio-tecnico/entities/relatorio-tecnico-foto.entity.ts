@@ -16,10 +16,10 @@ export class RelatorioTecnicoFoto {
   @Column({ type: 'text' })
   url: string;
 
-  @Column({ length: 255, nullable: true })
+  @Column({ type: 'varchar', length: 255, nullable: true })
   nomeOriginal: string | null;
 
-  @Column({ length: 50, nullable: true })
+  @Column({ type: 'varchar', length: 50, nullable: true })
   mimeType: string | null;
 
   @Column({ type: 'int', nullable: true })

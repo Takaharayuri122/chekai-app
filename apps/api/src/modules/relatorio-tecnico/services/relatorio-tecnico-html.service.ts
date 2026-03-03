@@ -22,6 +22,10 @@ export class RelatorioTecnicoHtmlService {
         `,
       )
       .join('');
+    const apoioAnaliticoHtml = this.gerarHtmlApoioAnalitico(relatorio.apoioAnaliticoChekAi || '');
+    const logoChekAiUrl = 'logo-large.png';
+    const logoClienteUrl = (relatorio.cliente as { logoUrl?: string | null } | undefined)?.logoUrl || null;
+    const temAlgumaLogo = Boolean(logoChekAiUrl || logoClienteUrl);
     return `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -33,6 +37,9 @@ export class RelatorioTecnicoHtmlService {
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; color: #1B2A4A; padding: 12px; }
     .container { max-width: 1120px; margin: 0 auto; }
     .header { border-bottom: 1px solid #E5E9F0; padding-bottom: 8px; margin-bottom: 12px; }
+    .header-logos { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 8px; }
+    .header-logo-chekai, .header-logo-cliente { width: 56px; height: 56px; object-fit: contain; }
+    .header-logo-fallback { width: 56px; height: 56px; border: 1px solid #E5E9F0; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #4b5563; background: #f8fafc; text-align: center; padding: 4px; font-weight: 700; }
     .header h1 { font-size: 20px; margin-bottom: 6px; }
     .meta { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px; color: #4b5563; }
     .section { margin-top: 14px; border: 1px solid #E5E9F0; border-radius: 6px; padding: 10px; }
@@ -40,16 +47,34 @@ export class RelatorioTecnicoHtmlService {
     .rich { font-size: 13px; line-height: 1.45; }
     .acoes { padding-left: 18px; font-size: 13px; }
     .fotos-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-    .foto-item { border: 1px solid #E5E9F0; border-radius: 6px; overflow: hidden; height: 130px; }
-    .foto-item img { width: 100%; height: 100%; object-fit: cover; }
+    .foto-item { border: 1px solid #E5E9F0; border-radius: 6px; overflow: hidden; height: 130px; background: #f8fafc; display: flex; align-items: center; justify-content: center; padding: 4px; }
+    .foto-item img { width: 100%; height: 100%; object-fit: contain; display: block; }
     .assinatura-box { margin-top: 24px; border-top: 1px solid #1B2A4A; padding-top: 8px; width: 380px; }
     .assinatura-label { font-size: 12px; color: #6b7280; }
     .assinatura-nome { font-size: 13px; font-weight: 600; margin-top: 2px; }
+    .apoio-bloco { border: 1px solid #dbeafe; border-radius: 6px; background: #eff6ff; padding: 8px; margin-bottom: 8px; }
+    .apoio-titulo { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+    .apoio-linha { font-size: 12px; line-height: 1.4; margin-top: 2px; }
   </style>
 </head>
 <body>
   <div class="container">
     <div class="header">
+      ${temAlgumaLogo ? `
+      <div class="header-logos">
+        ${logoChekAiUrl
+          ? '<img class="header-logo-chekai" data-logo="chekai" alt="Logo ChekAi" />'
+          : '<div class="header-logo-fallback">ChekAi</div>'}
+        ${logoClienteUrl
+          ? '<img class="header-logo-cliente" data-logo="cliente" alt="Logo do cliente" />'
+          : '<div class="header-logo-fallback">Cliente</div>'}
+      </div>
+      ` : `
+      <div class="header-logos">
+        <div class="header-logo-fallback">ChekAi</div>
+        <div class="header-logo-fallback">Cliente</div>
+      </div>
+      `}
       <h1>Relatório Técnico</h1>
       <div class="meta">
         <span><strong>Cliente:</strong> ${this.escapeHtml(nomeCliente)}</span>
@@ -87,7 +112,7 @@ export class RelatorioTecnicoHtmlService {
     </div>
     <div class="section">
       <h2>Apoio Analítico ChekAi</h2>
-      <div class="rich">${this.escapeHtml(relatorio.apoioAnaliticoChekAi || 'Não gerado')}</div>
+      <div class="rich">${apoioAnaliticoHtml}</div>
     </div>
     <div class="section">
       <h2>Assinatura da Consultora</h2>
@@ -100,6 +125,38 @@ export class RelatorioTecnicoHtmlService {
   </div>
 </body>
 </html>`;
+  }
+
+  private gerarHtmlApoioAnalitico(texto: string): string {
+    const valor = texto.trim();
+    if (!valor) {
+      return '<div class="apoio-linha">Não gerado</div>';
+    }
+    const blocos = valor
+      .split(/\n{2,}/)
+      .map((bloco) => bloco.trim())
+      .filter(Boolean)
+      .map((bloco) => {
+        const linhas = bloco.split('\n').map((linha) => linha.trim()).filter(Boolean);
+        if (!linhas.length) {
+          return '';
+        }
+        const primeiraLinha = linhas[0];
+        const tituloMatch = primeiraLinha.match(/^\*\*(.+?)\*\*:?\s*$/) || primeiraLinha.match(/^(.+):$/);
+        const titulo = tituloMatch ? tituloMatch[1].trim() : '';
+        const corpo = titulo ? linhas.slice(1) : linhas;
+        const linhasHtml = (corpo.length ? corpo : ['Sem detalhes adicionais.'])
+          .map((linha) => `<div class="apoio-linha">${this.escapeHtml(linha).replace(/^- /, '• ')}</div>`)
+          .join('');
+        return `
+          <div class="apoio-bloco">
+            ${titulo ? `<div class="apoio-titulo">${this.escapeHtml(titulo)}</div>` : ''}
+            ${linhasHtml}
+          </div>
+        `;
+      })
+      .join('');
+    return blocos || '<div class="apoio-linha">Não gerado</div>';
   }
 
   private escapeHtml(text: string): string {

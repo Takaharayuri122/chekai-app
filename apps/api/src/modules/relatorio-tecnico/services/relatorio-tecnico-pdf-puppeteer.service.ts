@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import puppeteer, { Browser, Page } from 'puppeteer';
+import { promises as fs } from 'fs';
+import * as path from 'path';
 import { SupabaseService } from '../../supabase/supabase.service';
 import { RelatorioTecnico } from '../entities/relatorio-tecnico.entity';
 import { RelatorioTecnicoHtmlService } from './relatorio-tecnico-html.service';
@@ -10,6 +12,7 @@ export class RelatorioTecnicoPdfPuppeteerService {
   private readonly logger = new Logger(RelatorioTecnicoPdfPuppeteerService.name);
   private browser: Browser | null = null;
   private readonly bucketName: string;
+  private logoChekAiDataUrl: string | null | undefined;
 
   constructor(
     private readonly configService: ConfigService,
@@ -29,6 +32,30 @@ export class RelatorioTecnicoPdfPuppeteerService {
       await page.setViewport({ width: 1200, height: 800 });
       const html = this.relatorioTecnicoHtmlService.gerarHtml(relatorio);
       await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: 60000 });
+      const logoChekAi = await this.obterLogoChekAiDataUrl();
+      const logoCliente = (relatorio.cliente as { logoUrl?: string | null } | undefined)?.logoUrl;
+      if (logoChekAi) {
+        await page.evaluate((url: string) => {
+          const img = document.querySelector<HTMLImageElement>('img[data-logo="chekai"]');
+          if (img) img.src = url;
+        }, logoChekAi);
+      }
+      if (logoCliente) {
+        await page.evaluate((url: string) => {
+          const img = document.querySelector<HTMLImageElement>('img[data-logo="cliente"]');
+          if (img) img.src = url;
+        }, logoCliente);
+      }
+      if (logoChekAi || logoCliente) {
+        await page.evaluate(() =>
+          Promise.all(
+            Array.from(document.querySelectorAll<HTMLImageElement>('img[data-logo]'))
+              .filter((img) => img.src && !img.complete)
+              .map((img) => new Promise<void>((r) => { img.onload = () => r(); img.onerror = () => r(); })),
+          ),
+        );
+        await new Promise((r) => setTimeout(r, 300));
+      }
 
       for (const foto of relatorio.fotos || []) {
         await page.evaluate(
@@ -120,5 +147,27 @@ export class RelatorioTecnicoPdfPuppeteerService {
         `Bucket "${this.bucketName}" não existe e não foi possível criá-lo automaticamente.`,
       );
     }
+  }
+
+  private async obterLogoChekAiDataUrl(): Promise<string | null> {
+    if (this.logoChekAiDataUrl !== undefined) {
+      return this.logoChekAiDataUrl;
+    }
+    const caminhos = [
+      path.resolve(process.cwd(), 'apps/web/public/images/logo-large.png'),
+      path.resolve(process.cwd(), '../web/public/images/logo-large.png'),
+    ];
+    for (const caminho of caminhos) {
+      try {
+        const buffer = await fs.readFile(caminho);
+        this.logoChekAiDataUrl = `data:image/png;base64,${buffer.toString('base64')}`;
+        return this.logoChekAiDataUrl;
+      } catch {
+        continue;
+      }
+    }
+    this.logger.warn('Não foi possível carregar a logo do ChekAi em /apps/web/public/images/logo-large.png');
+    this.logoChekAiDataUrl = null;
+    return null;
   }
 }

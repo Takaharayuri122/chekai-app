@@ -14,6 +14,7 @@ import {
   createPaginatedResult,
 } from '../../shared/types/pagination.interface';
 import { CriarRelatorioTecnicoDto } from './dto/criar-relatorio-tecnico.dto';
+import { IniciarRelatorioTecnicoDto } from './dto/iniciar-relatorio-tecnico.dto';
 import { ListarRelatoriosTecnicosDto } from './dto/listar-relatorios-tecnicos.dto';
 import {
   RelatorioTecnico,
@@ -48,6 +49,28 @@ export class RelatorioTecnicoService {
     return this.relatorioTecnicoRepository.save(entidade);
   }
 
+  async iniciar(
+    dto: IniciarRelatorioTecnicoDto,
+    usuario: { id: string; perfil: PerfilUsuario; nome?: string },
+  ): Promise<RelatorioTecnico> {
+    await this.validarVinculoClienteUnidade(dto.clienteId, dto.unidadeId, usuario);
+    const entidade = this.relatorioTecnicoRepository.create({
+      clienteId: dto.clienteId,
+      unidadeId: dto.unidadeId,
+      consultoraId: usuario.id,
+      identificacao: '',
+      descricaoOcorrenciaHtml: '',
+      avaliacaoTecnicaHtml: '',
+      acoesExecutadas: [],
+      recomendacoesConsultoraHtml: '',
+      planoAcaoSugeridoHtml: '',
+      apoioAnaliticoChekAi: null,
+      assinaturaNomeConsultora: usuario.nome ?? '',
+      status: StatusRelatorioTecnico.RASCUNHO,
+    });
+    return this.relatorioTecnicoRepository.save(entidade);
+  }
+
   async listar(
     filtro: ListarRelatoriosTecnicosDto,
     usuario: { id: string; perfil: PerfilUsuario },
@@ -67,7 +90,7 @@ export class RelatorioTecnicoService {
     }
     const [items, total] = await this.relatorioTecnicoRepository.findAndCount({
       where,
-      relations: ['cliente', 'unidade', 'consultora', 'fotos'],
+      relations: ['cliente', 'cliente.gestor', 'unidade', 'consultora', 'fotos'],
       order: { criadoEm: 'DESC' },
       skip: (filtro.page - 1) * filtro.limit,
       take: filtro.limit,
@@ -81,7 +104,7 @@ export class RelatorioTecnicoService {
   ): Promise<RelatorioTecnico> {
     const relatorio = await this.relatorioTecnicoRepository.findOne({
       where: { id },
-      relations: ['cliente', 'unidade', 'consultora', 'fotos'],
+      relations: ['cliente', 'cliente.gestor', 'unidade', 'consultora', 'fotos'],
     });
     if (!relatorio) {
       throw new NotFoundException('Relatório técnico não encontrado');

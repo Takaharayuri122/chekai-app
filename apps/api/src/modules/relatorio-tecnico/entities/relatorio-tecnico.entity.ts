@@ -53,7 +53,7 @@ export class RelatorioTecnico {
   @Column({ name: 'avaliacao_tecnica_html', type: 'text' })
   avaliacaoTecnicaHtml: string;
 
-  @Column({ name: 'acoes_executadas', type: 'jsonb', default: "'[]'::jsonb" })
+  @Column({ name: 'acoes_executadas', type: 'jsonb', default: () => "'[]'::jsonb" })
   acoesExecutadas: string[];
 
   @Column({ name: 'recomendacoes_consultora_html', type: 'text' })
