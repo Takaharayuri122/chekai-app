@@ -7,6 +7,7 @@ import { TutorialInstalacaoModal } from '@/components/ui/tutorial-instalacao-mod
 import { OfflineBanner } from '@/components/pwa/offline-banner';
 import { OfflineProvider } from '@/components/pwa/offline-provider';
 import { SyncOverlay } from '@/components/pwa/sync-overlay';
+import { CheckinFab } from '@/components/checkin/checkin-fab';
 import { Navbar } from './navbar';
 
 const LoadingScreen = () => (
@@ -66,6 +67,7 @@ export function AppLayout({ children }: AppLayoutProps) {
         <main className="pb-20 md:pb-8">
           {children}
         </main>
+        <CheckinFab />
         <TutorialInstalacaoModal />
       </div>
     </OfflineProvider>

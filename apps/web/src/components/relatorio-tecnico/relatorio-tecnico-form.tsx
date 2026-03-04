@@ -51,7 +51,7 @@ export function RelatorioTecnicoForm({
   const [enviandoFoto, setEnviandoFoto] = useState<boolean>(false);
   const [fotosPendentes, setFotosPendentes] = useState<FotoPendente[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const MAX_FOTOS = 5;
+  const MAX_FOTOS = 50;
 
   useEffect(() => {
     async function carregarClientes(): Promise<void> {

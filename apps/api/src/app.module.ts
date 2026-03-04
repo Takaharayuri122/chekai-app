@@ -15,6 +15,7 @@ import { SupabaseModule } from './modules/supabase/supabase.module';
 import { EmailModule } from './modules/email/email.module';
 import { ListaEsperaModule } from './modules/lista-espera/lista-espera.module';
 import { RelatorioTecnicoModule } from './modules/relatorio-tecnico/relatorio-tecnico.module';
+import { CheckinModule } from './modules/checkin/checkin.module';
 
 /**
  * Módulo principal da aplicação.
@@ -66,6 +67,7 @@ import { RelatorioTecnicoModule } from './modules/relatorio-tecnico/relatorio-te
     CreditoModule,
     ListaEsperaModule,
     RelatorioTecnicoModule,
+    CheckinModule,
   ],
 })
 export class AppModule {}
