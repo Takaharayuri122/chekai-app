@@ -1434,6 +1434,7 @@ export interface RelatorioTecnico extends RelatorioTecnicoResumo {
   planoAcaoSugeridoHtml: string;
   apoioAnaliticoChekAi?: string | null;
   assinaturaNomeConsultora: string;
+  responsavel: string;
   pdfUrl?: string | null;
   fotos: Array<{
     id: string;
@@ -1455,6 +1456,7 @@ export interface CriarRelatorioTecnicoRequest {
   recomendacoesConsultoraHtml: string;
   planoAcaoSugeridoHtml: string;
   assinaturaNomeConsultora?: string;
+  responsavel?: string;
   status?: 'rascunho' | 'finalizado';
 }
 

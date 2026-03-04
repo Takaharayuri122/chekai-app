@@ -450,6 +450,9 @@ export function RelatorioTecnicoForm({
 
       <AssinaturaRelatorio
         nomeConsultora={nomeConsultoraLogada || valor.assinaturaNomeConsultora || ''}
+        responsavel={valor.responsavel || ''}
+        onChangeResponsavel={(valorResponsavel) => atualizarCampo('responsavel', valorResponsavel)}
+        somenteLeitura={somenteLeitura}
       />
     </div>
   );

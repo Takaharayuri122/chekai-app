@@ -75,6 +75,9 @@ export class RelatorioTecnico {
   @Column({ name: 'assinatura_nome_consultora', type: 'text' })
   assinaturaNomeConsultora: string;
 
+  @Column({ type: 'text', default: '' })
+  responsavel: string;
+
   @Column({ name: 'pdf_url', type: 'text', nullable: true })
   pdfUrl: string | null;
 

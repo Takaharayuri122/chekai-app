@@ -44,12 +44,15 @@ export class RelatorioTecnicoHtmlService {
     .meta { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px; color: #4b5563; }
     .section { margin-top: 14px; border: 1px solid #E5E9F0; border-radius: 6px; padding: 10px; }
     .section h2 { font-size: 15px; margin-bottom: 8px; color: #00B8A9; }
-    .rich { font-size: 13px; line-height: 1.45; }
+    .rich { font-size: 13px; line-height: 1.45; overflow: hidden; }
+    .rich ul, .rich ol { margin: 6px 0; padding-left: 18px; list-style-position: inside; }
+    .rich li { margin: 2px 0; }
     .acoes { padding-left: 18px; font-size: 13px; }
     .fotos-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
     .foto-item { border: 1px solid #E5E9F0; border-radius: 6px; overflow: hidden; height: 130px; background: #f8fafc; display: flex; align-items: center; justify-content: center; padding: 4px; }
     .foto-item img { width: 100%; height: 100%; object-fit: contain; display: block; }
-    .assinatura-box { margin-top: 24px; border-top: 1px solid #1B2A4A; padding-top: 8px; width: 380px; }
+    .assinaturas-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 8px; }
+    .assinatura-box { margin-top: 24px; border-top: 1px solid #1B2A4A; padding-top: 8px; min-height: 58px; }
     .assinatura-label { font-size: 12px; color: #6b7280; }
     .assinatura-nome { font-size: 13px; font-weight: 600; margin-top: 2px; }
     .apoio-bloco { border: 1px solid #dbeafe; border-radius: 6px; background: #eff6ff; padding: 8px; margin-bottom: 8px; }
@@ -115,11 +118,22 @@ export class RelatorioTecnicoHtmlService {
       <div class="rich">${apoioAnaliticoHtml}</div>
     </div>
     <div class="section">
-      <h2>Assinatura da Consultora</h2>
-      <div style="height: 70px;"></div>
-      <div class="assinatura-box">
-        <div class="assinatura-label">Assinatura</div>
-        <div class="assinatura-nome">${this.escapeHtml(relatorio.assinaturaNomeConsultora || 'Consultora responsável')}</div>
+      <h2>Assinaturas</h2>
+      <div class="assinaturas-grid">
+        <div>
+          <div style="height: 70px;"></div>
+          <div class="assinatura-box">
+            <div class="assinatura-label">Auditor</div>
+            <div class="assinatura-nome">${this.escapeHtml(relatorio.assinaturaNomeConsultora || 'Consultora responsável')}</div>
+          </div>
+        </div>
+        <div>
+          <div style="height: 70px;"></div>
+          <div class="assinatura-box">
+            <div class="assinatura-label">Responsável</div>
+            <div class="assinatura-nome">${this.escapeHtml(relatorio.responsavel || '-')}</div>
+          </div>
+        </div>
       </div>
     </div>
   </div>

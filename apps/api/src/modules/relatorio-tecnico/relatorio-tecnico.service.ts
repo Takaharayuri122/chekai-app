@@ -44,6 +44,7 @@ export class RelatorioTecnicoService {
       unidadeId: dto.unidadeId ?? null,
       apoioAnaliticoChekAi: dto.apoioAnaliticoChekAi ?? null,
       assinaturaNomeConsultora: dto.assinaturaNomeConsultora ?? '',
+      responsavel: dto.responsavel ?? '',
       status: dto.status ?? StatusRelatorioTecnico.RASCUNHO,
     });
     return this.relatorioTecnicoRepository.save(entidade);
@@ -66,6 +67,7 @@ export class RelatorioTecnicoService {
       planoAcaoSugeridoHtml: '',
       apoioAnaliticoChekAi: null,
       assinaturaNomeConsultora: usuario.nome ?? '',
+      responsavel: '',
       status: StatusRelatorioTecnico.RASCUNHO,
     });
     return this.relatorioTecnicoRepository.save(entidade);

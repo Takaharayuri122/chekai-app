@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS relatorios_tecnicos (
   apoio_analitico_chek_ai TEXT,
   status relatorios_tecnicos_status_enum NOT NULL DEFAULT 'rascunho',
   assinatura_nome_consultora TEXT NOT NULL DEFAULT '',
+  responsavel TEXT NOT NULL DEFAULT '',
   pdf_url TEXT,
   pdf_gerado_em TIMESTAMP,
   "criadoEm" TIMESTAMP NOT NULL DEFAULT now(),
@@ -54,3 +55,7 @@ CREATE INDEX IF NOT EXISTS idx_relatorios_tecnicos_unidade_id ON relatorios_tecn
 CREATE INDEX IF NOT EXISTS idx_relatorios_tecnicos_status ON relatorios_tecnicos(status);
 CREATE INDEX IF NOT EXISTS idx_relatorios_tecnicos_criado_em ON relatorios_tecnicos("criadoEm");
 CREATE INDEX IF NOT EXISTS idx_relatorios_tecnicos_fotos_relatorio_id ON relatorios_tecnicos_fotos(relatorio_tecnico_id);
+
+-- Compatibilidade para bases já existentes
+ALTER TABLE IF EXISTS relatorios_tecnicos
+  ADD COLUMN IF NOT EXISTS responsavel TEXT NOT NULL DEFAULT '';

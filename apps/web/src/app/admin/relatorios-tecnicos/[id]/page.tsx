@@ -26,6 +26,7 @@ function mapearParaFormulario(data: any): RelatorioTecnicoFormData {
     recomendacoesConsultoraHtml: data.recomendacoesConsultoraHtml || '',
     planoAcaoSugeridoHtml: data.planoAcaoSugeridoHtml || '',
     assinaturaNomeConsultora: data.assinaturaNomeConsultora || '',
+    responsavel: data.responsavel || '',
     status: data.status || 'rascunho',
     apoioAnaliticoChekAi: data.apoioAnaliticoChekAi || '',
     fotos: data.fotos || [],
@@ -59,6 +60,7 @@ export default function RelatorioTecnicoDetalhePage() {
       recomendacoesConsultoraHtml: formData.recomendacoesConsultoraHtml,
       planoAcaoSugeridoHtml: formData.planoAcaoSugeridoHtml,
       assinaturaNomeConsultora: formData.assinaturaNomeConsultora,
+      responsavel: formData.responsavel,
       status: formData.status,
     } as Partial<CriarRelatorioTecnicoRequest>;
   }, [formData]);
@@ -79,6 +81,7 @@ export default function RelatorioTecnicoDetalhePage() {
           recomendacoesConsultoraHtml: formMapeado.recomendacoesConsultoraHtml,
           planoAcaoSugeridoHtml: formMapeado.planoAcaoSugeridoHtml,
           assinaturaNomeConsultora: formMapeado.assinaturaNomeConsultora,
+          responsavel: formMapeado.responsavel,
           status: formMapeado.status,
         });
         carregandoInicialRef.current = false;
@@ -107,6 +110,7 @@ export default function RelatorioTecnicoDetalhePage() {
         recomendacoesConsultoraHtml: payloadAtualizacao.recomendacoesConsultoraHtml || '',
         planoAcaoSugeridoHtml: payloadAtualizacao.planoAcaoSugeridoHtml || '',
         assinaturaNomeConsultora: payloadAtualizacao.assinaturaNomeConsultora || '',
+        responsavel: payloadAtualizacao.responsavel || '',
         status: payloadAtualizacao.status || 'rascunho',
       });
       setUltimaSincronizacao(new Date());
@@ -145,6 +149,7 @@ export default function RelatorioTecnicoDetalhePage() {
       recomendacoesConsultoraHtml: payloadAtualizacao.recomendacoesConsultoraHtml || '',
       planoAcaoSugeridoHtml: payloadAtualizacao.planoAcaoSugeridoHtml || '',
       assinaturaNomeConsultora: payloadAtualizacao.assinaturaNomeConsultora || '',
+      responsavel: payloadAtualizacao.responsavel || '',
       status: payloadAtualizacao.status || 'rascunho',
     });
     if (snapshotAtual === snapshotSalvoRef.current) {

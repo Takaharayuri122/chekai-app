@@ -66,6 +66,11 @@ export class CriarRelatorioTecnicoDto {
   @IsOptional()
   assinaturaNomeConsultora?: string;
 
+  @ApiPropertyOptional({ description: 'Responsável informado no relatório técnico' })
+  @IsString()
+  @IsOptional()
+  responsavel?: string;
+
   @ApiPropertyOptional({ enum: StatusRelatorioTecnico, default: StatusRelatorioTecnico.RASCUNHO })
   @IsEnum(StatusRelatorioTecnico)
   @IsOptional()
