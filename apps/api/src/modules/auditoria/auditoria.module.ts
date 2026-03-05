@@ -4,6 +4,7 @@ import { MulterModule } from '@nestjs/platform-express';
 import { Auditoria } from './entities/auditoria.entity';
 import { AuditoriaItem } from './entities/auditoria-item.entity';
 import { Foto } from './entities/foto.entity';
+import { Unidade } from '../cliente/entities/unidade.entity';
 import { AuditoriaService } from './auditoria.service';
 import { AuditoriaController } from './auditoria.controller';
 import { RelatorioPdfPuppeteerService } from './services/relatorio-pdf-puppeteer.service';
@@ -20,7 +21,7 @@ import { SupabaseModule } from '../supabase/supabase.module';
  */
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Auditoria, AuditoriaItem, Foto]),
+    TypeOrmModule.forFeature([Auditoria, AuditoriaItem, Foto, Unidade]),
     MulterModule.register({
       limits: { fileSize: 10 * 1024 * 1024 }, // 10MB max
     }),

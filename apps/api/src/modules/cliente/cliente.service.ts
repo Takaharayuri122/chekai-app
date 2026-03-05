@@ -3,6 +3,7 @@ import {
   NotFoundException,
   ConflictException,
   ForbiddenException,
+  BadRequestException,
   forwardRef,
   Inject,
   Optional,
@@ -13,7 +14,8 @@ import { Cliente } from './entities/cliente.entity';
 import { Unidade } from './entities/unidade.entity';
 import { CriarClienteDto } from './dto/criar-cliente.dto';
 import { CriarUnidadeDto } from './dto/criar-unidade.dto';
-import { PerfilUsuario } from '../usuario/entities/usuario.entity';
+import { Usuario, PerfilUsuario } from '../usuario/entities/usuario.entity';
+import { Auditoria, StatusAuditoria } from '../auditoria/entities/auditoria.entity';
 import {
   PaginationParams,
   PaginatedResult,
@@ -30,6 +32,10 @@ export class ClienteService {
     private readonly clienteRepository: Repository<Cliente>,
     @InjectRepository(Unidade)
     private readonly unidadeRepository: Repository<Unidade>,
+    @InjectRepository(Auditoria)
+    private readonly auditoriaRepository: Repository<Auditoria>,
+    @InjectRepository(Usuario)
+    private readonly usuarioRepository: Repository<Usuario>,
     @Inject(forwardRef(() => 'ValidacaoLimitesService'))
     @Optional()
     private readonly validacaoLimites?: any,
@@ -61,41 +67,45 @@ export class ClienteService {
     if (clienteExistente) {
       throw new ConflictException('CNPJ já cadastrado');
     }
+    if (dto.auditorId) {
+      await this.validarAuditorDoGestor(dto.auditorId, usuarioAutenticado);
+    }
     const cliente = this.clienteRepository.create({
       ...dto,
       cnpj: cnpjNormalizado,
       gestorId: usuarioAutenticado?.id ?? undefined,
+      auditorId: dto.auditorId ?? null,
     });
     return this.clienteRepository.save(cliente);
   }
 
   /**
-   * Lista clientes com paginação. Cada usuário vê apenas clientes em que é o gestor.
+   * Lista clientes com paginação. Auditor vê apenas clientes vinculados a ele.
    */
   async listarClientes(
     params: PaginationParams,
     usuarioAutenticado?: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
   ): Promise<PaginatedResult<Cliente>> {
-    let where: { gestorId?: string } = {};
-    if (usuarioAutenticado && usuarioAutenticado.perfil !== PerfilUsuario.MASTER) {
-      const gestorReferencia =
-        usuarioAutenticado.perfil === PerfilUsuario.AUDITOR
-          ? (usuarioAutenticado.gestorId || usuarioAutenticado.id)
-          : usuarioAutenticado.id;
-      where = { gestorId: gestorReferencia };
+    let where: Record<string, unknown> = {};
+    if (usuarioAutenticado) {
+      if (usuarioAutenticado.perfil === PerfilUsuario.AUDITOR) {
+        where = { auditorId: usuarioAutenticado.id };
+      } else {
+        where = { gestorId: usuarioAutenticado.id };
+      }
     }
     const [items, total] = await this.clienteRepository.findAndCount({
       where,
       skip: (params.page - 1) * params.limit,
       take: params.limit,
       order: { criadoEm: 'DESC' },
-      relations: ['unidades'],
+      relations: ['unidades', 'auditor'],
     });
     return createPaginatedResult(items, total, params.page, params.limit);
   }
 
   /**
-   * Busca um cliente pelo ID. Acesso apenas se o usuário for o gestor do cliente.
+   * Busca um cliente pelo ID. Auditor só acessa clientes vinculados a ele.
    */
   async buscarClientePorId(
     id: string,
@@ -103,34 +113,40 @@ export class ClienteService {
   ): Promise<Cliente> {
     const cliente = await this.clienteRepository.findOne({
       where: { id },
-      relations: ['unidades'],
+      relations: ['unidades', 'auditor'],
     });
     if (!cliente) {
       throw new NotFoundException('Cliente não encontrado');
     }
-    if (usuarioAutenticado && usuarioAutenticado.perfil !== PerfilUsuario.MASTER) {
-      const gestorReferencia =
-        usuarioAutenticado.perfil === PerfilUsuario.AUDITOR
-          ? (usuarioAutenticado.gestorId || usuarioAutenticado.id)
-          : usuarioAutenticado.id;
-      if (cliente.gestorId !== gestorReferencia) {
-        throw new ForbiddenException('Acesso negado a este cliente');
-      }
+    if (usuarioAutenticado) {
+      this.validarAcessoCliente(cliente, usuarioAutenticado);
     }
     return cliente;
   }
 
   /**
-   * Atualiza um cliente.
+   * Atualiza um cliente. Retorna warning se houver auditorias abertas ao trocar auditor.
    */
   async atualizarCliente(
     id: string,
-    dto: Partial<CriarClienteDto>,
-    usuarioAutenticado?: { id: string; perfil: PerfilUsuario },
-  ): Promise<Cliente> {
+    dto: Partial<CriarClienteDto> & { confirmado?: boolean },
+    usuarioAutenticado?: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
+  ): Promise<{ cliente: Cliente; warning?: { temAuditoriasAbertas: boolean; quantidade: number } }> {
     const cliente = await this.buscarClientePorId(id, usuarioAutenticado);
-    Object.assign(cliente, dto);
-    return this.clienteRepository.save(cliente);
+    const isTrocandoAuditor = dto.auditorId !== undefined && dto.auditorId !== cliente.auditorId;
+    if (isTrocandoAuditor && dto.auditorId) {
+      await this.validarAuditorDoGestor(dto.auditorId, usuarioAutenticado);
+    }
+    if (isTrocandoAuditor && cliente.auditorId && !dto.confirmado) {
+      const verificacao = await this.verificarAuditoriasAbertasDoAuditor(id, cliente.auditorId);
+      if (verificacao.temAuditoriasAbertas) {
+        return { cliente, warning: verificacao };
+      }
+    }
+    const { confirmado, ...dadosAtualizar } = dto;
+    Object.assign(cliente, dadosAtualizar);
+    const clienteSalvo = await this.clienteRepository.save(cliente);
+    return { cliente: clienteSalvo };
   }
 
   /**
@@ -168,16 +184,15 @@ export class ClienteService {
   }
 
   /**
-   * Lista unidades ativas. Com usuário, apenas unidades de clientes em que ele é gestor.
+   * Lista unidades ativas. Auditor vê apenas unidades de clientes vinculados a ele.
    */
-  async listarTodasUnidades(usuarioAutenticado?: { id: string; perfil: PerfilUsuario }): Promise<Unidade[]> {
-    if (usuarioAutenticado && usuarioAutenticado.perfil !== PerfilUsuario.MASTER) {
-      const gestorReferencia =
-        usuarioAutenticado.perfil === PerfilUsuario.AUDITOR
-          ? ((usuarioAutenticado as { gestorId?: string | null }).gestorId || usuarioAutenticado.id)
-          : usuarioAutenticado.id;
+  async listarTodasUnidades(usuarioAutenticado?: { id: string; perfil: PerfilUsuario; gestorId?: string | null }): Promise<Unidade[]> {
+    if (usuarioAutenticado) {
+      const clienteWhere = usuarioAutenticado.perfil === PerfilUsuario.AUDITOR
+        ? { auditorId: usuarioAutenticado.id }
+        : { gestorId: usuarioAutenticado.id };
       return this.unidadeRepository.find({
-        where: { ativo: true, cliente: { gestorId: gestorReferencia } },
+        where: { ativo: true, cliente: clienteWhere },
         relations: ['cliente'],
         order: { nome: 'ASC' },
       });
@@ -190,7 +205,7 @@ export class ClienteService {
   }
 
   /**
-   * Busca uma unidade pelo ID. Com usuário, apenas se for gestor do cliente da unidade.
+   * Busca uma unidade pelo ID. Auditor só acessa unidades de clientes vinculados.
    */
   async buscarUnidadePorId(
     id: string,
@@ -203,14 +218,8 @@ export class ClienteService {
     if (!unidade) {
       throw new NotFoundException('Unidade não encontrada');
     }
-    if (usuarioAutenticado && usuarioAutenticado.perfil !== PerfilUsuario.MASTER) {
-      const gestorReferencia =
-        usuarioAutenticado.perfil === PerfilUsuario.AUDITOR
-          ? (usuarioAutenticado.gestorId || usuarioAutenticado.id)
-          : usuarioAutenticado.id;
-      if (unidade.cliente?.gestorId !== gestorReferencia) {
-        throw new ForbiddenException('Acesso negado a esta unidade');
-      }
+    if (usuarioAutenticado && unidade.cliente) {
+      this.validarAcessoCliente(unidade.cliente, usuarioAutenticado);
     }
     return unidade;
   }
@@ -238,6 +247,67 @@ export class ClienteService {
     const unidade = await this.buscarUnidadePorId(id, usuarioAutenticado);
     unidade.ativo = false;
     await this.unidadeRepository.save(unidade);
+  }
+
+  /**
+   * Verifica se o auditor atual do cliente possui auditorias em andamento.
+   */
+  async verificarTrocaAuditor(
+    clienteId: string,
+    usuarioAutenticado?: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
+  ): Promise<{ temAuditoriasAbertas: boolean; quantidade: number }> {
+    const cliente = await this.buscarClientePorId(clienteId, usuarioAutenticado);
+    if (!cliente.auditorId) {
+      return { temAuditoriasAbertas: false, quantidade: 0 };
+    }
+    return this.verificarAuditoriasAbertasDoAuditor(clienteId, cliente.auditorId);
+  }
+
+  private async verificarAuditoriasAbertasDoAuditor(
+    clienteId: string,
+    auditorId: string,
+  ): Promise<{ temAuditoriasAbertas: boolean; quantidade: number }> {
+    const quantidade = await this.auditoriaRepository
+      .createQueryBuilder('auditoria')
+      .innerJoin('auditoria.unidade', 'unidade')
+      .where('unidade.clienteId = :clienteId', { clienteId })
+      .andWhere('auditoria.consultorId = :auditorId', { auditorId })
+      .andWhere('auditoria.status = :status', { status: StatusAuditoria.EM_ANDAMENTO })
+      .getCount();
+    return { temAuditoriasAbertas: quantidade > 0, quantidade };
+  }
+
+  private validarAcessoCliente(
+    cliente: Cliente,
+    usuario: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
+  ): void {
+    if (usuario.perfil === PerfilUsuario.AUDITOR) {
+      if (cliente.auditorId !== usuario.id) {
+        throw new ForbiddenException('Acesso negado a este cliente');
+      }
+      return;
+    }
+    if (cliente.gestorId !== usuario.id) {
+      throw new ForbiddenException('Acesso negado a este cliente');
+    }
+  }
+
+  private async validarAuditorDoGestor(
+    auditorId: string,
+    usuarioAutenticado?: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
+  ): Promise<void> {
+    const auditor = await this.usuarioRepository.findOne({ where: { id: auditorId } });
+    if (!auditor) {
+      throw new BadRequestException('Auditor não encontrado');
+    }
+    if (auditor.perfil !== PerfilUsuario.AUDITOR) {
+      throw new BadRequestException('O usuário selecionado não é um auditor');
+    }
+    if (usuarioAutenticado && usuarioAutenticado.perfil === PerfilUsuario.GESTOR) {
+      if (auditor.gestorId !== usuarioAutenticado.id) {
+        throw new ForbiddenException('Este auditor não pertence à sua equipe');
+      }
+    }
   }
 }
 

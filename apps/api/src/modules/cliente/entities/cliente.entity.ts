@@ -69,6 +69,13 @@ export class Cliente {
   @Column({ name: 'gestor_id', nullable: true })
   gestorId: string | null;
 
+  @ManyToOne(() => Usuario, { nullable: true })
+  @JoinColumn({ name: 'auditor_id' })
+  auditor: Usuario;
+
+  @Column({ name: 'auditor_id', nullable: true })
+  auditorId: string | null;
+
   @Column({ name: 'logo_url', type: 'text', nullable: true })
   logoUrl: string | null;
 

@@ -115,8 +115,9 @@ export class AuditoriaController {
     @Param('id', ParseUUIDPipe) auditoriaId: string,
     @Param('itemId', ParseUUIDPipe) itemId: string,
     @Body() dto: ResponderItemDto,
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; gestorId?: string },
   ): Promise<AuditoriaItem> {
-    return this.auditoriaService.responderItem(auditoriaId, itemId, dto);
+    return this.auditoriaService.responderItem(auditoriaId, itemId, dto, usuario);
   }
 
   @Post(':id/itens/:itemId/fotos')
@@ -135,9 +136,11 @@ export class AuditoriaController {
   })
   @UseInterceptors(FileInterceptor('file'))
   async adicionarFoto(
+    @Param('id', ParseUUIDPipe) auditoriaId: string,
     @Param('itemId', ParseUUIDPipe) itemId: string,
     @UploadedFile() file: Express.Multer.File,
     @Body() body: { latitude?: string; longitude?: string },
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; gestorId?: string },
   ): Promise<{ id: string; url: string }> {
     if (!file) {
       throw new BadRequestException('Arquivo de imagem é obrigatório');
@@ -157,7 +160,7 @@ export class AuditoriaController {
     }
     const base64 = resultado.buffer.toString('base64');
     const dataUrl = `data:${resultado.mimeType};base64,${base64}`;
-    const foto = await this.auditoriaService.adicionarFoto(itemId, {
+    const foto = await this.auditoriaService.adicionarFoto(auditoriaId, itemId, {
       url: dataUrl,
       nomeOriginal: file.originalname,
       mimeType: resultado.mimeType,
@@ -165,7 +168,7 @@ export class AuditoriaController {
       exif: exif ?? undefined,
       latitude: body.latitude ? parseFloat(body.latitude) : undefined,
       longitude: body.longitude ? parseFloat(body.longitude) : undefined,
-    });
+    }, usuario);
     return { id: foto.id, url: dataUrl };
   }
 
@@ -173,9 +176,11 @@ export class AuditoriaController {
   @ApiOperation({ summary: 'Remove uma foto do item' })
   @ApiResponse({ status: 200, description: 'Foto removida' })
   async removerFoto(
+    @Param('id', ParseUUIDPipe) auditoriaId: string,
     @Param('fotoId', ParseUUIDPipe) fotoId: string,
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; gestorId?: string },
   ): Promise<{ success: boolean }> {
-    await this.auditoriaService.removerFoto(fotoId);
+    await this.auditoriaService.removerFoto(auditoriaId, fotoId, usuario);
     return { success: true };
   }
 
@@ -183,10 +188,12 @@ export class AuditoriaController {
   @ApiOperation({ summary: 'Atualiza a análise de IA de uma foto' })
   @ApiResponse({ status: 200, description: 'Análise atualizada' })
   async atualizarAnaliseFoto(
+    @Param('id', ParseUUIDPipe) auditoriaId: string,
     @Param('fotoId', ParseUUIDPipe) fotoId: string,
     @Body() body: { analiseIa: string },
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; gestorId?: string },
   ): Promise<{ success: boolean }> {
-    await this.auditoriaService.atualizarAnaliseFoto(fotoId, body.analiseIa);
+    await this.auditoriaService.atualizarAnaliseFoto(auditoriaId, fotoId, body.analiseIa, usuario);
     return { success: true };
   }
 
@@ -219,8 +226,9 @@ export class AuditoriaController {
   @ApiResponse({ status: 200, description: 'Itens não conformes' })
   async buscarItensNaoConformes(
     @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; gestorId?: string },
   ): Promise<AuditoriaItem[]> {
-    return this.auditoriaService.buscarItensNaoConformes(id);
+    return this.auditoriaService.buscarItensNaoConformes(id, usuario);
   }
 
   @Delete(':id')

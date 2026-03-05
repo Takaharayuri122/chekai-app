@@ -14,6 +14,7 @@ import { Auditoria, StatusAuditoria } from './entities/auditoria.entity';
 import { AuditoriaItem, RespostaItem } from './entities/auditoria-item.entity';
 import { TemplateItem, TipoRespostaCustomizada } from '../checklist/entities/template-item.entity';
 import { Foto } from './entities/foto.entity';
+import { Unidade } from '../cliente/entities/unidade.entity';
 import { ChecklistService } from '../checklist/checklist.service';
 import { PerfilUsuario } from '../usuario/entities/usuario.entity';
 import {
@@ -42,6 +43,8 @@ export class AuditoriaService {
     private readonly itemRepository: Repository<AuditoriaItem>,
     @InjectRepository(Foto)
     private readonly fotoRepository: Repository<Foto>,
+    @InjectRepository(Unidade)
+    private readonly unidadeRepository: Repository<Unidade>,
     private readonly checklistService: ChecklistService,
     private readonly iaService: IaService,
     @Inject(forwardRef(() => 'ValidacaoLimitesService'))
@@ -63,6 +66,9 @@ export class AuditoriaService {
       if (gestorId) {
         await this.validacaoLimites.validarLimiteAuditorias(gestorId);
       }
+    }
+    if (usuario && usuario.perfil === PerfilUsuario.AUDITOR) {
+      await this.validarVinculoAuditorCliente(dto.unidadeId, usuario.id);
     }
     const template = await this.checklistService.buscarTemplatePorId(dto.templateId, usuario);
     const auditoria = this.auditoriaRepository.create({
@@ -99,8 +105,17 @@ export class AuditoriaService {
       .leftJoinAndSelect('auditoria.unidade', 'unidade')
       .leftJoinAndSelect('unidade.cliente', 'cliente')
       .leftJoinAndSelect('auditoria.template', 'template')
-      .leftJoinAndSelect('auditoria.consultor', 'consultor')
-      .where('auditoria.consultorId = :consultorId', { consultorId: usuarioAutenticado.id });
+      .leftJoinAndSelect('auditoria.consultor', 'consultor');
+    if (usuarioAutenticado.perfil === PerfilUsuario.MASTER || usuarioAutenticado.perfil === PerfilUsuario.GESTOR) {
+      queryBuilder.where(
+        '(auditoria.consultorId = :userId OR consultor.gestorId = :userId)',
+        { userId: usuarioAutenticado.id },
+      );
+    } else {
+      queryBuilder.where('auditoria.consultorId = :consultorId', {
+        consultorId: usuarioAutenticado.id,
+      });
+    }
     const [items, total] = await queryBuilder
       .skip((params.page - 1) * params.limit)
       .take(params.limit)
@@ -116,12 +131,23 @@ export class AuditoriaService {
     unidadeId: string,
     usuarioAutenticado: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
   ): Promise<Auditoria[]> {
-    return this.auditoriaRepository
+    const queryBuilder = this.auditoriaRepository
       .createQueryBuilder('auditoria')
       .leftJoinAndSelect('auditoria.template', 'template')
+      .leftJoinAndSelect('auditoria.consultor', 'consultor')
       .where('auditoria.unidadeId = :unidadeId', { unidadeId })
-      .andWhere('auditoria.status = :status', { status: StatusAuditoria.FINALIZADA })
-      .andWhere('auditoria.consultorId = :consultorId', { consultorId: usuarioAutenticado.id })
+      .andWhere('auditoria.status = :status', { status: StatusAuditoria.FINALIZADA });
+    if (usuarioAutenticado.perfil === PerfilUsuario.MASTER || usuarioAutenticado.perfil === PerfilUsuario.GESTOR) {
+      queryBuilder.andWhere(
+        '(auditoria.consultorId = :userId OR consultor.gestorId = :userId)',
+        { userId: usuarioAutenticado.id },
+      );
+    } else {
+      queryBuilder.andWhere('auditoria.consultorId = :consultorId', {
+        consultorId: usuarioAutenticado.id,
+      });
+    }
+    return queryBuilder
       .orderBy('auditoria.dataFim', 'DESC')
       .addOrderBy('auditoria.criadoEm', 'DESC')
       .take(30)
@@ -151,10 +177,26 @@ export class AuditoriaService {
     if (!auditoria) {
       throw new NotFoundException('Auditoria não encontrada');
     }
-    if (usuarioAutenticado && auditoria.consultorId !== usuarioAutenticado.id) {
-      throw new ForbiddenException('Acesso negado a esta auditoria');
+    if (usuarioAutenticado) {
+      this.validarAcessoAuditoria(auditoria, usuarioAutenticado);
     }
     return auditoria;
+  }
+
+  private validarAcessoAuditoria(
+    auditoria: Auditoria,
+    usuario: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
+  ): void {
+    if (auditoria.consultorId === usuario.id) {
+      return;
+    }
+    if (usuario.perfil === PerfilUsuario.MASTER || usuario.perfil === PerfilUsuario.GESTOR) {
+      const consultor = auditoria.consultor;
+      if (consultor && consultor.gestorId === usuario.id) {
+        return;
+      }
+    }
+    throw new ForbiddenException('Acesso negado a esta auditoria');
   }
 
   /**
@@ -164,14 +206,9 @@ export class AuditoriaService {
     auditoriaId: string,
     itemId: string,
     dto: ResponderItemDto,
+    usuarioAutenticado?: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
   ): Promise<AuditoriaItem> {
-    // Verificar se a auditoria está finalizada
-    const auditoria = await this.auditoriaRepository.findOne({
-      where: { id: auditoriaId },
-    });
-    if (!auditoria) {
-      throw new NotFoundException('Auditoria não encontrada');
-    }
+    const auditoria = await this.buscarAuditoriaPorId(auditoriaId, usuarioAutenticado);
     if (auditoria.status === StatusAuditoria.FINALIZADA) {
       throw new BadRequestException('Não é possível editar uma auditoria finalizada. Reabra a auditoria para fazer alterações.');
     }
@@ -243,6 +280,7 @@ export class AuditoriaService {
    * Adiciona uma foto a um item da auditoria.
    */
   async adicionarFoto(
+    auditoriaId: string,
     itemId: string,
     fotoData: {
       url: string;
@@ -253,17 +291,17 @@ export class AuditoriaService {
       latitude?: number;
       longitude?: number;
     },
+    usuarioAutenticado?: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
   ): Promise<Foto> {
+    const auditoria = await this.buscarAuditoriaPorId(auditoriaId, usuarioAutenticado);
+    if (auditoria.status === StatusAuditoria.FINALIZADA) {
+      throw new BadRequestException('Não é possível adicionar fotos em uma auditoria finalizada. Reabra a auditoria para fazer alterações.');
+    }
     const item = await this.itemRepository.findOne({
-      where: { id: itemId },
-      relations: ['auditoria'],
+      where: { id: itemId, auditoriaId },
     });
     if (!item) {
       throw new NotFoundException('Item não encontrado');
-    }
-    // Verificar se a auditoria está finalizada
-    if (item.auditoria.status === StatusAuditoria.FINALIZADA) {
-      throw new BadRequestException('Não é possível adicionar fotos em uma auditoria finalizada. Reabra a auditoria para fazer alterações.');
     }
     const nomeOriginalSanitizado = fotoData.nomeOriginal
       ?.replace(/\0/g, '')
@@ -280,7 +318,12 @@ export class AuditoriaService {
   /**
    * Remove uma foto de um item da auditoria.
    */
-  async removerFoto(fotoId: string): Promise<void> {
+  async removerFoto(
+    auditoriaId: string,
+    fotoId: string,
+    usuarioAutenticado?: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
+  ): Promise<void> {
+    await this.buscarAuditoriaPorId(auditoriaId, usuarioAutenticado);
     const foto = await this.fotoRepository.findOne({ where: { id: fotoId } });
     if (!foto) {
       throw new NotFoundException('Foto não encontrada');
@@ -292,9 +335,12 @@ export class AuditoriaService {
    * Atualiza a análise de IA de uma foto.
    */
   async atualizarAnaliseFoto(
+    auditoriaId: string,
     fotoId: string,
     analiseIa: string,
+    usuarioAutenticado?: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
   ): Promise<Foto> {
+    await this.buscarAuditoriaPorId(auditoriaId, usuarioAutenticado);
     const foto = await this.fotoRepository.findOne({ where: { id: fotoId } });
     if (!foto) {
       throw new NotFoundException('Foto não encontrada');
@@ -406,12 +452,11 @@ export class AuditoriaService {
       throw new BadRequestException('Apenas auditorias finalizadas podem ser reabertas');
     }
     
-    // Verificar permissões - apenas o auditor que criou ou o gestor responsável podem reabrir
     if (usuarioAutenticado) {
       if (usuarioAutenticado.perfil === PerfilUsuario.AUDITOR && auditoria.consultorId !== usuarioAutenticado.id) {
         throw new ForbiddenException('Apenas o auditor responsável pode reabrir esta auditoria');
       }
-      if (usuarioAutenticado.perfil === PerfilUsuario.GESTOR) {
+      if (usuarioAutenticado.perfil === PerfilUsuario.GESTOR || usuarioAutenticado.perfil === PerfilUsuario.MASTER) {
         const consultor = auditoria.consultor;
         const podeReabrir =
           auditoria.consultorId === usuarioAutenticado.id ||
@@ -440,7 +485,11 @@ export class AuditoriaService {
   /**
    * Busca itens não conformes de uma auditoria.
    */
-  async buscarItensNaoConformes(auditoriaId: string): Promise<AuditoriaItem[]> {
+  async buscarItensNaoConformes(
+    auditoriaId: string,
+    usuarioAutenticado?: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
+  ): Promise<AuditoriaItem[]> {
+    await this.buscarAuditoriaPorId(auditoriaId, usuarioAutenticado);
     return this.itemRepository.find({
       where: { auditoriaId, resposta: RespostaItem.NAO_CONFORME },
       relations: ['templateItem', 'fotos'],
@@ -456,18 +505,15 @@ export class AuditoriaService {
     usuarioAutenticado: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
   ): Promise<void> {
     const auditoria = await this.buscarAuditoriaPorId(id, usuarioAutenticado);
-    // Verificar permissões - apenas GESTOR ou superior podem remover
     if (usuarioAutenticado.perfil === PerfilUsuario.AUDITOR) {
       throw new ForbiddenException('Apenas gestores podem remover auditorias');
     }
-    if (usuarioAutenticado.perfil === PerfilUsuario.GESTOR) {
-      const consultor = auditoria.consultor;
-      const podeRemover =
-        auditoria.consultorId === usuarioAutenticado.id ||
-        (consultor && consultor.gestorId === usuarioAutenticado.id);
-      if (!podeRemover) {
-        throw new ForbiddenException('Apenas o gestor responsável pode remover esta auditoria');
-      }
+    const consultor = auditoria.consultor;
+    const podeRemover =
+      auditoria.consultorId === usuarioAutenticado.id ||
+      (consultor && consultor.gestorId === usuarioAutenticado.id);
+    if (!podeRemover) {
+      throw new ForbiddenException('Apenas o gestor responsável pode remover esta auditoria');
     }
     // Buscar todos os itens da auditoria
     const itens = await this.itemRepository.find({
@@ -606,6 +652,19 @@ export class AuditoriaService {
       pdfUrl,
       pdfGeradoEm: new Date(),
     });
+  }
+
+  private async validarVinculoAuditorCliente(unidadeId: string, auditorId: string): Promise<void> {
+    const unidade = await this.unidadeRepository.findOne({
+      where: { id: unidadeId },
+      relations: ['cliente'],
+    });
+    if (!unidade || !unidade.cliente) {
+      throw new NotFoundException('Unidade não encontrada');
+    }
+    if (unidade.cliente.auditorId !== auditorId) {
+      throw new ForbiddenException('Você não está vinculado a este cliente');
+    }
   }
 }
 

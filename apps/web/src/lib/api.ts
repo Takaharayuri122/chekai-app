@@ -354,6 +354,8 @@ export interface Cliente {
   responsavelTecnico?: string;
   ativo: boolean;
   logoUrl?: string | null;
+  auditorId?: string | null;
+  auditor?: Usuario;
   unidades: Unidade[];
   criadoEm: string;
   atualizadoEm: string;
@@ -367,6 +369,7 @@ export interface CriarClienteRequest {
   telefone?: string;
   tipoAtividade?: TipoAtividade;
   responsavelTecnico?: string;
+  auditorId?: string;
 }
 
 export interface Unidade {
@@ -416,8 +419,16 @@ export const clienteService = {
     return response.data.data;
   },
 
-  async atualizar(id: string, data: Partial<CriarClienteRequest>): Promise<Cliente> {
+  async atualizar(
+    id: string,
+    data: Partial<CriarClienteRequest> & { confirmado?: boolean },
+  ): Promise<{ cliente: Cliente; warning?: { temAuditoriasAbertas: boolean; quantidade: number } }> {
     const response = await api.put(`/clientes/${id}`, data);
+    return response.data.data;
+  },
+
+  async verificarTrocaAuditor(clienteId: string): Promise<{ temAuditoriasAbertas: boolean; quantidade: number }> {
+    const response = await api.get(`/clientes/${clienteId}/verificar-troca-auditor`);
     return response.data.data;
   },
 

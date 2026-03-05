@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   Building2,
   Plus,
@@ -23,8 +23,11 @@ import { LogoCropperModal } from '@/components/ui/logo-cropper-modal';
 import {
   clienteService,
   unidadeService,
+  usuarioService,
   Cliente,
+  Usuario,
   TipoAtividade,
+  PerfilUsuario,
   TIPO_ATIVIDADE_LABELS,
 } from '@/lib/api';
 import { toastService } from '@/lib/toast';
@@ -102,6 +105,11 @@ export default function ClientesPage() {
   const [showUnidadeForm, setShowUnidadeForm] = useState(false);
   const [editingUnidade, setEditingUnidade] = useState<string | null>(null);
 
+  const [auditores, setAuditores] = useState<Usuario[]>([]);
+  const [showAvisoTrocaAuditor, setShowAvisoTrocaAuditor] = useState(false);
+  const [avisoTrocaInfo, setAvisoTrocaInfo] = useState<{ quantidade: number; nomeAuditor: string } | null>(null);
+  const [dadosPendentesUpdate, setDadosPendentesUpdate] = useState<Record<string, unknown> | null>(null);
+
   const [cropperOpen, setCropperOpen] = useState(false);
   const [cropperImageUrl, setCropperImageUrl] = useState('');
   const [pendingLogoBlob, setPendingLogoBlob] = useState<Blob | null>(null);
@@ -116,6 +124,7 @@ export default function ClientesPage() {
     telefone: '',
     email: '',
     tipoAtividade: TipoAtividade.OUTRO,
+    auditorId: '',
   });
 
   const [unidadeForm, setUnidadeForm] = useState({
@@ -133,6 +142,7 @@ export default function ClientesPage() {
     telefone: '',
     email: '',
     tipoAtividade: TipoAtividade.OUTRO,
+    auditorId: '',
   };
 
   const unidadeFormInicial = { nome: '', endereco: '', cidade: '', estado: '', cep: '' };
@@ -143,6 +153,19 @@ export default function ClientesPage() {
     setPendingLogoPreviewUrl('');
     setPendingLogoRemover(false);
   };
+
+  const carregarAuditores = async () => {
+    try {
+      const response = await usuarioService.listar(1, 100, PerfilUsuario.AUDITOR);
+      setAuditores(response.items || []);
+    } catch {
+      // interceptor
+    }
+  };
+
+  useEffect(() => {
+    carregarAuditores();
+  }, []);
 
   const carregarClientes = async () => {
     setLoading(true);
@@ -185,25 +208,36 @@ export default function ClientesPage() {
       telefone: cliente.telefone ? aplicarMascaraTelefone(cliente.telefone) : '',
       email: cliente.email || '',
       tipoAtividade: cliente.tipoAtividade,
+      auditorId: cliente.auditorId || '',
     });
     clearPendingLogo();
     setShowModal(true);
   };
 
-  const handleSalvarCliente = async () => {
-    const telefoneNumeros = removerMascaraTelefone(clienteForm.telefone);
-    if (!clienteForm.razaoSocial || !clienteForm.cnpj || !clienteForm.telefone || telefoneNumeros.length < 10) return;
-    if (clienteForm.email?.trim() && !emailValido(clienteForm.email)) return;
+  const montarDadosCliente = () => ({
+    ...clienteForm,
+    cnpj: removerMascaraCNPJ(clienteForm.cnpj),
+    telefone: removerMascaraTelefone(clienteForm.telefone),
+    email: clienteForm.email?.trim() || undefined,
+    auditorId: clienteForm.auditorId || undefined,
+  });
+
+  const salvarClienteComDados = async (dados: Record<string, unknown>, confirmado = false) => {
     setSaving(true);
     try {
-      const dados = {
-        ...clienteForm,
-        cnpj: removerMascaraCNPJ(clienteForm.cnpj),
-        telefone: removerMascaraTelefone(clienteForm.telefone),
-        email: clienteForm.email?.trim() || undefined,
-      };
       if (editingCliente) {
-        await clienteService.atualizar(editingCliente.id, dados);
+        const payload = confirmado ? { ...dados, confirmado: true } : dados;
+        const resultado = await clienteService.atualizar(editingCliente.id, payload);
+        if (resultado.warning?.temAuditoriasAbertas && !confirmado) {
+          const auditorAtual = auditores.find((a) => a.id === editingCliente.auditorId);
+          setAvisoTrocaInfo({
+            quantidade: resultado.warning.quantidade,
+            nomeAuditor: auditorAtual?.nome || 'o auditor atual',
+          });
+          setDadosPendentesUpdate(dados);
+          setShowAvisoTrocaAuditor(true);
+          return;
+        }
         if (pendingLogoBlob) {
           const file = new File([pendingLogoBlob], 'logo-cliente.jpg', { type: 'image/jpeg' });
           await clienteService.uploadLogo(editingCliente.id, file);
@@ -211,7 +245,7 @@ export default function ClientesPage() {
         if (pendingLogoRemover) await clienteService.removerLogo(editingCliente.id);
         toastService.success('Cliente atualizado com sucesso!');
       } else {
-        const novo = await clienteService.criar(dados);
+        const novo = await clienteService.criar(dados as unknown as Parameters<typeof clienteService.criar>[0]);
         if (pendingLogoBlob) {
           const file = new File([pendingLogoBlob], 'logo-cliente.jpg', { type: 'image/jpeg' });
           await clienteService.uploadLogo(novo.id, file);
@@ -228,6 +262,21 @@ export default function ClientesPage() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleSalvarCliente = async () => {
+    const telefoneNumeros = removerMascaraTelefone(clienteForm.telefone);
+    if (!clienteForm.razaoSocial || !clienteForm.cnpj || !clienteForm.telefone || telefoneNumeros.length < 10) return;
+    if (clienteForm.email?.trim() && !emailValido(clienteForm.email)) return;
+    await salvarClienteComDados(montarDadosCliente());
+  };
+
+  const handleConfirmarTrocaAuditor = async () => {
+    if (!dadosPendentesUpdate) return;
+    setShowAvisoTrocaAuditor(false);
+    await salvarClienteComDados(dadosPendentesUpdate, true);
+    setDadosPendentesUpdate(null);
+    setAvisoTrocaInfo(null);
   };
 
   const handleDeleteConfirm = async () => {
@@ -535,6 +584,21 @@ export default function ClientesPage() {
                   />
                 </div>
               </div>
+              {(isGestor() || isMaster()) && (
+                <div className="form-control">
+                  <label className="label"><span className="label-text">Auditor Responsável</span></label>
+                  <select
+                    className="select select-bordered"
+                    value={clienteForm.auditorId}
+                    onChange={(e) => setClienteForm({ ...clienteForm, auditorId: e.target.value })}
+                  >
+                    <option value="">Nenhum auditor</option>
+                    {auditores.map((auditor) => (
+                      <option key={auditor.id} value={auditor.id}>{auditor.nome}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div className="form-control pt-2 border-t border-base-200">
                 <label className="label"><span className="label-text">Logo do cliente</span></label>
                 <p className="text-sm text-base-content/60 mb-3">
@@ -782,6 +846,26 @@ export default function ClientesPage() {
         cancelLabel="Cancelar"
         variant="danger"
         loading={isDeleting}
+      />
+
+      <ConfirmDialog
+        open={showAvisoTrocaAuditor}
+        onClose={() => {
+          setShowAvisoTrocaAuditor(false);
+          setDadosPendentesUpdate(null);
+          setAvisoTrocaInfo(null);
+        }}
+        onConfirm={handleConfirmarTrocaAuditor}
+        title="Auditorias em andamento"
+        message={
+          avisoTrocaInfo
+            ? `O auditor ${avisoTrocaInfo.nomeAuditor} possui ${avisoTrocaInfo.quantidade} auditoria(s) em andamento neste cliente. Ele poderá finalizá-la(s), mas não poderá iniciar novas auditorias.`
+            : ''
+        }
+        confirmLabel="Continuar"
+        cancelLabel="Cancelar"
+        variant="warning"
+        loading={saving}
       />
     </AppLayout>
   );

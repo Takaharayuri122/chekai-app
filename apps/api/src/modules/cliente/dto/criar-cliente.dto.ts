@@ -4,6 +4,7 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
+  IsUUID,
   Matches,
   ValidateIf,
 } from 'class-validator';
@@ -55,6 +56,11 @@ export class CriarClienteDto {
   @IsString()
   @IsOptional()
   responsavelTecnico?: string;
+
+  @ApiPropertyOptional({ description: 'ID do auditor responsável pelo cliente' })
+  @IsUUID('4', { message: 'ID do auditor inválido' })
+  @IsOptional()
+  auditorId?: string;
 
   @ApiPropertyOptional({ description: 'URL da logo/imagem do cliente (exibida no relatório). Enviar null para remover.' })
   @ValidateIf((o) => o.logoUrl != null)

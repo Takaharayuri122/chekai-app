@@ -168,11 +168,13 @@ export class UsuarioController {
   @ApiOperation({ summary: 'Atualiza um usuário' })
   @ApiResponse({ status: 200, description: 'Usuário atualizado' })
   @ApiResponse({ status: 404, description: 'Usuário não encontrado' })
+  @ApiResponse({ status: 403, description: 'Acesso negado' })
   async atualizar(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: AtualizarUsuarioDto,
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; gestorId?: string },
   ): Promise<Usuario> {
-    return this.usuarioService.atualizar(id, dto);
+    return this.usuarioService.atualizar(id, dto, usuario);
   }
 
   @Delete(':id')

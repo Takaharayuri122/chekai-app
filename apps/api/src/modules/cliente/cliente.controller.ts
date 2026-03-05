@@ -127,7 +127,8 @@ export class ClienteController {
       file.buffer,
       file.mimetype || 'image/jpeg',
     );
-    return this.clienteService.atualizarCliente(id, { logoUrl: url });
+    const resultado = await this.clienteService.atualizarCliente(id, { logoUrl: url });
+    return resultado.cliente;
   }
 
   @Delete(':id/logo')
@@ -144,7 +145,21 @@ export class ClienteController {
     if (usuario.perfil === PerfilUsuario.GESTOR && cliente.gestorId !== usuario.id) {
       throw new ForbiddenException('Acesso negado a este cliente');
     }
-    return this.clienteService.atualizarCliente(id, { logoUrl: null });
+    const resultado = await this.clienteService.atualizarCliente(id, { logoUrl: null });
+    return resultado.cliente;
+  }
+
+  @Get(':id/verificar-troca-auditor')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(PerfilUsuario.MASTER, PerfilUsuario.GESTOR)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Verifica se há auditorias abertas ao trocar auditor' })
+  @ApiResponse({ status: 200, description: 'Resultado da verificação' })
+  async verificarTrocaAuditor(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
+  ): Promise<{ temAuditoriasAbertas: boolean; quantidade: number }> {
+    return this.clienteService.verificarTrocaAuditor(id, usuario);
   }
 
   @Put(':id')
@@ -152,9 +167,9 @@ export class ClienteController {
   @ApiResponse({ status: 200, description: 'Cliente atualizado' })
   async atualizarCliente(
     @Param('id', ParseUUIDPipe) id: string,
-    @Body() dto: Partial<CriarClienteDto>,
-    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario },
-  ): Promise<Cliente> {
+    @Body() dto: Partial<CriarClienteDto> & { confirmado?: boolean },
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
+  ): Promise<{ cliente: Cliente; warning?: { temAuditoriasAbertas: boolean; quantidade: number } }> {
     return this.clienteService.atualizarCliente(id, dto, usuario);
   }
 

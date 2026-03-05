@@ -78,9 +78,7 @@ export class RelatorioTecnicoService {
     usuario: { id: string; perfil: PerfilUsuario },
   ): Promise<PaginatedResult<RelatorioTecnico>> {
     const where: Record<string, unknown> = {};
-    if (usuario.perfil !== PerfilUsuario.MASTER) {
-      where.consultoraId = usuario.id;
-    }
+    where.consultoraId = usuario.id;
     if (filtro.clienteId) {
       where.clienteId = filtro.clienteId;
     }
@@ -111,7 +109,7 @@ export class RelatorioTecnicoService {
     if (!relatorio) {
       throw new NotFoundException('Relatório técnico não encontrado');
     }
-    if (usuario.perfil !== PerfilUsuario.MASTER && relatorio.consultoraId !== usuario.id) {
+    if (relatorio.consultoraId !== usuario.id) {
       throw new ForbiddenException('Acesso negado a este relatório');
     }
     return relatorio;

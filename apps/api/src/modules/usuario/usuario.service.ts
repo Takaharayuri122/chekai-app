@@ -127,7 +127,7 @@ export class UsuarioService {
   ): Promise<PaginatedResult<Usuario>> {
     let where: any = {};
     if (usuarioAutenticado) {
-      if (usuarioAutenticado.perfil === PerfilUsuario.GESTOR) {
+      if (usuarioAutenticado.perfil === PerfilUsuario.MASTER || usuarioAutenticado.perfil === PerfilUsuario.GESTOR) {
         where = [
           { id: usuarioAutenticado.id },
           { gestorId: usuarioAutenticado.id },
@@ -170,8 +170,15 @@ export class UsuarioService {
   /**
    * Atualiza os dados de um usuário.
    */
-  async atualizar(id: string, dto: AtualizarUsuarioDto): Promise<Usuario> {
+  async atualizar(
+    id: string,
+    dto: AtualizarUsuarioDto,
+    usuarioAutenticado?: { id: string; perfil: PerfilUsuario; gestorId?: string },
+  ): Promise<Usuario> {
     const usuario = await this.buscarPorId(id);
+    if (usuarioAutenticado) {
+      this.validarPermissaoAtualizacao(usuario, usuarioAutenticado);
+    }
     if (dto.email && dto.email !== usuario.email) {
       const emailExistente = await this.usuarioRepository.findOne({
         where: { email: dto.email },
@@ -187,6 +194,23 @@ export class UsuarioService {
       Object.assign(usuario, dto);
     }
     return this.usuarioRepository.save(usuario);
+  }
+
+  private validarPermissaoAtualizacao(
+    alvo: Usuario,
+    solicitante: { id: string; perfil: PerfilUsuario; gestorId?: string },
+  ): void {
+    if (solicitante.perfil === PerfilUsuario.MASTER || solicitante.perfil === PerfilUsuario.GESTOR) {
+      const isProprio = alvo.id === solicitante.id;
+      const isSeuAuditor = alvo.gestorId === solicitante.id;
+      if (!isProprio && !isSeuAuditor) {
+        throw new ForbiddenException('Acesso negado. Você só pode atualizar seus próprios dados ou de seus auditores.');
+      }
+      return;
+    }
+    if (alvo.id !== solicitante.id) {
+      throw new ForbiddenException('Acesso negado. Você só pode atualizar seus próprios dados.');
+    }
   }
 
   /**
