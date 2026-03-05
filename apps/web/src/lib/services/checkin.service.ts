@@ -64,6 +64,11 @@ interface ListaPaginadaCheckins {
   hasPrevious: boolean;
 }
 
+interface FiltrosCheckinsResponse {
+  auditores: Array<{ id: string; nome: string }>;
+  clientes: Array<{ id: string; nome: string }>;
+}
+
 export const checkinService = {
   async iniciar(data: IniciarCheckinRequest): Promise<CheckinRegistro> {
     const response = await api.post('/checkins/iniciar', data);
@@ -87,6 +92,10 @@ export const checkinService = {
   },
   async buscarPorId(id: string): Promise<CheckinRegistro> {
     const response = await api.get(`/checkins/${id}`);
+    return response.data.data;
+  },
+  async buscarFiltros(): Promise<FiltrosCheckinsResponse> {
+    const response = await api.get('/checkins/filtros');
     return response.data.data;
   },
 };

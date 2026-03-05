@@ -31,15 +31,6 @@ import {
   TipoRespostaCustomizada,
 } from '@/lib/api';
 import { toastService } from '@/lib/toast';
-import {
-  buscarAuditoriaPorId,
-  responderItemAuditoria,
-  adicionarFotoAuditoria,
-  finalizarAuditoria,
-  ehIdLocal,
-} from '@/lib/offline/auditoria-offline';
-import { useOfflineStore } from '@/lib/store-offline';
-import * as cache from '@/lib/offline/cache';
 import { renderEmoji } from '@/lib/emoji';
 
 type RespostaType = 'conforme' | 'nao_conforme' | 'nao_aplicavel' | string;
@@ -103,7 +94,7 @@ export default function AuditoriaPage() {
   const carregarAuditoria = useCallback(async () => {
     try {
       scrollRealizado.current = false;
-      const data = await buscarAuditoriaPorId(id);
+      const data = await auditoriaService.buscarPorId(id);
       setAuditoria(data);
       const customizadas: Record<string, string> = {};
       data.itens.forEach((item) => {
@@ -206,7 +197,7 @@ export default function AuditoriaPage() {
     });
     try {
       setSalvando(true);
-      await responderItemAuditoria(auditoria.id, itemId, resposta);
+      await auditoriaService.responderItem(auditoria.id, itemId, resposta);
       setUltimaHoraSalva(new Date());
       // Remove o item da lista de obrigatórios não avaliados se foi respondido
       if (resposta && resposta !== 'nao_avaliado') {
@@ -250,7 +241,7 @@ export default function AuditoriaPage() {
     });
     try {
       setSalvando(true);
-      await responderItemAuditoria(auditoria.id, itemId, valor);
+      await auditoriaService.responderItem(auditoria.id, itemId, valor);
       setUltimaHoraSalva(new Date());
       // Remove o item da lista de obrigatórios não avaliados se foi respondido
       if (valor && valor.trim() !== '') {
@@ -360,7 +351,7 @@ export default function AuditoriaPage() {
       let fotoSalva: { id: string; url: string } | null = null;
       try {
         setSalvando(true);
-        fotoSalva = await adicionarFotoAuditoria(auditoria.id, itemId, file);
+        fotoSalva = await auditoriaService.adicionarFoto(auditoria.id, itemId, file);
         setUltimaHoraSalva(new Date());
         setSalvando(false);
         setItemModal((prev) => {
@@ -373,7 +364,7 @@ export default function AuditoriaPage() {
                     ...foto,
                     id: fotoSalva!.id,
                     preview: fotoSalva!.url || preview,
-                    statusUpload: useOfflineStore.getState().isOnline ? 'processando' : 'pronta',
+                    statusUpload: 'processando',
                     isExisting: true,
                   }
                 : foto
@@ -397,9 +388,8 @@ export default function AuditoriaPage() {
             ),
           };
         });
-        if (useOfflineStore.getState().isOnline) {
-          try {
-            const analise = await iaService.analisarImagemChecklist(
+        try {
+          const analise = await iaService.analisarImagemChecklist(
               file,
               perguntaChecklist,
               categoriaChecklist,
@@ -469,22 +459,6 @@ export default function AuditoriaPage() {
               };
             });
           }
-        } else {
-          setItemModal((prev) => {
-            if (!prev) return null;
-            return {
-              ...prev,
-              fotos: prev.fotos.map((foto) =>
-                foto.localId === localId
-                  ? {
-                      ...foto,
-                      statusUpload: 'pronta',
-                    }
-                  : foto
-              ),
-            };
-          });
-        }
       } catch (error: unknown) {
         const err = error as { response?: { data?: { message?: string } }; message?: string };
         const errorMessage = err?.response?.data?.message || err?.message || 'Erro ao salvar foto';
@@ -533,18 +507,12 @@ export default function AuditoriaPage() {
     };
 
     const aplicarRemocao = () => {
-      setAuditoria((prev) => {
-        const next = auditoriaAtualizada(prev);
-        if (next && !useOfflineStore.getState().isOnline) {
-          cache.salvarAuditoria(next.id, next);
-        }
-        return next;
-      });
+      setAuditoria((prev) => auditoriaAtualizada(prev));
     };
 
     if (fotoParaRemover.id && fotoParaRemover.isExisting) {
-      const fotoLocal = ehIdLocal(fotoParaRemover.id) || fotoParaRemover.id.startsWith('local-');
-      if (fotoLocal || !useOfflineStore.getState().isOnline) {
+      const fotoLocal = fotoParaRemover.id.startsWith('local-');
+      if (fotoLocal) {
         aplicarRemocao();
       } else {
         try {
@@ -644,7 +612,7 @@ export default function AuditoriaPage() {
     try {
       // Salva a observação e a descrição da IA (se existir)
       setSalvando(true);
-      await responderItemAuditoria(
+      await auditoriaService.responderItem(
         auditoria.id,
         itemModal.item.id,
         respostaAtual,
@@ -683,13 +651,8 @@ export default function AuditoriaPage() {
     setFinalizando(true);
     setErroFinalizar('');
     try {
-      await finalizarAuditoria(auditoria.id, observacoesGerais);
-      const isOnline = useOfflineStore.getState().isOnline;
-      toastService.success(
-        isOnline
-          ? 'Auditoria finalizada com sucesso!'
-          : 'Auditoria salva localmente. Será finalizada no servidor quando você estiver online.'
-      );
+      await auditoriaService.finalizar(auditoria.id, observacoesGerais);
+      toastService.success('Auditoria finalizada com sucesso!');
       setShowFinalModal(false);
       setItensObrigatoriosNaoAvaliados(new Set());
       router.push('/admin/dashboard');

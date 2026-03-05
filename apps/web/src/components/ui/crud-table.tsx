@@ -51,9 +51,23 @@ export function CrudTable<T>({
   className = '',
 }: CrudTableProps<T>) {
   const [menuAbertoId, setMenuAbertoId] = useState<string | null>(null);
+  const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  const fecharMenu = useCallback(() => setMenuAbertoId(null), []);
+  const fecharMenu = useCallback(() => {
+    setMenuAbertoId(null);
+    setMenuPos(null);
+  }, []);
+
+  const abrirMenu = useCallback((id: string, e: React.MouseEvent<HTMLButtonElement>) => {
+    if (menuAbertoId === id) {
+      fecharMenu();
+      return;
+    }
+    const rect = e.currentTarget.getBoundingClientRect();
+    setMenuPos({ top: rect.top, right: window.innerWidth - rect.left + 4 });
+    setMenuAbertoId(id);
+  }, [menuAbertoId, fecharMenu]);
 
   useEffect(() => {
     const handleClickFora = (e: MouseEvent) => {
@@ -116,22 +130,20 @@ export function CrudTable<T>({
                   {hasAcoes && (
                     <td className="text-right">
                       {acoesVisiveis.length > 0 && (
-                        <div
-                          className="relative inline-flex"
-                          ref={menuAbertoId === id ? menuRef : undefined}
-                        >
+                        <>
                           <button
                             className="btn btn-ghost btn-xs btn-circle"
-                            onClick={() => setMenuAbertoId(menuAbertoId === id ? null : id)}
+                            onClick={(e) => abrirMenu(id, e)}
                             aria-label="Ações"
                           >
                             <MoreVertical className="w-4 h-4" />
                           </button>
-                          {menuAbertoId === id && (
+                          {menuAbertoId === id && menuPos && (
                             <div
-                              className="absolute right-full top-0 mr-1 z-[100]
-                                flex flex-col bg-base-100 border border-base-300
+                              ref={menuRef}
+                              className="fixed z-[100] flex flex-col bg-base-100 border border-base-300
                                 rounded-lg shadow-md min-w-[140px] py-1"
+                              style={{ top: menuPos.top, right: menuPos.right }}
                             >
                               {acoesVisiveis.map((acao, aIdx) => {
                                 const Icon = acao.icon;
@@ -150,7 +162,7 @@ export function CrudTable<T>({
                               })}
                             </div>
                           )}
-                        </div>
+                        </>
                       )}
                     </td>
                   )}

@@ -29,7 +29,7 @@ interface CampoFiltroDate extends CampoFiltroBase {
 
 export type CampoFiltro = CampoFiltroText | CampoFiltroSelect | CampoFiltroDate;
 
-export interface CrudFiltrosProps<T extends Record<string, string>> {
+export interface CrudFiltrosProps<T extends { [K in keyof T]: string }> {
   campos: CampoFiltro[];
   valoresIniciais: T;
   onPesquisar: (filtros: T) => void;
@@ -45,7 +45,7 @@ export interface CrudFiltrosProps<T extends Record<string, string>> {
  * - Alterar um campo após pesquisar volta o botão para "Pesquisar"
  * - Enter em campos de texto dispara a pesquisa
  */
-export function CrudFiltros<T extends Record<string, string>>({
+export function CrudFiltros<T extends { [K in keyof T]: string }>({
   campos,
   valoresIniciais,
   onPesquisar,

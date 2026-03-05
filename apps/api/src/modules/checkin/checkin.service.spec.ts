@@ -1,6 +1,8 @@
 import { BadRequestException } from '@nestjs/common';
 import { Repository } from 'typeorm';
+import { Cliente } from '../cliente/entities/cliente.entity';
 import { PerfilUsuario } from '../usuario/entities/usuario.entity';
+import { Usuario } from '../usuario/entities/usuario.entity';
 import { Unidade } from '../cliente/entities/unidade.entity';
 import { CheckinService } from './checkin.service';
 import { Checkin, StatusCheckin } from './entities/checkin.entity';
@@ -11,6 +13,8 @@ describe('CheckinService', () => {
   let service: CheckinService;
   let checkinRepository: RepoMock<Checkin>;
   let unidadeRepository: RepoMock<Unidade>;
+  let clienteRepository: RepoMock<Cliente>;
+  let usuarioRepository: RepoMock<Usuario>;
 
   const usuarioAuditor = {
     id: 'usuario-1',
@@ -28,9 +32,17 @@ describe('CheckinService', () => {
     unidadeRepository = {
       findOne: jest.fn(),
     };
+    clienteRepository = {
+      find: jest.fn(),
+    };
+    usuarioRepository = {
+      find: jest.fn(),
+    };
     service = new CheckinService(
       checkinRepository as unknown as Repository<Checkin>,
       unidadeRepository as unknown as Repository<Unidade>,
+      clienteRepository as unknown as Repository<Cliente>,
+      usuarioRepository as unknown as Repository<Usuario>,
     );
   });
 

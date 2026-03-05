@@ -12,11 +12,14 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { AppLayout, PageHeader } from '@/components';
-import { Cliente, ChecklistTemplate } from '@/lib/api';
+import {
+  clienteService,
+  checklistService,
+  auditoriaService,
+  Cliente,
+  ChecklistTemplate,
+} from '@/lib/api';
 import { toastService } from '@/lib/toast';
-import { listarClientes, listarTemplates } from '@/lib/offline/data-layer';
-import { iniciarAuditoria } from '@/lib/offline/auditoria-offline';
-import { useOfflineStore } from '@/lib/store-offline';
 
 export default function NovaAuditoriaPage() {
   const router = useRouter();
@@ -38,8 +41,8 @@ export default function NovaAuditoriaPage() {
     const carregarDados = async () => {
       try {
         const [clientesRes, templatesRes] = await Promise.all([
-          listarClientes(),
-          listarTemplates(1, 100),
+          clienteService.listar(),
+          checklistService.listarTemplates(1, 100),
         ]);
         setClientes(clientesRes.items || []);
         setTemplates(templatesRes.items || []);
@@ -79,18 +82,13 @@ export default function NovaAuditoriaPage() {
     setError('');
 
     try {
-      const auditoria = await iniciarAuditoria(
+      const auditoria = await auditoriaService.iniciar(
         unidadeId,
         templateId,
         location?.lat,
         location?.lng
       );
-      const isOnline = useOfflineStore.getState().isOnline;
-      toastService.success(
-        isOnline
-          ? 'Auditoria iniciada com sucesso!'
-          : 'Auditoria salva localmente. Será sincronizada quando você estiver online.'
-      );
+      toastService.success('Auditoria iniciada com sucesso!');
       router.push(`/admin/auditoria/${auditoria.id}`);
     } catch (err) {
       toastService.error(err instanceof Error ? err.message : 'Erro ao iniciar auditoria');

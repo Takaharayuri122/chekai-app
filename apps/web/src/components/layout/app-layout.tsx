@@ -4,9 +4,6 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
 import { TutorialInstalacaoModal } from '@/components/ui/tutorial-instalacao-modal';
-import { OfflineBanner } from '@/components/pwa/offline-banner';
-import { OfflineProvider } from '@/components/pwa/offline-provider';
-import { SyncOverlay } from '@/components/pwa/sync-overlay';
 import { CheckinFab } from '@/components/checkin/checkin-fab';
 import { Navbar } from './navbar';
 
@@ -59,18 +56,14 @@ export function AppLayout({ children }: AppLayoutProps) {
   }
 
   return (
-    <OfflineProvider>
-      <div className="min-h-screen bg-base-200">
-        <SyncOverlay />
-        <Navbar />
-        <OfflineBanner />
-        <main className="pb-20 md:pb-8">
-          {children}
-        </main>
-        <CheckinFab />
-        <TutorialInstalacaoModal />
-      </div>
-    </OfflineProvider>
+    <div className="min-h-screen bg-base-200">
+      <Navbar />
+      <main className="pb-20 md:pb-8">
+        {children}
+      </main>
+      <CheckinFab />
+      <TutorialInstalacaoModal />
+    </div>
   );
 }
 

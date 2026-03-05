@@ -6,7 +6,9 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { Cliente } from '../cliente/entities/cliente.entity';
 import { PerfilUsuario } from '../usuario/entities/usuario.entity';
+import { Usuario } from '../usuario/entities/usuario.entity';
 import { Unidade } from '../cliente/entities/unidade.entity';
 import { Checkin, StatusCheckin } from './entities/checkin.entity';
 import { IniciarCheckinDto } from './dto/iniciar-checkin.dto';
@@ -36,6 +38,16 @@ export interface AlertaCheckinAberto {
   checkin: Checkin | null;
 }
 
+interface OpcaoFiltro {
+  id: string;
+  nome: string;
+}
+
+export interface FiltrosCheckins {
+  auditores: OpcaoFiltro[];
+  clientes: OpcaoFiltro[];
+}
+
 @Injectable()
 export class CheckinService {
   constructor(
@@ -43,6 +55,10 @@ export class CheckinService {
     private readonly checkinRepository: Repository<Checkin>,
     @InjectRepository(Unidade)
     private readonly unidadeRepository: Repository<Unidade>,
+    @InjectRepository(Cliente)
+    private readonly clienteRepository: Repository<Cliente>,
+    @InjectRepository(Usuario)
+    private readonly usuarioRepository: Repository<Usuario>,
   ) {}
 
   async iniciarCheckin(
@@ -189,6 +205,38 @@ export class CheckinService {
       }
     }
     return checkin;
+  }
+
+  async listarFiltros(usuario: UsuarioAutenticado): Promise<FiltrosCheckins> {
+    if (usuario.perfil === PerfilUsuario.AUDITOR) {
+      throw new ForbiddenException('Apenas gestores e administradores podem visualizar checkins.');
+    }
+    const clientesWhere = usuario.perfil === PerfilUsuario.MASTER
+      ? { gestorId: usuario.id }
+      : { gestorId: usuario.id };
+    const clientes = await this.clienteRepository.find({
+      where: clientesWhere,
+      order: { nomeFantasia: 'ASC', razaoSocial: 'ASC' },
+      select: ['id', 'nomeFantasia', 'razaoSocial'],
+    });
+    const auditores = await this.usuarioRepository.find({
+      where: {
+        perfil: PerfilUsuario.AUDITOR,
+        gestorId: usuario.id,
+      },
+      order: { nome: 'ASC' },
+      select: ['id', 'nome'],
+    });
+    return {
+      auditores: auditores.map((auditor) => ({
+        id: auditor.id,
+        nome: auditor.nome,
+      })),
+      clientes: clientes.map((cliente) => ({
+        id: cliente.id,
+        nome: cliente.nomeFantasia || cliente.razaoSocial,
+      })),
+    };
   }
 
   private async validarUnidadeDoCheckin(

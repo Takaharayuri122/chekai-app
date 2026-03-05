@@ -1,96 +1,187 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
 import {
   FileText,
   Plus,
-  Tag,
-  List,
-  Loader2,
   Upload,
   Trash2,
   Power,
   PowerOff,
   Edit,
+  Tag,
+  List,
 } from 'lucide-react';
-import { AppLayout, PageHeader, EmptyState, ConfirmDialog } from '@/components';
+import {
+  AppLayout,
+  PageHeader,
+  ConfirmDialog,
+  CrudFiltros,
+  CrudTable,
+  type ColunaTabela,
+  type AcaoTabela,
+} from '@/components';
 import {
   checklistService,
   ChecklistTemplate,
   TipoAtividade,
   TIPO_ATIVIDADE_LABELS,
 } from '@/lib/api';
-import { listarTemplates } from '@/lib/offline/data-layer';
 import { toastService } from '@/lib/toast';
 import { useAuthStore } from '@/lib/store';
 
-/**
- * Página de listagem e gerenciamento de templates de checklist.
- */
+interface FiltrosChecklist {
+  nome: string;
+  tipoAtividade: string;
+  ativo: string;
+}
+
+const FILTROS_INICIAIS: FiltrosChecklist = {
+  nome: '',
+  tipoAtividade: '',
+  ativo: '',
+};
+
+const tipoAtividadeOpcoes = Object.entries(TIPO_ATIVIDADE_LABELS).map(([value, label]) => ({
+  value,
+  label,
+}));
+
 export default function TemplatesPage() {
   const { isGestor, isMaster } = useAuthStore();
   const [templates, setTemplates] = useState<ChecklistTemplate[]>([]);
   const [loading, setLoading] = useState(true);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [togglingId, setTogglingId] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [showToggleConfirm, setShowToggleConfirm] = useState<{ id: string; novoStatus: boolean } | null>(null);
+  const [isToggling, setIsToggling] = useState(false);
 
-  useEffect(() => {
-    carregarTemplates();
-  }, []);
-
-  const carregarTemplates = async () => {
+  const carregarTemplates = async (filtros?: FiltrosChecklist) => {
+    setLoading(true);
     try {
-      const response = await listarTemplates(1, 100);
-      setTemplates(response.items || []);
-    } catch (error) {
-      // Erro já é tratado pelo interceptor
+      const response = await checklistService.listarTemplates(1, 100);
+      let items = response.items || [];
+      if (filtros) {
+        if (filtros.nome) {
+          const termo = filtros.nome.toLowerCase();
+          items = items.filter((t) => t.nome.toLowerCase().includes(termo));
+        }
+        if (filtros.tipoAtividade) {
+          items = items.filter((t) => t.tipoAtividade === filtros.tipoAtividade);
+        }
+        if (filtros.ativo) {
+          const isAtivo = filtros.ativo === 'true';
+          items = items.filter((t) => t.ativo === isAtivo);
+        }
+      }
+      setTemplates(items);
+    } catch {
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDeleteClick = (id: string) => {
-    setShowDeleteConfirm(id);
-  };
-
   const handleDeleteConfirm = async () => {
     if (!showDeleteConfirm) return;
     try {
-      setDeletingId(showDeleteConfirm);
+      setIsDeleting(true);
       await checklistService.removerTemplate(showDeleteConfirm);
       toastService.success('Checklist excluído com sucesso!');
       await carregarTemplates();
       setShowDeleteConfirm(null);
-    } catch (error) {
-      // Erro já é tratado pelo interceptor
+    } catch {
     } finally {
-      setDeletingId(null);
+      setIsDeleting(false);
     }
-  };
-
-  const handleToggleClick = (id: string, novoStatus: boolean) => {
-    setShowToggleConfirm({ id, novoStatus });
   };
 
   const handleToggleConfirm = async () => {
     if (!showToggleConfirm) return;
     try {
-      setTogglingId(showToggleConfirm.id);
+      setIsToggling(true);
       await checklistService.alterarStatusTemplate(showToggleConfirm.id, showToggleConfirm.novoStatus);
       toastService.success(`Checklist ${showToggleConfirm.novoStatus ? 'ativado' : 'inativado'} com sucesso!`);
       await carregarTemplates();
       setShowToggleConfirm(null);
-    } catch (error) {
-      // Erro já é tratado pelo interceptor
+    } catch {
     } finally {
-      setTogglingId(null);
+      setIsToggling(false);
     }
   };
 
+  const colunas: ColunaTabela<ChecklistTemplate>[] = [
+    {
+      label: 'Nome',
+      render: (t) => (
+        <span className={`font-medium ${!t.ativo ? 'text-base-content/50' : 'text-base-content'}`}>
+          {t.nome}
+        </span>
+      ),
+    },
+    {
+      label: 'Tipo de Atividade',
+      render: (t) => (
+        <span className="text-sm text-base-content/70 flex items-center gap-1">
+          <Tag className="w-3 h-3" />
+          {TIPO_ATIVIDADE_LABELS[t.tipoAtividade] || t.tipoAtividade}
+        </span>
+      ),
+    },
+    {
+      label: 'Itens',
+      render: (t) => (
+        <span className="text-sm text-base-content/70 flex items-center gap-1 tabular-nums">
+          <List className="w-3 h-3" />
+          {t.itens?.filter((i) => i.ativo !== false).length || 0}
+        </span>
+      ),
+    },
+    {
+      label: 'Versão',
+      render: (t) => (
+        <span className="text-sm text-base-content/70 tabular-nums">v{t.versao}</span>
+      ),
+    },
+    {
+      label: 'Status',
+      render: (t) => (
+        <span className={`badge badge-sm ${t.ativo ? 'badge-success' : 'badge-error'}`}>
+          {t.ativo ? 'Ativo' : 'Inativo'}
+        </span>
+      ),
+    },
+  ];
+
+  const acoes: AcaoTabela<ChecklistTemplate>[] = [
+    {
+      label: 'Editar',
+      icon: Edit,
+      onClick: (t) => { window.location.href = `/admin/templates/${t.id}`; },
+      isVisivel: () => isGestor() || isMaster(),
+    },
+    {
+      label: 'Inativar',
+      icon: PowerOff,
+      onClick: (t) => setShowToggleConfirm({ id: t.id, novoStatus: false }),
+      className: 'text-warning',
+      isVisivel: (t) => t.ativo && (isGestor() || isMaster()),
+    },
+    {
+      label: 'Ativar',
+      icon: Power,
+      onClick: (t) => setShowToggleConfirm({ id: t.id, novoStatus: true }),
+      className: 'text-success',
+      isVisivel: (t) => !t.ativo && (isGestor() || isMaster()),
+    },
+    {
+      label: 'Excluir',
+      icon: Trash2,
+      onClick: (t) => setShowDeleteConfirm(t.id),
+      className: 'text-error',
+      isVisivel: () => isGestor() || isMaster(),
+    },
+  ];
 
   return (
     <AppLayout>
@@ -99,17 +190,11 @@ export default function TemplatesPage() {
         subtitle="Modelos de checklist para auditorias"
         action={
           <div className="flex gap-2">
-            <Link
-              href="/admin/templates/importar"
-              className="btn btn-ghost btn-sm gap-1"
-            >
+            <Link href="/admin/templates/importar" className="btn btn-ghost btn-sm gap-1">
               <Upload className="w-4 h-4" />
               Importar
             </Link>
-            <Link
-              href="/admin/templates/novo"
-              className="btn btn-primary btn-sm gap-1"
-            >
+            <Link href="/admin/templates/novo" className="btn btn-primary btn-sm gap-1">
               <Plus className="w-4 h-4" />
               Novo Checklist
             </Link>
@@ -118,131 +203,46 @@ export default function TemplatesPage() {
       />
 
       <div className="px-4 py-4 lg:px-8 space-y-4">
-        {loading ? (
-          <div className="card bg-base-100 shadow-sm border border-base-300">
-            <div className="card-body items-center py-12">
-              <span className="loading loading-spinner loading-lg text-primary"></span>
-            </div>
-          </div>
-        ) : templates.length === 0 ? (
-          <EmptyState
-            icon={FileText}
-            title="Nenhum checklist cadastrado"
-            description="Crie seu primeiro checklist para usar nas auditorias."
-            actionLabel="Criar Checklist"
-            actionHref="/admin/templates/novo"
-          />
-        ) : (
-          <div className="space-y-3">
-            {templates.map((template, index) => (
-              <motion.div
-                key={template.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.03 }}
-                className={`card bg-base-100 shadow-sm border ${
-                  !template.ativo 
-                    ? 'opacity-60 border-base-300/50 bg-base-200/30' 
-                    : 'border-base-300'
-                }`}
-              >
-                <div className="card-body p-4">
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                      !template.ativo 
-                        ? 'bg-base-300/30' 
-                        : 'bg-secondary/10'
-                    }`}>
-                      <FileText className={`w-6 h-6 ${
-                        !template.ativo 
-                          ? 'text-base-content/40' 
-                          : 'text-secondary'
-                      }`} />
-                    </div>
-                    <div className="flex-1 min-w-0 w-full sm:w-auto">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <p className={`font-medium truncate ${
-                          !template.ativo ? 'text-base-content/50' : 'text-base-content'
-                        }`}>
-                          {template.nome}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2 mt-1 flex-wrap">
-                        <span className={`badge badge-ghost badge-sm ${
-                          !template.ativo ? 'opacity-60' : ''
-                        }`}>
-                          <Tag className="w-3 h-3 mr-1" />
-                          {TIPO_ATIVIDADE_LABELS[template.tipoAtividade] || template.tipoAtividade}
-                        </span>
-                        <span className={`badge badge-ghost badge-sm ${
-                          !template.ativo ? 'opacity-60' : ''
-                        }`}>
-                          <List className="w-3 h-3 mr-1" />
-                          {template.itens?.filter((i) => i.ativo !== false).length || 0} itens
-                        </span>
-                        <span className={`text-xs ${
-                          !template.ativo ? 'text-base-content/30' : 'text-base-content/50'
-                        }`}>
-                          v{template.versao}
-                        </span>
-                      </div>
-                      {template.descricao && (
-                        <p className="text-sm text-base-content/60 mt-1 line-clamp-1">
-                          {template.descricao}
-                        </p>
-                      )}
-                    </div>
-                    {(isGestor() || isMaster()) && (
-                      <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto justify-end sm:justify-start">
-                        <Link
-                          href={`/admin/templates/${template.id}`}
-                          className="btn btn-primary btn-sm gap-1 flex-1 sm:flex-none sm:min-w-[110px]"
-                          title="Editar checklist"
-                        >
-                          <Edit className="w-4 h-4" />
-                          <span className="hidden sm:inline">Editar</span>
-                        </Link>
-                        <button
-                          onClick={() => handleToggleClick(template.id, !template.ativo)}
-                          disabled={togglingId === template.id}
-                          className={`btn btn-sm gap-1 flex-1 sm:flex-none sm:min-w-[110px] ${
-                            template.ativo ? 'btn-warning' : 'btn-success'
-                          }`}
-                          title={template.ativo ? 'Inativar checklist' : 'Ativar checklist'}
-                        >
-                          {togglingId === template.id ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : template.ativo ? (
-                            <PowerOff className="w-4 h-4" />
-                          ) : (
-                            <Power className="w-4 h-4" />
-                          )}
-                          <span className="hidden sm:inline">{template.ativo ? 'Inativar' : 'Ativar'}</span>
-                        </button>
-                        <button
-                          onClick={() => handleDeleteClick(template.id)}
-                          disabled={deletingId === template.id}
-                          className="btn btn-error btn-sm gap-1 flex-1 sm:flex-none sm:min-w-[110px]"
-                          title="Excluir checklist (apenas se não estiver em uso)"
-                        >
-                          {deletingId === template.id ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : (
-                            <Trash2 className="w-4 h-4" />
-                          )}
-                          <span className="hidden sm:inline">Excluir</span>
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        )}
+        <CrudFiltros
+          campos={[
+            { key: 'nome', label: 'Nome', tipo: 'text', placeholder: 'Buscar por nome...' },
+            {
+              key: 'tipoAtividade',
+              label: 'Tipo de Atividade',
+              tipo: 'select',
+              opcoes: tipoAtividadeOpcoes,
+            },
+            {
+              key: 'ativo',
+              label: 'Status',
+              tipo: 'select',
+              opcoes: [
+                { value: 'true', label: 'Ativo' },
+                { value: 'false', label: 'Inativo' },
+              ],
+            },
+          ]}
+          valoresIniciais={FILTROS_INICIAIS}
+          onPesquisar={(filtros) => carregarTemplates(filtros)}
+          onLimpar={() => carregarTemplates()}
+        />
+
+        <CrudTable
+          colunas={colunas}
+          dados={templates}
+          acoes={acoes}
+          keyExtractor={(t) => t.id}
+          loading={loading}
+          emptyState={{
+            icon: FileText,
+            title: 'Nenhum checklist encontrado',
+            description: 'Ajuste os filtros ou crie um novo checklist.',
+            actionLabel: 'Criar Checklist',
+            actionHref: '/admin/templates/novo',
+          }}
+        />
       </div>
 
-      {/* Modal de Confirmação de Exclusão */}
       <ConfirmDialog
         open={showDeleteConfirm !== null}
         onClose={() => setShowDeleteConfirm(null)}
@@ -252,10 +252,9 @@ export default function TemplatesPage() {
         confirmLabel="Excluir"
         cancelLabel="Cancelar"
         variant="danger"
-        loading={deletingId !== null}
+        loading={isDeleting}
       />
 
-      {/* Modal de Confirmação de Ativar/Inativar */}
       {showToggleConfirm && (
         <ConfirmDialog
           open={showToggleConfirm !== null}
@@ -270,7 +269,7 @@ export default function TemplatesPage() {
           confirmLabel={showToggleConfirm.novoStatus ? 'Ativar' : 'Inativar'}
           cancelLabel="Cancelar"
           variant={showToggleConfirm.novoStatus ? 'info' : 'warning'}
-          loading={togglingId !== null}
+          loading={isToggling}
         />
       )}
     </AppLayout>

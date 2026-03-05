@@ -25,6 +25,7 @@ import { IniciarCheckinDto } from './dto/iniciar-checkin.dto';
 import { FinalizarCheckinDto } from './dto/finalizar-checkin.dto';
 import { ListarCheckinsDto } from './dto/listar-checkins.dto';
 import { PaginatedResult } from '../../shared/types/pagination.interface';
+import { FiltrosCheckins } from './checkin.service';
 
 interface UsuarioAutenticado {
   id: string;
@@ -84,6 +85,17 @@ export class CheckinController {
     @CurrentUser() usuario: UsuarioAutenticado,
   ): Promise<{ possuiAlerta: boolean; mensagem: string | null; checkin: Checkin | null }> {
     return this.checkinService.buscarAlertaCheckinAberto(usuario.id);
+  }
+
+  @Get('filtros')
+  @UseGuards(RolesGuard)
+  @Roles(PerfilUsuario.MASTER, PerfilUsuario.GESTOR)
+  @ApiOperation({ summary: 'Lista opções de filtro de auditores e clientes vinculados à conta' })
+  @ApiResponse({ status: 200, description: 'Opções de filtro retornadas com sucesso' })
+  async listarFiltros(
+    @CurrentUser() usuario: UsuarioAutenticado,
+  ): Promise<FiltrosCheckins> {
+    return this.checkinService.listarFiltros(usuario);
   }
 
   @Get()

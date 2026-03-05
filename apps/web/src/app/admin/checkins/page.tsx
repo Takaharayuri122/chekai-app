@@ -11,7 +11,7 @@ import {
   type ColunaTabela,
   type AcaoTabela,
 } from '@/components';
-import { PerfilUsuario, clienteService, usuarioService } from '@/lib/api';
+import { PerfilUsuario } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
 import { checkinService, CheckinRegistro } from '@/lib/services/checkin.service';
 
@@ -116,17 +116,14 @@ export default function CheckinsPage() {
   useEffect(() => {
     if (!podeVisualizar) return;
     const carregarOpcoes = async (): Promise<void> => {
-      const [auditoresResponse, clientesResponse] = await Promise.all([
-        usuarioService.listar(1, 200, PerfilUsuario.AUDITOR),
-        clienteService.listar(1, 200),
-      ]);
+      const filtros = await checkinService.buscarFiltros();
       setAuditoresOpcoes(
-        (auditoresResponse.items || []).map((a) => ({ value: a.id, label: a.nome })),
+        filtros.auditores.map((auditor) => ({ value: auditor.id, label: auditor.nome })),
       );
       setClientesOpcoes(
-        (clientesResponse.items || []).map((c) => ({
-          value: c.id,
-          label: c.nomeFantasia || c.razaoSocial,
+        filtros.clientes.map((cliente) => ({
+          value: cliente.id,
+          label: cliente.nome,
         })),
       );
     };

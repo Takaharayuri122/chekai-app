@@ -2,8 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { Building2, Loader2, MapPin, Navigation } from 'lucide-react';
-import { Cliente } from '@/lib/api';
-import { listarClientes } from '@/lib/offline/data-layer';
+import { clienteService, Cliente } from '@/lib/api';
 import { useGeolocalizacao } from '@/hooks/use-geolocalizacao';
 import { toastService } from '@/lib/toast';
 
@@ -52,7 +51,7 @@ export function CheckinModal({
     const carregarClientes = async (): Promise<void> => {
       setCarregandoClientes(true);
       try {
-        const resultado = await listarClientes();
+        const resultado = await clienteService.listar();
         setClientes(resultado.items ?? []);
       } finally {
         setCarregandoClientes(false);
