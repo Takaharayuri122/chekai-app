@@ -11,6 +11,10 @@ export { Emoji } from './ui/emoji';
 export { Tooltip } from './ui/tooltip';
 export { EditorRichTextBasico } from './ui/editor-richtext-basico';
 export { AssinaturaRelatorio } from './ui/assinatura-relatorio';
+export { CrudFiltros } from './ui/crud-filtros';
+export { CrudTable } from './ui/crud-table';
+export type { CampoFiltro, CrudFiltrosProps } from './ui/crud-filtros';
+export type { ColunaTabela, AcaoTabela, CrudTableProps } from './ui/crud-table';
 
 // Relatório
 export { GraficoAproveitamentoGrupos } from './relatorio/grafico-aproveitamento-grupos';

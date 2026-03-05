@@ -74,11 +74,16 @@ export class ClienteService {
    */
   async listarClientes(
     params: PaginationParams,
-    usuarioAutenticado?: { id: string; perfil: PerfilUsuario },
+    usuarioAutenticado?: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
   ): Promise<PaginatedResult<Cliente>> {
-    const where: { gestorId?: string } = usuarioAutenticado
-      ? { gestorId: usuarioAutenticado.id }
-      : {};
+    let where: { gestorId?: string } = {};
+    if (usuarioAutenticado && usuarioAutenticado.perfil !== PerfilUsuario.MASTER) {
+      const gestorReferencia =
+        usuarioAutenticado.perfil === PerfilUsuario.AUDITOR
+          ? (usuarioAutenticado.gestorId || usuarioAutenticado.id)
+          : usuarioAutenticado.id;
+      where = { gestorId: gestorReferencia };
+    }
     const [items, total] = await this.clienteRepository.findAndCount({
       where,
       skip: (params.page - 1) * params.limit,
@@ -94,7 +99,7 @@ export class ClienteService {
    */
   async buscarClientePorId(
     id: string,
-    usuarioAutenticado?: { id: string; perfil: PerfilUsuario },
+    usuarioAutenticado?: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
   ): Promise<Cliente> {
     const cliente = await this.clienteRepository.findOne({
       where: { id },
@@ -103,8 +108,14 @@ export class ClienteService {
     if (!cliente) {
       throw new NotFoundException('Cliente não encontrado');
     }
-    if (usuarioAutenticado && cliente.gestorId !== usuarioAutenticado.id) {
-      throw new ForbiddenException('Acesso negado a este cliente');
+    if (usuarioAutenticado && usuarioAutenticado.perfil !== PerfilUsuario.MASTER) {
+      const gestorReferencia =
+        usuarioAutenticado.perfil === PerfilUsuario.AUDITOR
+          ? (usuarioAutenticado.gestorId || usuarioAutenticado.id)
+          : usuarioAutenticado.id;
+      if (cliente.gestorId !== gestorReferencia) {
+        throw new ForbiddenException('Acesso negado a este cliente');
+      }
     }
     return cliente;
   }
@@ -160,9 +171,13 @@ export class ClienteService {
    * Lista unidades ativas. Com usuário, apenas unidades de clientes em que ele é gestor.
    */
   async listarTodasUnidades(usuarioAutenticado?: { id: string; perfil: PerfilUsuario }): Promise<Unidade[]> {
-    if (usuarioAutenticado) {
+    if (usuarioAutenticado && usuarioAutenticado.perfil !== PerfilUsuario.MASTER) {
+      const gestorReferencia =
+        usuarioAutenticado.perfil === PerfilUsuario.AUDITOR
+          ? ((usuarioAutenticado as { gestorId?: string | null }).gestorId || usuarioAutenticado.id)
+          : usuarioAutenticado.id;
       return this.unidadeRepository.find({
-        where: { ativo: true, cliente: { gestorId: usuarioAutenticado.id } },
+        where: { ativo: true, cliente: { gestorId: gestorReferencia } },
         relations: ['cliente'],
         order: { nome: 'ASC' },
       });
@@ -179,7 +194,7 @@ export class ClienteService {
    */
   async buscarUnidadePorId(
     id: string,
-    usuarioAutenticado?: { id: string; perfil: PerfilUsuario },
+    usuarioAutenticado?: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
   ): Promise<Unidade> {
     const unidade = await this.unidadeRepository.findOne({
       where: { id },
@@ -188,8 +203,14 @@ export class ClienteService {
     if (!unidade) {
       throw new NotFoundException('Unidade não encontrada');
     }
-    if (usuarioAutenticado && unidade.cliente?.gestorId !== usuarioAutenticado.id) {
-      throw new ForbiddenException('Acesso negado a esta unidade');
+    if (usuarioAutenticado && usuarioAutenticado.perfil !== PerfilUsuario.MASTER) {
+      const gestorReferencia =
+        usuarioAutenticado.perfil === PerfilUsuario.AUDITOR
+          ? (usuarioAutenticado.gestorId || usuarioAutenticado.id)
+          : usuarioAutenticado.id;
+      if (unidade.cliente?.gestorId !== gestorReferencia) {
+        throw new ForbiddenException('Acesso negado a esta unidade');
+      }
     }
     return unidade;
   }

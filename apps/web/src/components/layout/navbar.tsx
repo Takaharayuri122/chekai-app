@@ -22,6 +22,7 @@ import {
   BarChart3,
   ClipboardList,
   ClipboardPen,
+  Clock3,
 } from 'lucide-react';
 import { useAuthStore, PerfilUsuario } from '@/lib/store';
 import { SyncStatus } from '@/components/pwa/sync-status';
@@ -33,6 +34,7 @@ const allNavItems = [
   { href: '/admin/templates', label: 'Checklists', icon: FileText, roles: [PerfilUsuario.MASTER, PerfilUsuario.GESTOR] },
   { href: '/admin/auditorias', label: 'Auditorias', icon: ClipboardCheck, roles: [PerfilUsuario.MASTER, PerfilUsuario.GESTOR, PerfilUsuario.AUDITOR] },
   { href: '/admin/relatorios-tecnicos', label: 'Relatórios Técnicos', icon: ClipboardPen, roles: [PerfilUsuario.MASTER, PerfilUsuario.GESTOR, PerfilUsuario.AUDITOR] },
+  { href: '/admin/checkins', label: 'Checkins', icon: Clock3, roles: [PerfilUsuario.MASTER, PerfilUsuario.GESTOR] },
   { href: '/admin/usuarios', label: 'Usuários', icon: User, roles: [PerfilUsuario.MASTER, PerfilUsuario.GESTOR] },
   { href: '/admin/gestor/limites', label: 'Meus Limites', icon: TrendingUp, roles: [PerfilUsuario.GESTOR] },
   { href: '/admin/gestor/creditos', label: 'Meus Créditos', icon: Coins, roles: [PerfilUsuario.GESTOR] },

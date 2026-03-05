@@ -11,6 +11,11 @@ import { Unidade } from '../cliente/entities/unidade.entity';
 import { Checkin, StatusCheckin } from './entities/checkin.entity';
 import { IniciarCheckinDto } from './dto/iniciar-checkin.dto';
 import { FinalizarCheckinDto } from './dto/finalizar-checkin.dto';
+import { ListarCheckinsDto } from './dto/listar-checkins.dto';
+import {
+  PaginatedResult,
+  createPaginatedResult,
+} from '../../shared/types/pagination.interface';
 
 const LIMITE_ALERTA_CHECKIN_ABERTO_MS = 3 * 60 * 60 * 1000;
 
@@ -123,6 +128,67 @@ export class CheckinService {
       mensagem: 'Você está com um checkin aberto há mais de 3 horas. Finalize o checkout.',
       checkin: resultado.checkin,
     };
+  }
+
+  async listarCheckins(
+    filtro: ListarCheckinsDto,
+    usuario: UsuarioAutenticado,
+  ): Promise<PaginatedResult<Checkin>> {
+    if (usuario.perfil === PerfilUsuario.AUDITOR) {
+      throw new ForbiddenException('Apenas gestores e administradores podem visualizar checkins.');
+    }
+    const queryBuilder = this.checkinRepository.createQueryBuilder('checkin')
+      .leftJoinAndSelect('checkin.usuario', 'usuario')
+      .leftJoinAndSelect('checkin.cliente', 'cliente')
+      .leftJoinAndSelect('checkin.unidade', 'unidade');
+    if (usuario.perfil === PerfilUsuario.GESTOR) {
+      queryBuilder.andWhere('cliente.gestorId = :gestorId', { gestorId: usuario.id });
+    }
+    if (filtro.auditorId) {
+      queryBuilder.andWhere('checkin.usuarioId = :auditorId', { auditorId: filtro.auditorId });
+    }
+    if (filtro.clienteId) {
+      queryBuilder.andWhere('checkin.clienteId = :clienteId', { clienteId: filtro.clienteId });
+    }
+    if (filtro.dataInicio) {
+      queryBuilder.andWhere('checkin.dataCheckin >= :dataInicio', {
+        dataInicio: `${filtro.dataInicio} 00:00:00`,
+      });
+    }
+    if (filtro.dataFim) {
+      queryBuilder.andWhere('checkin.dataCheckin <= :dataFim', {
+        dataFim: `${filtro.dataFim} 23:59:59`,
+      });
+    }
+    const [items, total] = await queryBuilder
+      .orderBy('checkin.dataCheckin', 'DESC')
+      .skip((filtro.page - 1) * filtro.limit)
+      .take(filtro.limit)
+      .getManyAndCount();
+    return createPaginatedResult(items, total, filtro.page, filtro.limit);
+  }
+
+  async buscarCheckinPorId(id: string, usuario: UsuarioAutenticado): Promise<Checkin> {
+    if (usuario.perfil === PerfilUsuario.AUDITOR) {
+      throw new ForbiddenException('Apenas gestores e administradores podem visualizar checkins.');
+    }
+    const checkin = await this.checkinRepository.findOne({
+      where: { id },
+      relations: ['usuario', 'cliente', 'unidade'],
+    });
+    if (!checkin) {
+      throw new NotFoundException('Checkin não encontrado');
+    }
+    if (usuario.perfil === PerfilUsuario.GESTOR) {
+      const unidade = await this.unidadeRepository.findOne({
+        where: { id: checkin.unidadeId },
+        relations: ['cliente'],
+      });
+      if (!unidade || unidade.cliente?.gestorId !== usuario.id) {
+        throw new ForbiddenException('Você não tem acesso a este checkin');
+      }
+    }
+    return checkin;
   }
 
   private async validarUnidadeDoCheckin(

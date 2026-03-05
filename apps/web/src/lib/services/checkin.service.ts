@@ -13,6 +13,11 @@ export interface CheckinRegistro {
   latitudeCheckout?: number | null;
   longitudeCheckout?: number | null;
   alerta3hEmitidoEm?: string | null;
+  usuario?: {
+    id: string;
+    nome: string;
+    email: string;
+  };
   cliente?: Cliente;
   unidade?: Unidade;
 }
@@ -40,6 +45,25 @@ interface FinalizarCheckinRequest {
   longitude: number;
 }
 
+interface ListarCheckinsFiltros {
+  page?: number;
+  limit?: number;
+  auditorId?: string;
+  clienteId?: string;
+  dataInicio?: string;
+  dataFim?: string;
+}
+
+interface ListaPaginadaCheckins {
+  items: CheckinRegistro[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+  hasNext: boolean;
+  hasPrevious: boolean;
+}
+
 export const checkinService = {
   async iniciar(data: IniciarCheckinRequest): Promise<CheckinRegistro> {
     const response = await api.post('/checkins/iniciar', data);
@@ -55,6 +79,14 @@ export const checkinService = {
   },
   async buscarAlerta(): Promise<AlertaCheckinAberto> {
     const response = await api.get('/checkins/me/alertas');
+    return response.data.data;
+  },
+  async listar(filtros: ListarCheckinsFiltros): Promise<ListaPaginadaCheckins> {
+    const response = await api.get('/checkins', { params: filtros });
+    return response.data.data;
+  },
+  async buscarPorId(id: string): Promise<CheckinRegistro> {
+    const response = await api.get(`/checkins/${id}`);
     return response.data.data;
   },
 };

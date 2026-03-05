@@ -5,6 +5,7 @@ import {
   ParseUUIDPipe,
   Post,
   Body,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -22,6 +23,8 @@ import { CheckinService } from './checkin.service';
 import { Checkin } from './entities/checkin.entity';
 import { IniciarCheckinDto } from './dto/iniciar-checkin.dto';
 import { FinalizarCheckinDto } from './dto/finalizar-checkin.dto';
+import { ListarCheckinsDto } from './dto/listar-checkins.dto';
+import { PaginatedResult } from '../../shared/types/pagination.interface';
 
 interface UsuarioAutenticado {
   id: string;
@@ -81,5 +84,29 @@ export class CheckinController {
     @CurrentUser() usuario: UsuarioAutenticado,
   ): Promise<{ possuiAlerta: boolean; mensagem: string | null; checkin: Checkin | null }> {
     return this.checkinService.buscarAlertaCheckinAberto(usuario.id);
+  }
+
+  @Get()
+  @UseGuards(RolesGuard)
+  @Roles(PerfilUsuario.MASTER, PerfilUsuario.GESTOR)
+  @ApiOperation({ summary: 'Lista checkins com filtros por auditor, período e cliente' })
+  @ApiResponse({ status: 200, description: 'Lista de checkins retornada com sucesso' })
+  async listar(
+    @Query() filtro: ListarCheckinsDto,
+    @CurrentUser() usuario: UsuarioAutenticado,
+  ): Promise<PaginatedResult<Checkin>> {
+    return this.checkinService.listarCheckins(filtro, usuario);
+  }
+
+  @Get(':id')
+  @UseGuards(RolesGuard)
+  @Roles(PerfilUsuario.MASTER, PerfilUsuario.GESTOR)
+  @ApiOperation({ summary: 'Busca detalhes de um checkin' })
+  @ApiResponse({ status: 200, description: 'Detalhes do checkin retornados com sucesso' })
+  async buscarPorId(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() usuario: UsuarioAutenticado,
+  ): Promise<Checkin> {
+    return this.checkinService.buscarCheckinPorId(id, usuario);
   }
 }
