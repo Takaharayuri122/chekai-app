@@ -10,8 +10,9 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import * as bcrypt from 'bcrypt';
-import { Usuario, PerfilUsuario } from './entities/usuario.entity';
+import * as crypto from 'crypto';
+import { Usuario, PerfilUsuario, StatusUsuario } from './entities/usuario.entity';
+
 import { CriarUsuarioDto } from './dto/criar-usuario.dto';
 import { AtualizarUsuarioDto } from './dto/atualizar-usuario.dto';
 import {
@@ -82,15 +83,21 @@ export class UsuarioService {
     if (dto.perfil === PerfilUsuario.GESTOR) {
       dto.gestorId = undefined;
     }
-    const senhaHash = dto.senha ? await bcrypt.hash(dto.senha, 10) : null;
+    const isConviteInterno = !!usuarioCriador;
+    const tokenConvite = isConviteInterno ? crypto.randomUUID() : null;
+    const tokenConviteExpiresAt = isConviteInterno
+      ? new Date(Date.now() + 48 * 60 * 60 * 1000)
+      : null;
     const usuario = this.usuarioRepository.create({
       nome: dto.nome,
       email: dto.email,
-      senhaHash,
       perfil: dto.perfil || PerfilUsuario.GESTOR,
+      status: isConviteInterno ? StatusUsuario.NAO_CONFIRMADO : StatusUsuario.ATIVO,
       telefone: dto.telefone || undefined,
       gestorId: dto.gestorId || undefined,
       tenantId: undefined,
+      tokenConvite,
+      tokenConviteExpiresAt,
     }) as Usuario;
     const savedUsuario = await this.usuarioRepository.save(usuario);
     if (savedUsuario.perfil === PerfilUsuario.GESTOR) {
@@ -127,7 +134,9 @@ export class UsuarioService {
   ): Promise<PaginatedResult<Usuario>> {
     let where: any = {};
     if (usuarioAutenticado) {
-      if (usuarioAutenticado.perfil === PerfilUsuario.MASTER || usuarioAutenticado.perfil === PerfilUsuario.GESTOR) {
+      if (usuarioAutenticado.perfil === PerfilUsuario.MASTER) {
+        // MASTER vê todos os usuários
+      } else if (usuarioAutenticado.perfil === PerfilUsuario.GESTOR) {
         where = [
           { id: usuarioAutenticado.id },
           { gestorId: usuarioAutenticado.id },
@@ -163,7 +172,7 @@ export class UsuarioService {
   async buscarPorEmail(email: string): Promise<Usuario | null> {
     return this.usuarioRepository.findOne({
       where: { email },
-      select: ['id', 'nome', 'email', 'senhaHash', 'perfil', 'ativo', 'gestorId', 'tenantId', 'otpCode', 'otpExpiresAt'],
+      select: ['id', 'nome', 'email', 'senhaHash', 'perfil', 'status', 'gestorId', 'tenantId', 'otpCode', 'otpExpiresAt'],
     });
   }
 
@@ -187,12 +196,7 @@ export class UsuarioService {
         throw new ConflictException('E-mail já cadastrado');
       }
     }
-    if (dto.senha) {
-      const senhaHash = await bcrypt.hash(dto.senha, 10);
-      Object.assign(usuario, { ...dto, senhaHash, senha: undefined });
-    } else {
-      Object.assign(usuario, dto);
-    }
+    Object.assign(usuario, dto);
     return this.usuarioRepository.save(usuario);
   }
 
@@ -263,6 +267,54 @@ export class UsuarioService {
     usuario.otpCode = null;
     usuario.otpExpiresAt = null;
     await this.usuarioRepository.save(usuario);
+  }
+
+  /**
+   * Busca um usuário pelo token de convite.
+   */
+  async buscarPorTokenConvite(token: string): Promise<Usuario | null> {
+    return this.usuarioRepository.findOne({
+      where: { tokenConvite: token },
+    });
+  }
+
+  /**
+   * Aceita o convite e ativa a conta do usuário.
+   */
+  async aceitarConvite(token: string): Promise<{ email: string }> {
+    const usuario = await this.buscarPorTokenConvite(token);
+    if (!usuario) {
+      throw new BadRequestException('Token de convite inválido');
+    }
+    if (usuario.tokenConviteExpiresAt && new Date() > usuario.tokenConviteExpiresAt) {
+      throw new BadRequestException('Token de convite expirado. Solicite um novo convite ao seu gestor.');
+    }
+    if (usuario.status === StatusUsuario.ATIVO) {
+      return { email: usuario.email };
+    }
+    usuario.status = StatusUsuario.ATIVO;
+    usuario.tokenConvite = null;
+    usuario.tokenConviteExpiresAt = null;
+    await this.usuarioRepository.save(usuario);
+    return { email: usuario.email };
+  }
+
+  /**
+   * Gera um novo token de convite para o usuário.
+   */
+  async gerarNovoTokenConvite(id: string): Promise<{ tokenConvite: string; email: string; nome: string }> {
+    const usuario = await this.buscarPorId(id);
+    if (usuario.status !== StatusUsuario.NAO_CONFIRMADO) {
+      throw new BadRequestException('Convite só pode ser reenviado para usuários não confirmados');
+    }
+    usuario.tokenConvite = crypto.randomUUID();
+    usuario.tokenConviteExpiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000);
+    await this.usuarioRepository.save(usuario);
+    return {
+      tokenConvite: usuario.tokenConvite,
+      email: usuario.email,
+      nome: usuario.nome,
+    };
   }
 }
 

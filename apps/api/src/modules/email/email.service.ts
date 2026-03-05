@@ -1,26 +1,33 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
 import { Transporter } from 'nodemailer';
 import * as fs from 'fs';
 import * as path from 'path';
 
-type EmailProvider = 'smtp' | 'sendgrid';
+type EmailProvider = 'smtp' | 'sendgrid' | 'ethereal';
 
 /**
- * Serviço responsável pelo envio de e-mails via SMTP ou SendGrid Web API.
+ * Serviço responsável pelo envio de e-mails via SMTP, SendGrid ou Ethereal (dev).
  */
 @Injectable()
 export class EmailService {
+  private readonly logger = new Logger(EmailService.name);
   private transporter?: Transporter;
   private readonly templatesPath: string;
   private readonly provider: EmailProvider;
+  private etherealReady: Promise<void> | null = null;
 
   constructor(private readonly configService: ConfigService) {
-    this.provider = (this.configService.get<string>('EMAIL_PROVIDER', 'smtp') as EmailProvider) || 'smtp';
+    const configuredProvider = this.configService.get<string>('EMAIL_PROVIDER');
+    const nodeEnv = this.configService.get<string>('NODE_ENV') || process.env.NODE_ENV;
+    const isDev = !nodeEnv || nodeEnv === 'development';
+    this.provider = (configuredProvider as EmailProvider) || (isDev ? 'ethereal' : 'smtp');
     this.templatesPath = this.resolveTemplatesPath();
     if (this.provider === 'smtp') {
       this.initializeSmtp();
+    } else if (this.provider === 'ethereal') {
+      this.etherealReady = this.initializeEthereal();
     }
   }
 
@@ -57,6 +64,27 @@ export class EmailService {
   }
 
   /**
+   * Inicializa o transporter Ethereal Mail para desenvolvimento.
+   */
+  private async initializeEthereal(): Promise<void> {
+    try {
+      const testAccount = await nodemailer.createTestAccount();
+      this.transporter = nodemailer.createTransport({
+        host: 'smtp.ethereal.email',
+        port: 587,
+        secure: false,
+        auth: {
+          user: testAccount.user,
+          pass: testAccount.pass,
+        },
+      });
+      this.logger.log(`Ethereal Mail configurado - Conta: ${testAccount.user}`);
+    } catch (error) {
+      this.logger.warn('Falha ao criar conta Ethereal. E-mails não serão enviados em dev.');
+    }
+  }
+
+  /**
    * Resolve o caminho dos templates considerando desenvolvimento e produção.
    */
   private resolveTemplatesPath(): string {
@@ -77,6 +105,8 @@ export class EmailService {
   async enviarEmail(destinatario: string, assunto: string, html: string): Promise<void> {
     if (this.provider === 'sendgrid') {
       await this.enviarEmailSendGrid(destinatario, assunto, html);
+    } else if (this.provider === 'ethereal') {
+      await this.enviarEmailEthereal(destinatario, assunto, html);
     } else {
       await this.enviarEmailSmtp(destinatario, assunto, html);
     }
@@ -112,6 +142,33 @@ export class EmailService {
         }
       }
       throw error;
+    }
+  }
+
+  /**
+   * Envia e-mail via Ethereal Mail (desenvolvimento) e loga a URL de preview.
+   */
+  private async enviarEmailEthereal(destinatario: string, assunto: string, html: string): Promise<void> {
+    if (this.etherealReady) {
+      await this.etherealReady;
+    }
+    if (!this.transporter) {
+      this.logger.warn(`[Ethereal] E-mail não enviado (transporter indisponível): "${assunto}" -> ${destinatario}`);
+      return;
+    }
+    try {
+      const info = await this.transporter.sendMail({
+        from: 'ChekAI <noreply@chekai.com>',
+        to: destinatario,
+        subject: assunto,
+        html,
+      });
+      const previewUrl = nodemailer.getTestMessageUrl(info);
+      if (previewUrl) {
+        this.logger.log(`Preview do e-mail: ${previewUrl}`);
+      }
+    } catch (error) {
+      this.logger.warn(`[Ethereal] Falha ao enviar e-mail: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
     }
   }
 
@@ -190,6 +247,15 @@ export class EmailService {
   }
 
   /**
+   * Envia e-mail de convite para acesso à plataforma.
+   */
+  async enviarEmailConvite(destinatario: string, nome: string, linkConvite: string): Promise<void> {
+    const assunto = 'Convite de acesso – ChekAI';
+    const html = this.carregarTemplate('convite.html', { nome, linkConvite });
+    await this.enviarEmail(destinatario, assunto, html);
+  }
+
+  /**
    * Envia e-mail de confirmação para quem entrou na lista de espera.
    */
   async enviarEmailListaEspera(destinatario: string): Promise<void> {
@@ -211,25 +277,15 @@ export class EmailService {
     return template;
   }
 
-  /**
-   * Retorna o template HTML de boas-vindas.
-   */
   private getTemplateBoasVindas(nome: string): string {
     return this.carregarTemplate('boas-vindas.html', { nome });
   }
 
-  /**
-   * Retorna o template HTML com código OTP.
-   */
   private getTemplateOTP(nome: string, codigoOTP: string): string {
     return this.carregarTemplate('otp.html', { nome, codigoOTP });
   }
 
-  /**
-   * Retorna o template HTML da lista de espera.
-   */
   private getTemplateListaEspera(email: string): string {
     return this.carregarTemplate('lista-espera.html', { email });
   }
 }
-

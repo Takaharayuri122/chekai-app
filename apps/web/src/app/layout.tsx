@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { Inter, Montserrat } from 'next/font/google';
-import { Toaster } from 'react-hot-toast';
+import { ClientToaster } from '@/components/ui/client-toaster';
 import { GoogleAnalytics } from '@/components/analytics/google-analytics';
 import { ServiceWorkerCleanup } from '@/components/pwa/sw-cleanup';
 import './globals.css';
@@ -58,19 +58,10 @@ export default function RootLayout({
 
   return (
     <html lang="pt-BR" data-theme="light">
-      <body className={`${inter.variable} ${montserrat.variable} font-sans antialiased bg-base-200 min-h-screen`}>
+      <body suppressHydrationWarning className={`${inter.variable} ${montserrat.variable} font-sans antialiased bg-base-200 min-h-screen`}>
         <ServiceWorkerCleanup />
         {children}
-        <Toaster
-          position="bottom-right"
-          toastOptions={{
-            duration: 4000,
-            style: {
-              borderRadius: '0.5rem',
-              padding: '1rem',
-            },
-          }}
-        />
+        <ClientToaster />
         {gaId && <GoogleAnalytics gaId={gaId} />}
       </body>
     </html>

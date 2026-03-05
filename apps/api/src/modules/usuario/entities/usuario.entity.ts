@@ -19,6 +19,15 @@ export enum PerfilUsuario {
 }
 
 /**
+ * Enum para status da conta do usuário.
+ */
+export enum StatusUsuario {
+  NAO_CONFIRMADO = 'nao_confirmado',
+  ATIVO = 'ativo',
+  INATIVO = 'inativo',
+}
+
+/**
  * Entidade que representa um usuário no sistema.
  */
 @Entity('usuarios')
@@ -42,8 +51,12 @@ export class Usuario {
   })
   perfil: PerfilUsuario;
 
-  @Column({ default: true })
-  ativo: boolean;
+  @Column({
+    type: 'enum',
+    enum: StatusUsuario,
+    default: StatusUsuario.ATIVO,
+  })
+  status: StatusUsuario;
 
   @Column({ length: 20, nullable: true })
   telefone: string;
@@ -66,6 +79,12 @@ export class Usuario {
 
   @Column({ name: 'otp_expires_at', type: 'timestamp', nullable: true })
   otpExpiresAt: Date | null;
+
+  @Column({ name: 'token_convite', type: 'varchar', length: 255, nullable: true })
+  tokenConvite: string | null;
+
+  @Column({ name: 'token_convite_expires_at', type: 'timestamp', nullable: true })
+  tokenConviteExpiresAt: Date | null;
 
   @OneToMany(() => Usuario, (usuario) => usuario.gestor)
   auditores: Usuario[];

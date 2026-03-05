@@ -8,19 +8,20 @@ import {
   Loader2,
   Shield,
   UserCheck,
-  Building2,
-  Eye,
-  EyeOff,
   Edit,
   Trash2,
   Search,
   Filter,
+  Send,
 } from 'lucide-react';
 import { AppLayout, PageHeader, EmptyState, ConfirmDialog } from '@/components';
 import {
   usuarioService,
+  planoService,
   Usuario,
+  Plano,
   PerfilUsuario,
+  StatusUsuario,
   CriarUsuarioRequest,
 } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
@@ -38,25 +39,31 @@ const PERFIL_ICONS: Record<PerfilUsuario, typeof User> = {
   [PerfilUsuario.AUDITOR]: User,
 };
 
+const STATUS_CONFIG: Record<StatusUsuario, { label: string; className: string }> = {
+  [StatusUsuario.ATIVO]: { label: 'Ativo', className: 'badge-success' },
+  [StatusUsuario.NAO_CONFIRMADO]: { label: 'Não Confirmado', className: 'badge-warning' },
+  [StatusUsuario.INATIVO]: { label: 'Inativo', className: 'badge-error' },
+};
+
 export default function UsuariosPage() {
   const router = useRouter();
   const { isMaster, isGestor, usuario } = useAuthStore();
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [gestores, setGestores] = useState<Usuario[]>([]);
+  const [planos, setPlanos] = useState<Plano[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingUsuario, setEditingUsuario] = useState<Usuario | null>(null);
   const [saving, setSaving] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
   const [filtroPerfil, setFiltroPerfil] = useState<PerfilUsuario | 'todos'>('todos');
   const [busca, setBusca] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [reenviandoConviteId, setReenviandoConviteId] = useState<string | null>(null);
 
   const [usuarioForm, setUsuarioForm] = useState<CriarUsuarioRequest>({
     nome: '',
     email: '',
-    senha: '',
     telefone: '',
     perfil: isGestor() ? PerfilUsuario.AUDITOR : PerfilUsuario.GESTOR,
     gestorId: isGestor() && !isMaster() ? usuario?.id : undefined,
@@ -70,7 +77,6 @@ export default function UsuariosPage() {
     carregarUsuarios();
   }, [isMaster, isGestor, router]);
 
-  // Garante que gestorId está preenchido quando Gestor abre o modal para criar
   useEffect(() => {
     if (showModal && !editingUsuario && isGestor() && !isMaster() && usuario?.id) {
       if (usuarioForm.perfil === PerfilUsuario.AUDITOR && !usuarioForm.gestorId) {
@@ -82,7 +88,6 @@ export default function UsuariosPage() {
     }
   }, [showModal, editingUsuario, isGestor, isMaster, usuario?.id, usuarioForm.perfil, usuarioForm.gestorId]);
 
-  // Função para aplicar máscara de telefone
   const aplicarMascaraTelefone = (valor: string) => {
     const apenasNumeros = valor.replace(/\D/g, '');
     if (apenasNumeros.length <= 10) {
@@ -97,7 +102,6 @@ export default function UsuariosPage() {
     return valor;
   };
 
-  // Função para remover máscara do telefone
   const removerMascaraTelefone = (valor: string) => {
     return valor.replace(/\D/g, '');
   };
@@ -106,11 +110,13 @@ export default function UsuariosPage() {
     try {
       const response = await usuarioService.listar(1, 100);
       setUsuarios(response.items || []);
-      // Carregar gestores para o select
       const gestoresResponse = await usuarioService.listar(1, 100, PerfilUsuario.GESTOR);
       setGestores(gestoresResponse.items || []);
-    } catch (error) {
-      // Erro já é tratado pelo interceptor
+      if (isMaster()) {
+        const planosResponse = await planoService.listar(1, 100);
+        setPlanos((planosResponse.items || []).filter((p) => p.ativo));
+      }
+    } catch {
     } finally {
       setLoading(false);
     }
@@ -118,50 +124,38 @@ export default function UsuariosPage() {
 
   const handleCriarUsuario = async () => {
     if (!usuarioForm.nome || !usuarioForm.email) return;
-    if (!editingUsuario && !usuarioForm.senha) return;
     if (!usuarioForm.telefone) {
       toastService.warning('O WhatsApp é obrigatório');
       return;
     }
     setSaving(true);
-
     try {
       if (editingUsuario) {
-        const dadosParaEnviar: Partial<CriarUsuarioRequest> = { 
+        const dadosParaEnviar: Partial<CriarUsuarioRequest> = {
           ...usuarioForm,
-          // Remove máscara do telefone antes de enviar
           telefone: usuarioForm.telefone ? removerMascaraTelefone(usuarioForm.telefone) : undefined,
         };
-        // Se não forneceu senha, remover do payload
-        if (!dadosParaEnviar.senha) {
-          const { senha, ...dadosSemSenha } = dadosParaEnviar;
-          await usuarioService.atualizar(editingUsuario.id, dadosSemSenha);
-        } else {
-          await usuarioService.atualizar(editingUsuario.id, dadosParaEnviar);
-        }
+        await usuarioService.atualizar(editingUsuario.id, dadosParaEnviar);
         toastService.success('Usuário atualizado com sucesso!');
       } else {
-        const dadosParaEnviar: CriarUsuarioRequest = { 
+        const dadosParaEnviar: CriarUsuarioRequest = {
           ...usuarioForm,
-          // Garante que gestorId está preenchido quando Gestor cria Auditor
           gestorId: isGestor() && !isMaster() && usuarioForm.perfil === PerfilUsuario.AUDITOR
             ? (usuarioForm.gestorId || usuario?.id)
             : usuarioForm.gestorId,
         };
         await usuarioService.criar(dadosParaEnviar);
-        toastService.success('Usuário criado com sucesso!');
+        toastService.success('Convite enviado com sucesso!');
       }
       await carregarUsuarios();
       handleFecharModal();
-    } catch (error) {
-      // Erro já é tratado pelo interceptor
+    } catch {
     } finally {
       setSaving(false);
     }
   };
 
   const handleEditarUsuario = (usuarioItem: Usuario) => {
-    // Gestor só pode editar seus próprios auditores
     if (isGestor() && !isMaster()) {
       if (usuarioItem.gestorId !== usuario?.id && usuarioItem.id !== usuario?.id) {
         toastService.error('Você só pode editar seus próprios auditores');
@@ -176,7 +170,6 @@ export default function UsuariosPage() {
     setUsuarioForm({
       nome: usuarioItem.nome,
       email: usuarioItem.email,
-      senha: '',
       telefone: usuarioItem.telefone ? aplicarMascaraTelefone(usuarioItem.telefone) : '',
       perfil: usuarioItem.perfil,
       gestorId: usuarioItem.gestorId || undefined,
@@ -190,7 +183,6 @@ export default function UsuariosPage() {
     setUsuarioForm({
       nome: '',
       email: '',
-      senha: '',
       telefone: '',
       perfil: isGestor() ? PerfilUsuario.AUDITOR : PerfilUsuario.GESTOR,
       gestorId: isGestor() && !isMaster() ? usuario?.id : undefined,
@@ -209,10 +201,20 @@ export default function UsuariosPage() {
       toastService.success('Usuário removido com sucesso!');
       await carregarUsuarios();
       setShowDeleteConfirm(null);
-    } catch (error) {
-      // Erro já é tratado pelo interceptor
+    } catch {
     } finally {
       setDeletingId(null);
+    }
+  };
+
+  const handleReenviarConvite = async (id: string) => {
+    setReenviandoConviteId(id);
+    try {
+      await usuarioService.reenviarConvite(id);
+      toastService.success('Convite reenviado com sucesso!');
+    } catch {
+    } finally {
+      setReenviandoConviteId(null);
     }
   };
 
@@ -240,13 +242,12 @@ export default function UsuariosPage() {
             onClick={() => setShowModal(true)}
           >
             <Plus className="w-4 h-4" />
-            Novo Usuário
+            Convidar Usuário
           </button>
         }
       />
 
       <div className="px-4 py-4 lg:px-8 space-y-4">
-        {/* Filtros e Busca */}
         <div className="flex flex-col sm:flex-row gap-2">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-base-content/40" />
@@ -289,7 +290,6 @@ export default function UsuariosPage() {
           </div>
         </div>
 
-        {/* Tabela */}
         {loading ? (
           <div className="card bg-base-100 shadow-sm border border-base-300">
             <div className="card-body items-center py-12">
@@ -303,9 +303,9 @@ export default function UsuariosPage() {
             description={
               busca || filtroPerfil !== 'todos'
                 ? 'Tente ajustar os filtros de busca.'
-                : 'Comece criando um novo usuário'
+                : 'Comece convidando um novo usuário'
             }
-            actionLabel={!busca && filtroPerfil === 'todos' ? 'Novo Usuário' : undefined}
+            actionLabel={!busca && filtroPerfil === 'todos' ? 'Convidar Usuário' : undefined}
             actionOnClick={() => setShowModal(true)}
           />
         ) : (
@@ -325,6 +325,7 @@ export default function UsuariosPage() {
                 <tbody>
                   {usuariosFiltrados.map((usuarioItem) => {
                     const Icon = PERFIL_ICONS[usuarioItem.perfil];
+                    const statusConfig = STATUS_CONFIG[usuarioItem.status] || STATUS_CONFIG[StatusUsuario.ATIVO];
                     return (
                       <tr key={usuarioItem.id}>
                         <td>
@@ -351,15 +352,26 @@ export default function UsuariosPage() {
                           </span>
                         </td>
                         <td>
-                          {usuarioItem.ativo ? (
-                            <span className="badge badge-success badge-sm">Ativo</span>
-                          ) : (
-                            <span className="badge badge-error badge-sm">Inativo</span>
-                          )}
+                          <span className={`badge badge-sm ${statusConfig.className}`}>
+                            {statusConfig.label}
+                          </span>
                         </td>
                         <td>
                           <div className="flex justify-end gap-2">
-                            {/* Gestor só pode editar seus próprios auditores */}
+                            {usuarioItem.status === StatusUsuario.NAO_CONFIRMADO && (
+                              <button
+                                className="btn btn-ghost btn-xs gap-1 text-info"
+                                onClick={() => handleReenviarConvite(usuarioItem.id)}
+                                disabled={reenviandoConviteId === usuarioItem.id}
+                                title="Reenviar convite"
+                              >
+                                {reenviandoConviteId === usuarioItem.id ? (
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <Send className="w-4 h-4" />
+                                )}
+                              </button>
+                            )}
                             {(!isGestor() || isMaster() || (usuarioItem.gestorId === usuario?.id && usuarioItem.perfil === PerfilUsuario.AUDITOR)) && (
                               <button
                                 className="btn btn-ghost btn-xs gap-1"
@@ -369,7 +381,6 @@ export default function UsuariosPage() {
                                 <Edit className="w-4 h-4" />
                               </button>
                             )}
-                            {/* Gestor não pode remover usuários */}
                             {(!isGestor() || isMaster()) && (
                               <button
                                 className="btn btn-ghost btn-xs gap-1 text-error"
@@ -396,12 +407,10 @@ export default function UsuariosPage() {
         )}
       </div>
 
-      {/* Modal de criação/edição */}
       {showModal && (
-        <div 
+        <div
           className="modal modal-open"
           onClick={(e) => {
-            // Não fecha ao clicar fora - removido para evitar perda de dados
             if (e.target === e.currentTarget) {
               e.stopPropagation();
             }
@@ -409,7 +418,7 @@ export default function UsuariosPage() {
         >
           <div className="modal-box max-w-2xl">
             <h3 className="font-bold text-lg mb-4">
-              {editingUsuario ? 'Editar Usuário' : 'Novo Usuário'}
+              {editingUsuario ? 'Editar Usuário' : 'Convidar Usuário'}
             </h3>
             <div className="space-y-4">
               <div className="form-control">
@@ -440,33 +449,6 @@ export default function UsuariosPage() {
               </div>
               <div className="form-control">
                 <label className="label">
-                  <span className="label-text">Senha {editingUsuario && '(deixe em branco para manter)'}</span>
-                </label>
-                <div className="relative">
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    className="input input-bordered w-full pr-10"
-                    value={usuarioForm.senha}
-                    onChange={(e) =>
-                      setUsuarioForm({ ...usuarioForm, senha: e.target.value })
-                    }
-                    placeholder={editingUsuario ? 'Deixe em branco para manter a senha atual' : ''}
-                  />
-                  <button
-                    type="button"
-                    className="absolute right-3 top-1/2 -translate-y-1/2"
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? (
-                      <EyeOff className="w-5 h-5" />
-                    ) : (
-                      <Eye className="w-5 h-5" />
-                    )}
-                  </button>
-                </div>
-              </div>
-              <div className="form-control">
-                <label className="label">
                   <span className="label-text">Perfil</span>
                 </label>
                 <select
@@ -475,14 +457,13 @@ export default function UsuariosPage() {
                   disabled={isGestor() && !isMaster() && !editingUsuario}
                   onChange={(e) => {
                     const novoPerfil = e.target.value as PerfilUsuario;
-                    // Se for Gestor criando, força AUDITOR
-                    const perfilFinal = isGestor() && !isMaster() && !editingUsuario 
-                      ? PerfilUsuario.AUDITOR 
+                    const perfilFinal = isGestor() && !isMaster() && !editingUsuario
+                      ? PerfilUsuario.AUDITOR
                       : novoPerfil;
                     const novoGestorId = perfilFinal === PerfilUsuario.AUDITOR && isGestor() && !isMaster() && !editingUsuario
                       ? usuario?.id
-                      : perfilFinal === PerfilUsuario.AUDITOR 
-                        ? usuarioForm.gestorId 
+                      : perfilFinal === PerfilUsuario.AUDITOR
+                        ? usuarioForm.gestorId
                         : undefined;
                     setUsuarioForm({
                       ...usuarioForm,
@@ -492,7 +473,6 @@ export default function UsuariosPage() {
                   }}
                 >
                   {Object.values(PerfilUsuario).map((perfil) => {
-                    // Gestor só pode criar Auditores
                     if (isGestor() && !isMaster() && !editingUsuario && perfil !== PerfilUsuario.AUDITOR) {
                       return null;
                     }
@@ -561,6 +541,37 @@ export default function UsuariosPage() {
                   )}
                 </div>
               )}
+              {isMaster() && usuarioForm.perfil === PerfilUsuario.GESTOR && !editingUsuario && (
+                <div className="form-control">
+                  <label className="label">
+                    <span className="label-text">Plano / Assinatura *</span>
+                  </label>
+                  <select
+                    className="select select-bordered"
+                    value={usuarioForm.planoId || ''}
+                    onChange={(e) =>
+                      setUsuarioForm({
+                        ...usuarioForm,
+                        planoId: e.target.value || undefined,
+                      })
+                    }
+                    required
+                  >
+                    <option value="">Selecione um plano</option>
+                    {planos.map((plano) => (
+                      <option key={plano.id} value={plano.id}>
+                        {plano.nome}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              {!editingUsuario && (
+                <div className="alert alert-info">
+                  <Send className="w-4 h-4" />
+                  <span className="text-sm">Um convite será enviado por e-mail para que o usuário aceite e configure seu acesso.</span>
+                </div>
+              )}
             </div>
             <div className="modal-action">
               <button
@@ -574,11 +585,13 @@ export default function UsuariosPage() {
                 onClick={handleCriarUsuario}
                 disabled={
                   saving ||
-                  (!editingUsuario && !usuarioForm.senha) ||
+                  !usuarioForm.nome ||
+                  !usuarioForm.email ||
                   !usuarioForm.telefone ||
-                  (usuarioForm.perfil === PerfilUsuario.AUDITOR && 
-                   !usuarioForm.gestorId && 
-                   !(isGestor() && !isMaster() && !editingUsuario && usuario?.id))
+                  (usuarioForm.perfil === PerfilUsuario.AUDITOR &&
+                   !usuarioForm.gestorId &&
+                   !(isGestor() && !isMaster() && !editingUsuario && usuario?.id)) ||
+                  (isMaster() && usuarioForm.perfil === PerfilUsuario.GESTOR && !editingUsuario && !usuarioForm.planoId)
                 }
               >
                 {saving ? (
@@ -586,7 +599,7 @@ export default function UsuariosPage() {
                 ) : editingUsuario ? (
                   'Salvar'
                 ) : (
-                  'Criar'
+                  'Enviar Convite'
                 )}
               </button>
             </div>
@@ -594,7 +607,6 @@ export default function UsuariosPage() {
         </div>
       )}
 
-      {/* Modal de Confirmação de Remoção */}
       <ConfirmDialog
         open={showDeleteConfirm !== null}
         onClose={() => setShowDeleteConfirm(null)}
@@ -609,4 +621,3 @@ export default function UsuariosPage() {
     </AppLayout>
   );
 }
-

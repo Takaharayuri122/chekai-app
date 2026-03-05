@@ -34,6 +34,7 @@ import { CurrentUser } from '../../core/decorators/current-user.decorator';
 import { Usuario, PerfilUsuario } from './entities/usuario.entity';
 import { PaginatedResult } from '../../shared/types/pagination.interface';
 import { UploadLogoService } from '../supabase/upload-logo.service';
+import { AuthService } from '../auth/auth.service';
 
 /**
  * Controller para gestão de usuários.
@@ -44,20 +45,38 @@ export class UsuarioController {
   constructor(
     private readonly usuarioService: UsuarioService,
     private readonly uploadLogoService: UploadLogoService,
+    private readonly authService: AuthService,
   ) {}
 
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(PerfilUsuario.MASTER, PerfilUsuario.GESTOR)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Cria um novo usuário' })
-  @ApiResponse({ status: 201, description: 'Usuário criado com sucesso' })
+  @ApiOperation({ summary: 'Cria um novo usuário e envia convite por e-mail' })
+  @ApiResponse({ status: 201, description: 'Usuário criado e convite enviado' })
   @ApiResponse({ status: 409, description: 'E-mail já cadastrado' })
   async criar(
     @Body() dto: CriarUsuarioDto,
     @CurrentUser() usuario: { id: string; perfil: PerfilUsuario },
   ): Promise<Usuario> {
-    return this.usuarioService.criar(dto, usuario);
+    const novoUsuario = await this.usuarioService.criar(dto, usuario);
+    if (novoUsuario.tokenConvite) {
+      await this.authService.enviarConvite(novoUsuario.email, novoUsuario.nome, novoUsuario.tokenConvite);
+    }
+    return novoUsuario;
+  }
+
+  @Post(':id/reenviar-convite')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(PerfilUsuario.MASTER, PerfilUsuario.GESTOR)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Reenvia o convite para um usuário não confirmado' })
+  @ApiResponse({ status: 200, description: 'Convite reenviado com sucesso' })
+  @ApiResponse({ status: 400, description: 'Usuário já confirmado ou não encontrado' })
+  async reenviarConvite(
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<{ message: string }> {
+    return this.authService.reenviarConvite(id);
   }
 
   @Get()

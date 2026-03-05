@@ -5,7 +5,7 @@ import { UsuarioService } from '../usuario/usuario.service';
 import { EmailService } from '../email/email.service';
 import { AssinaturaService } from '../plano/assinatura.service';
 import { PlanoService } from '../plano/plano.service';
-import { PerfilUsuario } from '../usuario/entities/usuario.entity';
+import { PerfilUsuario, StatusUsuario } from '../usuario/entities/usuario.entity';
 import { LoginDto, LoginResponse } from './dto/login.dto';
 import { SolicitarOtpDto } from './dto/solicitar-otp.dto';
 import { ValidarOtpDto } from './dto/validar-otp.dto';
@@ -41,11 +41,11 @@ export class AuthService {
     if (!usuario) {
       throw new UnauthorizedException('E-mail não cadastrado');
     }
-    if (!usuario.ativo) {
-      throw new UnauthorizedException('Usuário inativo');
+    if (usuario.status === StatusUsuario.NAO_CONFIRMADO) {
+      throw new UnauthorizedException('Convite pendente. Verifique seu e-mail para aceitar o convite.');
     }
-    if (this.isDevelopment()) {
-      return { message: 'Em desenvolvimento: use o código OTP 252622' };
+    if (usuario.status === StatusUsuario.INATIVO) {
+      throw new UnauthorizedException('Usuário inativo');
     }
     const codigoOTP = this.gerarCodigoOTP();
     const dataExpiracao = new Date();
@@ -63,8 +63,8 @@ export class AuthService {
     if (!usuario) {
       throw new UnauthorizedException('E-mail não cadastrado');
     }
-    if (!usuario.ativo) {
-      throw new UnauthorizedException('Usuário inativo');
+    if (usuario.status !== StatusUsuario.ATIVO) {
+      throw new UnauthorizedException('Usuário inativo ou não confirmado');
     }
     const isMockOtp = this.isDevelopment() && dto.codigo === this.OTP_MOCK;
     if (!isMockOtp) {
@@ -125,8 +125,8 @@ export class AuthService {
     if (!usuario) {
       throw new UnauthorizedException('Credenciais inválidas');
     }
-    if (!usuario.ativo) {
-      throw new UnauthorizedException('Usuário inativo');
+    if (usuario.status !== StatusUsuario.ATIVO) {
+      throw new UnauthorizedException('Usuário inativo ou não confirmado');
     }
     if (!usuario.senhaHash) {
       throw new UnauthorizedException('Usuário não possui senha cadastrada. Use o login via OTP.');
@@ -153,6 +153,31 @@ export class AuthService {
         tenantId: usuario.tenantId ?? undefined,
       },
     };
+  }
+
+  /**
+   * Aceita um convite de acesso e ativa a conta do usuário.
+   */
+  async aceitarConvite(token: string): Promise<{ email: string }> {
+    return this.usuarioService.aceitarConvite(token);
+  }
+
+  /**
+   * Envia e-mail de convite para um usuário recém-criado.
+   */
+  async enviarConvite(email: string, nome: string, tokenConvite: string): Promise<void> {
+    const frontendUrl = this.configService.get<string>('FRONTEND_URL', 'http://localhost:3000');
+    const linkConvite = `${frontendUrl}/login?token=${tokenConvite}&email=${encodeURIComponent(email)}`;
+    await this.emailService.enviarEmailConvite(email, nome, linkConvite);
+  }
+
+  /**
+   * Reenvia o convite para um usuário não confirmado.
+   */
+  async reenviarConvite(usuarioId: string): Promise<{ message: string }> {
+    const dados = await this.usuarioService.gerarNovoTokenConvite(usuarioId);
+    await this.enviarConvite(dados.email, dados.nome, dados.tokenConvite);
+    return { message: 'Convite reenviado com sucesso' };
   }
 
   /**

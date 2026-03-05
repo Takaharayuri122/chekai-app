@@ -47,7 +47,7 @@ import { CheckinModule } from './modules/checkin/checkin.module';
           database: url.pathname.substring(1), // Remove a barra inicial
           entities: [__dirname + '/**/*.entity{.ts,.js}'],
           synchronize: configService.get<string>('NODE_ENV') !== 'production',
-          logging: configService.get<string>('NODE_ENV') === 'development',
+          logging: false,
           ssl: {
             rejectUnauthorized: false,
           },

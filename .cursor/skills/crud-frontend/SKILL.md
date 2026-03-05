@@ -108,7 +108,16 @@ Componente de `@/components` que encapsula toda a lógica de filtros.
 
 ## 3. CrudTable
 
-Componente de `@/components` com tabela flat + menu de ações hamburger.
+Componente de `@/components` com layout responsivo: **tabela no desktop** e **cards no mobile**.
+
+### Layout responsivo (automático)
+
+| Breakpoint | Layout | Descrição |
+|------------|--------|-----------|
+| `< lg` (mobile) | Cards empilhados | Primeira coluna = cabeçalho, demais = pares label/valor |
+| `≥ lg` (desktop) | Tabela flat | Tabela tradicional com headers e menu hamburger |
+
+A troca é automática via Tailwind (`hidden lg:block` / `lg:hidden`). Nenhuma alteração é necessária nas páginas existentes.
 
 ### Props
 
@@ -122,7 +131,7 @@ Componente de `@/components` com tabela flat + menu de ações hamburger.
 | `emptyState` | `object` | Config do EmptyState quando vazio |
 | `className` | `string` | Classes CSS adicionais |
 
-### Estilo visual da tabela
+### Estilo visual — Desktop (tabela)
 
 - **Card wrapper** — `bg-base-100 shadow-sm border border-base-300 overflow-hidden` (mesmo padrão do filtro)
 - **Sem zebra** — fundo uniforme branco
@@ -131,9 +140,26 @@ Componente de `@/components` com tabela flat + menu de ações hamburger.
 - **Hover** — `hover:bg-base-200/30 transition-colors`
 - **Bordas arredondadas** — herdadas do card com `overflow-hidden`
 
+### Estilo visual — Mobile (cards)
+
+- **Card wrapper** — mesmo container do desktop, sem scroll horizontal
+- **Divisórias** — `divide-y divide-base-200` entre itens
+- **Cabeçalho** — primeira coluna renderizada com destaque + botão de ações à direita
+- **Dados secundários** — `flex flex-wrap` com pares `Label: valor`
+- **Ações** — mesmo menu hamburger (⋮) posicionado no canto superior direito do card
+
 ### Definindo colunas
 
-Cada coluna recebe uma `render` function para máxima flexibilidade:
+Cada coluna recebe uma `render` function para máxima flexibilidade.
+
+**Importante para mobile:** a **primeira coluna** sempre será o cabeçalho do card. Coloque a informação principal (nome, título) na primeira posição.
+
+| Prop da coluna | Tipo | Descrição |
+|----------------|------|-----------|
+| `label` | `string` | Texto do header (desktop) e label (mobile) |
+| `render` | `(item: T) => ReactNode` | Renderiza o conteúdo |
+| `className` | `string?` | Classes CSS adicionais |
+| `mobileOculta` | `boolean?` | Se `true`, oculta no mobile (continua visível no desktop) |
 
 ```tsx
 const colunas: ColunaTabela<Produto>[] = [
@@ -160,6 +186,11 @@ const colunas: ColunaTabela<Produto>[] = [
         {p.ativo ? 'Ativo' : 'Inativo'}
       </span>
     ),
+  },
+  {
+    label: 'Observação',
+    render: (p) => <span className="text-sm text-base-content/70">{p.obs}</span>,
+    mobileOculta: true, // visível só no desktop
   },
 ];
 ```

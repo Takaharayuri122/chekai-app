@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, useCallback, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useForm } from 'react-hook-form';
@@ -28,8 +28,9 @@ type OtpFormData = z.infer<typeof otpSchema>;
 
 const OTP_EXPIRATION_TIME = 10 * 60 * 1000;
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { setAuth } = useAuthStore();
   const [step, setStep] = useState<'email' | 'otp'>('email');
   const [email, setEmail] = useState('');
@@ -37,6 +38,7 @@ export default function LoginPage() {
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
   const [otpExpired, setOtpExpired] = useState(false);
   const [modalListaEsperaAberto, setModalListaEsperaAberto] = useState(false);
+  const [conviteProcessado, setConviteProcessado] = useState(false);
 
   const emailForm = useForm<EmailFormData>({
     resolver: zodResolver(emailSchema),
@@ -45,6 +47,50 @@ export default function LoginPage() {
   const otpForm = useForm<OtpFormData>({
     resolver: zodResolver(otpSchema),
   });
+
+  const dispararOtp = useCallback(async (emailParaOtp: string) => {
+    setIsLoading(true);
+    try {
+      await authService.solicitarOtp(emailParaOtp);
+      setEmail(emailParaOtp);
+      setStep('otp');
+      setTimeRemaining(OTP_EXPIRATION_TIME);
+      setOtpExpired(false);
+      toastService.success('Código OTP enviado para seu e-mail!');
+    } catch (error) {
+      analyticsEvents.error('solicitar_otp_failed', error instanceof Error ? error.message : 'Erro desconhecido');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (conviteProcessado) return;
+    const token = searchParams.get('token');
+    const emailParam = searchParams.get('email');
+    if (token) {
+      setConviteProcessado(true);
+      setIsLoading(true);
+      authService.aceitarConvite(token)
+        .then(async (resultado) => {
+          const emailConvite = resultado.email;
+          toastService.success('Convite aceito! Enviando código de acesso...');
+          emailForm.setValue('email', emailConvite);
+          await dispararOtp(emailConvite);
+        })
+        .catch(() => {
+          if (emailParam) {
+            emailForm.setValue('email', emailParam);
+          }
+        })
+        .finally(() => {
+          setIsLoading(false);
+        });
+    } else if (emailParam) {
+      setConviteProcessado(true);
+      emailForm.setValue('email', emailParam);
+    }
+  }, [searchParams, conviteProcessado, emailForm, dispararOtp]);
 
   useEffect(() => {
     if (step === 'otp' && timeRemaining !== null) {
@@ -57,7 +103,6 @@ export default function LoginPage() {
           return prev - 1000;
         });
       }, 1000);
-
       return () => clearInterval(interval);
     }
   }, [step, timeRemaining]);
@@ -69,19 +114,7 @@ export default function LoginPage() {
   };
 
   const onEmailSubmit = async (data: EmailFormData) => {
-    setIsLoading(true);
-    try {
-      await authService.solicitarOtp(data.email);
-      setEmail(data.email);
-      setStep('otp');
-      setTimeRemaining(OTP_EXPIRATION_TIME);
-      setOtpExpired(false);
-      toastService.success('Código OTP enviado para seu e-mail!');
-    } catch (error) {
-      analyticsEvents.error('solicitar_otp_failed', error instanceof Error ? error.message : 'Erro desconhecido');
-    } finally {
-      setIsLoading(false);
-    }
+    await dispararOtp(data.email);
   };
 
   const onOtpSubmit = async (data: OtpFormData) => {
@@ -89,7 +122,6 @@ export default function LoginPage() {
       toastService.error('Código OTP expirado. Solicite um novo código.');
       return;
     }
-
     setIsLoading(true);
     try {
       const response = await authService.validarOtp(email, data.codigo);
@@ -323,5 +355,17 @@ export default function LoginPage() {
       </motion.div>
     </main>
     </>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <main className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-base-100 via-base-200 to-base-100">
+        <span className="loading loading-spinner loading-lg text-primary"></span>
+      </main>
+    }>
+      <LoginContent />
+    </Suspense>
   );
 }

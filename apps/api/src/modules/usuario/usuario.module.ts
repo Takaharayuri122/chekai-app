@@ -4,6 +4,7 @@ import { Usuario } from './entities/usuario.entity';
 import { UsuarioService } from './usuario.service';
 import { UsuarioController } from './usuario.controller';
 import { PlanoModule } from '../plano/plano.module';
+import { AuthModule } from '../auth/auth.module';
 import { Auditoria } from '../auditoria/entities/auditoria.entity';
 import { Cliente } from '../cliente/entities/cliente.entity';
 
@@ -14,6 +15,7 @@ import { Cliente } from '../cliente/entities/cliente.entity';
   imports: [
     TypeOrmModule.forFeature([Usuario, Auditoria, Cliente]),
     forwardRef(() => PlanoModule),
+    forwardRef(() => AuthModule),
   ],
   controllers: [UsuarioController],
   providers: [UsuarioService],

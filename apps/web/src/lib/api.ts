@@ -166,13 +166,19 @@ export enum PerfilUsuario {
   AUDITOR = 'auditor',
 }
 
+export enum StatusUsuario {
+  NAO_CONFIRMADO = 'nao_confirmado',
+  ATIVO = 'ativo',
+  INATIVO = 'inativo',
+}
+
 export interface CriarUsuarioRequest {
   nome: string;
   email: string;
-  senha: string;
   telefone?: string;
   perfil?: PerfilUsuario;
   gestorId?: string;
+  planoId?: string;
 }
 
 export const authService = {
@@ -204,6 +210,11 @@ export const authService = {
       telefone: data.telefone,
       planoId: data.planoId,
     });
+    return response.data.data;
+  },
+
+  async aceitarConvite(token: string): Promise<{ email: string }> {
+    const response = await api.post<{ data: { email: string } }>('/auth/aceitar-convite', { token });
     return response.data.data;
   },
 
@@ -256,7 +267,7 @@ export interface Usuario {
   email: string;
   perfil: PerfilUsuario;
   telefone?: string;
-  ativo: boolean;
+  status: StatusUsuario;
   gestorId?: string;
   tenantId?: string;
   logoUrl?: string | null;
@@ -313,6 +324,11 @@ export const usuarioService = {
 
   async remover(id: string): Promise<void> {
     await api.delete(`/usuarios/${id}`);
+  },
+
+  async reenviarConvite(id: string): Promise<{ message: string }> {
+    const response = await api.post<{ data: { message: string } }>(`/usuarios/${id}/reenviar-convite`);
+    return response.data.data;
   },
 };
 

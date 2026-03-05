@@ -5,6 +5,7 @@ import { LoginDto, LoginResponse } from './dto/login.dto';
 import { SolicitarOtpDto } from './dto/solicitar-otp.dto';
 import { ValidarOtpDto } from './dto/validar-otp.dto';
 import { CadastroPublicoDto } from './dto/cadastro-publico.dto';
+import { AceitarConviteDto } from './dto/aceitar-convite.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser } from '../../core/decorators/current-user.decorator';
 import { PerfilUsuario } from '../usuario/entities/usuario.entity';
@@ -40,6 +41,17 @@ export class AuthController {
   @ApiResponse({ status: 401, description: 'Credenciais inválidas' })
   async login(@Body() dto: LoginDto): Promise<LoginResponse> {
     return this.authService.login(dto);
+  }
+
+  @Post('aceitar-convite')
+  @ApiOperation({
+    summary: 'Aceita um convite de acesso',
+    description: 'Valida o token de convite e ativa a conta do usuário. Retorna o e-mail para pré-preencher no login.',
+  })
+  @ApiResponse({ status: 200, description: 'Convite aceito com sucesso' })
+  @ApiResponse({ status: 400, description: 'Token inválido ou expirado' })
+  async aceitarConvite(@Body() dto: AceitarConviteDto): Promise<{ email: string }> {
+    return this.authService.aceitarConvite(dto.token);
   }
 
   @Post('cadastro')
