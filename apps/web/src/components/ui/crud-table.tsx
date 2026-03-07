@@ -1,6 +1,7 @@
 'use client';
 
 import { ReactNode, useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Loader2, MoreVertical, type LucideIcon } from 'lucide-react';
 import { EmptyState } from './empty-state';
 
@@ -118,9 +119,10 @@ export function CrudTable<T>({
         >
           <MoreVertical className="w-4 h-4" />
         </button>
-        {menuAbertoId === id && menuPos && (
+        {menuAbertoId === id && menuPos && createPortal(
           <div
             ref={menuRef}
+            onMouseDown={(e) => e.stopPropagation()}
             className="fixed z-[100] flex flex-col bg-base-100 border border-base-300
               rounded-lg shadow-md min-w-[140px] py-1"
             style={{ top: menuPos.top, right: menuPos.right }}
@@ -140,7 +142,8 @@ export function CrudTable<T>({
                 </button>
               );
             })}
-          </div>
+          </div>,
+          document.body,
         )}
       </>
     );

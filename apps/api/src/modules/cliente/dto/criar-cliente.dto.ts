@@ -1,4 +1,6 @@
 import {
+  ArrayMinSize,
+  IsArray,
   IsEmail,
   IsEnum,
   IsNotEmpty,
@@ -7,9 +9,12 @@ import {
   IsUUID,
   Matches,
   ValidateIf,
+  ValidateNested,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { TipoAtividade } from '../entities/cliente.entity';
+import { CriarUnidadeParaClienteDto } from './criar-unidade-para-cliente.dto';
 
 /**
  * DTO para criação de um novo cliente.
@@ -67,5 +72,12 @@ export class CriarClienteDto {
   @IsString()
   @IsOptional()
   logoUrl?: string | null;
+
+  @ApiProperty({ description: 'Unidades do cliente (pelo menos uma obrigatória)', type: [CriarUnidadeParaClienteDto] })
+  @IsArray()
+  @ArrayMinSize(1, { message: 'É necessário cadastrar pelo menos uma unidade' })
+  @ValidateNested({ each: true })
+  @Type(() => CriarUnidadeParaClienteDto)
+  unidades: CriarUnidadeParaClienteDto[];
 }
 

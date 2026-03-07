@@ -377,6 +377,14 @@ export interface Cliente {
   atualizadoEm: string;
 }
 
+export interface CriarUnidadeInline {
+  nome: string;
+  endereco: string;
+  cidade?: string;
+  estado?: string;
+  cep?: string;
+}
+
 export interface CriarClienteRequest {
   razaoSocial: string;
   nomeFantasia?: string;
@@ -386,6 +394,7 @@ export interface CriarClienteRequest {
   tipoAtividade?: TipoAtividade;
   responsavelTecnico?: string;
   auditorId?: string;
+  unidades: CriarUnidadeInline[];
 }
 
 export interface Unidade {

@@ -9,6 +9,7 @@ import {
   Edit,
   Trash2,
   ImagePlus,
+  Check,
 } from 'lucide-react';
 import {
   AppLayout,
@@ -22,16 +23,20 @@ import {
 import { LogoCropperModal } from '@/components/ui/logo-cropper-modal';
 import {
   clienteService,
-  unidadeService,
   usuarioService,
   Cliente,
   Usuario,
   TipoAtividade,
   PerfilUsuario,
   TIPO_ATIVIDADE_LABELS,
+  type CriarUnidadeInline,
 } from '@/lib/api';
 import { toastService } from '@/lib/toast';
 import { useAuthStore } from '@/lib/store';
+
+interface UnidadePendente extends CriarUnidadeInline {
+  tempId: string;
+}
 
 interface FiltrosCliente {
   nome: string;
@@ -101,14 +106,15 @@ export default function ClientesPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const [clienteUnidades, setClienteUnidades] = useState<Cliente | null>(null);
-  const [showUnidadeForm, setShowUnidadeForm] = useState(false);
-  const [editingUnidade, setEditingUnidade] = useState<string | null>(null);
-
   const [auditores, setAuditores] = useState<Usuario[]>([]);
   const [showAvisoTrocaAuditor, setShowAvisoTrocaAuditor] = useState(false);
   const [avisoTrocaInfo, setAvisoTrocaInfo] = useState<{ quantidade: number; nomeAuditor: string } | null>(null);
   const [dadosPendentesUpdate, setDadosPendentesUpdate] = useState<Record<string, unknown> | null>(null);
+
+  const [unidadesPendentes, setUnidadesPendentes] = useState<UnidadePendente[]>([]);
+  const [showInlineUnidadeForm, setShowInlineUnidadeForm] = useState(false);
+  const [editingInlineUnidadeId, setEditingInlineUnidadeId] = useState<string | null>(null);
+  const [inlineUnidadeForm, setInlineUnidadeForm] = useState({ nome: '', endereco: '', cidade: '', estado: '', cep: '' });
 
   const [cropperOpen, setCropperOpen] = useState(false);
   const [cropperImageUrl, setCropperImageUrl] = useState('');
@@ -127,14 +133,6 @@ export default function ClientesPage() {
     auditorId: '',
   });
 
-  const [unidadeForm, setUnidadeForm] = useState({
-    nome: '',
-    endereco: '',
-    cidade: '',
-    estado: '',
-    cep: '',
-  });
-
   const clienteFormInicial = {
     razaoSocial: '',
     nomeFantasia: '',
@@ -144,8 +142,6 @@ export default function ClientesPage() {
     tipoAtividade: TipoAtividade.OUTRO,
     auditorId: '',
   };
-
-  const unidadeFormInicial = { nome: '', endereco: '', cidade: '', estado: '', cep: '' };
 
   const clearPendingLogo = () => {
     if (pendingLogoPreviewUrl) URL.revokeObjectURL(pendingLogoPreviewUrl);
@@ -195,6 +191,10 @@ export default function ClientesPage() {
   const handleNovoCliente = () => {
     setEditingCliente(null);
     setClienteForm(clienteFormInicial);
+    setUnidadesPendentes([]);
+    setShowInlineUnidadeForm(false);
+    setEditingInlineUnidadeId(null);
+    setInlineUnidadeForm({ nome: '', endereco: '', cidade: '', estado: '', cep: '' });
     clearPendingLogo();
     setShowModal(true);
   };
@@ -210,17 +210,30 @@ export default function ClientesPage() {
       tipoAtividade: cliente.tipoAtividade,
       auditorId: cliente.auditorId || '',
     });
+    setUnidadesPendentes([]);
+    setShowInlineUnidadeForm(false);
+    setEditingInlineUnidadeId(null);
+    setInlineUnidadeForm({ nome: '', endereco: '', cidade: '', estado: '', cep: '' });
     clearPendingLogo();
     setShowModal(true);
   };
 
-  const montarDadosCliente = () => ({
-    ...clienteForm,
-    cnpj: removerMascaraCNPJ(clienteForm.cnpj),
-    telefone: removerMascaraTelefone(clienteForm.telefone),
-    email: clienteForm.email?.trim() || undefined,
-    auditorId: clienteForm.auditorId || undefined,
-  });
+  const montarDadosCliente = () => {
+    const base = {
+      ...clienteForm,
+      cnpj: removerMascaraCNPJ(clienteForm.cnpj),
+      telefone: removerMascaraTelefone(clienteForm.telefone),
+      email: clienteForm.email?.trim() || undefined,
+      auditorId: clienteForm.auditorId || undefined,
+    };
+    if (!editingCliente) {
+      return {
+        ...base,
+        unidades: unidadesPendentes.map(({ tempId, ...u }) => u),
+      };
+    }
+    return base;
+  };
 
   const salvarClienteComDados = async (dados: Record<string, unknown>, confirmado = false) => {
     setSaving(true);
@@ -257,6 +270,7 @@ export default function ClientesPage() {
       setShowModal(false);
       setEditingCliente(null);
       setClienteForm(clienteFormInicial);
+      setUnidadesPendentes([]);
     } catch {
       // interceptor
     } finally {
@@ -268,7 +282,40 @@ export default function ClientesPage() {
     const telefoneNumeros = removerMascaraTelefone(clienteForm.telefone);
     if (!clienteForm.razaoSocial || !clienteForm.cnpj || !clienteForm.telefone || telefoneNumeros.length < 10) return;
     if (clienteForm.email?.trim() && !emailValido(clienteForm.email)) return;
+    if (!editingCliente && unidadesPendentes.length === 0) return;
     await salvarClienteComDados(montarDadosCliente());
+  };
+
+  const handleAdicionarInlineUnidade = () => {
+    setEditingInlineUnidadeId(null);
+    setInlineUnidadeForm({ nome: '', endereco: '', cidade: '', estado: '', cep: '' });
+    setShowInlineUnidadeForm(true);
+  };
+
+  const handleSalvarInlineUnidade = () => {
+    if (!inlineUnidadeForm.nome || !inlineUnidadeForm.endereco || !inlineUnidadeForm.cidade || !inlineUnidadeForm.estado) return;
+    if (editingInlineUnidadeId) {
+      setUnidadesPendentes((prev) =>
+        prev.map((u) => (u.tempId === editingInlineUnidadeId ? { ...inlineUnidadeForm, tempId: u.tempId } : u)),
+      );
+    } else {
+      setUnidadesPendentes((prev) => [...prev, { ...inlineUnidadeForm, tempId: crypto.randomUUID() }]);
+    }
+    setShowInlineUnidadeForm(false);
+    setEditingInlineUnidadeId(null);
+    setInlineUnidadeForm({ nome: '', endereco: '', cidade: '', estado: '', cep: '' });
+  };
+
+  const handleEditarInlineUnidade = (tempId: string) => {
+    const unidade = unidadesPendentes.find((u) => u.tempId === tempId);
+    if (!unidade) return;
+    setEditingInlineUnidadeId(tempId);
+    setInlineUnidadeForm({ nome: unidade.nome, endereco: unidade.endereco, cidade: unidade.cidade || '', estado: unidade.estado || '', cep: unidade.cep || '' });
+    setShowInlineUnidadeForm(true);
+  };
+
+  const handleRemoverInlineUnidade = (tempId: string) => {
+    setUnidadesPendentes((prev) => prev.filter((u) => u.tempId !== tempId));
   };
 
   const handleConfirmarTrocaAuditor = async () => {
@@ -291,72 +338,6 @@ export default function ClientesPage() {
       // interceptor
     } finally {
       setIsDeleting(false);
-    }
-  };
-
-  const handleAbrirUnidades = (cliente: Cliente) => {
-    setClienteUnidades(cliente);
-    setShowUnidadeForm(false);
-    setEditingUnidade(null);
-    setUnidadeForm(unidadeFormInicial);
-  };
-
-  const handleNovaUnidade = () => {
-    setEditingUnidade(null);
-    setUnidadeForm(unidadeFormInicial);
-    setShowUnidadeForm(true);
-  };
-
-  const handleEditarUnidade = (unidadeId: string) => {
-    const unidade = clienteUnidades?.unidades.find((u) => u.id === unidadeId);
-    if (!unidade) return;
-    setEditingUnidade(unidadeId);
-    setUnidadeForm({
-      nome: unidade.nome,
-      endereco: unidade.endereco,
-      cidade: unidade.cidade,
-      estado: unidade.estado,
-      cep: unidade.cep || '',
-    });
-    setShowUnidadeForm(true);
-  };
-
-  const handleSalvarUnidade = async () => {
-    if (!clienteUnidades || !unidadeForm.nome || !unidadeForm.endereco) return;
-    setSaving(true);
-    try {
-      if (editingUnidade) {
-        await unidadeService.atualizar(editingUnidade, unidadeForm);
-        toastService.success('Unidade atualizada com sucesso!');
-      } else {
-        await clienteService.criarUnidade(clienteUnidades.id, unidadeForm);
-        toastService.success('Unidade cadastrada com sucesso!');
-      }
-      await carregarClientes();
-      const atualizado = (await clienteService.buscarPorId(clienteUnidades.id));
-      setClienteUnidades(atualizado);
-      setShowUnidadeForm(false);
-      setEditingUnidade(null);
-      setUnidadeForm(unidadeFormInicial);
-    } catch {
-      // interceptor
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleRemoverUnidade = async (unidadeId: string) => {
-    if (!confirm('Tem certeza que deseja remover esta unidade?')) return;
-    try {
-      await unidadeService.remover(unidadeId);
-      toastService.success('Unidade removida com sucesso!');
-      await carregarClientes();
-      if (clienteUnidades) {
-        const atualizado = await clienteService.buscarPorId(clienteUnidades.id);
-        setClienteUnidades(atualizado);
-      }
-    } catch {
-      // interceptor
     }
   };
 
@@ -447,7 +428,6 @@ export default function ClientesPage() {
 
   const acoes: AcaoTabela<Cliente>[] = [
     { label: 'Editar', icon: Edit, onClick: handleEditarCliente },
-    { label: 'Unidades', icon: MapPin, onClick: handleAbrirUnidades },
     {
       label: 'Remover',
       icon: Trash2,
@@ -508,55 +488,59 @@ export default function ClientesPage() {
           className="modal modal-open"
           onClick={(e) => { if (e.target === e.currentTarget) e.stopPropagation(); }}
         >
-          <div className="modal-box">
+          <div className="modal-box max-w-4xl w-full">
             <h3 className="font-bold text-lg mb-4">
               {editingCliente ? 'Editar Cliente' : 'Novo Cliente'}
             </h3>
             <div className="space-y-4">
-              <div className="form-control">
-                <label className="label"><span className="label-text">Razão Social *</span></label>
-                <input
-                  type="text"
-                  placeholder="Razão social da empresa"
-                  className="input input-bordered"
-                  value={clienteForm.razaoSocial}
-                  onChange={(e) => setClienteForm({ ...clienteForm, razaoSocial: e.target.value })}
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="form-control">
+                  <label className="label"><span className="label-text">Razão Social *</span></label>
+                  <input
+                    type="text"
+                    placeholder="Razão social da empresa"
+                    className="input input-bordered"
+                    value={clienteForm.razaoSocial}
+                    onChange={(e) => setClienteForm({ ...clienteForm, razaoSocial: e.target.value })}
+                  />
+                </div>
+                <div className="form-control">
+                  <label className="label"><span className="label-text">Nome Fantasia</span></label>
+                  <input
+                    type="text"
+                    placeholder="Nome fantasia"
+                    className="input input-bordered"
+                    value={clienteForm.nomeFantasia}
+                    onChange={(e) => setClienteForm({ ...clienteForm, nomeFantasia: e.target.value })}
+                  />
+                </div>
               </div>
-              <div className="form-control">
-                <label className="label"><span className="label-text">Nome Fantasia</span></label>
-                <input
-                  type="text"
-                  placeholder="Nome fantasia"
-                  className="input input-bordered"
-                  value={clienteForm.nomeFantasia}
-                  onChange={(e) => setClienteForm({ ...clienteForm, nomeFantasia: e.target.value })}
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="form-control">
+                  <label className="label"><span className="label-text">CNPJ *</span></label>
+                  <input
+                    type="text"
+                    placeholder="00.000.000/0000-00"
+                    className="input input-bordered"
+                    value={clienteForm.cnpj}
+                    onChange={(e) => setClienteForm({ ...clienteForm, cnpj: aplicarMascaraCNPJ(e.target.value) })}
+                    maxLength={18}
+                  />
+                </div>
+                <div className="form-control">
+                  <label className="label"><span className="label-text">Tipo de Atividade</span></label>
+                  <select
+                    className="select select-bordered"
+                    value={clienteForm.tipoAtividade}
+                    onChange={(e) => setClienteForm({ ...clienteForm, tipoAtividade: e.target.value as TipoAtividade })}
+                  >
+                    {Object.entries(TIPO_ATIVIDADE_LABELS).map(([value, label]) => (
+                      <option key={value} value={value}>{label}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
-              <div className="form-control">
-                <label className="label"><span className="label-text">CNPJ *</span></label>
-                <input
-                  type="text"
-                  placeholder="00.000.000/0000-00"
-                  className="input input-bordered"
-                  value={clienteForm.cnpj}
-                  onChange={(e) => setClienteForm({ ...clienteForm, cnpj: aplicarMascaraCNPJ(e.target.value) })}
-                  maxLength={18}
-                />
-              </div>
-              <div className="form-control">
-                <label className="label"><span className="label-text">Tipo de Atividade</span></label>
-                <select
-                  className="select select-bordered"
-                  value={clienteForm.tipoAtividade}
-                  onChange={(e) => setClienteForm({ ...clienteForm, tipoAtividade: e.target.value as TipoAtividade })}
-                >
-                  {Object.entries(TIPO_ATIVIDADE_LABELS).map(([value, label]) => (
-                    <option key={value} value={value}>{label}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="form-control">
                   <label className="label"><span className="label-text">Telefone *</span></label>
                   <input
@@ -642,6 +626,165 @@ export default function ClientesPage() {
                   </button>
                 )}
               </div>
+
+              {/* Seção de Unidades */}
+              <div className="pt-2 border-t border-base-200">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="label-text font-medium">Unidades *</span>
+                    {!editingCliente && (
+                      <span className="badge badge-sm badge-ghost">{unidadesPendentes.length}</span>
+                    )}
+                    {editingCliente && (
+                      <span className="badge badge-sm badge-ghost">{editingCliente.unidades?.length || 0}</span>
+                    )}
+                  </div>
+                  {!editingCliente && !showInlineUnidadeForm && (
+                    <button type="button" className="btn btn-outline btn-sm gap-1" onClick={handleAdicionarInlineUnidade}>
+                      <Plus className="w-3.5 h-3.5" />
+                      Adicionar
+                    </button>
+                  )}
+                </div>
+
+                {editingCliente ? (
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {!editingCliente.unidades || editingCliente.unidades.length === 0 ? (
+                      <p className="text-sm text-base-content/50 py-4 text-center">
+                        Nenhuma unidade cadastrada.
+                      </p>
+                    ) : (
+                      editingCliente.unidades.map((unidade) => (
+                        <div key={unidade.id} className="flex items-center gap-3 p-2.5 bg-base-200/30 rounded-lg">
+                          <MapPin className="w-4 h-4 text-secondary shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm truncate">{unidade.nome}</p>
+                            <p className="text-xs text-base-content/60 truncate">
+                              {unidade.endereco} — {unidade.cidade}, {unidade.estado}
+                            </p>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                ) : (
+                  <>
+                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                      {unidadesPendentes.length === 0 && !showInlineUnidadeForm && (
+                        <p className="text-sm text-base-content/50 py-4 text-center">
+                          Nenhuma unidade adicionada. Adicione pelo menos uma unidade para salvar o cliente.
+                        </p>
+                      )}
+                      {unidadesPendentes.map((unidade) => (
+                        <div key={unidade.tempId} className="flex items-center gap-3 p-2.5 bg-base-200/30 rounded-lg group">
+                          <MapPin className="w-4 h-4 text-secondary shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm truncate">{unidade.nome}</p>
+                            <p className="text-xs text-base-content/60 truncate">
+                              {unidade.endereco}{unidade.cidade ? ` — ${unidade.cidade}` : ''}{unidade.estado ? `, ${unidade.estado}` : ''}
+                            </p>
+                          </div>
+                          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button type="button" onClick={() => handleEditarInlineUnidade(unidade.tempId)} className="btn btn-ghost btn-xs">
+                              <Edit className="w-3.5 h-3.5" />
+                            </button>
+                            <button type="button" onClick={() => handleRemoverInlineUnidade(unidade.tempId)} className="btn btn-ghost btn-xs text-error">
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    {showInlineUnidadeForm && (
+                      <div className="mt-3 p-3 border border-base-300 rounded-lg bg-base-200/20 space-y-3">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div className="form-control">
+                            <label className="label py-1"><span className="label-text text-xs">Nome *</span></label>
+                            <input
+                              type="text"
+                              placeholder="Nome da unidade"
+                              className="input input-bordered input-sm"
+                              value={inlineUnidadeForm.nome}
+                              onChange={(e) => setInlineUnidadeForm({ ...inlineUnidadeForm, nome: e.target.value })}
+                            />
+                          </div>
+                          <div className="form-control">
+                            <label className="label py-1"><span className="label-text text-xs">Endereço *</span></label>
+                            <input
+                              type="text"
+                              placeholder="Rua, número, bairro"
+                              className="input input-bordered input-sm"
+                              value={inlineUnidadeForm.endereco}
+                              onChange={(e) => setInlineUnidadeForm({ ...inlineUnidadeForm, endereco: e.target.value })}
+                            />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-3 gap-3">
+                          <div className="form-control">
+                            <label className="label py-1"><span className="label-text text-xs">Cidade *</span></label>
+                            <input
+                              type="text"
+                              placeholder="Cidade"
+                              className="input input-bordered input-sm"
+                              value={inlineUnidadeForm.cidade}
+                              onChange={(e) => setInlineUnidadeForm({ ...inlineUnidadeForm, cidade: e.target.value })}
+                            />
+                          </div>
+                          <div className="form-control">
+                            <label className="label py-1"><span className="label-text text-xs">Estado *</span></label>
+                            <input
+                              type="text"
+                              placeholder="UF"
+                              className="input input-bordered input-sm"
+                              maxLength={2}
+                              value={inlineUnidadeForm.estado}
+                              onChange={(e) => setInlineUnidadeForm({ ...inlineUnidadeForm, estado: e.target.value.toUpperCase() })}
+                            />
+                          </div>
+                          <div className="form-control">
+                            <label className="label py-1"><span className="label-text text-xs">CEP</span></label>
+                            <input
+                              type="text"
+                              placeholder="00000-000"
+                              className="input input-bordered input-sm"
+                              value={inlineUnidadeForm.cep}
+                              onChange={(e) => setInlineUnidadeForm({ ...inlineUnidadeForm, cep: e.target.value })}
+                            />
+                          </div>
+                        </div>
+                        <div className="flex justify-end gap-2">
+                          <button
+                            type="button"
+                            className="btn btn-ghost btn-sm"
+                            onClick={() => {
+                              setShowInlineUnidadeForm(false);
+                              setEditingInlineUnidadeId(null);
+                              setInlineUnidadeForm({ nome: '', endereco: '', cidade: '', estado: '', cep: '' });
+                            }}
+                          >
+                            Cancelar
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-primary btn-sm gap-1"
+                            onClick={handleSalvarInlineUnidade}
+                            disabled={!inlineUnidadeForm.nome || !inlineUnidadeForm.endereco || !inlineUnidadeForm.cidade || !inlineUnidadeForm.estado}
+                          >
+                            <Check className="w-3.5 h-3.5" />
+                            {editingInlineUnidadeId ? 'Atualizar' : 'Adicionar'}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    {!showInlineUnidadeForm && unidadesPendentes.length > 0 && (
+                      <button type="button" className="btn btn-outline btn-sm gap-1 mt-2" onClick={handleAdicionarInlineUnidade}>
+                        <Plus className="w-3.5 h-3.5" />
+                        Adicionar outra unidade
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
             </div>
             <div className="modal-action">
               <button
@@ -651,6 +794,7 @@ export default function ClientesPage() {
                   setShowModal(false);
                   setEditingCliente(null);
                   setClienteForm(clienteFormInicial);
+                  setUnidadesPendentes([]);
                 }}
               >
                 Cancelar
@@ -664,7 +808,8 @@ export default function ClientesPage() {
                   !clienteForm.cnpj ||
                   !clienteForm.telefone ||
                   removerMascaraTelefone(clienteForm.telefone).length < 10 ||
-                  (clienteForm.email?.trim() ? !emailValido(clienteForm.email) : false)
+                  (clienteForm.email?.trim() ? !emailValido(clienteForm.email) : false) ||
+                  (!editingCliente && unidadesPendentes.length === 0)
                 }
               >
                 {saving ? (
@@ -674,155 +819,6 @@ export default function ClientesPage() {
                 )}
               </button>
             </div>
-          </div>
-          <div className="modal-backdrop" onClick={(e) => e.stopPropagation()} />
-        </div>
-      )}
-
-      {/* Modal Unidades */}
-      {clienteUnidades && (
-        <div
-          className="modal modal-open"
-          onClick={(e) => { if (e.target === e.currentTarget) e.stopPropagation(); }}
-        >
-          <div className="modal-box max-w-2xl">
-            <h3 className="font-bold text-lg mb-1">
-              Unidades — {clienteUnidades.nomeFantasia || clienteUnidades.razaoSocial}
-            </h3>
-            <p className="text-sm text-base-content/60 mb-4">
-              {clienteUnidades.unidades?.length || 0} unidade(s) cadastrada(s)
-            </p>
-
-            {!showUnidadeForm ? (
-              <>
-                <div className="space-y-2 max-h-[50vh] overflow-y-auto">
-                  {!clienteUnidades.unidades || clienteUnidades.unidades.length === 0 ? (
-                    <p className="text-sm text-base-content/50 py-6 text-center">
-                      Nenhuma unidade cadastrada
-                    </p>
-                  ) : (
-                    clienteUnidades.unidades.map((unidade) => (
-                      <div
-                        key={unidade.id}
-                        className="flex items-center gap-3 p-3 bg-base-200/30 rounded-lg group"
-                      >
-                        <MapPin className="w-4 h-4 text-secondary shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-sm truncate">{unidade.nome}</p>
-                          <p className="text-xs text-base-content/60 truncate">
-                            {unidade.endereco} — {unidade.cidade}, {unidade.estado}
-                          </p>
-                        </div>
-                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button
-                            onClick={() => handleEditarUnidade(unidade.id)}
-                            className="btn btn-ghost btn-xs"
-                          >
-                            <Edit className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            onClick={() => handleRemoverUnidade(unidade.id)}
-                            className="btn btn-ghost btn-xs text-error"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-                <div className="modal-action">
-                  <button className="btn btn-ghost" onClick={() => setClienteUnidades(null)}>
-                    Fechar
-                  </button>
-                  <button className="btn btn-primary gap-2" onClick={handleNovaUnidade}>
-                    <Plus className="w-4 h-4" />
-                    Nova Unidade
-                  </button>
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="space-y-4">
-                  <div className="form-control">
-                    <label className="label"><span className="label-text">Nome *</span></label>
-                    <input
-                      type="text"
-                      placeholder="Nome da unidade"
-                      className="input input-bordered"
-                      value={unidadeForm.nome}
-                      onChange={(e) => setUnidadeForm({ ...unidadeForm, nome: e.target.value })}
-                    />
-                  </div>
-                  <div className="form-control">
-                    <label className="label"><span className="label-text">Endereço *</span></label>
-                    <input
-                      type="text"
-                      placeholder="Rua, número, bairro"
-                      className="input input-bordered"
-                      value={unidadeForm.endereco}
-                      onChange={(e) => setUnidadeForm({ ...unidadeForm, endereco: e.target.value })}
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="form-control">
-                      <label className="label"><span className="label-text">Cidade *</span></label>
-                      <input
-                        type="text"
-                        placeholder="Cidade"
-                        className="input input-bordered"
-                        value={unidadeForm.cidade}
-                        onChange={(e) => setUnidadeForm({ ...unidadeForm, cidade: e.target.value })}
-                      />
-                    </div>
-                    <div className="form-control">
-                      <label className="label"><span className="label-text">Estado *</span></label>
-                      <input
-                        type="text"
-                        placeholder="UF"
-                        className="input input-bordered"
-                        maxLength={2}
-                        value={unidadeForm.estado}
-                        onChange={(e) => setUnidadeForm({ ...unidadeForm, estado: e.target.value.toUpperCase() })}
-                      />
-                    </div>
-                  </div>
-                  <div className="form-control">
-                    <label className="label"><span className="label-text">CEP</span></label>
-                    <input
-                      type="text"
-                      placeholder="00000-000"
-                      className="input input-bordered"
-                      value={unidadeForm.cep}
-                      onChange={(e) => setUnidadeForm({ ...unidadeForm, cep: e.target.value })}
-                    />
-                  </div>
-                </div>
-                <div className="modal-action">
-                  <button
-                    className="btn btn-ghost"
-                    onClick={() => {
-                      setShowUnidadeForm(false);
-                      setEditingUnidade(null);
-                      setUnidadeForm(unidadeFormInicial);
-                    }}
-                  >
-                    Voltar
-                  </button>
-                  <button
-                    className="btn btn-primary"
-                    onClick={handleSalvarUnidade}
-                    disabled={saving || !unidadeForm.nome || !unidadeForm.endereco || !unidadeForm.cidade || !unidadeForm.estado}
-                  >
-                    {saving ? (
-                      <><Loader2 className="w-4 h-4 animate-spin" /> Salvando...</>
-                    ) : (
-                      editingUnidade ? 'Atualizar' : 'Salvar'
-                    )}
-                  </button>
-                </div>
-              </>
-            )}
           </div>
           <div className="modal-backdrop" onClick={(e) => e.stopPropagation()} />
         </div>

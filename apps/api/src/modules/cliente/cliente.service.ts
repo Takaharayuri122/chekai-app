@@ -9,7 +9,7 @@ import {
   Optional,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { Cliente } from './entities/cliente.entity';
 import { Unidade } from './entities/unidade.entity';
 import { CriarClienteDto } from './dto/criar-cliente.dto';
@@ -36,13 +36,14 @@ export class ClienteService {
     private readonly auditoriaRepository: Repository<Auditoria>,
     @InjectRepository(Usuario)
     private readonly usuarioRepository: Repository<Usuario>,
+    private readonly dataSource: DataSource,
     @Inject(forwardRef(() => 'ValidacaoLimitesService'))
     @Optional()
     private readonly validacaoLimites?: any,
   ) {}
 
   /**
-   * Cria um novo cliente.
+   * Cria um novo cliente com suas unidades em uma transação atômica.
    */
   async criarCliente(
     dto: CriarClienteDto,
@@ -51,16 +52,13 @@ export class ClienteService {
     if (usuarioAutenticado && usuarioAutenticado.perfil !== PerfilUsuario.MASTER && usuarioAutenticado.perfil !== PerfilUsuario.GESTOR) {
       throw new ForbiddenException('Apenas Master e Gestor podem criar clientes');
     }
-    // Valida limite de clientes
     if (usuarioAutenticado && this.validacaoLimites && usuarioAutenticado.perfil !== PerfilUsuario.MASTER) {
       const gestorId = this.validacaoLimites.identificarGestorId(usuarioAutenticado);
       if (gestorId) {
         await this.validacaoLimites.validarLimiteClientes(gestorId);
       }
     }
-    // Normalizar CNPJ (remover máscara)
     const cnpjNormalizado = dto.cnpj.replace(/\D/g, '');
-    
     const clienteExistente = await this.clienteRepository.findOne({
       where: { cnpj: cnpjNormalizado },
     });
@@ -70,13 +68,22 @@ export class ClienteService {
     if (dto.auditorId) {
       await this.validarAuditorDoGestor(dto.auditorId, usuarioAutenticado);
     }
-    const cliente = this.clienteRepository.create({
-      ...dto,
-      cnpj: cnpjNormalizado,
-      gestorId: usuarioAutenticado?.id ?? undefined,
-      auditorId: dto.auditorId ?? null,
+    const { unidades: unidadesDto, ...dadosCliente } = dto;
+    return this.dataSource.transaction(async (manager) => {
+      const cliente = manager.create(Cliente, {
+        ...dadosCliente,
+        cnpj: cnpjNormalizado,
+        gestorId: usuarioAutenticado?.id ?? undefined,
+        auditorId: dadosCliente.auditorId ?? null,
+      });
+      const clienteSalvo = await manager.save(Cliente, cliente);
+      const unidades = unidadesDto.map((u) =>
+        manager.create(Unidade, { ...u, clienteId: clienteSalvo.id }),
+      );
+      await manager.save(Unidade, unidades);
+      clienteSalvo.unidades = unidades;
+      return clienteSalvo;
     });
-    return this.clienteRepository.save(cliente);
   }
 
   /**
@@ -143,7 +150,7 @@ export class ClienteService {
         return { cliente, warning: verificacao };
       }
     }
-    const { confirmado, ...dadosAtualizar } = dto;
+    const { confirmado, unidades, ...dadosAtualizar } = dto;
     Object.assign(cliente, dadosAtualizar);
     const clienteSalvo = await this.clienteRepository.save(cliente);
     return { cliente: clienteSalvo };
