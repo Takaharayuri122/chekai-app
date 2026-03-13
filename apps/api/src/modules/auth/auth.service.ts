@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, BadRequestException, NotFoundException, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { UsuarioService } from '../usuario/usuario.service';
@@ -15,6 +15,7 @@ import { ValidarOtpDto } from './dto/validar-otp.dto';
  */
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
   private readonly OTP_MOCK = '252622';
   constructor(
     private readonly usuarioService: UsuarioService,
@@ -166,9 +167,26 @@ export class AuthService {
    * Envia e-mail de convite para um usuário recém-criado.
    */
   async enviarConvite(email: string, nome: string, tokenConvite: string): Promise<void> {
-    const frontendUrl = this.configService.get<string>('FRONTEND_URL', 'http://localhost:3000');
+    const frontendUrl = this.obterFrontendUrl();
     const linkConvite = `${frontendUrl}/login?token=${tokenConvite}&email=${encodeURIComponent(email)}`;
     await this.emailService.enviarEmailConvite(email, nome, linkConvite);
+  }
+
+  /**
+   * Obtém a URL do frontend a partir da configuração.
+   * Tenta ConfigService e process.env como fallback.
+   * Em desenvolvimento, usa localhost se não configurada.
+   */
+  private obterFrontendUrl(): string {
+    const frontendUrl = this.configService.get<string>('FRONTEND_URL') || process.env.FRONTEND_URL;
+    if (frontendUrl) {
+      this.logger.log(`FRONTEND_URL resolvida: ${frontendUrl}`);
+      return frontendUrl;
+    }
+    if (this.isDevelopment()) {
+      return 'http://localhost:3000';
+    }
+    throw new Error('Variável de ambiente FRONTEND_URL não configurada. Obrigatória em produção.');
   }
 
   /**
