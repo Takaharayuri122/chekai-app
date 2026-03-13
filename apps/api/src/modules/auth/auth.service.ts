@@ -173,20 +173,15 @@ export class AuthService {
   }
 
   /**
-   * Obtém a URL do frontend a partir da configuração.
-   * Tenta ConfigService e process.env como fallback.
-   * Em desenvolvimento, usa localhost se não configurada.
+   * Obtém a URL do frontend a partir da variável de ambiente FRONTEND_URL.
    */
   private obterFrontendUrl(): string {
     const frontendUrl = this.configService.get<string>('FRONTEND_URL') || process.env.FRONTEND_URL;
-    if (frontendUrl) {
-      this.logger.log(`FRONTEND_URL resolvida: ${frontendUrl}`);
-      return frontendUrl;
+    if (!frontendUrl) {
+      throw new Error('Variável de ambiente FRONTEND_URL não configurada.');
     }
-    if (this.isDevelopment()) {
-      return 'http://localhost:3000';
-    }
-    throw new Error('Variável de ambiente FRONTEND_URL não configurada. Obrigatória em produção.');
+    this.logger.log(`FRONTEND_URL resolvida: ${frontendUrl}`);
+    return frontendUrl;
   }
 
   /**
