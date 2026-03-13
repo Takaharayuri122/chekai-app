@@ -168,7 +168,11 @@ export class ChecklistService {
     dto: Partial<CriarChecklistTemplateDto>,
     usuarioAutenticado?: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
   ): Promise<ChecklistTemplate> {
-    const template = await this.buscarTemplatePorId(id, usuarioAutenticado);
+    await this.buscarTemplatePorId(id, usuarioAutenticado);
+    const template = await this.templateRepository.findOne({ where: { id } });
+    if (!template) {
+      throw new NotFoundException('Template não encontrado');
+    }
     if (usuarioAutenticado && template.gestorId !== usuarioAutenticado.id) {
       throw new ForbiddenException('Apenas o gestor responsável pode editar este checklist');
     }
@@ -178,7 +182,8 @@ export class ChecklistService {
       tipoAtividade: dto.tipoAtividade ?? template.tipoAtividade,
       versao: dto.versao ?? template.versao,
     });
-    return this.templateRepository.save(template);
+    await this.templateRepository.save(template);
+    return this.buscarTemplatePorId(id, usuarioAutenticado);
   }
 
   /**
