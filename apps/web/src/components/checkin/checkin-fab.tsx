@@ -20,6 +20,7 @@ const ROTAS_SEM_CHECKIN: string[] = [
   '/admin/auditoria',
   '/admin/auditorias',
   '/admin/relatorios-tecnicos',
+  '/admin/clientes',
   '/auditoria',
 ];
 

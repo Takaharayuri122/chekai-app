@@ -9,7 +9,7 @@ import {
   Optional,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, In, Repository } from 'typeorm';
 import { Cliente } from './entities/cliente.entity';
 import { Unidade } from './entities/unidade.entity';
 import { CriarClienteDto } from './dto/criar-cliente.dto';
@@ -65,22 +65,28 @@ export class ClienteService {
     if (clienteExistente) {
       throw new ConflictException('CNPJ já cadastrado');
     }
-    if (dto.auditorId) {
-      await this.validarAuditorDoGestor(dto.auditorId, usuarioAutenticado);
-    }
-    const { unidades: unidadesDto, ...dadosCliente } = dto;
+    const auditores = await this.buscarEValidarAuditores(dto.auditorIds, usuarioAutenticado);
+    const { unidades: unidadesDto, auditorIds, ...dadosCliente } = dto;
     return this.dataSource.transaction(async (manager) => {
       const cliente = manager.create(Cliente, {
         ...dadosCliente,
         cnpj: cnpjNormalizado,
         gestorId: usuarioAutenticado?.id ?? undefined,
-        auditorId: dadosCliente.auditorId ?? null,
+        auditores,
       });
       const clienteSalvo = await manager.save(Cliente, cliente);
-      const unidades = unidadesDto.map((u) =>
-        manager.create(Unidade, { ...u, clienteId: clienteSalvo.id }),
+      const unidades = await Promise.all(
+        unidadesDto.map(async (u) => {
+          const { auditorIds: unidadeAuditorIds, ...dadosUnidade } = u;
+          const unidadeAuditores = await this.filtrarAuditoresUnidade(unidadeAuditorIds, auditores);
+          const unidade = manager.create(Unidade, {
+            ...dadosUnidade,
+            clienteId: clienteSalvo.id,
+            auditores: unidadeAuditores,
+          });
+          return manager.save(Unidade, unidade);
+        }),
       );
-      await manager.save(Unidade, unidades);
       clienteSalvo.unidades = unidades;
       return clienteSalvo;
     });
@@ -93,21 +99,24 @@ export class ClienteService {
     params: PaginationParams,
     usuarioAutenticado?: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
   ): Promise<PaginatedResult<Cliente>> {
-    let where: Record<string, unknown> = {};
+    const queryBuilder = this.clienteRepository
+      .createQueryBuilder('cliente')
+      .leftJoinAndSelect('cliente.unidades', 'unidade')
+      .leftJoinAndSelect('cliente.auditores', 'auditor')
+      .leftJoinAndSelect('unidade.auditores', 'unidadeAuditor');
     if (usuarioAutenticado) {
       if (usuarioAutenticado.perfil === PerfilUsuario.AUDITOR) {
-        where = { auditorId: usuarioAutenticado.id };
+        queryBuilder
+          .innerJoin('cliente.auditores', 'filtroAuditor', 'filtroAuditor.id = :auditorId', { auditorId: usuarioAutenticado.id });
       } else {
-        where = { gestorId: usuarioAutenticado.id };
+        queryBuilder.andWhere('cliente.gestorId = :gestorId', { gestorId: usuarioAutenticado.id });
       }
     }
-    const [items, total] = await this.clienteRepository.findAndCount({
-      where,
-      skip: (params.page - 1) * params.limit,
-      take: params.limit,
-      order: { criadoEm: 'DESC' },
-      relations: ['unidades', 'auditor'],
-    });
+    queryBuilder
+      .orderBy('cliente.criadoEm', 'DESC')
+      .skip((params.page - 1) * params.limit)
+      .take(params.limit);
+    const [items, total] = await queryBuilder.getManyAndCount();
     return createPaginatedResult(items, total, params.page, params.limit);
   }
 
@@ -120,7 +129,7 @@ export class ClienteService {
   ): Promise<Cliente> {
     const cliente = await this.clienteRepository.findOne({
       where: { id },
-      relations: ['unidades', 'auditor'],
+      relations: ['unidades', 'auditores', 'unidades.auditores'],
     });
     if (!cliente) {
       throw new NotFoundException('Cliente não encontrado');
@@ -132,7 +141,7 @@ export class ClienteService {
   }
 
   /**
-   * Atualiza um cliente. Retorna warning se houver auditorias abertas ao trocar auditor.
+   * Atualiza um cliente. Retorna warning se houver auditorias abertas ao remover auditores.
    */
   async atualizarCliente(
     id: string,
@@ -140,17 +149,20 @@ export class ClienteService {
     usuarioAutenticado?: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
   ): Promise<{ cliente: Cliente; warning?: { temAuditoriasAbertas: boolean; quantidade: number } }> {
     const cliente = await this.buscarClientePorId(id, usuarioAutenticado);
-    const isTrocandoAuditor = dto.auditorId !== undefined && dto.auditorId !== cliente.auditorId;
-    if (isTrocandoAuditor && dto.auditorId) {
-      await this.validarAuditorDoGestor(dto.auditorId, usuarioAutenticado);
-    }
-    if (isTrocandoAuditor && cliente.auditorId && !dto.confirmado) {
-      const verificacao = await this.verificarAuditoriasAbertasDoAuditor(id, cliente.auditorId);
-      if (verificacao.temAuditoriasAbertas) {
-        return { cliente, warning: verificacao };
+    if (dto.auditorIds !== undefined) {
+      const novosAuditores = await this.buscarEValidarAuditores(dto.auditorIds, usuarioAutenticado);
+      const idsAtuais = (cliente.auditores || []).map((a) => a.id);
+      const idsNovos = novosAuditores.map((a) => a.id);
+      const removidos = idsAtuais.filter((aid) => !idsNovos.includes(aid));
+      if (removidos.length > 0 && !dto.confirmado) {
+        const verificacao = await this.verificarAuditoriasAbertasDosAuditores(id, removidos);
+        if (verificacao.temAuditoriasAbertas) {
+          return { cliente, warning: verificacao };
+        }
       }
+      cliente.auditores = novosAuditores;
     }
-    const { confirmado, unidades, ...dadosAtualizar } = dto;
+    const { confirmado, unidades, auditorIds, ...dadosAtualizar } = dto;
     Object.assign(cliente, dadosAtualizar);
     const clienteSalvo = await this.clienteRepository.save(cliente);
     return { cliente: clienteSalvo };
@@ -175,8 +187,13 @@ export class ClienteService {
     dto: CriarUnidadeDto,
     usuarioAutenticado?: { id: string; perfil: PerfilUsuario },
   ): Promise<Unidade> {
-    await this.buscarClientePorId(dto.clienteId, usuarioAutenticado);
-    const unidade = this.unidadeRepository.create(dto);
+    const cliente = await this.buscarClientePorId(dto.clienteId, usuarioAutenticado);
+    const { auditorIds, ...dadosUnidade } = dto;
+    const auditores = await this.filtrarAuditoresUnidade(auditorIds, cliente.auditores || []);
+    const unidade = this.unidadeRepository.create({
+      ...dadosUnidade,
+      auditores,
+    });
     return this.unidadeRepository.save(unidade);
   }
 
@@ -186,6 +203,7 @@ export class ClienteService {
   async listarUnidadesPorCliente(clienteId: string): Promise<Unidade[]> {
     return this.unidadeRepository.find({
       where: { clienteId, ativo: true },
+      relations: ['auditores'],
       order: { nome: 'ASC' },
     });
   }
@@ -194,21 +212,21 @@ export class ClienteService {
    * Lista unidades ativas. Auditor vê apenas unidades de clientes vinculados a ele.
    */
   async listarTodasUnidades(usuarioAutenticado?: { id: string; perfil: PerfilUsuario; gestorId?: string | null }): Promise<Unidade[]> {
+    const queryBuilder = this.unidadeRepository
+      .createQueryBuilder('unidade')
+      .leftJoinAndSelect('unidade.cliente', 'cliente')
+      .leftJoinAndSelect('unidade.auditores', 'unidadeAuditor')
+      .where('unidade.ativo = true');
     if (usuarioAutenticado) {
-      const clienteWhere = usuarioAutenticado.perfil === PerfilUsuario.AUDITOR
-        ? { auditorId: usuarioAutenticado.id }
-        : { gestorId: usuarioAutenticado.id };
-      return this.unidadeRepository.find({
-        where: { ativo: true, cliente: clienteWhere },
-        relations: ['cliente'],
-        order: { nome: 'ASC' },
-      });
+      if (usuarioAutenticado.perfil === PerfilUsuario.AUDITOR) {
+        queryBuilder
+          .innerJoin('cliente.auditores', 'filtroAuditor', 'filtroAuditor.id = :auditorId', { auditorId: usuarioAutenticado.id });
+      } else {
+        queryBuilder.andWhere('cliente.gestorId = :gestorId', { gestorId: usuarioAutenticado.id });
+      }
     }
-    return this.unidadeRepository.find({
-      where: { ativo: true },
-      relations: ['cliente'],
-      order: { nome: 'ASC' },
-    });
+    queryBuilder.orderBy('unidade.nome', 'ASC');
+    return queryBuilder.getMany();
   }
 
   /**
@@ -220,7 +238,7 @@ export class ClienteService {
   ): Promise<Unidade> {
     const unidade = await this.unidadeRepository.findOne({
       where: { id },
-      relations: ['cliente'],
+      relations: ['cliente', 'cliente.auditores', 'auditores'],
     });
     if (!unidade) {
       throw new NotFoundException('Unidade não encontrada');
@@ -240,7 +258,12 @@ export class ClienteService {
     usuarioAutenticado?: { id: string; perfil: PerfilUsuario },
   ): Promise<Unidade> {
     const unidade = await this.buscarUnidadePorId(id, usuarioAutenticado);
-    Object.assign(unidade, dto);
+    if (dto.auditorIds !== undefined) {
+      const clienteAuditores = unidade.cliente?.auditores || [];
+      unidade.auditores = await this.filtrarAuditoresUnidade(dto.auditorIds, clienteAuditores);
+    }
+    const { auditorIds, ...dadosAtualizar } = dto;
+    Object.assign(unidade, dadosAtualizar);
     return this.unidadeRepository.save(unidade);
   }
 
@@ -257,28 +280,32 @@ export class ClienteService {
   }
 
   /**
-   * Verifica se o auditor atual do cliente possui auditorias em andamento.
+   * Verifica se auditores do cliente possuem auditorias em andamento.
    */
   async verificarTrocaAuditor(
     clienteId: string,
     usuarioAutenticado?: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
   ): Promise<{ temAuditoriasAbertas: boolean; quantidade: number }> {
     const cliente = await this.buscarClientePorId(clienteId, usuarioAutenticado);
-    if (!cliente.auditorId) {
+    const auditorIds = (cliente.auditores || []).map((a) => a.id);
+    if (auditorIds.length === 0) {
       return { temAuditoriasAbertas: false, quantidade: 0 };
     }
-    return this.verificarAuditoriasAbertasDoAuditor(clienteId, cliente.auditorId);
+    return this.verificarAuditoriasAbertasDosAuditores(clienteId, auditorIds);
   }
 
-  private async verificarAuditoriasAbertasDoAuditor(
+  private async verificarAuditoriasAbertasDosAuditores(
     clienteId: string,
-    auditorId: string,
+    auditorIds: string[],
   ): Promise<{ temAuditoriasAbertas: boolean; quantidade: number }> {
+    if (auditorIds.length === 0) {
+      return { temAuditoriasAbertas: false, quantidade: 0 };
+    }
     const quantidade = await this.auditoriaRepository
       .createQueryBuilder('auditoria')
       .innerJoin('auditoria.unidade', 'unidade')
       .where('unidade.clienteId = :clienteId', { clienteId })
-      .andWhere('auditoria.consultorId = :auditorId', { auditorId })
+      .andWhere('auditoria.consultorId IN (:...auditorIds)', { auditorIds })
       .andWhere('auditoria.status = :status', { status: StatusAuditoria.EM_ANDAMENTO })
       .getCount();
     return { temAuditoriasAbertas: quantidade > 0, quantidade };
@@ -289,7 +316,8 @@ export class ClienteService {
     usuario: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
   ): void {
     if (usuario.perfil === PerfilUsuario.AUDITOR) {
-      if (cliente.auditorId !== usuario.id) {
+      const isVinculado = (cliente.auditores || []).some((a) => a.id === usuario.id);
+      if (!isVinculado) {
         throw new ForbiddenException('Acesso negado a este cliente');
       }
       return;
@@ -299,22 +327,40 @@ export class ClienteService {
     }
   }
 
-  private async validarAuditorDoGestor(
-    auditorId: string,
+  private async buscarEValidarAuditores(
+    auditorIds: string[] | undefined,
     usuarioAutenticado?: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
-  ): Promise<void> {
-    const auditor = await this.usuarioRepository.findOne({ where: { id: auditorId } });
-    if (!auditor) {
-      throw new BadRequestException('Auditor não encontrado');
-    }
-    if (auditor.perfil !== PerfilUsuario.AUDITOR) {
-      throw new BadRequestException('O usuário selecionado não é um auditor');
-    }
-    if (usuarioAutenticado && usuarioAutenticado.perfil === PerfilUsuario.GESTOR) {
-      if (auditor.gestorId !== usuarioAutenticado.id) {
-        throw new ForbiddenException('Este auditor não pertence à sua equipe');
+  ): Promise<Usuario[]> {
+    if (!auditorIds || auditorIds.length === 0) return [];
+    const auditores = await this.usuarioRepository.find({
+      where: { id: In(auditorIds) },
+    });
+    for (const auditor of auditores) {
+      if (auditor.perfil !== PerfilUsuario.AUDITOR) {
+        throw new BadRequestException(`O usuário ${auditor.nome} não é um auditor`);
+      }
+      if (usuarioAutenticado && usuarioAutenticado.perfil === PerfilUsuario.GESTOR) {
+        if (auditor.gestorId !== usuarioAutenticado.id) {
+          throw new ForbiddenException(`O auditor ${auditor.nome} não pertence à sua equipe`);
+        }
       }
     }
+    if (auditores.length !== auditorIds.length) {
+      throw new BadRequestException('Um ou mais auditores não foram encontrados');
+    }
+    return auditores;
+  }
+
+  private async filtrarAuditoresUnidade(
+    auditorIds: string[] | undefined,
+    auditoresCliente: Usuario[],
+  ): Promise<Usuario[]> {
+    if (!auditorIds || auditorIds.length === 0) return [];
+    const idsCliente = auditoresCliente.map((a) => a.id);
+    const idsInvalidos = auditorIds.filter((id) => !idsCliente.includes(id));
+    if (idsInvalidos.length > 0) {
+      throw new BadRequestException('Os auditores da unidade devem estar vinculados ao cliente');
+    }
+    return auditoresCliente.filter((a) => auditorIds.includes(a.id));
   }
 }
-

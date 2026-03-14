@@ -1,4 +1,6 @@
 import {
+  IsArray,
+  IsEmail,
   IsNotEmpty,
   IsNumber,
   IsOptional,
@@ -51,15 +53,31 @@ export class CriarUnidadeDto {
   @IsOptional()
   raioGeofencing?: number;
 
-  @ApiPropertyOptional({ description: 'Nome do responsável local', example: 'Carlos Santos' })
+  @ApiProperty({ description: 'Nome do responsável local', example: 'Carlos Santos' })
   @IsString()
-  @IsOptional()
-  responsavel?: string;
+  @IsNotEmpty({ message: 'O nome do responsável é obrigatório' })
+  responsavel: string;
 
   @ApiPropertyOptional({ description: 'Telefone da unidade', example: '11999998888' })
   @IsString()
   @IsOptional()
   telefone?: string;
+
+  @ApiProperty({ description: 'E-mail da unidade', example: 'unidade@empresa.com' })
+  @IsEmail({}, { message: 'E-mail da unidade inválido' })
+  @IsNotEmpty({ message: 'O e-mail da unidade é obrigatório' })
+  email: string;
+
+  @ApiPropertyOptional({ description: 'WhatsApp da unidade', example: '11999998888' })
+  @IsString()
+  @IsOptional()
+  whatsapp?: string;
+
+  @ApiPropertyOptional({ description: 'IDs dos auditores vinculados à unidade' })
+  @IsArray()
+  @IsUUID('4', { each: true, message: 'ID do auditor inválido' })
+  @IsOptional()
+  auditorIds?: string[];
 
   @ApiProperty({ description: 'ID do cliente', example: 'uuid-do-cliente' })
   @IsUUID('4', { message: 'ID do cliente inválido' })

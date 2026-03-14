@@ -44,14 +44,17 @@ export function FormModal({
   closeOnBackdrop = true,
 }: FormModalProps) {
   const [isConfirmacaoAberta, setIsConfirmacaoAberta] = useState(false);
+  const [hasInteracted, setHasInteracted] = useState(false);
+
+  const isEfetivamenteSujo = isDirty && hasInteracted;
 
   const solicitarFechamento = useCallback(() => {
-    if (isDirty) {
+    if (isEfetivamenteSujo) {
       setIsConfirmacaoAberta(true);
       return;
     }
     onClose();
-  }, [isDirty, onClose]);
+  }, [isEfetivamenteSujo, onClose]);
 
   const confirmarFechamento = useCallback(() => {
     setIsConfirmacaoAberta(false);
@@ -73,6 +76,7 @@ export function FormModal({
   useEffect(() => {
     if (!open) {
       setIsConfirmacaoAberta(false);
+      setHasInteracted(false);
     }
   }, [open]);
 
@@ -123,7 +127,11 @@ export function FormModal({
                 </button>
               </div>
 
-              <div className="flex-1 overflow-y-auto overflow-x-hidden px-6 py-5">
+              <div
+                className="flex-1 overflow-y-auto overflow-x-hidden px-6 py-5"
+                onChangeCapture={() => setHasInteracted(true)}
+                onInputCapture={() => setHasInteracted(true)}
+              >
                 {children}
               </div>
 

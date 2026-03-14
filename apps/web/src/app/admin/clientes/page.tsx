@@ -10,6 +10,9 @@ import {
   Trash2,
   ImagePlus,
   Check,
+  ChevronDown,
+  X,
+  Users,
 } from 'lucide-react';
 import {
   AppLayout,
@@ -24,8 +27,10 @@ import {
 import { LogoCropperModal } from '@/components/ui/logo-cropper-modal';
 import {
   clienteService,
+  unidadeService,
   usuarioService,
   Cliente,
+  Unidade,
   Usuario,
   TipoAtividade,
   PerfilUsuario,
@@ -45,6 +50,18 @@ interface FiltrosCliente {
 }
 
 const FILTROS_INICIAIS: FiltrosCliente = { nome: '', tipoAtividade: '' };
+
+const INLINE_UNIDADE_INICIAL = {
+  nome: '',
+  endereco: '',
+  cidade: '',
+  estado: '',
+  cep: '',
+  email: '',
+  responsavel: '',
+  whatsapp: '',
+  auditorIds: [] as string[],
+};
 
 const aplicarMascaraCNPJ = (valor: string) => {
   const apenasNumeros = valor.replace(/\D/g, '');
@@ -93,6 +110,104 @@ const OPCOES_TIPO_ATIVIDADE = Object.entries(TIPO_ATIVIDADE_LABELS).map(
   ([value, label]) => ({ value, label }),
 );
 
+function MultiSelectAuditores({
+  auditores,
+  selecionados,
+  onChange,
+  label,
+  size = 'md',
+}: {
+  auditores: Usuario[];
+  selecionados: string[];
+  onChange: (ids: string[]) => void;
+  label: string;
+  size?: 'sm' | 'md';
+}) {
+  const [aberto, setAberto] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickFora = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setAberto(false);
+    };
+    document.addEventListener('mousedown', handleClickFora);
+    return () => document.removeEventListener('mousedown', handleClickFora);
+  }, []);
+
+  const toggleAuditor = (id: string) => {
+    onChange(
+      selecionados.includes(id)
+        ? selecionados.filter((s) => s !== id)
+        : [...selecionados, id],
+    );
+  };
+
+  const nomesSelecionados = auditores
+    .filter((a) => selecionados.includes(a.id))
+    .map((a) => a.nome);
+
+  const inputClass = size === 'sm' ? 'input-sm text-xs' : '';
+  const labelClass = size === 'sm' ? 'text-xs' : '';
+
+  return (
+    <div className="form-control" ref={ref}>
+      <label className="label py-1">
+        <span className={`label-text ${labelClass}`}>{label}</span>
+      </label>
+      <div className="relative">
+        <button
+          type="button"
+          className={`input input-bordered w-full flex items-center justify-between gap-2 ${inputClass}`}
+          onClick={() => setAberto(!aberto)}
+        >
+          <span className="truncate text-left flex-1">
+            {nomesSelecionados.length > 0
+              ? nomesSelecionados.join(', ')
+              : 'Selecionar auditores...'}
+          </span>
+          <ChevronDown className={`w-4 h-4 shrink-0 transition-transform ${aberto ? 'rotate-180' : ''}`} />
+        </button>
+        {aberto && (
+          <div className="absolute z-50 mt-1 w-full bg-base-100 border border-base-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+            {auditores.length === 0 ? (
+              <div className="p-3 text-sm text-base-content/50 text-center">Nenhum auditor disponível</div>
+            ) : (
+              auditores.map((auditor) => (
+                <label
+                  key={auditor.id}
+                  className="flex items-center gap-2 px-3 py-2 hover:bg-base-200 cursor-pointer"
+                >
+                  <input
+                    type="checkbox"
+                    className="checkbox checkbox-sm checkbox-primary"
+                    checked={selecionados.includes(auditor.id)}
+                    onChange={() => toggleAuditor(auditor.id)}
+                  />
+                  <span className="text-sm">{auditor.nome}</span>
+                </label>
+              ))
+            )}
+          </div>
+        )}
+      </div>
+      {nomesSelecionados.length > 0 && (
+        <div className="flex flex-wrap gap-1 mt-1">
+          {auditores
+            .filter((a) => selecionados.includes(a.id))
+            .map((a) => (
+              <span key={a.id} className="badge badge-sm badge-primary gap-1">
+                {a.nome}
+                <button type="button" onClick={() => toggleAuditor(a.id)}>
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ClientesPage() {
   const { isGestor, isMaster } = useAuthStore();
 
@@ -109,13 +224,16 @@ export default function ClientesPage() {
 
   const [auditores, setAuditores] = useState<Usuario[]>([]);
   const [showAvisoTrocaAuditor, setShowAvisoTrocaAuditor] = useState(false);
-  const [avisoTrocaInfo, setAvisoTrocaInfo] = useState<{ quantidade: number; nomeAuditor: string } | null>(null);
+  const [avisoTrocaInfo, setAvisoTrocaInfo] = useState<{ quantidade: number } | null>(null);
   const [dadosPendentesUpdate, setDadosPendentesUpdate] = useState<Record<string, unknown> | null>(null);
 
   const [unidadesPendentes, setUnidadesPendentes] = useState<UnidadePendente[]>([]);
   const [showInlineUnidadeForm, setShowInlineUnidadeForm] = useState(false);
   const [editingInlineUnidadeId, setEditingInlineUnidadeId] = useState<string | null>(null);
-  const [inlineUnidadeForm, setInlineUnidadeForm] = useState({ nome: '', endereco: '', cidade: '', estado: '', cep: '' });
+  const [inlineUnidadeForm, setInlineUnidadeForm] = useState({ ...INLINE_UNIDADE_INICIAL });
+  const [editingUnidadeId, setEditingUnidadeId] = useState<string | null>(null);
+  const [editUnidadeForm, setEditUnidadeForm] = useState({ ...INLINE_UNIDADE_INICIAL });
+  const [savingUnidade, setSavingUnidade] = useState(false);
 
   const [cropperOpen, setCropperOpen] = useState(false);
   const [cropperImageUrl, setCropperImageUrl] = useState('');
@@ -131,7 +249,7 @@ export default function ClientesPage() {
     telefone: '',
     email: '',
     tipoAtividade: TipoAtividade.OUTRO,
-    auditorId: '',
+    auditorIds: [] as string[],
   });
 
   const clienteFormInicial = {
@@ -141,7 +259,7 @@ export default function ClientesPage() {
     telefone: '',
     email: '',
     tipoAtividade: TipoAtividade.OUTRO,
-    auditorId: '',
+    auditorIds: [] as string[],
   };
 
   const clearPendingLogo = () => {
@@ -195,7 +313,9 @@ export default function ClientesPage() {
     setUnidadesPendentes([]);
     setShowInlineUnidadeForm(false);
     setEditingInlineUnidadeId(null);
-    setInlineUnidadeForm({ nome: '', endereco: '', cidade: '', estado: '', cep: '' });
+    setInlineUnidadeForm({ ...INLINE_UNIDADE_INICIAL });
+    setEditingUnidadeId(null);
+    setEditUnidadeForm({ ...INLINE_UNIDADE_INICIAL });
     clearPendingLogo();
     setShowModal(true);
   };
@@ -209,12 +329,12 @@ export default function ClientesPage() {
       telefone: cliente.telefone ? aplicarMascaraTelefone(cliente.telefone) : '',
       email: cliente.email || '',
       tipoAtividade: cliente.tipoAtividade,
-      auditorId: cliente.auditorId || '',
+      auditorIds: (cliente.auditores || []).map((a) => a.id),
     });
     setUnidadesPendentes([]);
     setShowInlineUnidadeForm(false);
     setEditingInlineUnidadeId(null);
-    setInlineUnidadeForm({ nome: '', endereco: '', cidade: '', estado: '', cep: '' });
+    setInlineUnidadeForm({ ...INLINE_UNIDADE_INICIAL });
     clearPendingLogo();
     setShowModal(true);
   };
@@ -225,15 +345,18 @@ export default function ClientesPage() {
       cnpj: removerMascaraCNPJ(clienteForm.cnpj),
       telefone: removerMascaraTelefone(clienteForm.telefone),
       email: clienteForm.email?.trim() || undefined,
-      auditorId: clienteForm.auditorId || undefined,
+      auditorIds: clienteForm.auditorIds.length > 0 ? clienteForm.auditorIds : undefined,
     };
     if (!editingCliente) {
       return {
         ...base,
-        unidades: unidadesPendentes.map(({ tempId, ...u }) => u),
+        unidades: unidadesPendentes.map(({ tempId, ...u }) => ({
+          ...u,
+          whatsapp: u.whatsapp ? removerMascaraTelefone(u.whatsapp) : undefined,
+        })),
       };
     }
-    return base;
+    return { ...base, auditorIds: clienteForm.auditorIds };
   };
 
   const salvarClienteComDados = async (dados: Record<string, unknown>, confirmado = false) => {
@@ -243,11 +366,7 @@ export default function ClientesPage() {
         const payload = confirmado ? { ...dados, confirmado: true } : dados;
         const resultado = await clienteService.atualizar(editingCliente.id, payload);
         if (resultado.warning?.temAuditoriasAbertas && !confirmado) {
-          const auditorAtual = auditores.find((a) => a.id === editingCliente.auditorId);
-          setAvisoTrocaInfo({
-            quantidade: resultado.warning.quantidade,
-            nomeAuditor: auditorAtual?.nome || 'o auditor atual',
-          });
+          setAvisoTrocaInfo({ quantidade: resultado.warning.quantidade });
           setDadosPendentesUpdate(dados);
           setShowAvisoTrocaAuditor(true);
           return;
@@ -272,6 +391,8 @@ export default function ClientesPage() {
       setEditingCliente(null);
       setClienteForm(clienteFormInicial);
       setUnidadesPendentes([]);
+      setEditingUnidadeId(null);
+      setEditUnidadeForm({ ...INLINE_UNIDADE_INICIAL });
     } catch {
       // interceptor
     } finally {
@@ -289,12 +410,39 @@ export default function ClientesPage() {
 
   const handleAdicionarInlineUnidade = () => {
     setEditingInlineUnidadeId(null);
-    setInlineUnidadeForm({ nome: '', endereco: '', cidade: '', estado: '', cep: '' });
+    setInlineUnidadeForm({ ...INLINE_UNIDADE_INICIAL });
     setShowInlineUnidadeForm(true);
   };
 
-  const handleSalvarInlineUnidade = () => {
+  const handleSalvarInlineUnidade = async () => {
     if (!inlineUnidadeForm.nome || !inlineUnidadeForm.endereco || !inlineUnidadeForm.cidade || !inlineUnidadeForm.estado) return;
+    if (!inlineUnidadeForm.email || !inlineUnidadeForm.responsavel) return;
+    if (editingCliente && !editingInlineUnidadeId) {
+      setSavingUnidade(true);
+      try {
+        await clienteService.criarUnidade(editingCliente.id, {
+          nome: inlineUnidadeForm.nome,
+          endereco: inlineUnidadeForm.endereco,
+          cidade: inlineUnidadeForm.cidade || undefined,
+          estado: inlineUnidadeForm.estado || undefined,
+          cep: inlineUnidadeForm.cep || undefined,
+          email: inlineUnidadeForm.email,
+          responsavel: inlineUnidadeForm.responsavel,
+          whatsapp: inlineUnidadeForm.whatsapp ? removerMascaraTelefone(inlineUnidadeForm.whatsapp) : undefined,
+          auditorIds: inlineUnidadeForm.auditorIds,
+        });
+        const clienteAtualizado = await clienteService.buscarPorId(editingCliente.id);
+        setEditingCliente(clienteAtualizado);
+        setShowInlineUnidadeForm(false);
+        setInlineUnidadeForm({ ...INLINE_UNIDADE_INICIAL });
+        toastService.success('Unidade adicionada com sucesso!');
+      } catch {
+        // interceptor
+      } finally {
+        setSavingUnidade(false);
+      }
+      return;
+    }
     if (editingInlineUnidadeId) {
       setUnidadesPendentes((prev) =>
         prev.map((u) => (u.tempId === editingInlineUnidadeId ? { ...inlineUnidadeForm, tempId: u.tempId } : u)),
@@ -304,19 +452,78 @@ export default function ClientesPage() {
     }
     setShowInlineUnidadeForm(false);
     setEditingInlineUnidadeId(null);
-    setInlineUnidadeForm({ nome: '', endereco: '', cidade: '', estado: '', cep: '' });
+    setInlineUnidadeForm({ ...INLINE_UNIDADE_INICIAL });
   };
 
   const handleEditarInlineUnidade = (tempId: string) => {
     const unidade = unidadesPendentes.find((u) => u.tempId === tempId);
     if (!unidade) return;
     setEditingInlineUnidadeId(tempId);
-    setInlineUnidadeForm({ nome: unidade.nome, endereco: unidade.endereco, cidade: unidade.cidade || '', estado: unidade.estado || '', cep: unidade.cep || '' });
+    setInlineUnidadeForm({
+      nome: unidade.nome,
+      endereco: unidade.endereco,
+      cidade: unidade.cidade || '',
+      estado: unidade.estado || '',
+      cep: unidade.cep || '',
+      email: unidade.email || '',
+      responsavel: unidade.responsavel || '',
+      whatsapp: unidade.whatsapp || '',
+      auditorIds: unidade.auditorIds || [],
+    });
     setShowInlineUnidadeForm(true);
   };
 
   const handleRemoverInlineUnidade = (tempId: string) => {
     setUnidadesPendentes((prev) => prev.filter((u) => u.tempId !== tempId));
+  };
+
+  const handleEditarUnidadeExistente = (unidade: Unidade) => {
+    setEditingUnidadeId(unidade.id);
+    setEditUnidadeForm({
+      nome: unidade.nome,
+      endereco: unidade.endereco,
+      cidade: unidade.cidade || '',
+      estado: unidade.estado || '',
+      cep: unidade.cep || '',
+      email: unidade.email || '',
+      responsavel: unidade.responsavel || '',
+      whatsapp: unidade.whatsapp ? aplicarMascaraTelefone(unidade.whatsapp) : '',
+      auditorIds: (unidade.auditores || []).map((a) => a.id),
+    });
+  };
+
+  const handleCancelarEditUnidade = () => {
+    setEditingUnidadeId(null);
+    setEditUnidadeForm({ ...INLINE_UNIDADE_INICIAL });
+  };
+
+  const handleSalvarUnidadeExistente = async () => {
+    if (!editingUnidadeId || !editingCliente) return;
+    if (!editUnidadeForm.nome || !editUnidadeForm.endereco || !editUnidadeForm.email || !editUnidadeForm.responsavel) return;
+    setSavingUnidade(true);
+    try {
+      await unidadeService.atualizar(editingUnidadeId, {
+        nome: editUnidadeForm.nome,
+        endereco: editUnidadeForm.endereco,
+        cidade: editUnidadeForm.cidade || undefined,
+        estado: editUnidadeForm.estado || undefined,
+        cep: editUnidadeForm.cep || undefined,
+        email: editUnidadeForm.email,
+        responsavel: editUnidadeForm.responsavel,
+        whatsapp: editUnidadeForm.whatsapp ? removerMascaraTelefone(editUnidadeForm.whatsapp) : undefined,
+        auditorIds: editUnidadeForm.auditorIds,
+        clienteId: editingCliente.id,
+      });
+      const clienteAtualizado = await clienteService.buscarPorId(editingCliente.id);
+      setEditingCliente(clienteAtualizado);
+      setEditingUnidadeId(null);
+      setEditUnidadeForm({ ...INLINE_UNIDADE_INICIAL });
+      toastService.success('Unidade atualizada com sucesso!');
+    } catch {
+      // interceptor
+    } finally {
+      setSavingUnidade(false);
+    }
   };
 
   const handleConfirmarTrocaAuditor = async () => {
@@ -384,6 +591,10 @@ export default function ClientesPage() {
     setPendingLogoRemover(true);
   };
 
+  const auditoresSelecionadosCliente = auditores.filter((a) =>
+    clienteForm.auditorIds.includes(a.id),
+  );
+
   const colunas: ColunaTabela<Cliente>[] = [
     {
       label: 'Cliente',
@@ -410,11 +621,14 @@ export default function ClientesPage() {
       ),
     },
     {
-      label: 'Telefone',
+      label: 'Auditores',
       render: (c) => (
-        <span className="text-sm text-base-content/70">
-          {c.telefone ? aplicarMascaraTelefone(c.telefone) : '—'}
-        </span>
+        <div className="flex items-center gap-1">
+          <Users className="w-3.5 h-3.5 text-base-content/50" />
+          <span className="badge badge-sm badge-ghost">
+            {c.auditores?.length || 0}
+          </span>
+        </div>
       ),
     },
     {
@@ -609,19 +823,12 @@ export default function ClientesPage() {
                 </div>
               </div>
               {(isGestor() || isMaster()) && (
-                <div className="form-control">
-                  <label className="label"><span className="label-text">Auditor Responsável</span></label>
-                  <select
-                    className="select select-bordered"
-                    value={clienteForm.auditorId}
-                    onChange={(e) => setClienteForm({ ...clienteForm, auditorId: e.target.value })}
-                  >
-                    <option value="">Nenhum auditor</option>
-                    {auditores.map((auditor) => (
-                      <option key={auditor.id} value={auditor.id}>{auditor.nome}</option>
-                    ))}
-                  </select>
-                </div>
+                <MultiSelectAuditores
+                  auditores={auditores}
+                  selecionados={clienteForm.auditorIds}
+                  onChange={(ids) => setClienteForm({ ...clienteForm, auditorIds: ids })}
+                  label="Auditores Responsáveis"
+                />
               )}
               <div className="form-control pt-2 border-t border-base-200">
                 <label className="label"><span className="label-text">Logo do cliente</span></label>
@@ -679,7 +886,7 @@ export default function ClientesPage() {
                       <span className="badge badge-sm badge-ghost">{editingCliente.unidades?.length || 0}</span>
                     )}
                   </div>
-                  {!editingCliente && !showInlineUnidadeForm && (
+                  {!showInlineUnidadeForm && !editingUnidadeId && (
                     <button type="button" className="btn btn-outline btn-sm gap-1" onClick={handleAdicionarInlineUnidade}>
                       <Plus className="w-3.5 h-3.5" />
                       Adicionar
@@ -688,50 +895,367 @@ export default function ClientesPage() {
                 </div>
 
                 {editingCliente ? (
-                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                  <div className="space-y-2 max-h-[400px] overflow-y-auto">
                     {!editingCliente.unidades || editingCliente.unidades.length === 0 ? (
                       <p className="text-sm text-base-content/50 py-4 text-center">
                         Nenhuma unidade cadastrada.
                       </p>
                     ) : (
                       editingCliente.unidades.map((unidade) => (
-                        <div key={unidade.id} className="flex items-center gap-3 p-2.5 bg-base-200/30 rounded-lg">
-                          <MapPin className="w-4 h-4 text-secondary shrink-0" />
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium text-sm truncate">{unidade.nome}</p>
-                            <p className="text-xs text-base-content/60 truncate">
-                              {unidade.endereco} — {unidade.cidade}, {unidade.estado}
-                            </p>
-                          </div>
+                        <div key={unidade.id}>
+                          {editingUnidadeId === unidade.id ? (
+                            <div className="p-3 border border-primary/30 rounded-lg bg-base-200/20 space-y-3">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div className="form-control">
+                                  <label className="label py-1"><span className="label-text text-xs">Nome *</span></label>
+                                  <input
+                                    type="text"
+                                    placeholder="Nome da unidade"
+                                    className="input input-bordered input-sm"
+                                    value={editUnidadeForm.nome}
+                                    onChange={(e) => setEditUnidadeForm({ ...editUnidadeForm, nome: e.target.value })}
+                                  />
+                                </div>
+                                <div className="form-control">
+                                  <label className="label py-1"><span className="label-text text-xs">Endereço *</span></label>
+                                  <input
+                                    type="text"
+                                    placeholder="Rua, número, bairro"
+                                    className="input input-bordered input-sm"
+                                    value={editUnidadeForm.endereco}
+                                    onChange={(e) => setEditUnidadeForm({ ...editUnidadeForm, endereco: e.target.value })}
+                                  />
+                                </div>
+                              </div>
+                              <div className="grid grid-cols-3 gap-3">
+                                <div className="form-control">
+                                  <label className="label py-1"><span className="label-text text-xs">Cidade *</span></label>
+                                  <input
+                                    type="text"
+                                    placeholder="Cidade"
+                                    className="input input-bordered input-sm"
+                                    value={editUnidadeForm.cidade}
+                                    onChange={(e) => setEditUnidadeForm({ ...editUnidadeForm, cidade: e.target.value })}
+                                  />
+                                </div>
+                                <div className="form-control">
+                                  <label className="label py-1"><span className="label-text text-xs">Estado *</span></label>
+                                  <input
+                                    type="text"
+                                    placeholder="UF"
+                                    className="input input-bordered input-sm"
+                                    maxLength={2}
+                                    value={editUnidadeForm.estado}
+                                    onChange={(e) => setEditUnidadeForm({ ...editUnidadeForm, estado: e.target.value.toUpperCase() })}
+                                  />
+                                </div>
+                                <div className="form-control">
+                                  <label className="label py-1"><span className="label-text text-xs">CEP</span></label>
+                                  <input
+                                    type="text"
+                                    placeholder="00000-000"
+                                    className="input input-bordered input-sm"
+                                    value={editUnidadeForm.cep}
+                                    onChange={(e) => setEditUnidadeForm({ ...editUnidadeForm, cep: e.target.value })}
+                                  />
+                                </div>
+                              </div>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div className="form-control">
+                                  <label className="label py-1"><span className="label-text text-xs">E-mail da Unidade *</span></label>
+                                  <input
+                                    type="email"
+                                    placeholder="email@unidade.com"
+                                    className={`input input-bordered input-sm ${editUnidadeForm.email && !emailValido(editUnidadeForm.email) ? 'input-error' : ''}`}
+                                    value={editUnidadeForm.email}
+                                    onChange={(e) => setEditUnidadeForm({ ...editUnidadeForm, email: e.target.value })}
+                                  />
+                                </div>
+                                <div className="form-control">
+                                  <label className="label py-1"><span className="label-text text-xs">Responsável *</span></label>
+                                  <input
+                                    type="text"
+                                    placeholder="Nome do responsável"
+                                    className="input input-bordered input-sm"
+                                    value={editUnidadeForm.responsavel}
+                                    onChange={(e) => setEditUnidadeForm({ ...editUnidadeForm, responsavel: e.target.value })}
+                                  />
+                                </div>
+                              </div>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div className="form-control">
+                                  <label className="label py-1"><span className="label-text text-xs">WhatsApp</span></label>
+                                  <input
+                                    type="tel"
+                                    placeholder="(00) 00000-0000"
+                                    className="input input-bordered input-sm"
+                                    value={editUnidadeForm.whatsapp}
+                                    onChange={(e) => setEditUnidadeForm({ ...editUnidadeForm, whatsapp: aplicarMascaraTelefone(e.target.value) })}
+                                    maxLength={15}
+                                  />
+                                </div>
+                              </div>
+                              {auditoresSelecionadosCliente.length > 0 && (
+                                <MultiSelectAuditores
+                                  auditores={auditoresSelecionadosCliente}
+                                  selecionados={editUnidadeForm.auditorIds}
+                                  onChange={(ids) => setEditUnidadeForm({ ...editUnidadeForm, auditorIds: ids })}
+                                  label="Auditores da Unidade"
+                                  size="sm"
+                                />
+                              )}
+                              <div className="flex justify-end gap-2">
+                                <button
+                                  type="button"
+                                  className="btn btn-ghost btn-sm"
+                                  onClick={handleCancelarEditUnidade}
+                                  disabled={savingUnidade}
+                                >
+                                  Cancelar
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn btn-primary btn-sm gap-1"
+                                  onClick={handleSalvarUnidadeExistente}
+                                  disabled={
+                                    savingUnidade ||
+                                    !editUnidadeForm.nome ||
+                                    !editUnidadeForm.endereco ||
+                                    !editUnidadeForm.email ||
+                                    !editUnidadeForm.responsavel ||
+                                    (editUnidadeForm.email ? !emailValido(editUnidadeForm.email) : false)
+                                  }
+                                >
+                                  {savingUnidade ? (
+                                    <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Salvando...</>
+                                  ) : (
+                                    <><Check className="w-3.5 h-3.5" /> Salvar</>
+                                  )}
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="p-2.5 bg-base-200/30 rounded-lg space-y-1 group">
+                              <div className="flex items-center gap-3">
+                                <MapPin className="w-4 h-4 text-secondary shrink-0" />
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-medium text-sm truncate">{unidade.nome}</p>
+                                  <p className="text-xs text-base-content/60 truncate">
+                                    {unidade.endereco} — {unidade.cidade}, {unidade.estado}
+                                  </p>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => handleEditarUnidadeExistente(unidade)}
+                                  className="btn btn-ghost btn-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                                >
+                                  <Edit className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                              <div className="ml-7 flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-base-content/60">
+                                {unidade.responsavel && <span>Responsável: {unidade.responsavel}</span>}
+                                {unidade.email && <span>E-mail: {unidade.email}</span>}
+                                {unidade.whatsapp && <span>WhatsApp: {aplicarMascaraTelefone(unidade.whatsapp)}</span>}
+                              </div>
+                              {unidade.auditores && unidade.auditores.length > 0 && (
+                                <div className="ml-7 flex flex-wrap gap-1">
+                                  {unidade.auditores.map((a) => (
+                                    <span key={a.id} className="badge badge-xs badge-outline">{a.nome}</span>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
                       ))
+                    )}
+                    {showInlineUnidadeForm && (
+                      <div className="mt-3 p-3 border border-base-300 rounded-lg bg-base-200/20 space-y-3">
+                        <p className="text-xs font-medium text-base-content/70">Nova unidade</p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div className="form-control">
+                            <label className="label py-1"><span className="label-text text-xs">Nome *</span></label>
+                            <input
+                              type="text"
+                              placeholder="Nome da unidade"
+                              className="input input-bordered input-sm"
+                              value={inlineUnidadeForm.nome}
+                              onChange={(e) => setInlineUnidadeForm({ ...inlineUnidadeForm, nome: e.target.value })}
+                            />
+                          </div>
+                          <div className="form-control">
+                            <label className="label py-1"><span className="label-text text-xs">Endereço *</span></label>
+                            <input
+                              type="text"
+                              placeholder="Rua, número, bairro"
+                              className="input input-bordered input-sm"
+                              value={inlineUnidadeForm.endereco}
+                              onChange={(e) => setInlineUnidadeForm({ ...inlineUnidadeForm, endereco: e.target.value })}
+                            />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-3 gap-3">
+                          <div className="form-control">
+                            <label className="label py-1"><span className="label-text text-xs">Cidade *</span></label>
+                            <input
+                              type="text"
+                              placeholder="Cidade"
+                              className="input input-bordered input-sm"
+                              value={inlineUnidadeForm.cidade}
+                              onChange={(e) => setInlineUnidadeForm({ ...inlineUnidadeForm, cidade: e.target.value })}
+                            />
+                          </div>
+                          <div className="form-control">
+                            <label className="label py-1"><span className="label-text text-xs">Estado *</span></label>
+                            <input
+                              type="text"
+                              placeholder="UF"
+                              className="input input-bordered input-sm"
+                              maxLength={2}
+                              value={inlineUnidadeForm.estado}
+                              onChange={(e) => setInlineUnidadeForm({ ...inlineUnidadeForm, estado: e.target.value.toUpperCase() })}
+                            />
+                          </div>
+                          <div className="form-control">
+                            <label className="label py-1"><span className="label-text text-xs">CEP</span></label>
+                            <input
+                              type="text"
+                              placeholder="00000-000"
+                              className="input input-bordered input-sm"
+                              value={inlineUnidadeForm.cep}
+                              onChange={(e) => setInlineUnidadeForm({ ...inlineUnidadeForm, cep: e.target.value })}
+                            />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div className="form-control">
+                            <label className="label py-1"><span className="label-text text-xs">E-mail da Unidade *</span></label>
+                            <input
+                              type="email"
+                              placeholder="email@unidade.com"
+                              className={`input input-bordered input-sm ${inlineUnidadeForm.email && !emailValido(inlineUnidadeForm.email) ? 'input-error' : ''}`}
+                              value={inlineUnidadeForm.email}
+                              onChange={(e) => setInlineUnidadeForm({ ...inlineUnidadeForm, email: e.target.value })}
+                            />
+                          </div>
+                          <div className="form-control">
+                            <label className="label py-1"><span className="label-text text-xs">Responsável *</span></label>
+                            <input
+                              type="text"
+                              placeholder="Nome do responsável"
+                              className="input input-bordered input-sm"
+                              value={inlineUnidadeForm.responsavel}
+                              onChange={(e) => setInlineUnidadeForm({ ...inlineUnidadeForm, responsavel: e.target.value })}
+                            />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div className="form-control">
+                            <label className="label py-1"><span className="label-text text-xs">WhatsApp</span></label>
+                            <input
+                              type="tel"
+                              placeholder="(00) 00000-0000"
+                              className="input input-bordered input-sm"
+                              value={inlineUnidadeForm.whatsapp}
+                              onChange={(e) => setInlineUnidadeForm({ ...inlineUnidadeForm, whatsapp: aplicarMascaraTelefone(e.target.value) })}
+                              maxLength={15}
+                            />
+                          </div>
+                        </div>
+                        {auditoresSelecionadosCliente.length > 0 && (
+                          <MultiSelectAuditores
+                            auditores={auditoresSelecionadosCliente}
+                            selecionados={inlineUnidadeForm.auditorIds || []}
+                            onChange={(ids) => setInlineUnidadeForm({ ...inlineUnidadeForm, auditorIds: ids })}
+                            label="Auditores da Unidade"
+                            size="sm"
+                          />
+                        )}
+                        <div className="flex justify-end gap-2">
+                          <button
+                            type="button"
+                            className="btn btn-ghost btn-sm"
+                            onClick={() => {
+                              setShowInlineUnidadeForm(false);
+                              setEditingInlineUnidadeId(null);
+                              setInlineUnidadeForm({ ...INLINE_UNIDADE_INICIAL });
+                            }}
+                            disabled={savingUnidade}
+                          >
+                            Cancelar
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-primary btn-sm gap-1"
+                            onClick={() => handleSalvarInlineUnidade()}
+                            disabled={
+                              savingUnidade ||
+                              !inlineUnidadeForm.nome ||
+                              !inlineUnidadeForm.endereco ||
+                              !inlineUnidadeForm.cidade ||
+                              !inlineUnidadeForm.estado ||
+                              !inlineUnidadeForm.email ||
+                              !inlineUnidadeForm.responsavel ||
+                              (inlineUnidadeForm.email ? !emailValido(inlineUnidadeForm.email) : false)
+                            }
+                          >
+                            {savingUnidade ? (
+                              <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Salvando...</>
+                            ) : (
+                              <><Check className="w-3.5 h-3.5" /> Adicionar</>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    {!showInlineUnidadeForm && (editingCliente?.unidades?.length || 0) > 0 && (
+                      <button type="button" className="btn btn-outline btn-sm gap-1 mt-2" onClick={handleAdicionarInlineUnidade}>
+                        <Plus className="w-3.5 h-3.5" />
+                        Adicionar outra unidade
+                      </button>
                     )}
                   </div>
                 ) : (
                   <>
-                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                    <div className="space-y-2 max-h-60 overflow-y-auto">
                       {unidadesPendentes.length === 0 && !showInlineUnidadeForm && (
                         <p className="text-sm text-base-content/50 py-4 text-center">
                           Nenhuma unidade adicionada. Adicione pelo menos uma unidade para salvar o cliente.
                         </p>
                       )}
                       {unidadesPendentes.map((unidade) => (
-                        <div key={unidade.tempId} className="flex items-center gap-3 p-2.5 bg-base-200/30 rounded-lg group">
-                          <MapPin className="w-4 h-4 text-secondary shrink-0" />
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium text-sm truncate">{unidade.nome}</p>
-                            <p className="text-xs text-base-content/60 truncate">
-                              {unidade.endereco}{unidade.cidade ? ` — ${unidade.cidade}` : ''}{unidade.estado ? `, ${unidade.estado}` : ''}
-                            </p>
+                        <div key={unidade.tempId} className="p-2.5 bg-base-200/30 rounded-lg group space-y-1">
+                          <div className="flex items-center gap-3">
+                            <MapPin className="w-4 h-4 text-secondary shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-sm truncate">{unidade.nome}</p>
+                              <p className="text-xs text-base-content/60 truncate">
+                                {unidade.endereco}{unidade.cidade ? ` — ${unidade.cidade}` : ''}{unidade.estado ? `, ${unidade.estado}` : ''}
+                              </p>
+                            </div>
+                            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button type="button" onClick={() => handleEditarInlineUnidade(unidade.tempId)} className="btn btn-ghost btn-xs">
+                                <Edit className="w-3.5 h-3.5" />
+                              </button>
+                              <button type="button" onClick={() => handleRemoverInlineUnidade(unidade.tempId)} className="btn btn-ghost btn-xs text-error">
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
                           </div>
-                          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button type="button" onClick={() => handleEditarInlineUnidade(unidade.tempId)} className="btn btn-ghost btn-xs">
-                              <Edit className="w-3.5 h-3.5" />
-                            </button>
-                            <button type="button" onClick={() => handleRemoverInlineUnidade(unidade.tempId)} className="btn btn-ghost btn-xs text-error">
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
+                          <div className="ml-7 flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-base-content/60">
+                            {unidade.responsavel && <span>Responsável: {unidade.responsavel}</span>}
+                            {unidade.email && <span>E-mail: {unidade.email}</span>}
+                            {unidade.whatsapp && <span>WhatsApp: {aplicarMascaraTelefone(unidade.whatsapp)}</span>}
                           </div>
+                          {unidade.auditorIds && unidade.auditorIds.length > 0 && (
+                            <div className="ml-7 flex flex-wrap gap-1">
+                              {auditores
+                                .filter((a) => unidade.auditorIds?.includes(a.id))
+                                .map((a) => (
+                                  <span key={a.id} className="badge badge-xs badge-outline">{a.nome}</span>
+                                ))}
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -792,6 +1316,50 @@ export default function ClientesPage() {
                             />
                           </div>
                         </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div className="form-control">
+                            <label className="label py-1"><span className="label-text text-xs">E-mail da Unidade *</span></label>
+                            <input
+                              type="email"
+                              placeholder="email@unidade.com"
+                              className={`input input-bordered input-sm ${inlineUnidadeForm.email && !emailValido(inlineUnidadeForm.email) ? 'input-error' : ''}`}
+                              value={inlineUnidadeForm.email}
+                              onChange={(e) => setInlineUnidadeForm({ ...inlineUnidadeForm, email: e.target.value })}
+                            />
+                          </div>
+                          <div className="form-control">
+                            <label className="label py-1"><span className="label-text text-xs">Responsável *</span></label>
+                            <input
+                              type="text"
+                              placeholder="Nome do responsável"
+                              className="input input-bordered input-sm"
+                              value={inlineUnidadeForm.responsavel}
+                              onChange={(e) => setInlineUnidadeForm({ ...inlineUnidadeForm, responsavel: e.target.value })}
+                            />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div className="form-control">
+                            <label className="label py-1"><span className="label-text text-xs">WhatsApp</span></label>
+                            <input
+                              type="tel"
+                              placeholder="(00) 00000-0000"
+                              className="input input-bordered input-sm"
+                              value={inlineUnidadeForm.whatsapp}
+                              onChange={(e) => setInlineUnidadeForm({ ...inlineUnidadeForm, whatsapp: aplicarMascaraTelefone(e.target.value) })}
+                              maxLength={15}
+                            />
+                          </div>
+                        </div>
+                        {auditoresSelecionadosCliente.length > 0 && (
+                          <MultiSelectAuditores
+                            auditores={auditoresSelecionadosCliente}
+                            selecionados={inlineUnidadeForm.auditorIds}
+                            onChange={(ids) => setInlineUnidadeForm({ ...inlineUnidadeForm, auditorIds: ids })}
+                            label="Auditores da Unidade"
+                            size="sm"
+                          />
+                        )}
                         <div className="flex justify-end gap-2">
                           <button
                             type="button"
@@ -799,7 +1367,7 @@ export default function ClientesPage() {
                             onClick={() => {
                               setShowInlineUnidadeForm(false);
                               setEditingInlineUnidadeId(null);
-                              setInlineUnidadeForm({ nome: '', endereco: '', cidade: '', estado: '', cep: '' });
+                              setInlineUnidadeForm({ ...INLINE_UNIDADE_INICIAL });
                             }}
                           >
                             Cancelar
@@ -808,7 +1376,15 @@ export default function ClientesPage() {
                             type="button"
                             className="btn btn-primary btn-sm gap-1"
                             onClick={handleSalvarInlineUnidade}
-                            disabled={!inlineUnidadeForm.nome || !inlineUnidadeForm.endereco || !inlineUnidadeForm.cidade || !inlineUnidadeForm.estado}
+                            disabled={
+                              !inlineUnidadeForm.nome ||
+                              !inlineUnidadeForm.endereco ||
+                              !inlineUnidadeForm.cidade ||
+                              !inlineUnidadeForm.estado ||
+                              !inlineUnidadeForm.email ||
+                              !inlineUnidadeForm.responsavel ||
+                              (inlineUnidadeForm.email ? !emailValido(inlineUnidadeForm.email) : false)
+                            }
                           >
                             <Check className="w-3.5 h-3.5" />
                             {editingInlineUnidadeId ? 'Atualizar' : 'Adicionar'}
@@ -859,7 +1435,7 @@ export default function ClientesPage() {
         title="Auditorias em andamento"
         message={
           avisoTrocaInfo
-            ? `O auditor ${avisoTrocaInfo.nomeAuditor} possui ${avisoTrocaInfo.quantidade} auditoria(s) em andamento neste cliente. Ele poderá finalizá-la(s), mas não poderá iniciar novas auditorias.`
+            ? `Existem ${avisoTrocaInfo.quantidade} auditoria(s) em andamento com auditores que estão sendo removidos deste cliente. Eles poderão finalizá-las, mas não poderão iniciar novas auditorias.`
             : ''
         }
         confirmLabel="Continuar"

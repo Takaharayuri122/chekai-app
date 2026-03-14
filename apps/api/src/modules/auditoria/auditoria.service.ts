@@ -670,12 +670,13 @@ export class AuditoriaService {
   private async validarVinculoAuditorCliente(unidadeId: string, auditorId: string): Promise<void> {
     const unidade = await this.unidadeRepository.findOne({
       where: { id: unidadeId },
-      relations: ['cliente'],
+      relations: ['cliente', 'cliente.auditores'],
     });
     if (!unidade || !unidade.cliente) {
       throw new NotFoundException('Unidade não encontrada');
     }
-    if (unidade.cliente.auditorId !== auditorId) {
+    const isVinculado = (unidade.cliente.auditores || []).some((a) => a.id === auditorId);
+    if (!isVinculado) {
       throw new ForbiddenException('Você não está vinculado a este cliente');
     }
   }

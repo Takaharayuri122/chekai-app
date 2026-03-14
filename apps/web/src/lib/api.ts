@@ -370,8 +370,7 @@ export interface Cliente {
   responsavelTecnico?: string;
   ativo: boolean;
   logoUrl?: string | null;
-  auditorId?: string | null;
-  auditor?: Usuario;
+  auditores?: Usuario[];
   unidades: Unidade[];
   criadoEm: string;
   atualizadoEm: string;
@@ -383,6 +382,10 @@ export interface CriarUnidadeInline {
   cidade?: string;
   estado?: string;
   cep?: string;
+  email: string;
+  responsavel: string;
+  whatsapp?: string;
+  auditorIds?: string[];
 }
 
 export interface CriarClienteRequest {
@@ -393,7 +396,7 @@ export interface CriarClienteRequest {
   telefone?: string;
   tipoAtividade?: TipoAtividade;
   responsavelTecnico?: string;
-  auditorId?: string;
+  auditorIds?: string[];
   unidades: CriarUnidadeInline[];
 }
 
@@ -405,7 +408,10 @@ export interface Unidade {
   estado: string;
   cep?: string;
   telefone?: string;
-  responsavel?: string;
+  responsavel: string;
+  email: string;
+  whatsapp?: string;
+  auditores?: Usuario[];
   ativo: boolean;
 }
 
@@ -416,7 +422,10 @@ export interface CriarUnidadeRequest {
   estado?: string;
   cep?: string;
   telefone?: string;
-  responsavel?: string;
+  responsavel: string;
+  email: string;
+  whatsapp?: string;
+  auditorIds?: string[];
   clienteId: string;
 }
 
