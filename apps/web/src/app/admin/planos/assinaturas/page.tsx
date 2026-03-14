@@ -10,7 +10,7 @@ import {
   Calendar,
   X,
 } from 'lucide-react';
-import { AppLayout, PageHeader, EmptyState } from '@/components';
+import { AppLayout, PageHeader, EmptyState, FormModal } from '@/components';
 import {
   planoService,
   usuarioService,
@@ -207,117 +207,119 @@ export default function AssinaturasPage() {
         )}
       </div>
 
-      {/* Modal de criação */}
-      {showModal && (
-        <div className="modal modal-open">
-          <div className="modal-box max-w-2xl">
-            <h3 className="font-bold text-lg mb-4">Nova Assinatura</h3>
-            <div className="space-y-4">
-              <div className="form-control">
-                <label className="label">
-                  <span className="label-text">Gestor *</span>
-                </label>
-                <select
-                  className="select select-bordered"
-                  value={assinaturaForm.gestorId}
-                  onChange={(e) =>
-                    setAssinaturaForm({
-                      ...assinaturaForm,
-                      gestorId: e.target.value,
-                    })
-                  }
-                >
-                  <option value="">Selecione um gestor</option>
-                  {gestores.map((gestor) => (
-                    <option key={gestor.id} value={gestor.id}>
-                      {gestor.nome} ({gestor.email})
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="form-control">
-                <label className="label">
-                  <span className="label-text">Plano *</span>
-                </label>
-                <select
-                  className="select select-bordered"
-                  value={assinaturaForm.planoId}
-                  onChange={(e) =>
-                    setAssinaturaForm({
-                      ...assinaturaForm,
-                      planoId: e.target.value,
-                    })
-                  }
-                >
-                  <option value="">Selecione um plano</option>
-                  {planos
-                    .filter((p) => p.ativo)
-                    .map((plano) => (
-                      <option key={plano.id} value={plano.id}>
-                        {plano.nome}
-                      </option>
-                    ))}
-                </select>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="form-control">
-                  <label className="label">
-                    <span className="label-text">Data de Início</span>
-                  </label>
-                  <input
-                    type="date"
-                    className="input input-bordered"
-                    value={assinaturaForm.dataInicio}
-                    onChange={(e) =>
-                      setAssinaturaForm({
-                        ...assinaturaForm,
-                        dataInicio: e.target.value,
-                      })
-                    }
-                  />
-                </div>
-                <div className="form-control">
-                  <label className="label">
-                    <span className="label-text">Data de Fim (opcional)</span>
-                  </label>
-                  <input
-                    type="date"
-                    className="input input-bordered"
-                    value={assinaturaForm.dataFim}
-                    onChange={(e) =>
-                      setAssinaturaForm({
-                        ...assinaturaForm,
-                        dataFim: e.target.value,
-                      })
-                    }
-                  />
-                </div>
-              </div>
-            </div>
-            <div className="modal-action">
-              <button
-                className="btn btn-ghost"
-                onClick={handleFecharModal}
-              >
-                Cancelar
-              </button>
-              <button
-                className="btn btn-primary"
-                onClick={handleCriarAssinatura}
-                disabled={
-                  saving || !assinaturaForm.gestorId || !assinaturaForm.planoId
+      <FormModal
+        open={showModal}
+        onClose={handleFecharModal}
+        title="Nova Assinatura"
+        maxWidth="2xl"
+        isDirty={Boolean(assinaturaForm.gestorId || assinaturaForm.planoId)}
+        footer={
+          <>
+            <button
+              className="btn btn-ghost"
+              onClick={handleFecharModal}
+            >
+              Cancelar
+            </button>
+            <button
+              className="btn btn-primary"
+              onClick={handleCriarAssinatura}
+              disabled={
+                saving || !assinaturaForm.gestorId || !assinaturaForm.planoId
+              }
+            >
+              {saving ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                'Criar'
+              )}
+            </button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <div className="form-control">
+            <label className="label">
+              <span className="label-text">Gestor *</span>
+            </label>
+            <select
+              className="select select-bordered"
+              value={assinaturaForm.gestorId}
+              onChange={(e) =>
+                setAssinaturaForm({
+                  ...assinaturaForm,
+                  gestorId: e.target.value,
+                })
+              }
+            >
+              <option value="">Selecione um gestor</option>
+              {gestores.map((gestor) => (
+                <option key={gestor.id} value={gestor.id}>
+                  {gestor.nome} ({gestor.email})
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="form-control">
+            <label className="label">
+              <span className="label-text">Plano *</span>
+            </label>
+            <select
+              className="select select-bordered"
+              value={assinaturaForm.planoId}
+              onChange={(e) =>
+                setAssinaturaForm({
+                  ...assinaturaForm,
+                  planoId: e.target.value,
+                })
+              }
+            >
+              <option value="">Selecione um plano</option>
+              {planos
+                .filter((p) => p.ativo)
+                .map((plano) => (
+                  <option key={plano.id} value={plano.id}>
+                    {plano.nome}
+                  </option>
+                ))}
+            </select>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text">Data de Início</span>
+              </label>
+              <input
+                type="date"
+                className="input input-bordered"
+                value={assinaturaForm.dataInicio}
+                onChange={(e) =>
+                  setAssinaturaForm({
+                    ...assinaturaForm,
+                    dataInicio: e.target.value,
+                  })
                 }
-              >
-                {saving ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  'Criar'
-                )}
-              </button>
+              />
+            </div>
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text">Data de Fim (opcional)</span>
+              </label>
+              <input
+                type="date"
+                className="input input-bordered"
+                value={assinaturaForm.dataFim}
+                onChange={(e) =>
+                  setAssinaturaForm({
+                    ...assinaturaForm,
+                    dataFim: e.target.value,
+                  })
+                }
+              />
             </div>
           </div>
         </div>
-      )}
+      </FormModal>
     </AppLayout>
   );
 }

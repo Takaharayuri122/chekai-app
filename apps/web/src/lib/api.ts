@@ -774,6 +774,16 @@ export const checklistService = {
     await api.put(`/checklists/templates/${templateId}/grupos/reordenar`, grupoIds);
   },
 
+  async duplicarGrupo(grupoId: string): Promise<ChecklistGrupo> {
+    const response = await api.post(`/checklists/grupos/${grupoId}/duplicar`);
+    return response.data.data;
+  },
+
+  async duplicarItem(itemId: string): Promise<TemplateItem> {
+    const response = await api.post(`/checklists/itens/${itemId}/duplicar`);
+    return response.data.data;
+  },
+
   async previewImportacao(file: File): Promise<ImportacaoPreview> {
     const formData = new FormData();
     formData.append('file', file);

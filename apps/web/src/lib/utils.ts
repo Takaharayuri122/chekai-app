@@ -1,12 +1,28 @@
+const OPCOES_SEM_PONTUACAO = ['nao_aplicavel', 'nao_avaliado'];
+
 /**
- * Calcula pontuações em sequência decrescente a partir da primeira opção.
- * Ex: pontuacaoPrimeira=1, quantidade=4 → [1, 0, -1, -2]
+ * Verifica se uma opção de resposta não participa do cálculo de pontuação.
+ */
+export function isOpcaoSemPontuacao(valor: string): boolean {
+  return OPCOES_SEM_PONTUACAO.includes(valor.toLowerCase());
+}
+
+/**
+ * Calcula pontuações em sequência decrescente, pulando opções sem pontuação (N/A, Não Avaliado).
+ * Retorna um array com a pontuação para cada opção na ordem original.
+ * Opções sem pontuação recebem `null`.
  */
 export function calcularPontuacoesEmSequencia(
   pontuacaoPrimeira: number,
-  quantidade: number,
-): number[] {
-  return Array.from({ length: quantidade }, (_, i) => pontuacaoPrimeira - i);
+  opcoes: string[],
+): (number | null)[] {
+  let decremento = 0;
+  return opcoes.map((opcao) => {
+    if (isOpcaoSemPontuacao(opcao)) return null;
+    const pontuacao = pontuacaoPrimeira - decremento;
+    decremento++;
+    return pontuacao;
+  });
 }
 
 type TemplateItemPontuacao = {
@@ -17,14 +33,16 @@ type TemplateItemPontuacao = {
 } | null | undefined;
 
 /**
- * Calcula a pontuação de uma opção: usa valor explícito da config quando existir,
- * senão usa o algoritmo sequencial (base da primeira opção menos o índice).
+ * Calcula a pontuação de uma opção: retorna null para opções sem pontuação,
+ * usa valor explícito da config quando existir, senão usa o algoritmo sequencial
+ * (base da primeira opção pontuável menos o índice relativo).
  */
 export function calcularPontuacaoOpcao(
   templateItem: TemplateItemPontuacao,
   valorResposta: string,
 ): number {
   if (!templateItem) return 0;
+  if (isOpcaoSemPontuacao(valorResposta)) return 0;
   const configs = templateItem.opcoesRespostaConfig || [];
   const configOpcao = configs.find((c) => c.valor === valorResposta);
   if (configOpcao?.pontuacao != null && typeof configOpcao.pontuacao === 'number') {
@@ -34,8 +52,9 @@ export function calcularPontuacaoOpcao(
   const opcoesOrdenadas = templateItem.usarRespostasPersonalizadas && templateItem.opcoesResposta?.length
     ? templateItem.opcoesResposta
     : ['conforme', 'nao_conforme', 'nao_aplicavel', 'nao_avaliado'];
-  const indice = opcoesOrdenadas.indexOf(valorResposta);
-  const configPrimeira = configs.find((c) => c.valor === opcoesOrdenadas[0]);
+  const opcoesPontuaveis = opcoesOrdenadas.filter((op) => !isOpcaoSemPontuacao(op));
+  const indice = opcoesPontuaveis.indexOf(valorResposta);
+  const configPrimeira = configs.find((c) => c.valor === opcoesPontuaveis[0]);
   const base = configPrimeira?.pontuacao != null && typeof configPrimeira.pontuacao === 'number'
     ? configPrimeira.pontuacao
     : 1;
@@ -44,15 +63,16 @@ export function calcularPontuacaoOpcao(
 
 /**
  * Retorna a pontuação máxima possível para um item: máximo entre as pontuações
- * de cada opção, usando a mesma regra de cálculo (explícita ou sequencial).
+ * de cada opção pontuável, usando a mesma regra de cálculo.
  */
 export function getPontuacaoMaximaItem(templateItem: TemplateItemPontuacao): number {
   if (!templateItem) return 0;
   const opcoesOrdenadas = templateItem.usarRespostasPersonalizadas && templateItem.opcoesResposta?.length
     ? templateItem.opcoesResposta
     : ['conforme', 'nao_conforme', 'nao_aplicavel', 'nao_avaliado'];
-  if (opcoesOrdenadas.length === 0) return 0;
-  const pontuacoes = opcoesOrdenadas.map((valor) =>
+  const opcoesPontuaveis = opcoesOrdenadas.filter((op) => !isOpcaoSemPontuacao(op));
+  if (opcoesPontuaveis.length === 0) return 0;
+  const pontuacoes = opcoesPontuaveis.map((valor) =>
     calcularPontuacaoOpcao(templateItem, valor),
   );
   return Math.max(...pontuacoes);

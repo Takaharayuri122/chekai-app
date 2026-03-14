@@ -14,7 +14,7 @@ import {
   Building2,
   Coins,
 } from 'lucide-react';
-import { AppLayout, PageHeader, EmptyState } from '@/components';
+import { AppLayout, PageHeader, EmptyState, FormModal } from '@/components';
 import {
   planoService,
   Plano,
@@ -249,148 +249,148 @@ export default function PlanosPage() {
         )}
       </div>
 
-      {/* Modal de criação/edição */}
-      {showModal && (
-        <div className="modal modal-open">
-          <div className="modal-box max-w-2xl">
-            <h3 className="font-bold text-lg mb-4">
-              {editingPlano ? 'Editar Plano' : 'Novo Plano'}
-            </h3>
-            <div className="space-y-4">
-              <div className="form-control">
-                <label className="label">
-                  <span className="label-text">Nome *</span>
-                </label>
-                <input
-                  type="text"
-                  className="input input-bordered"
-                  value={planoForm.nome}
-                  onChange={(e) =>
-                    setPlanoForm({ ...planoForm, nome: e.target.value })
-                  }
-                />
-              </div>
-              <div className="form-control">
-                <label className="label">
-                  <span className="label-text">Descrição</span>
-                </label>
-                <textarea
-                  className="textarea textarea-bordered"
-                  value={planoForm.descricao}
-                  onChange={(e) =>
-                    setPlanoForm({ ...planoForm, descricao: e.target.value })
-                  }
-                  rows={3}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="form-control">
-                  <label className="label">
-                    <span className="label-text">Limite de Usuários *</span>
-                  </label>
-                  <input
-                    type="number"
-                    className="input input-bordered"
-                    min="0"
-                    value={planoForm.limiteUsuarios}
-                    onChange={(e) =>
-                      setPlanoForm({
-                        ...planoForm,
-                        limiteUsuarios: parseInt(e.target.value) || 0,
-                      })
-                    }
-                  />
-                </div>
-                <div className="form-control">
-                  <label className="label">
-                    <span className="label-text">Limite de Auditorias *</span>
-                  </label>
-                  <input
-                    type="number"
-                    className="input input-bordered"
-                    min="0"
-                    value={planoForm.limiteAuditorias}
-                    onChange={(e) =>
-                      setPlanoForm({
-                        ...planoForm,
-                        limiteAuditorias: parseInt(e.target.value) || 0,
-                      })
-                    }
-                  />
-                </div>
-                <div className="form-control">
-                  <label className="label">
-                    <span className="label-text">Limite de Clientes *</span>
-                  </label>
-                  <input
-                    type="number"
-                    className="input input-bordered"
-                    min="0"
-                    value={planoForm.limiteClientes}
-                    onChange={(e) =>
-                      setPlanoForm({
-                        ...planoForm,
-                        limiteClientes: parseInt(e.target.value) || 0,
-                      })
-                    }
-                  />
-                </div>
-                <div className="form-control">
-                  <label className="label">
-                    <span className="label-text">Limite de Créditos *</span>
-                  </label>
-                  <input
-                    type="number"
-                    className="input input-bordered"
-                    min="0"
-                    value={planoForm.limiteCreditos}
-                    onChange={(e) =>
-                      setPlanoForm({
-                        ...planoForm,
-                        limiteCreditos: parseInt(e.target.value) || 0,
-                      })
-                    }
-                  />
-                </div>
-              </div>
-              <div className="form-control">
-                <label className="label cursor-pointer">
-                  <span className="label-text">Plano Ativo</span>
-                  <input
-                    type="checkbox"
-                    className="toggle toggle-primary"
-                    checked={planoForm.ativo}
-                    onChange={(e) =>
-                      setPlanoForm({ ...planoForm, ativo: e.target.checked })
-                    }
-                  />
-                </label>
-              </div>
+      <FormModal
+        open={showModal}
+        onClose={handleFecharModal}
+        title={editingPlano ? 'Editar Plano' : 'Novo Plano'}
+        maxWidth="2xl"
+        isDirty={Boolean(planoForm.nome || planoForm.descricao)}
+        footer={
+          <>
+            <button
+              className="btn btn-ghost"
+              onClick={handleFecharModal}
+            >
+              Cancelar
+            </button>
+            <button
+              className="btn btn-primary"
+              onClick={handleCriarPlano}
+              disabled={saving || !planoForm.nome}
+            >
+              {saving ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : editingPlano ? (
+                'Salvar'
+              ) : (
+                'Criar'
+              )}
+            </button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <div className="form-control">
+            <label className="label">
+              <span className="label-text">Nome *</span>
+            </label>
+            <input
+              type="text"
+              className="input input-bordered"
+              value={planoForm.nome}
+              onChange={(e) =>
+                setPlanoForm({ ...planoForm, nome: e.target.value })
+              }
+            />
+          </div>
+          <div className="form-control">
+            <label className="label">
+              <span className="label-text">Descrição</span>
+            </label>
+            <textarea
+              className="textarea textarea-bordered"
+              value={planoForm.descricao}
+              onChange={(e) =>
+                setPlanoForm({ ...planoForm, descricao: e.target.value })
+              }
+              rows={3}
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text">Limite de Usuários *</span>
+              </label>
+              <input
+                type="number"
+                className="input input-bordered"
+                min="0"
+                value={planoForm.limiteUsuarios}
+                onChange={(e) =>
+                  setPlanoForm({
+                    ...planoForm,
+                    limiteUsuarios: parseInt(e.target.value) || 0,
+                  })
+                }
+              />
             </div>
-            <div className="modal-action">
-              <button
-                className="btn btn-ghost"
-                onClick={handleFecharModal}
-              >
-                Cancelar
-              </button>
-              <button
-                className="btn btn-primary"
-                onClick={handleCriarPlano}
-                disabled={saving || !planoForm.nome}
-              >
-                {saving ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : editingPlano ? (
-                  'Salvar'
-                ) : (
-                  'Criar'
-                )}
-              </button>
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text">Limite de Auditorias *</span>
+              </label>
+              <input
+                type="number"
+                className="input input-bordered"
+                min="0"
+                value={planoForm.limiteAuditorias}
+                onChange={(e) =>
+                  setPlanoForm({
+                    ...planoForm,
+                    limiteAuditorias: parseInt(e.target.value) || 0,
+                  })
+                }
+              />
+            </div>
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text">Limite de Clientes *</span>
+              </label>
+              <input
+                type="number"
+                className="input input-bordered"
+                min="0"
+                value={planoForm.limiteClientes}
+                onChange={(e) =>
+                  setPlanoForm({
+                    ...planoForm,
+                    limiteClientes: parseInt(e.target.value) || 0,
+                  })
+                }
+              />
+            </div>
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text">Limite de Créditos *</span>
+              </label>
+              <input
+                type="number"
+                className="input input-bordered"
+                min="0"
+                value={planoForm.limiteCreditos}
+                onChange={(e) =>
+                  setPlanoForm({
+                    ...planoForm,
+                    limiteCreditos: parseInt(e.target.value) || 0,
+                  })
+                }
+              />
             </div>
           </div>
+          <div className="form-control">
+            <label className="label cursor-pointer">
+              <span className="label-text">Plano Ativo</span>
+              <input
+                type="checkbox"
+                className="toggle toggle-primary"
+                checked={planoForm.ativo}
+                onChange={(e) =>
+                  setPlanoForm({ ...planoForm, ativo: e.target.checked })
+                }
+              />
+            </label>
+          </div>
         </div>
-      )}
+      </FormModal>
     </AppLayout>
   );
 }

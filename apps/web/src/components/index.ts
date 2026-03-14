@@ -7,6 +7,7 @@ export { PageHeader } from './ui/page-header';
 export { StatCard } from './ui/stat-card';
 export { EmptyState } from './ui/empty-state';
 export { ConfirmDialog } from './ui/confirm-dialog';
+export { FormModal } from './ui/form-modal';
 export { Emoji } from './ui/emoji';
 export { Tooltip } from './ui/tooltip';
 export { EditorRichTextBasico } from './ui/editor-richtext-basico';

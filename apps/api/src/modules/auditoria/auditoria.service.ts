@@ -354,9 +354,14 @@ export class AuditoriaService {
    * Calcula a pontuação de uma opção de resposta: usa valor explícito da config quando existir,
    * senão usa o algoritmo sequencial (base da primeira opção menos o índice).
    */
+  private isOpcaoSemPontuacao(valor: string): boolean {
+    return ['nao_aplicavel', 'nao_avaliado'].includes(valor.toLowerCase());
+  }
+
   private calcularPontuacaoOpcao(templateItem: TemplateItem | null | undefined, valorResposta: string): number {
     if (!templateItem) return 0;
     if (templateItem.tipoRespostaCustomizada === TipoRespostaCustomizada.TEXTO) return 0;
+    if (this.isOpcaoSemPontuacao(valorResposta)) return 0;
     const configs = templateItem.opcoesRespostaConfig || [];
     const configOpcao = configs.find((c) => c.valor === valorResposta);
     if (configOpcao?.pontuacao != null && typeof configOpcao.pontuacao === 'number') {
@@ -366,8 +371,9 @@ export class AuditoriaService {
     const opcoesOrdenadas = templateItem.usarRespostasPersonalizadas && templateItem.opcoesResposta?.length
       ? templateItem.opcoesResposta
       : ['conforme', 'nao_conforme', 'nao_aplicavel', 'nao_avaliado'];
-    const indice = opcoesOrdenadas.indexOf(valorResposta);
-    const configPrimeira = configs.find((c) => c.valor === opcoesOrdenadas[0]);
+    const opcoesPontuaveis = opcoesOrdenadas.filter((op) => !this.isOpcaoSemPontuacao(op));
+    const indice = opcoesPontuaveis.indexOf(valorResposta);
+    const configPrimeira = configs.find((c) => c.valor === opcoesPontuaveis[0]);
     const base = configPrimeira?.pontuacao != null && typeof configPrimeira.pontuacao === 'number'
       ? configPrimeira.pontuacao
       : 1;
@@ -376,7 +382,7 @@ export class AuditoriaService {
 
   /**
    * Retorna a pontuação máxima possível para um item: máximo entre as pontuações
-   * de cada opção, usando a mesma regra de cálculo (explícita ou sequencial).
+   * de cada opção pontuável, usando a mesma regra de cálculo.
    */
   private getPontuacaoMaximaItem(templateItem: TemplateItem | null | undefined): number {
     if (!templateItem) return 0;
@@ -384,8 +390,9 @@ export class AuditoriaService {
     const opcoesOrdenadas = templateItem.usarRespostasPersonalizadas && templateItem.opcoesResposta?.length
       ? templateItem.opcoesResposta
       : ['conforme', 'nao_conforme', 'nao_aplicavel', 'nao_avaliado'];
-    if (opcoesOrdenadas.length === 0) return 0;
-    const pontuacoes = opcoesOrdenadas.map((valor) =>
+    const opcoesPontuaveis = opcoesOrdenadas.filter((op) => !this.isOpcaoSemPontuacao(op));
+    if (opcoesPontuaveis.length === 0) return 0;
+    const pontuacoes = opcoesPontuaveis.map((valor) =>
       this.calcularPontuacaoOpcao(templateItem, valor),
     );
     return Math.max(...pontuacoes);
@@ -414,11 +421,14 @@ export class AuditoriaService {
         `Existem ${itensObrigatoriosNaoAvaliados.length} itens obrigatórios não avaliados`,
       );
     }
-    const pontuacaoObtida = auditoria.itens.reduce(
+    const itensPontuaveis = auditoria.itens.filter(
+      (item) => !this.isOpcaoSemPontuacao(item.resposta || ''),
+    );
+    const pontuacaoObtida = itensPontuaveis.reduce(
       (acc, item) => acc + item.pontuacao,
       0,
     );
-    const pontuacaoMaxima = auditoria.itens.reduce(
+    const pontuacaoMaxima = itensPontuaveis.reduce(
       (acc, item) => acc + this.getPontuacaoMaximaItem(item.templateItem),
       0,
     );
@@ -576,11 +586,14 @@ export class AuditoriaService {
       const grupos = Array.from(itensPorGrupo.entries()).map(([grupoId, itens]) => {
         const primeiroItem = itens[0];
         const grupoNome = primeiroItem.templateItem?.grupo?.nome || 'Sem Grupo';
-        const pontuacaoPossivel = itens.reduce(
+        const itensPontuaveisGrupo = itens.filter(
+          (item) => !this.isOpcaoSemPontuacao(item.resposta || ''),
+        );
+        const pontuacaoPossivel = itensPontuaveisGrupo.reduce(
           (acc, item) => acc + this.getPontuacaoMaximaItem(item.templateItem),
           0,
         );
-        const pontuacaoObtida = itens.reduce((acc, item) => acc + item.pontuacao, 0);
+        const pontuacaoObtida = itensPontuaveisGrupo.reduce((acc, item) => acc + item.pontuacao, 0);
         const naoConformidades = itens.filter(
           (item) => item.resposta === RespostaItem.NAO_CONFORME,
         ).length;

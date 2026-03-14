@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
@@ -18,6 +18,11 @@ import {
   FolderOpen,
   ChevronDown,
   ChevronUp,
+  Copy,
+  Camera,
+  MessageSquare,
+  Star,
+  HelpCircle,
 } from 'lucide-react';
 import {
   DndContext,
@@ -36,7 +41,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { AppLayout } from '@/components';
+import { AppLayout, Tooltip, ConfirmDialog, FormModal } from '@/components';
 import {
   checklistService,
   ChecklistTemplate,
@@ -55,7 +60,7 @@ import {
   RESPOSTAS_PADRAO,
 } from '@/lib/api';
 import { toastService } from '@/lib/toast';
-import { calcularPontuacoesEmSequencia } from '@/lib/utils';
+import { calcularPontuacoesEmSequencia, isOpcaoSemPontuacao } from '@/lib/utils';
 
 interface ItemFormData extends CriarTemplateItemRequest {
   id?: string;
@@ -91,9 +96,12 @@ interface SortableItemProps {
   index: number;
   onEdit: (item: TemplateItem) => void;
   onRemove: (itemId: string) => void;
+  onDuplicate: (itemId: string) => void;
+  isDuplicating?: boolean;
+  isHighlighted?: boolean;
 }
 
-function SortableItem({ item, index, onEdit, onRemove }: SortableItemProps) {
+function SortableItem({ item, index, onEdit, onRemove, onDuplicate, isDuplicating, isHighlighted }: SortableItemProps) {
   const {
     attributes,
     listeners,
@@ -113,45 +121,72 @@ function SortableItem({ item, index, onEdit, onRemove }: SortableItemProps) {
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-start gap-3 p-3 bg-base-100 rounded-lg border border-base-200 group hover:border-primary/30 transition-colors cursor-pointer"
+      className={`flex items-start gap-2 sm:gap-3 p-2 sm:p-3 bg-base-100 rounded-lg border group hover:border-primary/30 transition-all cursor-pointer ${
+        isHighlighted ? 'border-info shadow-lg shadow-info/20 ring-2 ring-info/30' : 'border-base-200'
+      }`}
       onClick={() => onEdit(item)}
     >
       <div
         {...attributes}
         {...listeners}
-        className="cursor-grab active:cursor-grabbing text-base-content/40 hover:text-base-content/60 transition-colors"
+        className="cursor-grab active:cursor-grabbing text-base-content/40 hover:text-base-content/60 transition-colors flex-shrink-0 flex items-center justify-center w-6 h-6"
         onClick={(e) => e.stopPropagation()}
       >
         <GripVertical className="w-5 h-5" />
       </div>
-      <span className="text-sm font-bold text-base-content/40 min-w-[24px]">{index + 1}.</span>
+      <span className="text-xs sm:text-sm font-bold text-base-content/40 min-w-[20px] sm:min-w-[24px] flex-shrink-0">{index + 1}.</span>
       <div className="flex-1 min-w-0">
-        <p className="text-sm">{item.pergunta}</p>
-        <div className="flex flex-wrap items-center gap-1 mt-1">
-          <span className="badge badge-ghost badge-xs">{CATEGORIA_ITEM_LABELS[item.categoria]}</span>
-          <span className={`badge badge-xs ${getCriticidadeBadge(item.criticidade)}`}>
+        <p className="text-xs sm:text-sm leading-relaxed break-words">{item.pergunta}</p>
+        <div className="flex flex-wrap items-center gap-1.5 mt-1.5 sm:mt-1">
+          <span className="badge badge-ghost badge-sm px-2 py-1">{CATEGORIA_ITEM_LABELS[item.categoria]}</span>
+          <span className={`badge badge-sm px-2 py-1 ${getCriticidadeBadge(item.criticidade)}`}>
             {CRITICIDADE_LABELS[item.criticidade]}
           </span>
           {item.legislacaoReferencia && (
-            <span className="text-xs text-base-content/50">{item.legislacaoReferencia}</span>
+            <span className="text-xs text-base-content/50 truncate max-w-[120px] sm:max-w-none">{item.legislacaoReferencia}</span>
           )}
           {item.usarRespostasPersonalizadas && (
-            <span className="badge badge-secondary badge-xs gap-1">
-              <Settings className="w-3 h-3" />Pers.
+            <span className="badge badge-secondary badge-sm gap-1 px-2 py-1">
+              <Settings className="w-2.5 h-2.5 sm:w-3 sm:h-3" />Pers.
             </span>
           )}
         </div>
       </div>
-      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onRemove(item.id);
-          }}
-          className="btn btn-ghost btn-xs text-error"
-        >
-          <Trash2 className="w-4 h-4" />
-        </button>
+      <div className="flex items-center gap-0.5 flex-shrink-0">
+        <Tooltip content="Duplicar pergunta">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              if (!isDuplicating) onDuplicate(item.id);
+            }}
+            className="btn btn-ghost btn-square btn-xs text-info"
+            disabled={isDuplicating}
+          >
+            {isDuplicating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Copy className="w-4 h-4" />}
+          </button>
+        </Tooltip>
+        <Tooltip content="Editar pergunta">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit(item);
+            }}
+            className="btn btn-ghost btn-square btn-xs"
+          >
+            <Edit className="w-4 h-4" />
+          </button>
+        </Tooltip>
+        <Tooltip content="Remover pergunta">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onRemove(item.id);
+            }}
+            className="btn btn-ghost btn-square btn-xs text-error"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </Tooltip>
       </div>
     </div>
   );
@@ -207,6 +242,18 @@ export default function NovoTemplatePage() {
     secao: '',
   });
   const [novaOpcaoResposta, setNovaOpcaoResposta] = useState('');
+
+  // Dialogs de confirmação de exclusão
+  const [confirmRemoverGrupo, setConfirmRemoverGrupo] = useState<string | null>(null);
+  const [confirmRemoverItem, setConfirmRemoverItem] = useState<string | null>(null);
+
+  // Loading e highlight para duplicações
+  const [duplicatingGrupoId, setDuplicatingGrupoId] = useState<string | null>(null);
+  const [duplicatingItemId, setDuplicatingItemId] = useState<string | null>(null);
+  const [highlightedGrupoId, setHighlightedGrupoId] = useState<string | null>(null);
+  const [highlightedItemId, setHighlightedItemId] = useState<string | null>(null);
+  const grupoRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const itemRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   // Sensores para drag and drop
   const sensors = useSensors(
@@ -410,8 +457,35 @@ export default function NovoTemplatePage() {
     }
   };
 
+  const scrollToAndHighlight = useCallback((type: 'grupo' | 'item', id: string) => {
+    const refs = type === 'grupo' ? grupoRefs : itemRefs;
+    const setHighlight = type === 'grupo' ? setHighlightedGrupoId : setHighlightedItemId;
+    requestAnimationFrame(() => {
+      const el = refs.current[id];
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setHighlight(id);
+        setTimeout(() => setHighlight(null), 3000);
+      }
+    });
+  }, []);
+
+  const handleDuplicarGrupo = async (grupoId: string) => {
+    try {
+      setDuplicatingGrupoId(grupoId);
+      const novoGrupo = await checklistService.duplicarGrupo(grupoId);
+      toastService.success('Grupo duplicado com sucesso!');
+      await loadTemplate();
+      setExpandedGrupos((prev) => new Set([...prev, novoGrupo.id]));
+      setTimeout(() => scrollToAndHighlight('grupo', novoGrupo.id), 300);
+    } catch {
+      // Erro já é tratado pelo interceptor
+    } finally {
+      setDuplicatingGrupoId(null);
+    }
+  };
+
   const handleRemoverGrupo = async (grupoId: string) => {
-    if (!confirm('Tem certeza que deseja remover este grupo? Os itens serão desvinculados.')) return;
     try {
       await checklistService.removerGrupo(grupoId);
       toastService.success('Grupo removido com sucesso!');
@@ -427,6 +501,8 @@ export default function NovoTemplatePage() {
       });
     } catch (error) {
       // Erro já é tratado pelo interceptor
+    } finally {
+      setConfirmRemoverGrupo(null);
     }
   };
 
@@ -560,11 +636,30 @@ export default function NovoTemplatePage() {
     }
   };
 
+  const handleDuplicarItem = async (itemId: string) => {
+    try {
+      setDuplicatingItemId(itemId);
+      const novoItem = await checklistService.duplicarItem(itemId);
+      setTemplate((prevTemplate) => {
+        if (!prevTemplate) return prevTemplate;
+        return {
+          ...prevTemplate,
+          itens: [...(prevTemplate.itens || []), novoItem],
+        };
+      });
+      toastService.success('Pergunta duplicada com sucesso!');
+      setTimeout(() => scrollToAndHighlight('item', novoItem.id), 300);
+    } catch {
+      // Erro já é tratado pelo interceptor
+    } finally {
+      setDuplicatingItemId(null);
+    }
+  };
+
   const handleRemoverItem = async (itemId: string) => {
-    if (!confirm('Tem certeza que deseja remover este item?')) return;
     try {
       await checklistService.removerItem(itemId);
-      toastService.success('Item removido com sucesso!');
+      toastService.success('Pergunta removida com sucesso!');
       setTemplate((prevTemplate) => {
         if (!prevTemplate) return prevTemplate;
         return {
@@ -574,20 +669,25 @@ export default function NovoTemplatePage() {
       });
     } catch (error) {
       // Erro já é tratado pelo interceptor
+    } finally {
+      setConfirmRemoverItem(null);
     }
   };
 
   const handleAdicionarOpcaoResposta = () => {
     if (!novaOpcaoResposta.trim()) return;
     if (itemForm.opcoesResposta?.includes(novaOpcaoResposta.trim())) return;
-    const novasOpcoes = [...(itemForm.opcoesResposta || []), novaOpcaoResposta.trim()];
+    const novoValor = novaOpcaoResposta.trim();
+    const novasOpcoes = [...(itemForm.opcoesResposta || []), novoValor];
     const configsExistentes = itemForm.opcoesRespostaConfig || [];
-    const pontuacaoPrimeira = configsExistentes[0]?.pontuacao;
+    const opcoesPontuaveis = novasOpcoes.filter((op) => !isOpcaoSemPontuacao(op));
+    const configPrimeira = configsExistentes.find((c) => c.valor === opcoesPontuaveis[0]);
+    const idxPontuavel = opcoesPontuaveis.indexOf(novoValor);
     const novaConfig = {
-      valor: novaOpcaoResposta.trim(),
+      valor: novoValor,
       fotoObrigatoria: false,
       observacaoObrigatoria: false,
-      pontuacao: pontuacaoPrimeira != null ? pontuacaoPrimeira - (novasOpcoes.length - 1) : undefined,
+      pontuacao: isOpcaoSemPontuacao(novoValor) ? null : (configPrimeira?.pontuacao != null ? configPrimeira.pontuacao - idxPontuavel : undefined),
     };
     setItemForm({
       ...itemForm,
@@ -615,9 +715,10 @@ export default function NovoTemplatePage() {
       const opcoesOrdenadas = prev.usarRespostasPersonalizadas
         ? (prev.opcoesResposta || [])
         : RESPOSTAS_PADRAO.map((r) => r.valor);
-      const idxOpcao = opcoesOrdenadas.indexOf(valor);
-      if (campo === 'pontuacao' && idxOpcao === 0 && typeof value === 'number') {
-        const pontuacoes = calcularPontuacoesEmSequencia(value, opcoesOrdenadas.length);
+      const opcoesPontuaveis = opcoesOrdenadas.filter((op) => !isOpcaoSemPontuacao(op));
+      const isPrimeiraPontuavel = opcoesPontuaveis[0] === valor;
+      if (campo === 'pontuacao' && isPrimeiraPontuavel && typeof value === 'number') {
+        const pontuacoes = calcularPontuacoesEmSequencia(value, opcoesOrdenadas);
         const novasConfigs = opcoesOrdenadas.map((op, i) => {
           const cfg = configs.find((c) => c.valor === op);
           return {
@@ -639,21 +740,65 @@ export default function NovoTemplatePage() {
     });
   };
 
+  const handleDuplicarResposta = (opcao: string) => {
+    const config = itemForm.opcoesRespostaConfig?.find((c) => c.valor === opcao);
+    let novoNome = `${opcao} (cópia)`;
+    let contador = 1;
+    while (itemForm.opcoesResposta?.includes(novoNome)) {
+      contador++;
+      novoNome = `${opcao} (cópia ${contador})`;
+    }
+    const novasOpcoes = [...(itemForm.opcoesResposta || []), novoNome];
+    const novaConfig = {
+      valor: novoNome,
+      fotoObrigatoria: config?.fotoObrigatoria ?? false,
+      observacaoObrigatoria: config?.observacaoObrigatoria ?? false,
+      pontuacao: config?.pontuacao,
+    };
+    setItemForm({
+      ...itemForm,
+      opcoesResposta: novasOpcoes,
+      opcoesRespostaConfig: [...(itemForm.opcoesRespostaConfig || []), novaConfig],
+    });
+  };
+
   const handleAdicionarSugestao = (sugestao: string) => {
     if (itemForm.opcoesResposta?.includes(sugestao)) return;
     const novasOpcoes = [...(itemForm.opcoesResposta || []), sugestao];
     const configsExistentes = itemForm.opcoesRespostaConfig || [];
-    const pontuacaoPrimeira = configsExistentes[0]?.pontuacao;
+    const opcoesPontuaveis = novasOpcoes.filter((op) => !isOpcaoSemPontuacao(op));
+    const configPrimeira = configsExistentes.find((c) => c.valor === opcoesPontuaveis[0]);
+    const idxPontuavel = opcoesPontuaveis.indexOf(sugestao);
     const novaConfig = {
       valor: sugestao,
       fotoObrigatoria: false,
       observacaoObrigatoria: false,
-      pontuacao: pontuacaoPrimeira != null ? pontuacaoPrimeira - (novasOpcoes.length - 1) : undefined,
+      pontuacao: isOpcaoSemPontuacao(sugestao) ? null : (configPrimeira?.pontuacao != null ? configPrimeira.pontuacao - idxPontuavel : undefined),
     };
     setItemForm({
       ...itemForm,
       opcoesResposta: novasOpcoes,
       opcoesRespostaConfig: [...configsExistentes, novaConfig],
+    });
+  };
+
+  const handleToggleTodasOpcoes = (campo: 'fotoObrigatoria' | 'observacaoObrigatoria', value: boolean) => {
+    setItemForm((prev) => {
+      const opcoes = prev.usarRespostasPersonalizadas
+        ? (prev.opcoesResposta || [])
+        : RESPOSTAS_PADRAO.map((r) => r.valor);
+      const configs = prev.opcoesRespostaConfig || [];
+      const novasConfigs = opcoes.map((op) => {
+        const cfg = configs.find((c) => c.valor === op);
+        return {
+          ...cfg,
+          valor: op,
+          fotoObrigatoria: cfg?.fotoObrigatoria ?? false,
+          observacaoObrigatoria: cfg?.observacaoObrigatoria ?? false,
+          [campo]: value,
+        };
+      });
+      return { ...prev, opcoesRespostaConfig: novasConfigs };
     });
   };
 
@@ -810,10 +955,18 @@ export default function NovoTemplatePage() {
               <div className="space-y-4 mt-4">
                 {/* Grupos */}
                 {template?.grupos?.map((grupo) => (
-                  <div key={grupo.id} className="border border-base-300 rounded-lg overflow-hidden">
+                  <div
+                    key={grupo.id}
+                    ref={(el) => { grupoRefs.current[grupo.id] = el; }}
+                    className={`border rounded-lg transition-all duration-500 ${
+                      highlightedGrupoId === grupo.id
+                        ? 'border-info shadow-lg shadow-info/20 ring-2 ring-info/30'
+                        : 'border-base-300'
+                    }`}
+                  >
                     {/* Header do Grupo */}
                     <div
-                      className="flex items-center gap-3 p-3 bg-base-200 cursor-pointer hover:bg-base-300 transition-colors"
+                      className="flex items-center gap-3 p-3 bg-base-200 rounded-t-lg cursor-pointer hover:bg-base-300 transition-colors"
                       onClick={() => toggleGrupoExpanded(grupo.id)}
                     >
                       <GripVertical className="w-4 h-4 text-base-content/40" />
@@ -823,23 +976,36 @@ export default function NovoTemplatePage() {
                         {grupo.descricao && <p className="text-sm text-base-content/60">{grupo.descricao}</p>}
                       </div>
                       <span className="badge badge-ghost">{getItensPorGrupo(grupo.id).length} perguntas</span>
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={(e) => { e.stopPropagation(); handleAbrirModalEditarGrupo(grupo); }}
-                          className="btn btn-ghost btn-xs"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); handleRemoverGrupo(grupo.id); }}
-                          className="btn btn-ghost btn-xs text-error"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                      <div className="flex items-center gap-0.5">
+                        <Tooltip content="Duplicar grupo">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); if (!duplicatingGrupoId) handleDuplicarGrupo(grupo.id); }}
+                            className="btn btn-ghost btn-square btn-xs text-info"
+                            disabled={duplicatingGrupoId === grupo.id}
+                          >
+                            {duplicatingGrupoId === grupo.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Copy className="w-4 h-4" />}
+                          </button>
+                        </Tooltip>
+                        <Tooltip content="Editar grupo">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleAbrirModalEditarGrupo(grupo); }}
+                            className="btn btn-ghost btn-square btn-xs"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                        </Tooltip>
+                        <Tooltip content="Remover grupo">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setConfirmRemoverGrupo(grupo.id); }}
+                            className="btn btn-ghost btn-square btn-xs text-error"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </Tooltip>
                         {expandedGrupos.has(grupo.id) ? (
-                          <ChevronUp className="w-5 h-5 text-base-content/40" />
+                          <ChevronUp className="w-4 h-4 sm:w-5 sm:h-5 text-base-content/40" />
                         ) : (
-                          <ChevronDown className="w-5 h-5 text-base-content/40" />
+                          <ChevronDown className="w-4 h-4 sm:w-5 sm:h-5 text-base-content/40" />
                         )}
                       </div>
                     </div>
@@ -871,13 +1037,17 @@ export default function NovoTemplatePage() {
                                       {itensOrdenados.map((item) => {
                                         const globalIndex = todosItensDoGrupo.findIndex((i) => i.id === item.id);
                                         return (
-                                          <SortableItem
-                                            key={item.id}
-                                            item={item}
-                                            index={globalIndex}
-                                            onEdit={handleAbrirModalEditarItem}
-                                            onRemove={handleRemoverItem}
-                                          />
+                                          <div key={item.id} ref={(el) => { itemRefs.current[item.id] = el; }}>
+                                            <SortableItem
+                                              item={item}
+                                              index={globalIndex}
+                                              onEdit={handleAbrirModalEditarItem}
+                                              onRemove={(id) => setConfirmRemoverItem(id)}
+                                              onDuplicate={handleDuplicarItem}
+                                              isDuplicating={duplicatingItemId === item.id}
+                                              isHighlighted={highlightedItemId === item.id}
+                                            />
+                                          </div>
                                         );
                                       })}
                                       {itens.length === 0 && (
@@ -906,7 +1076,7 @@ export default function NovoTemplatePage() {
 
                 {/* Itens sem grupo */}
                 {getItensSemGrupo().length > 0 && (
-                  <div className="border border-base-300 rounded-lg overflow-hidden">
+                  <div className="border border-base-300 rounded-lg">
                     <div className="flex items-center gap-3 p-3 bg-base-200">
                       <AlertTriangle className="w-5 h-5 text-warning" />
                       <span className="font-medium">Perguntas sem grupo</span>
@@ -927,13 +1097,17 @@ export default function NovoTemplatePage() {
                           {getItensSemGrupo()
                             .sort((a, b) => a.ordem - b.ordem)
                             .map((item, idx) => (
-                              <SortableItem
-                                key={item.id}
-                                item={item}
-                                index={idx}
-                                onEdit={handleAbrirModalEditarItem}
-                                onRemove={handleRemoverItem}
-                              />
+                              <div key={item.id} ref={(el) => { itemRefs.current[item.id] = el; }}>
+                                <SortableItem
+                                  item={item}
+                                  index={idx}
+                                  onEdit={handleAbrirModalEditarItem}
+                                  onRemove={(id) => setConfirmRemoverItem(id)}
+                                  onDuplicate={handleDuplicarItem}
+                                  isDuplicating={duplicatingItemId === item.id}
+                                  isHighlighted={highlightedItemId === item.id}
+                                />
+                              </div>
                             ))}
                         </SortableContext>
                       </DndContext>
@@ -958,78 +1132,69 @@ export default function NovoTemplatePage() {
         )}
       </div>
 
-      {/* Modal Grupo */}
-      {showGrupoModal && (
-        <div 
-          className="modal modal-open"
-          onClick={(e) => {
-            // Não fecha ao clicar fora - removido para evitar perda de dados
-            if (e.target === e.currentTarget) {
-              e.stopPropagation();
-            }
-          }}
-        >
-          <div className="modal-box max-w-md">
-            <h3 className="font-bold text-lg mb-4">{editingGrupo ? 'Editar Grupo' : 'Novo Grupo'}</h3>
-            <div className="space-y-4">
-              <div className="form-control">
-                <label className="label"><span className="label-text">Nome do Grupo *</span></label>
-                <input
-                  type="text"
-                  placeholder="Ex: ESTRUTURA"
-                  className="input input-bordered"
-                  value={grupoForm.nome}
-                  onChange={(e) => setGrupoForm({ ...grupoForm, nome: e.target.value })}
-                />
-              </div>
-              <div className="form-control">
-                <label className="label"><span className="label-text">Descrição</span></label>
-                <textarea
-                  className="textarea textarea-bordered"
-                  rows={2}
-                  placeholder="Descrição opcional do grupo"
-                  value={grupoForm.descricao}
-                  onChange={(e) => setGrupoForm({ ...grupoForm, descricao: e.target.value })}
-                />
-              </div>
-            </div>
-            <div className="modal-action">
-              <button className="btn btn-ghost" onClick={() => { setShowGrupoModal(false); resetGrupoForm(); }}>Cancelar</button>
-              <button className="btn btn-primary" onClick={handleSalvarGrupo} disabled={saving || !grupoForm.nome}>
-                {saving ? <><Loader2 className="w-4 h-4 animate-spin" />Salvando...</> : 'Salvar'}
-              </button>
-            </div>
+      <FormModal
+        open={showGrupoModal}
+        onClose={() => { setShowGrupoModal(false); resetGrupoForm(); }}
+        title={editingGrupo ? 'Editar Grupo' : 'Novo Grupo'}
+        maxWidth="md"
+        isDirty={Boolean(grupoForm.nome || grupoForm.descricao)}
+        closeOnBackdrop={false}
+        footer={
+          <>
+            <button className="btn btn-ghost" onClick={() => { setShowGrupoModal(false); resetGrupoForm(); }}>Cancelar</button>
+            <button className="btn btn-primary" onClick={handleSalvarGrupo} disabled={saving || !grupoForm.nome}>
+              {saving ? <><Loader2 className="w-4 h-4 animate-spin" />Salvando...</> : 'Salvar'}
+            </button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <div className="form-control">
+            <label className="label"><span className="label-text">Nome do Grupo *</span></label>
+            <input
+              type="text"
+              placeholder="Ex: ESTRUTURA"
+              className="input input-bordered"
+              value={grupoForm.nome}
+              onChange={(e) => setGrupoForm({ ...grupoForm, nome: e.target.value })}
+            />
           </div>
-          <div 
-            className="modal-backdrop" 
-            onClick={(e) => {
-              // Não fecha ao clicar fora - removido para evitar perda de dados
-              e.stopPropagation();
-            }}
-          ></div>
+          <div className="form-control">
+            <label className="label"><span className="label-text">Descrição</span></label>
+            <textarea
+              className="textarea textarea-bordered"
+              rows={2}
+              placeholder="Descrição opcional do grupo"
+              value={grupoForm.descricao}
+              onChange={(e) => setGrupoForm({ ...grupoForm, descricao: e.target.value })}
+            />
+          </div>
         </div>
-      )}
+      </FormModal>
 
-      {/* Modal Item */}
-      {showItemModal && (
-        <div 
-          className="modal modal-open"
-          onClick={(e) => {
-            // Não fecha ao clicar fora - removido para evitar perda de dados
-            if (e.target === e.currentTarget) {
-              e.stopPropagation();
-            }
-          }}
-        >
-          <div className="modal-box max-w-2xl max-h-[90vh] overflow-y-auto">
-            <h3 className="font-bold text-lg mb-4">{editingItem ? 'Editar Pergunta' : 'Nova Pergunta'}</h3>
-            <div className="space-y-4">
+      <FormModal
+        open={showItemModal}
+        onClose={() => { setShowItemModal(false); resetItemForm(); }}
+        title={editingItem ? 'Editar Pergunta' : 'Nova Pergunta'}
+        maxWidth="4xl"
+        isDirty={Boolean(itemForm.pergunta)}
+        closeOnBackdrop={false}
+        footer={
+          <>
+            <button className="btn btn-ghost btn-sm sm:btn-md w-full sm:w-auto" onClick={() => { setShowItemModal(false); resetItemForm(); }}>Cancelar</button>
+            <button className="btn btn-primary btn-sm sm:btn-md w-full sm:w-auto" onClick={handleSalvarItem} disabled={saving || !itemForm.pergunta}>
+              {saving ? <><Loader2 className="w-4 h-4 animate-spin" />Salvando...</> : editingItem ? 'Salvar Alterações' : 'Adicionar'}
+            </button>
+          </>
+        }
+      >
+        <div className="space-y-4">
               {/* Grupo e Seção */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="form-control">
-                  <label className="label"><span className="label-text">Grupo</span></label>
+                  <label className="label py-1"><span className="label-text text-xs sm:text-sm">Grupo</span></label>
                   <select
-                    className="select select-bordered"
+                    className="select select-bordered select-sm sm:select-md"
                     value={itemForm.grupoId || ''}
                     onChange={(e) => setItemForm({ ...itemForm, grupoId: e.target.value || undefined })}
                   >
@@ -1040,11 +1205,11 @@ export default function NovoTemplatePage() {
                   </select>
                 </div>
                 <div className="form-control">
-                  <label className="label"><span className="label-text">Seção (opcional)</span></label>
+                  <label className="label py-1"><span className="label-text text-xs sm:text-sm">Seção (opcional)</span></label>
                   <input
                     type="text"
                     placeholder="Ex: ÁREA DE LAVAGEM"
-                    className="input input-bordered"
+                    className="input input-bordered input-sm sm:input-md"
                     value={itemForm.secao}
                     onChange={(e) => setItemForm({ ...itemForm, secao: e.target.value })}
                   />
@@ -1053,22 +1218,22 @@ export default function NovoTemplatePage() {
 
               {/* Pergunta */}
               <div className="form-control">
-                <label className="label"><span className="label-text">Pergunta *</span></label>
+                <label className="label py-1"><span className="label-text text-xs sm:text-sm">Pergunta *</span></label>
                 <textarea
                   placeholder="Ex: As paredes, piso e teto estão em boas condições?"
-                  className="textarea textarea-bordered"
-                  rows={3}
+                  className="textarea textarea-bordered text-sm"
+                  rows={2}
                   value={itemForm.pergunta}
                   onChange={(e) => setItemForm({ ...itemForm, pergunta: e.target.value })}
                 />
               </div>
 
-              {/* Categoria e Criticidade */}
-              <div className="grid grid-cols-2 gap-3">
+              {/* Categoria, Criticidade, Peso e Obrigatório */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
                 <div className="form-control">
-                  <label className="label"><span className="label-text">Categoria</span></label>
+                  <label className="label py-1"><span className="label-text text-xs sm:text-sm">Categoria</span></label>
                   <select
-                    className="select select-bordered"
+                    className="select select-bordered select-sm sm:select-md"
                     value={itemForm.categoria}
                     onChange={(e) => setItemForm({ ...itemForm, categoria: e.target.value as CategoriaItem })}
                   >
@@ -1078,9 +1243,16 @@ export default function NovoTemplatePage() {
                   </select>
                 </div>
                 <div className="form-control">
-                  <label className="label"><span className="label-text">Criticidade</span></label>
+                  <label className="label py-1">
+                    <span className="label-text text-xs sm:text-sm flex items-center gap-1">
+                      Criticidade
+                      <Tooltip content="Define o grau de impacto desta pergunta na avaliação. Perguntas com criticidade alta ou crítica têm maior relevância no resultado final e podem gerar alertas automáticos de não conformidade.">
+                        <HelpCircle className="w-3.5 h-3.5 text-base-content/40 cursor-help" />
+                      </Tooltip>
+                    </span>
+                  </label>
                   <select
-                    className="select select-bordered"
+                    className="select select-bordered select-sm sm:select-md"
                     value={itemForm.criticidade}
                     onChange={(e) => setItemForm({ ...itemForm, criticidade: e.target.value as CriticidadeItem })}
                   >
@@ -1089,18 +1261,21 @@ export default function NovoTemplatePage() {
                     ))}
                   </select>
                 </div>
-              </div>
-
-              {/* Peso e Obrigatório */}
-              <div className="grid grid-cols-2 gap-3">
                 {itemForm.tipoRespostaCustomizada !== TipoRespostaCustomizada.TEXTO && (
                   <div className="form-control">
-                    <label className="label"><span className="label-text">Peso</span></label>
+                    <label className="label py-1">
+                      <span className="label-text text-xs sm:text-sm flex items-center gap-1">
+                        Peso
+                        <Tooltip content="Multiplicador aplicado à pontuação desta pergunta. Um peso maior aumenta a influência desta pergunta no cálculo da nota final da auditoria. Ex: peso 2 dobra o valor da pontuação obtida.">
+                          <HelpCircle className="w-3.5 h-3.5 text-base-content/40 cursor-help" />
+                        </Tooltip>
+                      </span>
+                    </label>
                     <input
                       type="number"
                       min="-10"
                       max="10"
-                      className="input input-bordered"
+                      className="input input-bordered input-sm sm:input-md"
                       value={itemForm.peso}
                       onChange={(e) => {
                         const v = e.target.value === '' ? 1 : parseInt(e.target.value, 10);
@@ -1109,12 +1284,12 @@ export default function NovoTemplatePage() {
                     />
                   </div>
                 )}
-                <div className="form-control">
-                  <label className="label cursor-pointer">
-                    <span className="label-text">Obrigatório</span>
+                <div className="form-control justify-end">
+                  <label className="label cursor-pointer py-1 gap-2">
+                    <span className="label-text text-xs sm:text-sm">Pergunta Obrigatória</span>
                     <input
                       type="checkbox"
-                      className="toggle toggle-primary"
+                      className="toggle toggle-primary toggle-sm sm:toggle-md"
                       checked={itemForm.obrigatorio}
                       onChange={(e) => setItemForm({ ...itemForm, obrigatorio: e.target.checked })}
                     />
@@ -1123,38 +1298,52 @@ export default function NovoTemplatePage() {
               </div>
 
               {/* Legislação */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                 <div className="form-control">
-                  <label className="label"><span className="label-text">Legislação</span></label>
+                  <label className="label py-1">
+                    <span className="label-text text-xs sm:text-sm flex items-center gap-1">
+                      Legislação
+                      <Tooltip content="Norma ou legislação de referência que fundamenta esta pergunta. Será exibida ao auditor durante a avaliação como base legal para a verificação. Ex: RDC 216/2004, NR-12, ISO 9001.">
+                        <HelpCircle className="w-3.5 h-3.5 text-base-content/40 cursor-help" />
+                      </Tooltip>
+                    </span>
+                  </label>
                   <input
                     type="text"
                     placeholder="Ex: RDC 216/2004"
-                    className="input input-bordered"
+                    className="input input-bordered input-sm sm:input-md"
                     value={itemForm.legislacaoReferencia}
                     onChange={(e) => setItemForm({ ...itemForm, legislacaoReferencia: e.target.value })}
                   />
                 </div>
                 <div className="form-control">
-                  <label className="label"><span className="label-text">Artigo/Inciso</span></label>
+                  <label className="label py-1">
+                    <span className="label-text text-xs sm:text-sm flex items-center gap-1">
+                      Artigo/Inciso
+                      <Tooltip content="Artigo, parágrafo ou inciso específico da legislação informada. Permite ao auditor consultar o trecho exato da norma durante a auditoria. Ex: Art. 4.1.3, § 2º, Inciso IV.">
+                        <HelpCircle className="w-3.5 h-3.5 text-base-content/40 cursor-help" />
+                      </Tooltip>
+                    </span>
+                  </label>
                   <input
                     type="text"
                     placeholder="Ex: Art. 4.1.3"
-                    className="input input-bordered"
+                    className="input input-bordered input-sm sm:input-md"
                     value={itemForm.artigo}
                     onChange={(e) => setItemForm({ ...itemForm, artigo: e.target.value })}
                   />
                 </div>
               </div>
 
-              <div className="divider">Opções de Resposta</div>
+              <div className="divider my-2 text-xs sm:text-sm">Opções de Resposta</div>
 
               {/* Tipo de Resposta Customizada */}
               <div className="form-control">
-                <label className="label">
-                  <span className="label-text font-medium">Tipo de Resposta</span>
+                <label className="label py-1">
+                  <span className="label-text text-xs sm:text-sm font-medium">Tipo de Resposta</span>
                 </label>
                 <select
-                  className="select select-bordered"
+                  className="select select-bordered select-sm sm:select-md"
                   value={itemForm.tipoRespostaCustomizada || ''}
                   onChange={(e) => {
                     const valor = e.target.value ? (e.target.value as TipoRespostaCustomizada) : undefined;
@@ -1166,14 +1355,14 @@ export default function NovoTemplatePage() {
                     });
                   }}
                 >
-                  <option value="">Padrão (Botões: Conforme/Não Conforme/Não Aplicável)</option>
+                  <option value="">Padrão (Conforme/Não Conforme/N.A.)</option>
                   <option value={TipoRespostaCustomizada.TEXTO}>{TIPO_RESPOSTA_LABELS[TipoRespostaCustomizada.TEXTO]}</option>
                   <option value={TipoRespostaCustomizada.NUMERO}>{TIPO_RESPOSTA_LABELS[TipoRespostaCustomizada.NUMERO]}</option>
                   <option value={TipoRespostaCustomizada.DATA}>{TIPO_RESPOSTA_LABELS[TipoRespostaCustomizada.DATA]}</option>
                   <option value={TipoRespostaCustomizada.SELECT}>{TIPO_RESPOSTA_LABELS[TipoRespostaCustomizada.SELECT]}</option>
                 </select>
-                <label className="label">
-                  <span className="label-text-alt text-base-content/60">
+                <label className="label py-0.5">
+                  <span className="label-text-alt text-base-content/60 text-xs">
                     {itemForm.tipoRespostaCustomizada === TipoRespostaCustomizada.SELECT && 'Configure as opções abaixo'}
                     {itemForm.tipoRespostaCustomizada === TipoRespostaCustomizada.TEXTO && 'Campo de texto livre (não pontua)'}
                     {itemForm.tipoRespostaCustomizada === TipoRespostaCustomizada.NUMERO && 'Campo numérico'}
@@ -1183,13 +1372,13 @@ export default function NovoTemplatePage() {
                 </label>
               </div>
 
-              {/* Toggle Respostas Personalizadas (apenas quando não for tipo customizado) */}
+              {/* Toggle Respostas Personalizadas */}
               {!itemForm.tipoRespostaCustomizada && (
-                <div className="form-control bg-base-200 rounded-lg p-4">
-                  <label className="label cursor-pointer justify-start gap-3">
+                <div className="form-control bg-base-200 rounded-lg p-3">
+                  <label className="label cursor-pointer justify-start gap-3 py-0">
                     <input
                       type="checkbox"
-                      className="toggle toggle-secondary"
+                      className="toggle toggle-secondary toggle-sm"
                       checked={itemForm.usarRespostasPersonalizadas}
                       onChange={(e) => {
                         const checked = e.target.checked;
@@ -1209,8 +1398,8 @@ export default function NovoTemplatePage() {
                       }}
                     />
                     <div>
-                      <span className="label-text font-medium">Usar respostas personalizadas</span>
-                      <p className="text-xs text-base-content/60 mt-0.5">Padrão: Conforme, Não Conforme, Não Aplicável, Não Avaliado</p>
+                      <span className="label-text text-xs sm:text-sm font-medium">Respostas personalizadas</span>
+                      <p className="text-xs text-base-content/60 mt-0.5 hidden sm:block">Padrão: Conforme, Não Conforme, Não Aplicável, Não Avaliado</p>
                     </div>
                   </label>
                 </div>
@@ -1218,41 +1407,109 @@ export default function NovoTemplatePage() {
 
               {/* Respostas Personalizadas */}
               {itemForm.usarRespostasPersonalizadas && (
-                <div className="space-y-3 bg-base-200/50 rounded-lg p-4">
-                  <label className="label"><span className="label-text font-medium">Opções de Resposta</span></label>
+                <div className="space-y-3 bg-base-200/50 rounded-lg p-3 sm:p-4">
+                  <label className="label py-0"><span className="label-text text-xs sm:text-sm font-medium">Opções de Resposta</span></label>
                   {itemForm.opcoesResposta && itemForm.opcoesResposta.length > 0 && (
                     <div className="space-y-2">
+                      {itemForm.opcoesResposta.length > 1 && (
+                        <div className="flex items-center justify-end gap-2">
+                          <Tooltip content="Foto obrigatória em todas">
+                            <label className={`flex items-center gap-1.5 rounded-lg px-2 py-1 cursor-pointer transition-colors text-xs ${
+                              (itemForm.opcoesRespostaConfig || []).every((c) => c.fotoObrigatoria) ? 'bg-primary/10 ring-1 ring-primary/30' : 'bg-base-200'
+                            }`}>
+                              <Camera className={`w-3 h-3 flex-shrink-0 ${(itemForm.opcoesRespostaConfig || []).every((c) => c.fotoObrigatoria) ? 'text-primary' : 'text-base-content/40'}`} />
+                              <span className="hidden sm:inline">Todas</span>
+                              <input
+                                type="checkbox"
+                                className="checkbox checkbox-xs checkbox-primary"
+                                checked={(itemForm.opcoesRespostaConfig || []).length > 0 && (itemForm.opcoesRespostaConfig || []).every((c) => c.fotoObrigatoria)}
+                                onChange={(e) => handleToggleTodasOpcoes('fotoObrigatoria', e.target.checked)}
+                              />
+                            </label>
+                          </Tooltip>
+                          <Tooltip content="Observação obrigatória em todas">
+                            <label className={`flex items-center gap-1.5 rounded-lg px-2 py-1 cursor-pointer transition-colors text-xs ${
+                              (itemForm.opcoesRespostaConfig || []).every((c) => c.observacaoObrigatoria) ? 'bg-secondary/10 ring-1 ring-secondary/30' : 'bg-base-200'
+                            }`}>
+                              <MessageSquare className={`w-3 h-3 flex-shrink-0 ${(itemForm.opcoesRespostaConfig || []).every((c) => c.observacaoObrigatoria) ? 'text-secondary' : 'text-base-content/40'}`} />
+                              <span className="hidden sm:inline">Todas</span>
+                              <input
+                                type="checkbox"
+                                className="checkbox checkbox-xs checkbox-secondary"
+                                checked={(itemForm.opcoesRespostaConfig || []).length > 0 && (itemForm.opcoesRespostaConfig || []).every((c) => c.observacaoObrigatoria)}
+                                onChange={(e) => handleToggleTodasOpcoes('observacaoObrigatoria', e.target.checked)}
+                              />
+                            </label>
+                          </Tooltip>
+                        </div>
+                      )}
                       {itemForm.opcoesResposta.map((opcao, idx) => {
                         const config = itemForm.opcoesRespostaConfig?.find((c) => c.valor === opcao);
-                        const primeiraOpcao = itemForm.opcoesResposta?.[0];
-                        const pontuacaoPrimeira = primeiraOpcao
-                          ? itemForm.opcoesRespostaConfig?.find((c) => c.valor === primeiraOpcao)?.pontuacao
-                          : undefined;
+                        const semPontuacao = isOpcaoSemPontuacao(opcao);
+                        const opcoesPontuaveis = (itemForm.opcoesResposta || []).filter((op) => !isOpcaoSemPontuacao(op));
+                        const idxPontuavel = opcoesPontuaveis.indexOf(opcao);
+                        const configPrimeira = itemForm.opcoesRespostaConfig?.find((c) => c.valor === opcoesPontuaveis[0]);
                         const pontuacaoExibida = config?.pontuacao === null
                           ? ''
                           : (typeof config?.pontuacao === 'number'
                             ? config.pontuacao
-                            : (idx > 0 && pontuacaoPrimeira != null ? pontuacaoPrimeira - idx : ''));
+                            : (idxPontuavel > 0 && configPrimeira?.pontuacao != null ? configPrimeira.pontuacao - idxPontuavel : ''));
                         return (
-                          <div key={idx} className="flex flex-wrap items-center justify-between gap-2 bg-base-100 rounded p-2">
-                            <span className="badge badge-lg">{opcao}</span>
-                            <div className="flex items-center gap-2">
-                              <span className="label-text text-sm">Pontuação</span>
-                              <input
-                                type="number"
-                                min={-10}
-                                max={10}
-                                className="input input-bordered input-sm w-24"
-                                placeholder="—"
-                                value={pontuacaoExibida}
-                                onChange={(e) => {
-                                  const v = e.target.value === '' ? null : parseInt(e.target.value, 10);
-                                  handleAtualizarOpcaoConfig(opcao, 'pontuacao', v === null || Number.isNaN(v) ? null : v);
-                                }}
-                              />
-                              <button onClick={() => handleRemoverOpcaoResposta(opcao)} className="btn btn-ghost btn-xs btn-circle">
-                                <X className="w-3 h-3" />
-                              </button>
+                          <div key={idx} className="bg-base-100 rounded-lg p-2.5 sm:p-3">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="badge badge-primary badge-outline font-semibold text-xs sm:text-sm">{opcao}</span>
+                              <div className="flex items-center gap-0.5">
+                                <button
+                                  onClick={() => handleDuplicarResposta(opcao)}
+                                  className="btn btn-ghost btn-xs btn-circle"
+                                  title="Duplicar resposta"
+                                >
+                                  <Copy className="w-3 h-3" />
+                                </button>
+                                <button
+                                  onClick={() => handleRemoverOpcaoResposta(opcao)}
+                                  className="btn btn-ghost btn-xs btn-circle text-error"
+                                >
+                                  <X className="w-3 h-3" />
+                                </button>
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-3 gap-2">
+                              <div className="flex items-center gap-1.5 bg-base-200 rounded-lg px-2 py-1.5" title="Pontuação">
+                                <Star className="w-3.5 h-3.5 text-warning flex-shrink-0" />
+                                <input
+                                  type="number"
+                                  min={-10}
+                                  max={10}
+                                  className="input input-ghost input-xs w-full p-0 text-center font-medium"
+                                  placeholder="—"
+                                  value={pontuacaoExibida}
+                                  onChange={(e) => {
+                                    const v = e.target.value === '' ? null : parseInt(e.target.value, 10);
+                                    handleAtualizarOpcaoConfig(opcao, 'pontuacao', v === null || Number.isNaN(v) ? null : v);
+                                  }}
+                                />
+                              </div>
+                              <label className={`flex items-center gap-1.5 rounded-lg px-2 py-1.5 cursor-pointer transition-colors ${config?.fotoObrigatoria ? 'bg-primary/10 ring-1 ring-primary/30' : 'bg-base-200'}`} title="Foto obrigatória">
+                                <Camera className={`w-3.5 h-3.5 flex-shrink-0 ${config?.fotoObrigatoria ? 'text-primary' : 'text-base-content/40'}`} />
+                                <span className="text-xs truncate hidden sm:inline">Foto</span>
+                                <input
+                                  type="checkbox"
+                                  className="checkbox checkbox-xs checkbox-primary ml-auto"
+                                  checked={config?.fotoObrigatoria || false}
+                                  onChange={(e) => handleAtualizarOpcaoConfig(opcao, 'fotoObrigatoria', e.target.checked)}
+                                />
+                              </label>
+                              <label className={`flex items-center gap-1.5 rounded-lg px-2 py-1.5 cursor-pointer transition-colors ${config?.observacaoObrigatoria ? 'bg-secondary/10 ring-1 ring-secondary/30' : 'bg-base-200'}`} title="Observação obrigatória">
+                                <MessageSquare className={`w-3.5 h-3.5 flex-shrink-0 ${config?.observacaoObrigatoria ? 'text-secondary' : 'text-base-content/40'}`} />
+                                <span className="text-xs truncate hidden sm:inline">Obs.</span>
+                                <input
+                                  type="checkbox"
+                                  className="checkbox checkbox-xs checkbox-secondary ml-auto"
+                                  checked={config?.observacaoObrigatoria || false}
+                                  onChange={(e) => handleAtualizarOpcaoConfig(opcao, 'observacaoObrigatoria', e.target.checked)}
+                                />
+                              </label>
                             </div>
                           </div>
                         );
@@ -1274,9 +1531,9 @@ export default function NovoTemplatePage() {
                   </div>
                   <div>
                     <span className="text-xs text-base-content/60">Sugestões:</span>
-                    <div className="flex flex-wrap gap-1 mt-1">
+                    <div className="flex flex-wrap gap-1.5 mt-1.5">
                       {RESPOSTAS_PERSONALIZADAS_SUGESTOES.filter((s) => !itemForm.opcoesResposta?.includes(s)).map((sugestao) => (
-                        <button key={sugestao} type="button" onClick={() => handleAdicionarSugestao(sugestao)} className="badge badge-outline badge-sm hover:badge-secondary cursor-pointer">
+                        <button key={sugestao} type="button" onClick={() => handleAdicionarSugestao(sugestao)} className="badge badge-outline badge-sm sm:badge-md text-base-content font-bold hover:badge-primary hover:!text-white cursor-pointer transition-colors px-2 sm:px-3 py-1">
                           + {sugestao}
                         </button>
                       ))}
@@ -1285,35 +1542,95 @@ export default function NovoTemplatePage() {
                 </div>
               )}
 
+              {/* Respostas Padrão */}
               {!itemForm.usarRespostasPersonalizadas && (
-                <div className="bg-base-200/50 rounded-lg p-4">
-                  <span className="text-xs text-base-content/60 font-medium">Configuração por opção (Padrão)</span>
-                  <div className="space-y-2 mt-3">
-                    {RESPOSTAS_PADRAO.map((resp, idx) => {
+                <div className="bg-base-200/50 rounded-lg p-3 sm:p-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-base-content/60 font-medium">Configuração das respostas padrão:</span>
+                    <div className="flex items-center gap-2">
+                      <Tooltip content="Foto obrigatória em todas">
+                        <label className={`flex items-center gap-1.5 rounded-lg px-2 py-1 cursor-pointer transition-colors text-xs ${
+                          RESPOSTAS_PADRAO.every((r) => (itemForm.opcoesRespostaConfig || []).find((c) => c.valor === r.valor)?.fotoObrigatoria) ? 'bg-primary/10 ring-1 ring-primary/30' : 'bg-base-200'
+                        }`}>
+                          <Camera className={`w-3 h-3 flex-shrink-0 ${RESPOSTAS_PADRAO.every((r) => (itemForm.opcoesRespostaConfig || []).find((c) => c.valor === r.valor)?.fotoObrigatoria) ? 'text-primary' : 'text-base-content/40'}`} />
+                          <span className="hidden sm:inline">Todas</span>
+                          <input
+                            type="checkbox"
+                            className="checkbox checkbox-xs checkbox-primary"
+                            checked={RESPOSTAS_PADRAO.every((r) => (itemForm.opcoesRespostaConfig || []).find((c) => c.valor === r.valor)?.fotoObrigatoria)}
+                            onChange={(e) => handleToggleTodasOpcoes('fotoObrigatoria', e.target.checked)}
+                          />
+                        </label>
+                      </Tooltip>
+                      <Tooltip content="Observação obrigatória em todas">
+                        <label className={`flex items-center gap-1.5 rounded-lg px-2 py-1 cursor-pointer transition-colors text-xs ${
+                          RESPOSTAS_PADRAO.every((r) => (itemForm.opcoesRespostaConfig || []).find((c) => c.valor === r.valor)?.observacaoObrigatoria) ? 'bg-secondary/10 ring-1 ring-secondary/30' : 'bg-base-200'
+                        }`}>
+                          <MessageSquare className={`w-3 h-3 flex-shrink-0 ${RESPOSTAS_PADRAO.every((r) => (itemForm.opcoesRespostaConfig || []).find((c) => c.valor === r.valor)?.observacaoObrigatoria) ? 'text-secondary' : 'text-base-content/40'}`} />
+                          <span className="hidden sm:inline">Todas</span>
+                          <input
+                            type="checkbox"
+                            className="checkbox checkbox-xs checkbox-secondary"
+                            checked={RESPOSTAS_PADRAO.every((r) => (itemForm.opcoesRespostaConfig || []).find((c) => c.valor === r.valor)?.observacaoObrigatoria)}
+                            onChange={(e) => handleToggleTodasOpcoes('observacaoObrigatoria', e.target.checked)}
+                          />
+                        </label>
+                      </Tooltip>
+                    </div>
+                  </div>
+                  <div className="space-y-2 mt-2">
+                    {RESPOSTAS_PADRAO.map((resp) => {
                       const config = itemForm.opcoesRespostaConfig?.find((c) => c.valor === resp.valor);
-                      const pontuacaoPrimeira = itemForm.opcoesRespostaConfig?.find((c) => c.valor === RESPOSTAS_PADRAO[0].valor)?.pontuacao;
+                      const semPontuacao = isOpcaoSemPontuacao(resp.valor);
+                      const opcoesPontuaveis = RESPOSTAS_PADRAO.filter((r) => !isOpcaoSemPontuacao(r.valor));
+                      const idxPontuavel = opcoesPontuaveis.findIndex((r) => r.valor === resp.valor);
+                      const configPrimeira = itemForm.opcoesRespostaConfig?.find((c) => c.valor === opcoesPontuaveis[0]?.valor);
                       const pontuacaoExibida = config?.pontuacao === null
                         ? ''
                         : (typeof config?.pontuacao === 'number'
                           ? config.pontuacao
-                          : (idx > 0 && pontuacaoPrimeira != null ? pontuacaoPrimeira - idx : ''));
+                          : (idxPontuavel > 0 && configPrimeira?.pontuacao != null ? configPrimeira.pontuacao - idxPontuavel : ''));
                       return (
-                        <div key={resp.valor} className="flex items-center justify-between bg-base-100 rounded p-3">
-                          <span className="badge badge-ghost">{resp.label}</span>
-                          <div className="flex items-center gap-2">
-                            <span className="label-text text-sm">Pontuação</span>
-                            <input
-                              type="number"
-                              min={-10}
-                              max={10}
-                              className="input input-bordered input-sm w-24"
-                              placeholder="—"
-                              value={pontuacaoExibida}
-                              onChange={(e) => {
-                                const v = e.target.value === '' ? null : parseInt(e.target.value, 10);
-                                handleAtualizarOpcaoConfig(resp.valor, 'pontuacao', v === null || Number.isNaN(v) ? null : v);
-                              }}
-                            />
+                        <div key={resp.valor} className="bg-base-100 rounded-lg p-2.5 sm:p-3">
+                          <div className="flex items-center justify-between mb-2 sm:mb-0 sm:float-left sm:mr-3">
+                            <span className="badge badge-ghost text-xs sm:text-sm">{resp.label}</span>
+                          </div>
+                          <div className="grid grid-cols-3 gap-2 sm:flex sm:items-center sm:justify-end sm:gap-3">
+                            <div className="flex items-center gap-1.5 bg-base-200 rounded-lg px-2 py-1.5" title="Pontuação">
+                              <Star className="w-3.5 h-3.5 text-warning flex-shrink-0" />
+                              <input
+                                type="number"
+                                min={-10}
+                                max={10}
+                                className="input input-ghost input-xs w-full sm:w-16 p-0 text-center font-medium"
+                                placeholder="—"
+                                value={pontuacaoExibida}
+                                onChange={(e) => {
+                                  const v = e.target.value === '' ? null : parseInt(e.target.value, 10);
+                                  handleAtualizarOpcaoConfig(resp.valor, 'pontuacao', v === null || Number.isNaN(v) ? null : v);
+                                }}
+                              />
+                            </div>
+                            <label className={`flex items-center gap-1.5 rounded-lg px-2 py-1.5 cursor-pointer transition-colors ${config?.fotoObrigatoria ? 'bg-primary/10 ring-1 ring-primary/30' : 'bg-base-200'}`} title="Foto obrigatória">
+                              <Camera className={`w-3.5 h-3.5 flex-shrink-0 ${config?.fotoObrigatoria ? 'text-primary' : 'text-base-content/40'}`} />
+                              <span className="text-xs truncate hidden sm:inline">Foto</span>
+                              <input
+                                type="checkbox"
+                                className="checkbox checkbox-xs checkbox-primary ml-auto"
+                                checked={config?.fotoObrigatoria || false}
+                                onChange={(e) => handleAtualizarOpcaoConfig(resp.valor, 'fotoObrigatoria', e.target.checked)}
+                              />
+                            </label>
+                            <label className={`flex items-center gap-1.5 rounded-lg px-2 py-1.5 cursor-pointer transition-colors ${config?.observacaoObrigatoria ? 'bg-secondary/10 ring-1 ring-secondary/30' : 'bg-base-200'}`} title="Observação obrigatória">
+                              <MessageSquare className={`w-3.5 h-3.5 flex-shrink-0 ${config?.observacaoObrigatoria ? 'text-secondary' : 'text-base-content/40'}`} />
+                              <span className="text-xs truncate hidden sm:inline">Obs.</span>
+                              <input
+                                type="checkbox"
+                                className="checkbox checkbox-xs checkbox-secondary ml-auto"
+                                checked={config?.observacaoObrigatoria || false}
+                                onChange={(e) => handleAtualizarOpcaoConfig(resp.valor, 'observacaoObrigatoria', e.target.checked)}
+                              />
+                            </label>
                           </div>
                         </div>
                       );
@@ -1321,25 +1638,32 @@ export default function NovoTemplatePage() {
                   </div>
                 </div>
               )}
-            </div>
-
-            <div className="modal-action">
-              <button className="btn btn-ghost" onClick={() => { setShowItemModal(false); resetItemForm(); }}>Cancelar</button>
-              <button className="btn btn-primary" onClick={handleSalvarItem} disabled={saving || !itemForm.pergunta}>
-                {saving ? <><Loader2 className="w-4 h-4 animate-spin" />Salvando...</> : editingItem ? 'Salvar Alterações' : 'Adicionar'}
-              </button>
-            </div>
-          </div>
-          <div 
-            className="modal-backdrop" 
-            onClick={(e) => {
-              // Não fecha ao clicar fora - removido para evitar perda de dados
-              e.stopPropagation();
-            }}
-          ></div>
         </div>
-      )}
+      </FormModal>
+
+      <ConfirmDialog
+        open={confirmRemoverGrupo !== null}
+        onClose={() => setConfirmRemoverGrupo(null)}
+        onConfirm={() => { if (confirmRemoverGrupo) return handleRemoverGrupo(confirmRemoverGrupo); }}
+        title="Excluir Grupo"
+        message="Tem certeza que deseja remover este grupo? As perguntas serão desvinculadas do grupo."
+        confirmLabel="Excluir"
+        cancelLabel="Cancelar"
+        variant="danger"
+        loading={saving}
+      />
+
+      <ConfirmDialog
+        open={confirmRemoverItem !== null}
+        onClose={() => setConfirmRemoverItem(null)}
+        onConfirm={() => { if (confirmRemoverItem) return handleRemoverItem(confirmRemoverItem); }}
+        title="Excluir Pergunta"
+        message="Tem certeza que deseja remover esta pergunta? Esta ação não pode ser desfeita."
+        confirmLabel="Excluir"
+        cancelLabel="Cancelar"
+        variant="danger"
+        loading={saving}
+      />
     </AppLayout>
   );
 }
-

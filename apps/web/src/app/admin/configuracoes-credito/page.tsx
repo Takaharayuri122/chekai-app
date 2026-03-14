@@ -15,7 +15,7 @@ import {
   Save,
   X,
 } from 'lucide-react';
-import { AppLayout, PageHeader, EmptyState, ConfirmDialog } from '@/components';
+import { AppLayout, PageHeader, EmptyState, ConfirmDialog, FormModal } from '@/components';
 import {
   configuracaoCreditoService,
   ConfiguracaoCredito,
@@ -280,126 +280,120 @@ export default function ConfiguracoesCreditoPage() {
         )}
       </div>
 
-      {/* Modal de Criar/Editar */}
-      {showModal && (
-        <div className="modal modal-open">
-          <div className="modal-box">
-            <h3 className="font-bold text-lg mb-4">
-              {editingConfig ? 'Editar Configuração' : 'Nova Configuração'}
-            </h3>
-
-            <div className="space-y-4">
-              <div className="form-control">
-                <label className="label">
-                  <span className="label-text">Provedor</span>
-                  <span className="label-text-alt text-error">*</span>
-                </label>
-                <select
-                  className="select select-bordered w-full"
-                  value={configForm.provedor}
-                  onChange={(e) =>
-                    setConfigForm({ ...configForm, provedor: e.target.value as ProvedorIa })
-                  }
-                  disabled={!!editingConfig}
-                >
-                  <option value="openai">OpenAI</option>
-                  <option value="deepseek">DeepSeek</option>
-                </select>
-              </div>
-
-              <div className="form-control">
-                <label className="label">
-                  <span className="label-text">Modelo</span>
-                  <span className="label-text-alt text-error">*</span>
-                </label>
-                <input
-                  type="text"
-                  placeholder="Ex: gpt-4o-mini, deepseek-chat"
-                  className="input input-bordered w-full"
-                  value={configForm.modelo}
-                  onChange={(e) => setConfigForm({ ...configForm, modelo: e.target.value })}
-                  disabled={!!editingConfig}
-                />
-                <label className="label">
-                  <span className="label-text-alt">
-                    Nome do modelo da IA (não pode ser alterado após criar)
-                  </span>
-                </label>
-              </div>
-
-              <div className="form-control">
-                <label className="label">
-                  <span className="label-text">Tokens por Crédito</span>
-                  <span className="label-text-alt text-error">*</span>
-                </label>
-                <input
-                  type="number"
-                  placeholder="Ex: 1000"
-                  className="input input-bordered w-full"
-                  value={configForm.tokensPorCredito}
-                  onChange={(e) =>
-                    setConfigForm({
-                      ...configForm,
-                      tokensPorCredito: parseInt(e.target.value) || 0,
-                    })
-                  }
-                  min="1"
-                />
-                <label className="label">
-                  <span className="label-text-alt">
-                    Quantos tokens equivalem a 1 crédito de IA
-                  </span>
-                </label>
-              </div>
-
-              <div className="form-control">
-                <label className="label cursor-pointer">
-                  <span className="label-text">Ativo</span>
-                  <input
-                    type="checkbox"
-                    className="toggle toggle-primary"
-                    checked={configForm.ativo}
-                    onChange={(e) => setConfigForm({ ...configForm, ativo: e.target.checked })}
-                  />
-                </label>
-                <label className="label">
-                  <span className="label-text-alt">
-                    Configurações inativas não serão utilizadas
-                  </span>
-                </label>
-              </div>
-            </div>
-
-            <div className="modal-action">
-              <button
-                className="btn btn-ghost"
-                onClick={handleFecharModal}
-                disabled={saving}
-              >
-                <X className="w-4 h-4" />
-                Cancelar
-              </button>
-              <button
-                className="btn btn-primary gap-2"
-                onClick={handleCriarOuAtualizar}
-                disabled={saving}
-              >
-                {saving ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Salvando...
-                  </>
-                ) : (
-                  <>
-                    <Save className="w-4 h-4" />
-                    {editingConfig ? 'Atualizar' : 'Criar'}
-                  </>
-                )}
-              </button>
-            </div>
+      <FormModal
+        open={showModal}
+        onClose={handleFecharModal}
+        title={editingConfig ? 'Editar Configuração' : 'Nova Configuração'}
+        maxWidth="md"
+        isDirty={Boolean(configForm.modelo || configForm.tokensPorCredito)}
+        footer={
+          <>
+            <button
+              className="btn btn-ghost"
+              onClick={handleFecharModal}
+              disabled={saving}
+            >
+              Cancelar
+            </button>
+            <button
+              className="btn btn-primary gap-2"
+              onClick={handleCriarOuAtualizar}
+              disabled={saving}
+            >
+              {saving ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Salvando...
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4" />
+                  {editingConfig ? 'Atualizar' : 'Criar'}
+                </>
+              )}
+            </button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <div className="form-control">
+            <label className="label">
+              <span className="label-text">Provedor</span>
+              <span className="label-text-alt text-error">*</span>
+            </label>
+            <select
+              className="select select-bordered w-full"
+              value={configForm.provedor}
+              onChange={(e) =>
+                setConfigForm({ ...configForm, provedor: e.target.value as ProvedorIa })
+              }
+              disabled={!!editingConfig}
+            >
+              <option value="openai">OpenAI</option>
+              <option value="deepseek">DeepSeek</option>
+            </select>
+          </div>
+          <div className="form-control">
+            <label className="label">
+              <span className="label-text">Modelo</span>
+              <span className="label-text-alt text-error">*</span>
+            </label>
+            <input
+              type="text"
+              placeholder="Ex: gpt-4o-mini, deepseek-chat"
+              className="input input-bordered w-full"
+              value={configForm.modelo}
+              onChange={(e) => setConfigForm({ ...configForm, modelo: e.target.value })}
+              disabled={!!editingConfig}
+            />
+            <label className="label">
+              <span className="label-text-alt">
+                Nome do modelo da IA (não pode ser alterado após criar)
+              </span>
+            </label>
+          </div>
+          <div className="form-control">
+            <label className="label">
+              <span className="label-text">Tokens por Crédito</span>
+              <span className="label-text-alt text-error">*</span>
+            </label>
+            <input
+              type="number"
+              placeholder="Ex: 1000"
+              className="input input-bordered w-full"
+              value={configForm.tokensPorCredito}
+              onChange={(e) =>
+                setConfigForm({
+                  ...configForm,
+                  tokensPorCredito: parseInt(e.target.value) || 0,
+                })
+              }
+              min="1"
+            />
+            <label className="label">
+              <span className="label-text-alt">
+                Quantos tokens equivalem a 1 crédito de IA
+              </span>
+            </label>
+          </div>
+          <div className="form-control">
+            <label className="label cursor-pointer">
+              <span className="label-text">Ativo</span>
+              <input
+                type="checkbox"
+                className="toggle toggle-primary"
+                checked={configForm.ativo}
+                onChange={(e) => setConfigForm({ ...configForm, ativo: e.target.checked })}
+              />
+            </label>
+            <label className="label">
+              <span className="label-text-alt">
+                Configurações inativas não serão utilizadas
+              </span>
+            </label>
           </div>
         </div>
-      )}
+      </FormModal>
 
       {/* Modal de Confirmação de Exclusão */}
       <ConfirmDialog

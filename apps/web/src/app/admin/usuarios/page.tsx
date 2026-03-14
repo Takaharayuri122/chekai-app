@@ -14,7 +14,7 @@ import {
   Filter,
   Send,
 } from 'lucide-react';
-import { AppLayout, PageHeader, EmptyState, ConfirmDialog } from '@/components';
+import { AppLayout, PageHeader, EmptyState, ConfirmDialog, FormModal } from '@/components';
 import {
   usuarioService,
   planoService,
@@ -407,205 +407,199 @@ export default function UsuariosPage() {
         )}
       </div>
 
-      {showModal && (
-        <div
-          className="modal modal-open"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) {
-              e.stopPropagation();
-            }
-          }}
-        >
-          <div className="modal-box max-w-2xl">
-            <h3 className="font-bold text-lg mb-4">
-              {editingUsuario ? 'Editar Usuário' : 'Convidar Usuário'}
-            </h3>
-            <div className="space-y-4">
-              <div className="form-control">
-                <label className="label">
-                  <span className="label-text">Nome</span>
-                </label>
-                <input
-                  type="text"
-                  className="input input-bordered"
-                  value={usuarioForm.nome}
-                  onChange={(e) =>
-                    setUsuarioForm({ ...usuarioForm, nome: e.target.value })
-                  }
-                />
-              </div>
-              <div className="form-control">
-                <label className="label">
-                  <span className="label-text">E-mail</span>
-                </label>
-                <input
-                  type="email"
-                  className="input input-bordered"
-                  value={usuarioForm.email}
-                  onChange={(e) =>
-                    setUsuarioForm({ ...usuarioForm, email: e.target.value })
-                  }
-                />
-              </div>
-              <div className="form-control">
-                <label className="label">
-                  <span className="label-text">Perfil</span>
-                </label>
-                <select
-                  className="select select-bordered"
-                  value={usuarioForm.perfil}
-                  disabled={isGestor() && !isMaster() && !editingUsuario}
-                  onChange={(e) => {
-                    const novoPerfil = e.target.value as PerfilUsuario;
-                    const perfilFinal = isGestor() && !isMaster() && !editingUsuario
-                      ? PerfilUsuario.AUDITOR
-                      : novoPerfil;
-                    const novoGestorId = perfilFinal === PerfilUsuario.AUDITOR && isGestor() && !isMaster() && !editingUsuario
-                      ? usuario?.id
-                      : perfilFinal === PerfilUsuario.AUDITOR
-                        ? usuarioForm.gestorId
-                        : undefined;
-                    setUsuarioForm({
-                      ...usuarioForm,
-                      perfil: perfilFinal,
-                      gestorId: novoGestorId,
-                    });
-                  }}
-                >
-                  {Object.values(PerfilUsuario).map((perfil) => {
-                    if (isGestor() && !isMaster() && !editingUsuario && perfil !== PerfilUsuario.AUDITOR) {
-                      return null;
-                    }
-                    return (
-                      <option key={perfil} value={perfil}>
-                        {PERFIL_LABELS[perfil]}
-                      </option>
-                    );
-                  })}
-                </select>
-                {isGestor() && !isMaster() && !editingUsuario && (
-                  <label className="label">
-                    <span className="label-text-alt text-base-content/60">
-                      Gestores só podem criar usuários com perfil Auditor
-                    </span>
-                  </label>
-                )}
-              </div>
-              <div className="form-control">
-                <label className="label">
-                  <span className="label-text">WhatsApp *</span>
-                </label>
-                <input
-                  type="tel"
-                  className="input input-bordered"
-                  placeholder="(00) 00000-0000"
-                  value={usuarioForm.telefone || ''}
-                  onChange={(e) => {
-                    const valorFormatado = aplicarMascaraTelefone(e.target.value);
-                    setUsuarioForm({ ...usuarioForm, telefone: valorFormatado });
-                  }}
-                  maxLength={15}
-                  required
-                />
-              </div>
-              {usuarioForm.perfil === PerfilUsuario.AUDITOR && (
-                <div className="form-control">
-                  <label className="label">
-                    <span className="label-text">Gestor Responsável *</span>
-                  </label>
-                  <select
-                    className="select select-bordered"
-                    value={usuarioForm.gestorId || ''}
-                    disabled={isGestor() && !isMaster() && !editingUsuario}
-                    onChange={(e) =>
-                      setUsuarioForm({
-                        ...usuarioForm,
-                        gestorId: e.target.value || undefined,
-                      })
-                    }
-                    required={!(isGestor() && !isMaster() && !editingUsuario)}
-                  >
-                    <option value="">Selecione um gestor</option>
-                    {gestores.map((gestor) => (
-                      <option key={gestor.id} value={gestor.id}>
-                        {gestor.nome} ({gestor.email})
-                      </option>
-                    ))}
-                  </select>
-                  {isGestor() && !isMaster() && !editingUsuario && (
-                    <label className="label">
-                      <span className="label-text-alt text-base-content/60">
-                        O auditor será automaticamente vinculado a você
-                      </span>
-                    </label>
-                  )}
-                </div>
+      <FormModal
+        open={showModal}
+        onClose={handleFecharModal}
+        title={editingUsuario ? 'Editar Usuário' : 'Convidar Usuário'}
+        maxWidth="2xl"
+        isDirty={Boolean(usuarioForm.nome || usuarioForm.email || usuarioForm.telefone)}
+        footer={
+          <>
+            <button
+              className="btn btn-ghost"
+              onClick={handleFecharModal}
+            >
+              Cancelar
+            </button>
+            <button
+              className="btn btn-primary"
+              onClick={handleCriarUsuario}
+              disabled={
+                saving ||
+                !usuarioForm.nome ||
+                !usuarioForm.email ||
+                !usuarioForm.telefone ||
+                (usuarioForm.perfil === PerfilUsuario.AUDITOR &&
+                 !usuarioForm.gestorId &&
+                 !(isGestor() && !isMaster() && !editingUsuario && usuario?.id)) ||
+                (isMaster() && usuarioForm.perfil === PerfilUsuario.GESTOR && !editingUsuario && !usuarioForm.planoId)
+              }
+            >
+              {saving ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : editingUsuario ? (
+                'Salvar'
+              ) : (
+                'Enviar Convite'
               )}
-              {isMaster() && usuarioForm.perfil === PerfilUsuario.GESTOR && !editingUsuario && (
-                <div className="form-control">
-                  <label className="label">
-                    <span className="label-text">Plano / Assinatura *</span>
-                  </label>
-                  <select
-                    className="select select-bordered"
-                    value={usuarioForm.planoId || ''}
-                    onChange={(e) =>
-                      setUsuarioForm({
-                        ...usuarioForm,
-                        planoId: e.target.value || undefined,
-                      })
-                    }
-                    required
-                  >
-                    <option value="">Selecione um plano</option>
-                    {planos.map((plano) => (
-                      <option key={plano.id} value={plano.id}>
-                        {plano.nome}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-              {!editingUsuario && (
-                <div className="alert alert-info">
-                  <Send className="w-4 h-4" />
-                  <span className="text-sm">Um convite será enviado por e-mail para que o usuário aceite e configure seu acesso.</span>
-                </div>
-              )}
-            </div>
-            <div className="modal-action">
-              <button
-                className="btn btn-ghost"
-                onClick={handleFecharModal}
-              >
-                Cancelar
-              </button>
-              <button
-                className="btn btn-primary"
-                onClick={handleCriarUsuario}
-                disabled={
-                  saving ||
-                  !usuarioForm.nome ||
-                  !usuarioForm.email ||
-                  !usuarioForm.telefone ||
-                  (usuarioForm.perfil === PerfilUsuario.AUDITOR &&
-                   !usuarioForm.gestorId &&
-                   !(isGestor() && !isMaster() && !editingUsuario && usuario?.id)) ||
-                  (isMaster() && usuarioForm.perfil === PerfilUsuario.GESTOR && !editingUsuario && !usuarioForm.planoId)
-                }
-              >
-                {saving ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : editingUsuario ? (
-                  'Salvar'
-                ) : (
-                  'Enviar Convite'
-                )}
-              </button>
-            </div>
+            </button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <div className="form-control">
+            <label className="label">
+              <span className="label-text">Nome</span>
+            </label>
+            <input
+              type="text"
+              className="input input-bordered"
+              value={usuarioForm.nome}
+              onChange={(e) =>
+                setUsuarioForm({ ...usuarioForm, nome: e.target.value })
+              }
+            />
           </div>
+          <div className="form-control">
+            <label className="label">
+              <span className="label-text">E-mail</span>
+            </label>
+            <input
+              type="email"
+              className="input input-bordered"
+              value={usuarioForm.email}
+              onChange={(e) =>
+                setUsuarioForm({ ...usuarioForm, email: e.target.value })
+              }
+            />
+          </div>
+          <div className="form-control">
+            <label className="label">
+              <span className="label-text">Perfil</span>
+            </label>
+            <select
+              className="select select-bordered"
+              value={usuarioForm.perfil}
+              disabled={isGestor() && !isMaster() && !editingUsuario}
+              onChange={(e) => {
+                const novoPerfil = e.target.value as PerfilUsuario;
+                const perfilFinal = isGestor() && !isMaster() && !editingUsuario
+                  ? PerfilUsuario.AUDITOR
+                  : novoPerfil;
+                const novoGestorId = perfilFinal === PerfilUsuario.AUDITOR && isGestor() && !isMaster() && !editingUsuario
+                  ? usuario?.id
+                  : perfilFinal === PerfilUsuario.AUDITOR
+                    ? usuarioForm.gestorId
+                    : undefined;
+                setUsuarioForm({
+                  ...usuarioForm,
+                  perfil: perfilFinal,
+                  gestorId: novoGestorId,
+                });
+              }}
+            >
+              {Object.values(PerfilUsuario).map((perfil) => {
+                if (isGestor() && !isMaster() && !editingUsuario && perfil !== PerfilUsuario.AUDITOR) {
+                  return null;
+                }
+                return (
+                  <option key={perfil} value={perfil}>
+                    {PERFIL_LABELS[perfil]}
+                  </option>
+                );
+              })}
+            </select>
+            {isGestor() && !isMaster() && !editingUsuario && (
+              <label className="label">
+                <span className="label-text-alt text-base-content/60">
+                  Gestores só podem criar usuários com perfil Auditor
+                </span>
+              </label>
+            )}
+          </div>
+          <div className="form-control">
+            <label className="label">
+              <span className="label-text">WhatsApp *</span>
+            </label>
+            <input
+              type="tel"
+              className="input input-bordered"
+              placeholder="(00) 00000-0000"
+              value={usuarioForm.telefone || ''}
+              onChange={(e) => {
+                const valorFormatado = aplicarMascaraTelefone(e.target.value);
+                setUsuarioForm({ ...usuarioForm, telefone: valorFormatado });
+              }}
+              maxLength={15}
+              required
+            />
+          </div>
+          {usuarioForm.perfil === PerfilUsuario.AUDITOR && (
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text">Gestor Responsável *</span>
+              </label>
+              <select
+                className="select select-bordered"
+                value={usuarioForm.gestorId || ''}
+                disabled={isGestor() && !isMaster() && !editingUsuario}
+                onChange={(e) =>
+                  setUsuarioForm({
+                    ...usuarioForm,
+                    gestorId: e.target.value || undefined,
+                  })
+                }
+                required={!(isGestor() && !isMaster() && !editingUsuario)}
+              >
+                <option value="">Selecione um gestor</option>
+                {gestores.map((gestor) => (
+                  <option key={gestor.id} value={gestor.id}>
+                    {gestor.nome} ({gestor.email})
+                  </option>
+                ))}
+              </select>
+              {isGestor() && !isMaster() && !editingUsuario && (
+                <label className="label">
+                  <span className="label-text-alt text-base-content/60">
+                    O auditor será automaticamente vinculado a você
+                  </span>
+                </label>
+              )}
+            </div>
+          )}
+          {isMaster() && usuarioForm.perfil === PerfilUsuario.GESTOR && !editingUsuario && (
+            <div className="form-control">
+              <label className="label">
+                <span className="label-text">Plano / Assinatura *</span>
+              </label>
+              <select
+                className="select select-bordered"
+                value={usuarioForm.planoId || ''}
+                onChange={(e) =>
+                  setUsuarioForm({
+                    ...usuarioForm,
+                    planoId: e.target.value || undefined,
+                  })
+                }
+                required
+              >
+                <option value="">Selecione um plano</option>
+                {planos.map((plano) => (
+                  <option key={plano.id} value={plano.id}>
+                    {plano.nome}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          {!editingUsuario && (
+            <div className="alert alert-info">
+              <Send className="w-4 h-4" />
+              <span className="text-sm">Um convite será enviado por e-mail para que o usuário aceite e configure seu acesso.</span>
+            </div>
+          )}
         </div>
-      )}
+      </FormModal>
 
       <ConfirmDialog
         open={showDeleteConfirm !== null}

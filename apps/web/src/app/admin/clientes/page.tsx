@@ -15,6 +15,7 @@ import {
   AppLayout,
   PageHeader,
   ConfirmDialog,
+  FormModal,
   CrudFiltros,
   CrudTable,
   type ColunaTabela,
@@ -482,17 +483,56 @@ export default function ClientesPage() {
         />
       </div>
 
-      {/* Modal Cliente */}
-      {showModal && (
-        <div
-          className="modal modal-open"
-          onClick={(e) => { if (e.target === e.currentTarget) e.stopPropagation(); }}
-        >
-          <div className="modal-box max-w-4xl w-full">
-            <h3 className="font-bold text-lg mb-4">
-              {editingCliente ? 'Editar Cliente' : 'Novo Cliente'}
-            </h3>
-            <div className="space-y-4">
+      <FormModal
+        open={showModal}
+        onClose={() => {
+          clearPendingLogo();
+          setShowModal(false);
+          setEditingCliente(null);
+          setClienteForm(clienteFormInicial);
+          setUnidadesPendentes([]);
+        }}
+        title={editingCliente ? 'Editar Cliente' : 'Novo Cliente'}
+        maxWidth="4xl"
+        isDirty={Boolean(clienteForm.razaoSocial || clienteForm.cnpj || clienteForm.telefone || unidadesPendentes.length > 0)}
+        closeOnBackdrop={false}
+        footer={
+          <>
+            <button
+              className="btn btn-ghost"
+              onClick={() => {
+                clearPendingLogo();
+                setShowModal(false);
+                setEditingCliente(null);
+                setClienteForm(clienteFormInicial);
+                setUnidadesPendentes([]);
+              }}
+            >
+              Cancelar
+            </button>
+            <button
+              className="btn btn-primary"
+              onClick={handleSalvarCliente}
+              disabled={
+                saving ||
+                !clienteForm.razaoSocial ||
+                !clienteForm.cnpj ||
+                !clienteForm.telefone ||
+                removerMascaraTelefone(clienteForm.telefone).length < 10 ||
+                (clienteForm.email?.trim() ? !emailValido(clienteForm.email) : false) ||
+                (!editingCliente && unidadesPendentes.length === 0)
+              }
+            >
+              {saving ? (
+                <><Loader2 className="w-4 h-4 animate-spin" /> Salvando...</>
+              ) : (
+                editingCliente ? 'Atualizar' : 'Salvar'
+              )}
+            </button>
+          </>
+        }
+      >
+        <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="form-control">
                   <label className="label"><span className="label-text">Razão Social *</span></label>
@@ -785,44 +825,8 @@ export default function ClientesPage() {
                   </>
                 )}
               </div>
-            </div>
-            <div className="modal-action">
-              <button
-                className="btn btn-ghost"
-                onClick={() => {
-                  clearPendingLogo();
-                  setShowModal(false);
-                  setEditingCliente(null);
-                  setClienteForm(clienteFormInicial);
-                  setUnidadesPendentes([]);
-                }}
-              >
-                Cancelar
-              </button>
-              <button
-                className="btn btn-primary"
-                onClick={handleSalvarCliente}
-                disabled={
-                  saving ||
-                  !clienteForm.razaoSocial ||
-                  !clienteForm.cnpj ||
-                  !clienteForm.telefone ||
-                  removerMascaraTelefone(clienteForm.telefone).length < 10 ||
-                  (clienteForm.email?.trim() ? !emailValido(clienteForm.email) : false) ||
-                  (!editingCliente && unidadesPendentes.length === 0)
-                }
-              >
-                {saving ? (
-                  <><Loader2 className="w-4 h-4 animate-spin" /> Salvando...</>
-                ) : (
-                  editingCliente ? 'Atualizar' : 'Salvar'
-                )}
-              </button>
-            </div>
-          </div>
-          <div className="modal-backdrop" onClick={(e) => e.stopPropagation()} />
         </div>
-      )}
+      </FormModal>
 
       <LogoCropperModal
         open={cropperOpen}

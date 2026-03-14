@@ -21,7 +21,7 @@ import {
   AlertCircle,
   Clock,
 } from 'lucide-react';
-import { AppLayout, PageHeader } from '@/components';
+import { AppLayout, PageHeader, FormModal } from '@/components';
 import {
   auditoriaService,
   iaService,
@@ -719,8 +719,8 @@ export default function AuditoriaPage() {
 
   const getRespostaStyle = (item: AuditoriaItem, tipo: RespostaType, isPersonalizada: boolean = false) => {
     const isSelected = item.resposta === tipo;
-    const base = 'btn btn-sm flex-1';
-    if (!isSelected) return `${base} btn-ghost`;
+    const base = 'btn btn-sm flex-1 min-w-0';
+    if (!isSelected) return `${base} btn-outline border-base-content/30 text-base-content/70 hover:bg-base-200 hover:border-base-content/50`;
     const pontuacao = getPontuacaoParaOpcao(item, tipo);
     return `${base} ${getClassePorPontuacao(pontuacao)}`;
   };
@@ -905,7 +905,13 @@ export default function AuditoriaPage() {
                   </div>
                 ) : item.templateItem.usarRespostasPersonalizadas && item.templateItem.opcoesResposta && item.templateItem.opcoesResposta.length > 0 ? (
                   // Opções personalizadas do template (botões)
-                  <div className="flex gap-2 flex-wrap">
+                  <div className={`grid gap-2 grid-cols-2 ${
+                    item.templateItem.opcoesResposta.length === 1 ? 'sm:grid-cols-1'
+                    : item.templateItem.opcoesResposta.length === 2 ? 'sm:grid-cols-2'
+                    : item.templateItem.opcoesResposta.length === 3 ? 'sm:grid-cols-3'
+                    : item.templateItem.opcoesResposta.length <= 6 ? 'sm:grid-cols-3 lg:grid-cols-4'
+                    : 'sm:grid-cols-3 lg:grid-cols-4'
+                  }`}>
                     {item.templateItem.opcoesResposta.map((opcao, idx) => (
                       <button
                         key={idx}
@@ -914,13 +920,13 @@ export default function AuditoriaPage() {
                         disabled={auditoria.status === 'finalizada'}
                         title={auditoria.status === 'finalizada' ? 'Auditoria finalizada. Reabra para editar.' : ''}
                       >
-                        <span>{renderEmoji(opcao)}</span>
+                        <span className="truncate text-xs sm:text-sm">{renderEmoji(opcao)}</span>
                       </button>
                     ))}
                   </div>
                 ) : (
                   // Opções padrão
-                  <div className="flex gap-2 flex-wrap">
+                  <div className="grid grid-cols-3 gap-2">
                     <button
                       className={getRespostaStyle(item, 'conforme')}
                       onClick={() => handleResposta(item.id, 'conforme')}
@@ -937,7 +943,7 @@ export default function AuditoriaPage() {
                       title={auditoria.status === 'finalizada' ? 'Auditoria finalizada. Reabra para editar.' : ''}
                     >
                       <XCircle className="w-4 h-4" />
-                      <span className="hidden sm:inline">Não Conforme</span>
+                      <span className="hidden sm:inline">Não Conf.</span>
                     </button>
                     <button
                       className={getRespostaStyle(item, 'nao_aplicavel')}
@@ -1082,37 +1088,57 @@ export default function AuditoriaPage() {
         onChange={handleImageSelect}
       />
 
-      {/* Modal de Foto + IA */}
-      <AnimatePresence>
+      <FormModal
+        open={Boolean(itemModal)}
+        onClose={() => setItemModal(null)}
+        title={auditoria.status === 'finalizada' ? 'Visualizar Item' : 'Documentar Item'}
+        maxWidth="5xl"
+        isDirty={Boolean(itemModal && (itemModal.fotos.length > 0 || itemModal.observacao))}
+        closeOnBackdrop={false}
+        footer={itemModal ? (() => {
+          const temResposta = Boolean(itemModal.item.resposta && itemModal.item.resposta !== 'nao_avaliado');
+          const temFotos = itemModal.fotos.length > 0;
+          const opcaoConfigModal = getOpcaoConfig(itemModal.item, itemModal.item.resposta || '');
+          const imagensNaoRelevantes = itemModal.fotos.some((f) => f.analiseIa && !f.analiseIa.imagemRelevante) || false;
+          const faltaObservacaoParaImagens = imagensNaoRelevantes && (!itemModal.observacao || itemModal.observacao.trim() === '');
+          const isDisabled = temResposta
+            ? (opcaoConfigModal?.observacaoObrigatoria && (!itemModal.observacao || itemModal.observacao.trim() === '')) ||
+              (opcaoConfigModal?.fotoObrigatoria && !temFotos) ||
+              faltaObservacaoParaImagens
+            : !temFotos || faltaObservacaoParaImagens;
+          return auditoria.status !== 'finalizada' ? (
+            <>
+              <button className="btn btn-ghost" onClick={() => setItemModal(null)}>
+                Cancelar
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={handleSaveItemModal}
+                disabled={isDisabled}
+              >
+                {itemModal.isSaving ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Salvando...
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4" />
+                    Salvar Resposta
+                  </>
+                )}
+              </button>
+            </>
+          ) : (
+            <button className="btn btn-ghost" onClick={() => setItemModal(null)}>
+              Fechar
+            </button>
+          );
+        })() : undefined}
+      >
         {itemModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="modal modal-open"
-            onClick={(e) => {
-              // Não fecha ao clicar fora - removido para evitar perda de dados
-              if (e.target === e.currentTarget) {
-                e.stopPropagation();
-              }
-            }}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="modal-box max-w-5xl w-full max-h-[95vh] overflow-y-auto"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-bold text-lg">
-                  {auditoria.status === 'finalizada' ? 'Visualizar Item' : 'Documentar Item'}
-                </h3>
-                <button onClick={() => setItemModal(null)} className="btn btn-ghost btn-sm btn-circle">
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-              {auditoria.status === 'finalizada' && (
+          <>
+            {auditoria.status === 'finalizada' && (
                 <div className="alert alert-info mb-4">
                   <AlertCircle className="w-4 h-4" />
                   <span className="text-sm">Auditoria finalizada. Apenas visualização disponível.</span>
@@ -1329,64 +1355,9 @@ export default function AuditoriaPage() {
                 </div>
               </div>
 
-              {/* Ações */}
-              {(() => {
-                const temResposta = Boolean(itemModal.item.resposta && itemModal.item.resposta !== 'nao_avaliado');
-                const temFotos = itemModal.fotos.length > 0;
-                const opcaoConfigModal = itemModal ? getOpcaoConfig(itemModal.item, itemModal.item.resposta || '') : null;
-                const imagensNaoRelevantes = itemModal?.fotos.some((f) => f.analiseIa && !f.analiseIa.imagemRelevante) || false;
-                const faltaObservacaoParaImagens = imagensNaoRelevantes && (!itemModal.observacao || itemModal.observacao.trim() === '');
-
-                const isDisabled = temResposta
-                  ? (opcaoConfigModal?.observacaoObrigatoria && (!itemModal.observacao || itemModal.observacao.trim() === '')) ||
-                    (opcaoConfigModal?.fotoObrigatoria && !temFotos) ||
-                    faltaObservacaoParaImagens
-                  : !temFotos || faltaObservacaoParaImagens;
-
-                return (
-                  <div className="modal-action">
-                    {auditoria.status !== 'finalizada' ? (
-                      <>
-                        <button className="btn btn-ghost" onClick={() => setItemModal(null)}>
-                          Cancelar
-                        </button>
-                        <button
-                          className="btn btn-primary w-full"
-                          onClick={handleSaveItemModal}
-                          disabled={isDisabled}
-                        >
-                          {itemModal.isSaving ? (
-                            <>
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                              Salvando...
-                            </>
-                          ) : (
-                            <>
-                              <Save className="w-4 h-4" />
-                              Salvar Resposta
-                            </>
-                          )}
-                        </button>
-                      </>
-                    ) : (
-                      <button className="btn btn-ghost" onClick={() => setItemModal(null)}>
-                        Fechar
-                      </button>
-                    )}
-                  </div>
-                );
-              })()}
-            </motion.div>
-            <div 
-              className="modal-backdrop" 
-              onClick={(e) => {
-                // Não fecha ao clicar fora
-                e.stopPropagation();
-              }}
-            ></div>
-          </motion.div>
+          </>
         )}
-      </AnimatePresence>
+      </FormModal>
 
       {/* Botão flutuante Encerrar - apenas para auditorias em andamento */}
       {auditoria.status === 'em_andamento' && (
@@ -1449,76 +1420,65 @@ export default function AuditoriaPage() {
         </motion.div>
       )}
 
-      {/* Modal de finalização */}
-      {showFinalModal && (
-        <div 
-          className="modal modal-open"
-          onClick={(e) => {
-            // Não fecha ao clicar fora - removido para evitar perda de dados
-            if (e.target === e.currentTarget) {
-              e.stopPropagation();
-            }
-          }}
-        >
-          <div 
-            className="modal-box"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="font-bold text-lg">Encerrar Auditoria</h3>
-            <p className="py-4 text-base-content/60">
-              Adicione observações gerais sobre a auditoria (opcional).
-            </p>
-            {erroFinalizar && !erroFinalizar.toLowerCase().includes('itens não avaliados') && !erroFinalizar.toLowerCase().includes('obrigat') && (
-              <div className="alert alert-error mb-4">
-                <AlertTriangle className="w-5 h-5" />
-                <span>{erroFinalizar}</span>
-                <button 
-                  onClick={() => setErroFinalizar('')} 
-                  className="btn btn-ghost btn-sm btn-circle"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            )}
-            <textarea
-              className="textarea textarea-bordered w-full"
-              placeholder="Observações gerais..."
-              rows={4}
-              value={observacoesGerais}
-              onChange={(e) => setObservacoesGerais(e.target.value)}
-            ></textarea>
-            <div className="modal-action">
-              <button 
-                className="btn btn-ghost" 
-                onClick={() => { 
-                  setShowFinalModal(false); 
-                  setErroFinalizar('');
-                  setItensObrigatoriosNaoAvaliados(new Set());
-                }}
-              >
-                Cancelar
-              </button>
-              <button className="btn btn-primary" onClick={handleFinalizar} disabled={finalizando}>
-                {finalizando ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Finalizando...
-                  </>
-                ) : (
-                  'Confirmar'
-                )}
-              </button>
-            </div>
+      <FormModal
+        open={showFinalModal}
+        onClose={() => {
+          setShowFinalModal(false);
+          setErroFinalizar('');
+          setItensObrigatoriosNaoAvaliados(new Set());
+        }}
+        title="Encerrar Auditoria"
+        maxWidth="md"
+        isDirty={Boolean(observacoesGerais)}
+        closeOnBackdrop={false}
+        footer={
+          <>
+            <button
+              className="btn btn-ghost"
+              onClick={() => {
+                setShowFinalModal(false);
+                setErroFinalizar('');
+                setItensObrigatoriosNaoAvaliados(new Set());
+              }}
+            >
+              Cancelar
+            </button>
+            <button className="btn btn-primary" onClick={handleFinalizar} disabled={finalizando}>
+              {finalizando ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Finalizando...
+                </>
+              ) : (
+                'Confirmar'
+              )}
+            </button>
+          </>
+        }
+      >
+        <p className="text-base-content/60 mb-4">
+          Adicione observações gerais sobre a auditoria (opcional).
+        </p>
+        {erroFinalizar && !erroFinalizar.toLowerCase().includes('itens não avaliados') && !erroFinalizar.toLowerCase().includes('obrigat') && (
+          <div className="alert alert-error mb-4">
+            <AlertTriangle className="w-5 h-5" />
+            <span>{erroFinalizar}</span>
+            <button
+              onClick={() => setErroFinalizar('')}
+              className="btn btn-ghost btn-sm btn-circle"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
-          <div 
-            className="modal-backdrop" 
-            onClick={(e) => {
-              // Não fecha ao clicar fora
-              e.stopPropagation();
-            }}
-          ></div>
-        </div>
-      )}
+        )}
+        <textarea
+          className="textarea textarea-bordered w-full"
+          placeholder="Observações gerais..."
+          rows={4}
+          value={observacoesGerais}
+          onChange={(e) => setObservacoesGerais(e.target.value)}
+        />
+      </FormModal>
     </AppLayout>
   );
 }

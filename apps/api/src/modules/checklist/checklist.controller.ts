@@ -210,6 +210,30 @@ export class ChecklistController {
     return this.checklistService.removerGrupo(grupoId, usuario);
   }
 
+  @Post('grupos/:grupoId/duplicar')
+  @UseGuards(RolesGuard)
+  @Roles(PerfilUsuario.MASTER, PerfilUsuario.GESTOR)
+  @ApiOperation({ summary: 'Duplica um grupo com todas as suas perguntas e respostas' })
+  @ApiResponse({ status: 201, description: 'Grupo duplicado com sucesso' })
+  async duplicarGrupo(
+    @Param('grupoId', ParseUUIDPipe) grupoId: string,
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
+  ): Promise<ChecklistGrupo> {
+    return this.checklistService.duplicarGrupo(grupoId, usuario);
+  }
+
+  @Post('itens/:itemId/duplicar')
+  @UseGuards(RolesGuard)
+  @Roles(PerfilUsuario.MASTER, PerfilUsuario.GESTOR)
+  @ApiOperation({ summary: 'Duplica uma pergunta com todas as suas respostas' })
+  @ApiResponse({ status: 201, description: 'Pergunta duplicada com sucesso' })
+  async duplicarItem(
+    @Param('itemId', ParseUUIDPipe) itemId: string,
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
+  ): Promise<TemplateItem> {
+    return this.checklistService.duplicarItem(itemId, usuario);
+  }
+
   @Put('templates/:templateId/grupos/reordenar')
   @ApiOperation({ summary: 'Reordena os grupos de um template' })
   @ApiResponse({ status: 200, description: 'Grupos reordenados' })

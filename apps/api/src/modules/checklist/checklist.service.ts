@@ -400,6 +400,106 @@ export class ChecklistService {
   }
 
   /**
+   * Duplica um grupo com todas as suas perguntas e respostas.
+   */
+  async duplicarGrupo(
+    grupoId: string,
+    usuarioAutenticado?: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
+  ): Promise<ChecklistGrupo> {
+    const grupoOriginal = await this.grupoRepository.findOne({ where: { id: grupoId } });
+    if (!grupoOriginal) {
+      throw new NotFoundException('Grupo não encontrado');
+    }
+    const template = await this.buscarTemplatePorId(grupoOriginal.templateId, usuarioAutenticado);
+    if (usuarioAutenticado && template.gestorId !== usuarioAutenticado.id) {
+      throw new ForbiddenException('Apenas o gestor responsável pode editar este checklist');
+    }
+    const maxOrdem = await this.grupoRepository
+      .createQueryBuilder('grupo')
+      .where('grupo.template_id = :templateId', { templateId: grupoOriginal.templateId })
+      .select('MAX(grupo.ordem)', 'max')
+      .getRawOne();
+    const novoGrupo = this.grupoRepository.create({
+      nome: `${grupoOriginal.nome} (cópia)`,
+      descricao: grupoOriginal.descricao,
+      templateId: grupoOriginal.templateId,
+      ordem: (maxOrdem?.max ?? 0) + 1,
+    });
+    const grupoSalvo = await this.grupoRepository.save(novoGrupo);
+    const itensDoGrupo = await this.itemRepository.find({
+      where: { grupoId, templateId: grupoOriginal.templateId, ativo: true },
+      order: { ordem: 'ASC' },
+    });
+    for (const item of itensDoGrupo) {
+      const novoItem = this.itemRepository.create({
+        pergunta: item.pergunta,
+        categoria: item.categoria,
+        criticidade: item.criticidade,
+        peso: item.peso,
+        ordem: item.ordem,
+        legislacaoReferencia: item.legislacaoReferencia,
+        artigo: item.artigo,
+        textoLegal: item.textoLegal,
+        obrigatorio: item.obrigatorio,
+        opcoesResposta: item.opcoesResposta ? [...item.opcoesResposta] : undefined,
+        opcoesRespostaConfig: item.opcoesRespostaConfig
+          ? item.opcoesRespostaConfig.map((c) => ({ ...c }))
+          : undefined,
+        usarRespostasPersonalizadas: item.usarRespostasPersonalizadas,
+        tipoRespostaCustomizada: item.tipoRespostaCustomizada,
+        templateId: grupoOriginal.templateId,
+        grupoId: grupoSalvo.id,
+        secao: item.secao,
+      });
+      await this.itemRepository.save(novoItem);
+    }
+    return grupoSalvo;
+  }
+
+  /**
+   * Duplica uma pergunta com todas as suas respostas e configurações.
+   */
+  async duplicarItem(
+    itemId: string,
+    usuarioAutenticado?: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
+  ): Promise<TemplateItem> {
+    const itemOriginal = await this.itemRepository.findOne({ where: { id: itemId } });
+    if (!itemOriginal) {
+      throw new NotFoundException('Item não encontrado');
+    }
+    const template = await this.buscarTemplatePorId(itemOriginal.templateId, usuarioAutenticado);
+    if (usuarioAutenticado && template.gestorId !== usuarioAutenticado.id) {
+      throw new ForbiddenException('Apenas o gestor responsável pode editar este checklist');
+    }
+    const maxOrdem = await this.itemRepository
+      .createQueryBuilder('item')
+      .where('item.template_id = :templateId', { templateId: itemOriginal.templateId })
+      .select('MAX(item.ordem)', 'max')
+      .getRawOne();
+    const novoItem = this.itemRepository.create({
+      pergunta: `${itemOriginal.pergunta} (cópia)`,
+      categoria: itemOriginal.categoria,
+      criticidade: itemOriginal.criticidade,
+      peso: itemOriginal.peso,
+      ordem: (maxOrdem?.max ?? 0) + 1,
+      legislacaoReferencia: itemOriginal.legislacaoReferencia,
+      artigo: itemOriginal.artigo,
+      textoLegal: itemOriginal.textoLegal,
+      obrigatorio: itemOriginal.obrigatorio,
+      opcoesResposta: itemOriginal.opcoesResposta ? [...itemOriginal.opcoesResposta] : undefined,
+      opcoesRespostaConfig: itemOriginal.opcoesRespostaConfig
+        ? itemOriginal.opcoesRespostaConfig.map((c) => ({ ...c }))
+        : undefined,
+      usarRespostasPersonalizadas: itemOriginal.usarRespostasPersonalizadas,
+      tipoRespostaCustomizada: itemOriginal.tipoRespostaCustomizada,
+      templateId: itemOriginal.templateId,
+      grupoId: itemOriginal.grupoId,
+      secao: itemOriginal.secao,
+    });
+    return this.itemRepository.save(novoItem);
+  }
+
+  /**
    * Reordena os grupos de um template. Apenas o gestor do template pode reordenar.
    */
   async reordenarGrupos(

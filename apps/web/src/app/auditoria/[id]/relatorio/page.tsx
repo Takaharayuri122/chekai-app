@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { createPortal } from 'react-dom';
+
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
@@ -20,7 +20,7 @@ import {
   Loader2,
   Image as ImageIcon,
 } from 'lucide-react';
-import { AppLayout, PageHeader } from '@/components';
+import { AppLayout, PageHeader, FormModal } from '@/components';
 import { GraficoAproveitamentoGrupos } from '@/components/relatorio/grafico-aproveitamento-grupos';
 import { GraficoDistribuicaoPontos } from '@/components/relatorio/grafico-distribuicao-pontos';
 import { HistoricoEvolucao } from '@/components/relatorio/historico-evolucao';
@@ -1157,66 +1157,40 @@ export default function RelatorioPage() {
         </div>
       </div>
 
-      {fotoModal &&
-        typeof document !== 'undefined' &&
-        createPortal(
-          <div
-            className="modal modal-open flex items-center justify-center p-4"
-            style={{ position: 'fixed', inset: 0, zIndex: 9999 }}
-          >
-            <button
-              type="button"
-              className="bg-black/60"
-              style={{ position: 'absolute', inset: 0 }}
-              onClick={() => setFotoModal(null)}
-              aria-label="Fechar"
+      <FormModal
+        open={Boolean(fotoModal)}
+        onClose={() => setFotoModal(null)}
+        title="Foto em tamanho maior"
+        maxWidth="4xl"
+      >
+        {fotoModal && (
+          <>
+            <img
+              src={fotoModal.url}
+              alt="Foto em tamanho maior"
+              className="w-full h-auto max-h-[70vh] object-contain mx-auto rounded"
             />
-            <div
-              className="modal-box max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col p-0 bg-base-100 relative z-10"
-              onClick={(e) => e.stopPropagation()}
-              role="dialog"
-              aria-modal="true"
-              aria-label="Foto em tamanho maior"
-            >
-              <div className="flex justify-end p-2 border-b border-base-300">
-                <button
-                  type="button"
-                  onClick={() => setFotoModal(null)}
-                  className="btn btn-ghost btn-sm btn-circle"
-                  aria-label="Fechar"
-                >
-                  ✕
-                </button>
+            {fotoModal.exif && Object.keys(fotoModal.exif).length > 0 && (
+              <div className="mt-4 border-t border-base-300 pt-4">
+                <h4 className="text-sm font-semibold text-base-content/80 mb-2">Metadados EXIF (auditoria)</h4>
+                <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                  {Object.entries(fotoModal.exif).map(([key, value]) => {
+                    if (value === null || value === undefined) return null;
+                    const label = key.replace(/([A-Z])/g, ' $1').replace(/^./, (s) => s.toUpperCase()).trim();
+                    const display = typeof value === 'object' ? JSON.stringify(value) : String(value);
+                    return (
+                      <div key={key} className="flex gap-2">
+                        <dt className="text-base-content/60 shrink-0">{label}:</dt>
+                        <dd className="break-all">{display}</dd>
+                      </div>
+                    );
+                  })}
+                </dl>
               </div>
-              <div className="flex-1 overflow-y-auto p-4">
-                <img
-                  src={fotoModal.url}
-                  alt="Foto em tamanho maior"
-                  className="w-full h-auto max-h-[70vh] object-contain mx-auto rounded"
-                />
-                {fotoModal.exif && Object.keys(fotoModal.exif).length > 0 && (
-                  <div className="mt-4 border-t border-base-300 pt-4">
-                    <h4 className="text-sm font-semibold text-base-content/80 mb-2">Metadados EXIF (auditoria)</h4>
-                    <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-xs">
-                      {Object.entries(fotoModal.exif).map(([key, value]) => {
-                        if (value === null || value === undefined) return null;
-                        const label = key.replace(/([A-Z])/g, ' $1').replace(/^./, (s) => s.toUpperCase()).trim();
-                        const display = typeof value === 'object' ? JSON.stringify(value) : String(value);
-                        return (
-                          <div key={key} className="flex gap-2">
-                            <dt className="text-base-content/60 shrink-0">{label}:</dt>
-                            <dd className="break-all">{display}</dd>
-                          </div>
-                        );
-                      })}
-                    </dl>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>,
-          document.body,
+            )}
+          </>
         )}
+      </FormModal>
     </AppLayout>
   );
 }

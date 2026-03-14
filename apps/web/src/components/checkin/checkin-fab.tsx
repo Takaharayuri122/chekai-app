@@ -11,15 +11,20 @@ import { toastService } from '@/lib/toast';
 import { useGeolocalizacao } from '@/hooks/use-geolocalizacao';
 import { CheckinModal } from './checkin-modal';
 
-const ROTAS_ADMIN_EXCLUSIVAS: string[] = [
+const ROTAS_SEM_CHECKIN: string[] = [
   '/admin/lista-espera',
   '/admin/planos',
   '/admin/configuracoes-credito',
   '/admin/auditoria-tokens',
+  '/admin/templates',
+  '/admin/auditoria',
+  '/admin/auditorias',
+  '/admin/relatorios-tecnicos',
+  '/auditoria',
 ];
 
-function isRotaAdminExclusiva(pathname: string): boolean {
-  return ROTAS_ADMIN_EXCLUSIVAS.some((rota) => pathname === rota || pathname.startsWith(`${rota}/`));
+function isRotaSemCheckin(pathname: string): boolean {
+  return ROTAS_SEM_CHECKIN.some((rota) => pathname === rota || pathname.startsWith(`${rota}/`));
 }
 
 export function CheckinFab() {
@@ -69,7 +74,7 @@ export function CheckinFab() {
     if (!usuario || !isAuthenticated || !podeUsarCheckin) {
       return;
     }
-    if (isRotaAdminExclusiva(pathname)) {
+    if (isRotaSemCheckin(pathname)) {
       return;
     }
     let ativo = true;
@@ -95,7 +100,7 @@ export function CheckinFab() {
     };
   }, [carregarEstado, isAuthenticated, pathname, podeUsarCheckin, setLoading, usuario]);
 
-  if (!usuario || !isAuthenticated || !podeUsarCheckin || isRotaAdminExclusiva(pathname)) {
+  if (!usuario || !isAuthenticated || !podeUsarCheckin || isRotaSemCheckin(pathname)) {
     return null;
   }
 
