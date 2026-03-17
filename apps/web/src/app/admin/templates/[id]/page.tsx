@@ -50,6 +50,8 @@ import {
   TipoAtividade,
   CategoriaItem,
   CriticidadeItem,
+  StatusTemplate,
+  STATUS_TEMPLATE_LABELS,
   TIPO_ATIVIDADE_LABELS,
   CATEGORIA_ITEM_LABELS,
   CRITICIDADE_LABELS,
@@ -837,7 +839,17 @@ export default function EditarTemplatePage() {
             <ChevronLeft className="w-5 h-5" />
           </Link>
           <div className="flex-1 min-w-0">
-            <h1 className="text-base sm:text-lg font-bold text-base-content truncate">Editar Checklist</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-base sm:text-lg font-bold text-base-content truncate">Editar Checklist</h1>
+              {template?.status && (
+                <span className={`badge badge-sm ${
+                  template.status === StatusTemplate.RASCUNHO ? 'badge-warning' :
+                  template.status === StatusTemplate.ATIVO ? 'badge-success' : 'badge-error'
+                }`}>
+                  {STATUS_TEMPLATE_LABELS[template.status]}
+                </span>
+              )}
+            </div>
             <p className="text-xs sm:text-sm text-base-content/60 truncate">{template?.nome}</p>
           </div>
           <button onClick={handleSalvar} disabled={saving} className="btn btn-primary btn-sm gap-1 flex-shrink-0">

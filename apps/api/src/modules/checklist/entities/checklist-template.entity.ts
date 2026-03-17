@@ -13,6 +13,12 @@ import { ChecklistGrupo } from './checklist-grupo.entity';
 import { TipoAtividade } from '../../cliente/entities/cliente.entity';
 import { Usuario } from '../../usuario/entities/usuario.entity';
 
+export enum StatusTemplate {
+  RASCUNHO = 'rascunho',
+  ATIVO = 'ativo',
+  INATIVO = 'inativo',
+}
+
 /**
  * Entidade que representa um template de checklist.
  */
@@ -37,8 +43,17 @@ export class ChecklistTemplate {
   @Column({ length: 50, default: '1.0' })
   versao: string;
 
-  @Column({ default: true })
-  ativo: boolean;
+  @Column({
+    type: 'enum',
+    enum: StatusTemplate,
+    default: StatusTemplate.RASCUNHO,
+  })
+  status: StatusTemplate;
+
+  /** @deprecated Usar campo `status` */
+  get ativo(): boolean {
+    return this.status === StatusTemplate.ATIVO;
+  }
 
   @ManyToOne(() => Usuario, { nullable: true })
   @JoinColumn({ name: 'gestor_id' })

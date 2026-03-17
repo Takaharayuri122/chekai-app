@@ -582,17 +582,42 @@ export interface ChecklistGrupo {
   atualizadoEm: string;
 }
 
+export enum StatusTemplate {
+  RASCUNHO = 'rascunho',
+  ATIVO = 'ativo',
+  INATIVO = 'inativo',
+}
+
+export const STATUS_TEMPLATE_LABELS: Record<StatusTemplate, string> = {
+  [StatusTemplate.RASCUNHO]: 'Rascunho',
+  [StatusTemplate.ATIVO]: 'Ativo',
+  [StatusTemplate.INATIVO]: 'Inativo',
+};
+
 export interface ChecklistTemplate {
   id: string;
   nome: string;
   descricao: string;
   tipoAtividade: TipoAtividade;
   versao: string;
-  ativo: boolean;
+  status: StatusTemplate;
   itens: TemplateItem[];
   grupos: ChecklistGrupo[];
   criadoEm: string;
   atualizadoEm: string;
+}
+
+export interface MensagemChatIa {
+  role: 'user' | 'assistant';
+  conteudo: string;
+}
+
+export type EtapaConversaIa = 'coletando_informacoes' | 'gerando' | 'finalizado';
+
+export interface RespostaConversaIa {
+  resposta: string;
+  etapa: EtapaConversaIa;
+  checklistGerado?: { templateId: string };
 }
 
 export interface TemplateItem {
@@ -741,8 +766,8 @@ export const checklistService = {
     await api.delete(`/checklists/templates/${id}`);
   },
 
-  async alterarStatusTemplate(id: string, ativo: boolean): Promise<ChecklistTemplate> {
-    const response = await api.put(`/checklists/templates/${id}/status`, { ativo });
+  async alterarStatusTemplate(id: string, status: StatusTemplate): Promise<ChecklistTemplate> {
+    const response = await api.put(`/checklists/templates/${id}/status`, { status });
     return response.data.data;
   },
 
@@ -812,6 +837,11 @@ export const checklistService = {
     const response = await api.post('/checklists/importar/checklist', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
+    return response.data.data;
+  },
+
+  async conversarIa(mensagens: MensagemChatIa[]): Promise<RespostaConversaIa> {
+    const response = await api.post('/checklists/ia/conversar', { mensagens });
     return response.data.data;
   },
 };

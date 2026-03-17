@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { ChecklistTemplate } from './entities/checklist-template.entity';
+import { ChecklistTemplate, StatusTemplate } from './entities/checklist-template.entity';
 import { TemplateItem, TipoRespostaCustomizada } from './entities/template-item.entity';
 import { ChecklistGrupo } from './entities/checklist-grupo.entity';
 import { Auditoria } from '../auditoria/entities/auditoria.entity';
@@ -49,6 +49,7 @@ export class ChecklistService {
       descricao: dto.descricao,
       tipoAtividade: dto.tipoAtividade,
       versao: dto.versao,
+      status: StatusTemplate.RASCUNHO,
       gestorId: usuarioAutenticado?.id ?? undefined,
     });
     const savedTemplate = await this.templateRepository.save(template);
@@ -72,11 +73,11 @@ export class ChecklistService {
     params: PaginationParams,
     usuarioAutenticado?: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
   ): Promise<PaginatedResult<ChecklistTemplate>> {
-    const where: { gestorId?: string; ativo?: boolean } = {};
+    const where: { gestorId?: string; status?: StatusTemplate } = {};
     if (usuarioAutenticado) {
       if (usuarioAutenticado.perfil === PerfilUsuario.AUDITOR && usuarioAutenticado.gestorId) {
         where.gestorId = usuarioAutenticado.gestorId;
-        where.ativo = true;
+        where.status = StatusTemplate.ATIVO;
       } else {
         where.gestorId = usuarioAutenticado.id;
       }
@@ -103,11 +104,11 @@ export class ChecklistService {
     tipoAtividade: TipoAtividade,
     usuarioAutenticado?: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
   ): Promise<ChecklistTemplate[]> {
-    const where: { tipoAtividade: TipoAtividade; gestorId?: string; ativo?: boolean } = { tipoAtividade };
+    const where: { tipoAtividade: TipoAtividade; gestorId?: string; status?: StatusTemplate } = { tipoAtividade };
     if (usuarioAutenticado) {
       if (usuarioAutenticado.perfil === PerfilUsuario.AUDITOR && usuarioAutenticado.gestorId) {
         where.gestorId = usuarioAutenticado.gestorId;
-        where.ativo = true;
+        where.status = StatusTemplate.ATIVO;
       } else {
         where.gestorId = usuarioAutenticado.id;
       }
@@ -225,11 +226,11 @@ export class ChecklistService {
   }
 
   /**
-   * Inativa ou ativa um template. Apenas o gestor do template pode alterar.
+   * Altera o status de um template (rascunho, ativo, inativo).
    */
   async alterarStatusTemplate(
     id: string,
-    ativo: boolean,
+    status: StatusTemplate,
     usuarioAutenticado?: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
   ): Promise<ChecklistTemplate> {
     const template = await this.buscarTemplatePorId(id, usuarioAutenticado);
@@ -239,7 +240,13 @@ export class ChecklistService {
     if (usuarioAutenticado && usuarioAutenticado.perfil !== PerfilUsuario.MASTER && usuarioAutenticado.perfil !== PerfilUsuario.GESTOR) {
       throw new ForbiddenException('Apenas Master e Gestor podem alterar o status de checklists');
     }
-    template.ativo = ativo;
+    if (status === StatusTemplate.ATIVO) {
+      const itensAtivos = template.itens?.filter((i) => i.ativo !== false) ?? [];
+      if (itensAtivos.length === 0) {
+        throw new BadRequestException('Não é possível ativar um checklist sem itens. Adicione ao menos uma pergunta.');
+      }
+    }
+    template.status = status;
     return this.templateRepository.save(template);
   }
 

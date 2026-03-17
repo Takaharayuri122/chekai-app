@@ -833,7 +833,10 @@ export default function NovoTemplatePage() {
             <ChevronLeft className="w-5 h-5" />
           </Link>
           <div className="flex-1">
-            <h1 className="text-lg font-bold text-base-content">Novo Checklist</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-lg font-bold text-base-content">Novo Checklist</h1>
+              <span className="badge badge-sm badge-warning">Rascunho</span>
+            </div>
             <p className="text-sm text-base-content/60">
               {templateCreated ? 'Adicione grupos e perguntas ao checklist' : 'Crie um novo checklist'}
             </p>

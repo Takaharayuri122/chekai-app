@@ -18,6 +18,7 @@ import {
   auditoriaService,
   Cliente,
   ChecklistTemplate,
+  StatusTemplate,
 } from '@/lib/api';
 import { toastService } from '@/lib/toast';
 
@@ -45,7 +46,8 @@ export default function NovaAuditoriaPage() {
           checklistService.listarTemplates(1, 100),
         ]);
         setClientes(clientesRes.items || []);
-        setTemplates(templatesRes.items || []);
+        const apenasAtivos = (templatesRes.items || []).filter((t) => t.status === StatusTemplate.ATIVO);
+        setTemplates(apenasAtivos);
       } catch {
         // Erro já é tratado pelo interceptor
       } finally {

@@ -24,18 +24,20 @@ import {
 } from '@nestjs/swagger';
 import { ChecklistService } from './checklist.service';
 import { ChecklistImportService } from './checklist-import.service';
+import { ChecklistIaService } from './checklist-ia.service';
 import {
   CriarChecklistTemplateDto,
   CriarTemplateItemDto,
   CriarChecklistGrupoDto,
 } from './dto/criar-checklist-template.dto';
 import { ImportarChecklistDto, ImportacaoPreview, ImportacaoResultado } from './dto/importar-checklist.dto';
+import { ConversarIaDto, RespostaConversaIa } from './dto/conversar-ia.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../core/guards/roles.guard';
 import { Roles } from '../../core/decorators/roles.decorator';
 import { CurrentUser } from '../../core/decorators/current-user.decorator';
 import { PerfilUsuario } from '../usuario/entities/usuario.entity';
-import { ChecklistTemplate } from './entities/checklist-template.entity';
+import { ChecklistTemplate, StatusTemplate } from './entities/checklist-template.entity';
 import { TemplateItem } from './entities/template-item.entity';
 import { ChecklistGrupo } from './entities/checklist-grupo.entity';
 import { TipoAtividade } from '../cliente/entities/cliente.entity';
@@ -52,6 +54,7 @@ export class ChecklistController {
   constructor(
     private readonly checklistService: ChecklistService,
     private readonly checklistImportService: ChecklistImportService,
+    private readonly checklistIaService: ChecklistIaService,
   ) {}
 
   @Post('templates')
@@ -126,14 +129,14 @@ export class ChecklistController {
   @Put('templates/:id/status')
   @UseGuards(RolesGuard)
   @Roles(PerfilUsuario.MASTER, PerfilUsuario.GESTOR)
-  @ApiOperation({ summary: 'Inativa ou ativa um template' })
+  @ApiOperation({ summary: 'Altera o status de um template (rascunho, ativo, inativo)' })
   @ApiResponse({ status: 200, description: 'Status do template alterado' })
   async alterarStatusTemplate(
     @Param('id', ParseUUIDPipe) id: string,
-    @Body('ativo') ativo: boolean,
+    @Body('status') status: StatusTemplate,
     @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
   ): Promise<ChecklistTemplate> {
-    return this.checklistService.alterarStatusTemplate(id, ativo, usuario);
+    return this.checklistService.alterarStatusTemplate(id, status, usuario);
   }
 
   @Post('templates/:templateId/itens')
@@ -243,6 +246,18 @@ export class ChecklistController {
     @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
   ): Promise<void> {
     return this.checklistService.reordenarGrupos(templateId, grupoIds, usuario);
+  }
+
+  @Post('ia/conversar')
+  @UseGuards(RolesGuard)
+  @Roles(PerfilUsuario.MASTER, PerfilUsuario.GESTOR)
+  @ApiOperation({ summary: 'Conversa com IA para gerar um checklist' })
+  @ApiResponse({ status: 201, description: 'Resposta da IA' })
+  async conversarIa(
+    @Body() dto: ConversarIaDto,
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
+  ): Promise<RespostaConversaIa> {
+    return this.checklistIaService.processarMensagem(dto.mensagens, usuario);
   }
 
   @Post('importar/checklist/preview')

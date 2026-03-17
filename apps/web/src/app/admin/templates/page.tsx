@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   FileText,
@@ -12,6 +13,7 @@ import {
   Edit,
   Tag,
   List,
+  Sparkles,
 } from 'lucide-react';
 import {
   AppLayout,
@@ -26,21 +28,24 @@ import {
   checklistService,
   ChecklistTemplate,
   TipoAtividade,
+  StatusTemplate,
+  STATUS_TEMPLATE_LABELS,
   TIPO_ATIVIDADE_LABELS,
 } from '@/lib/api';
 import { toastService } from '@/lib/toast';
 import { useAuthStore } from '@/lib/store';
+import { ChecklistIaChatModal } from '@/components/checklist/checklist-ia-chat-modal';
 
 interface FiltrosChecklist {
   nome: string;
   tipoAtividade: string;
-  ativo: string;
+  status: string;
 }
 
 const FILTROS_INICIAIS: FiltrosChecklist = {
   nome: '',
   tipoAtividade: '',
-  ativo: '',
+  status: '',
 };
 
 const tipoAtividadeOpcoes = Object.entries(TIPO_ATIVIDADE_LABELS).map(([value, label]) => ({
@@ -48,14 +53,22 @@ const tipoAtividadeOpcoes = Object.entries(TIPO_ATIVIDADE_LABELS).map(([value, l
   label,
 }));
 
+const STATUS_BADGE_CLASS: Record<StatusTemplate, string> = {
+  [StatusTemplate.RASCUNHO]: 'badge-warning',
+  [StatusTemplate.ATIVO]: 'badge-success',
+  [StatusTemplate.INATIVO]: 'badge-error',
+};
+
 export default function TemplatesPage() {
+  const router = useRouter();
   const { isGestor, isMaster } = useAuthStore();
   const [templates, setTemplates] = useState<ChecklistTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [showToggleConfirm, setShowToggleConfirm] = useState<{ id: string; novoStatus: boolean } | null>(null);
+  const [showToggleConfirm, setShowToggleConfirm] = useState<{ id: string; novoStatus: StatusTemplate } | null>(null);
   const [isToggling, setIsToggling] = useState(false);
+  const [mostrarChatIa, setMostrarChatIa] = useState(false);
 
   const carregarTemplates = async (filtros?: FiltrosChecklist) => {
     setLoading(true);
@@ -70,9 +83,8 @@ export default function TemplatesPage() {
         if (filtros.tipoAtividade) {
           items = items.filter((t) => t.tipoAtividade === filtros.tipoAtividade);
         }
-        if (filtros.ativo) {
-          const isAtivo = filtros.ativo === 'true';
-          items = items.filter((t) => t.ativo === isAtivo);
+        if (filtros.status) {
+          items = items.filter((t) => t.status === filtros.status);
         }
       }
       setTemplates(items);
@@ -101,7 +113,8 @@ export default function TemplatesPage() {
     try {
       setIsToggling(true);
       await checklistService.alterarStatusTemplate(showToggleConfirm.id, showToggleConfirm.novoStatus);
-      toastService.success(`Checklist ${showToggleConfirm.novoStatus ? 'ativado' : 'inativado'} com sucesso!`);
+      const label = STATUS_TEMPLATE_LABELS[showToggleConfirm.novoStatus];
+      toastService.success(`Checklist alterado para "${label}" com sucesso!`);
       await carregarTemplates();
       setShowToggleConfirm(null);
     } catch {
@@ -110,11 +123,16 @@ export default function TemplatesPage() {
     }
   };
 
+  const handleIaFinalizado = (templateId: string) => {
+    setMostrarChatIa(false);
+    router.push(`/admin/templates/${templateId}`);
+  };
+
   const colunas: ColunaTabela<ChecklistTemplate>[] = [
     {
       label: 'Nome',
       render: (t) => (
-        <span className={`font-medium ${!t.ativo ? 'text-base-content/50' : 'text-base-content'}`}>
+        <span className={`font-medium ${t.status === StatusTemplate.INATIVO ? 'text-base-content/50' : 'text-base-content'}`}>
           {t.nome}
         </span>
       ),
@@ -146,8 +164,8 @@ export default function TemplatesPage() {
     {
       label: 'Status',
       render: (t) => (
-        <span className={`badge badge-sm ${t.ativo ? 'badge-success' : 'badge-error'}`}>
-          {t.ativo ? 'Ativo' : 'Inativo'}
+        <span className={`badge badge-sm ${STATUS_BADGE_CLASS[t.status] || 'badge-ghost'}`}>
+          {STATUS_TEMPLATE_LABELS[t.status] || t.status}
         </span>
       ),
     },
@@ -161,18 +179,18 @@ export default function TemplatesPage() {
       isVisivel: () => isGestor() || isMaster(),
     },
     {
-      label: 'Inativar',
-      icon: PowerOff,
-      onClick: (t) => setShowToggleConfirm({ id: t.id, novoStatus: false }),
-      className: 'text-warning',
-      isVisivel: (t) => t.ativo && (isGestor() || isMaster()),
-    },
-    {
       label: 'Ativar',
       icon: Power,
-      onClick: (t) => setShowToggleConfirm({ id: t.id, novoStatus: true }),
+      onClick: (t) => setShowToggleConfirm({ id: t.id, novoStatus: StatusTemplate.ATIVO }),
       className: 'text-success',
-      isVisivel: (t) => !t.ativo && (isGestor() || isMaster()),
+      isVisivel: (t) => t.status !== StatusTemplate.ATIVO && (isGestor() || isMaster()),
+    },
+    {
+      label: 'Inativar',
+      icon: PowerOff,
+      onClick: (t) => setShowToggleConfirm({ id: t.id, novoStatus: StatusTemplate.INATIVO }),
+      className: 'text-warning',
+      isVisivel: (t) => t.status === StatusTemplate.ATIVO && (isGestor() || isMaster()),
     },
     {
       label: 'Excluir',
@@ -190,6 +208,13 @@ export default function TemplatesPage() {
         subtitle="Modelos de checklist para auditorias"
         action={
           <div className="flex gap-2">
+            <button
+              onClick={() => setMostrarChatIa(true)}
+              className="btn btn-secondary btn-sm gap-1"
+            >
+              <Sparkles className="w-4 h-4" />
+              Criar com IA
+            </button>
             <Link href="/admin/templates/importar" className="btn btn-ghost btn-sm gap-1">
               <Upload className="w-4 h-4" />
               Importar
@@ -213,13 +238,13 @@ export default function TemplatesPage() {
               opcoes: tipoAtividadeOpcoes,
             },
             {
-              key: 'ativo',
+              key: 'status',
               label: 'Status',
               tipo: 'select',
-              opcoes: [
-                { value: 'true', label: 'Ativo' },
-                { value: 'false', label: 'Inativo' },
-              ],
+              opcoes: Object.entries(STATUS_TEMPLATE_LABELS).map(([value, label]) => ({
+                value,
+                label,
+              })),
             },
           ]}
           valoresIniciais={FILTROS_INICIAIS}
@@ -260,18 +285,28 @@ export default function TemplatesPage() {
           open={showToggleConfirm !== null}
           onClose={() => setShowToggleConfirm(null)}
           onConfirm={handleToggleConfirm}
-          title={showToggleConfirm.novoStatus ? 'Ativar Checklist' : 'Inativar Checklist'}
+          title={
+            showToggleConfirm.novoStatus === StatusTemplate.ATIVO
+              ? 'Ativar Checklist'
+              : 'Inativar Checklist'
+          }
           message={
-            showToggleConfirm.novoStatus
-              ? 'Tem certeza que deseja ativar este checklist? Ele ficará disponível para uso nas auditorias.'
+            showToggleConfirm.novoStatus === StatusTemplate.ATIVO
+              ? 'Tem certeza que deseja ativar este checklist? Ele ficará disponível para uso nas auditorias. É necessário que o checklist tenha ao menos um item.'
               : 'Tem certeza que deseja inativar este checklist? Ele não ficará mais disponível para uso em novas auditorias.'
           }
-          confirmLabel={showToggleConfirm.novoStatus ? 'Ativar' : 'Inativar'}
+          confirmLabel={showToggleConfirm.novoStatus === StatusTemplate.ATIVO ? 'Ativar' : 'Inativar'}
           cancelLabel="Cancelar"
-          variant={showToggleConfirm.novoStatus ? 'info' : 'warning'}
+          variant={showToggleConfirm.novoStatus === StatusTemplate.ATIVO ? 'info' : 'warning'}
           loading={isToggling}
         />
       )}
+
+      <ChecklistIaChatModal
+        open={mostrarChatIa}
+        onClose={() => setMostrarChatIa(false)}
+        onChecklistGerado={handleIaFinalizado}
+      />
     </AppLayout>
   );
 }
