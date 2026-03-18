@@ -86,7 +86,7 @@ export function ChecklistIaChatModal({ open, onClose, onChecklistGerado }: Check
     setIsEnviando(true);
     try {
       const resposta = await checklistService.conversarIa([
-        { role: 'user', conteudo: 'Olá, quero criar um novo checklist.' },
+        { role: 'user', conteudo: 'Oi! Preciso de ajuda para montar um checklist de auditoria.' },
       ]);
       const msgAssistant: MensagemChat = {
         id: `assistant-${Date.now()}`,

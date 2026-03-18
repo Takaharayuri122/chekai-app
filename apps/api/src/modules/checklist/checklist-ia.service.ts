@@ -7,8 +7,15 @@ import { ChecklistService } from './checklist.service';
 import { PerfilUsuario } from '../usuario/entities/usuario.entity';
 import { ProvedorIa } from '../credito/entities/uso-credito.entity';
 import { MensagemChatDto, RespostaConversaIa } from './dto/conversar-ia.dto';
-import { CategoriaItem, CriticidadeItem } from './entities/template-item.entity';
+import { CategoriaItem, CriticidadeItem, TipoRespostaCustomizada } from './entities/template-item.entity';
 import { TipoAtividade } from '../cliente/entities/cliente.entity';
+
+interface OpcaoRespostaIa {
+  valor: string;
+  fotoObrigatoria: boolean;
+  observacaoObrigatoria: boolean;
+  pontuacao?: number | null;
+}
 
 interface ChecklistGeradoIa {
   nome: string;
@@ -33,6 +40,10 @@ interface ItemGeradoIa {
   artigo?: string;
   textoLegal?: string;
   secao?: string;
+  usarRespostasPersonalizadas?: boolean;
+  tipoRespostaCustomizada?: string;
+  opcoesResposta?: string[];
+  opcoesRespostaConfig?: OpcaoRespostaIa[];
 }
 
 type UsuarioIa = { id: string; perfil: PerfilUsuario; gestorId?: string | null };
@@ -162,17 +173,22 @@ export class ChecklistIaService {
       'confirmo', 'ok', 'beleza', 'vai lá', 'manda', 'prossiga',
       'prosseguir', 'avançar', 'continuar', 'bora', 'isso', 'certo',
       'exato', 'perfeito', 'gere', 'criar', 'cria', 'faz', 'faça',
+      'manda ver', 'tá ótimo', 'ta otimo', 'por mim tá', 'por mim ta',
+      'pode mandar', 'fechou', 'show', 'top', 'tudo certo', 'concordo',
     ];
     const temConfirmacao = palavrasConfirmacao.some((p) => ultimaMensagem.includes(p));
     const assistenteAnterior = [...mensagens]
       .reverse()
       .find((m) => m.role === 'assistant');
-    const iaProposGeracao = assistenteAnterior?.conteudo?.toLowerCase().includes('gerar') ||
-      assistenteAnterior?.conteudo?.toLowerCase().includes('pronto para') ||
-      assistenteAnterior?.conteudo?.toLowerCase().includes('posso criar') ||
-      assistenteAnterior?.conteudo?.toLowerCase().includes('deseja que eu') ||
-      assistenteAnterior?.conteudo?.toLowerCase().includes('podemos prosseguir');
-    return temConfirmacao && !!iaProposGeracao;
+    const textoAssistente = assistenteAnterior?.conteudo?.toLowerCase() || '';
+    const indicadoresPropostaGeracao = [
+      'gerar', 'pronto para', 'posso criar', 'deseja que eu',
+      'podemos prosseguir', 'posso montar', 'monto pra você',
+      'monto para você', 'resumo', 'entendi que', 'partimos para',
+      'posso seguir', 'mãos à obra', 'começar a montar',
+    ];
+    const iaProposGeracao = indicadoresPropostaGeracao.some((ind) => textoAssistente.includes(ind));
+    return temConfirmacao && iaProposGeracao;
   }
 
   private extrairResumoConversa(mensagens: MensagemChatDto[]): string {
@@ -223,23 +239,36 @@ export class ChecklistIaService {
     const categoriasDisponiveis = Object.values(CategoriaItem).join(', ');
     const tiposAtividade = Object.values(TipoAtividade).join(', ');
 
-    return `Você é um assistente especialista em segurança de alimentos e auditorias sanitárias.
-Ajude o usuário a definir um checklist de auditoria. Responda sempre em português brasileiro.
+    return `Você é a **Ana**, consultora de segurança alimentar com mais de 15 anos de experiência em auditorias sanitárias. Você trabalha dentro do sistema Metacheck e ajuda profissionais a criar checklists de auditoria sob medida.
 
-REGRAS:
-1. Faça perguntas uma de cada vez, curtas e objetivas.
-2. Siga estas etapas:
-   - Tipo de estabelecimento (opções: ${tiposAtividade})
-   - Objetivo/foco do checklist
-   - Categorias de itens (opções: ${categoriasDisponiveis})
-   - Nível de detalhe (quantidade de itens, técnico vs simplificado)
-   - Requisitos específicos (legislação, itens obrigatórios)
-3. Quando tiver informações suficientes, pergunte se o usuário quer gerar o checklist.
-4. NÃO gere JSON. Apenas converse.
-5. Respostas curtas (máx 150 palavras).
-6. Use markdown para formatar (negrito, listas).
+PERSONALIDADE:
+- Fale como uma colega de trabalho experiente que realmente entende do assunto — não como um robô.
+- Seja direta, prática e acolhedora. Use um tom profissional mas leve, como quem conversa no dia a dia do trabalho.
+- Demonstre que você entende o contexto: se alguém menciona "restaurante", já considere as legislações típicas (RDC 216, CVS-5, etc.) sem que precisem pedir.
+- Evite respostas genéricas tipo "Claro! Como posso ajudar?". Em vez disso, já antecipe o que faz sentido perguntar com base no que já sabe.
+- Quando o usuário responder algo vago, não repita a pergunta — interprete e sugira algo concreto para validar.
 
-Comece se apresentando brevemente e fazendo a primeira pergunta.`;
+COMO CONDUZIR A CONVERSA:
+1. Na primeira mensagem, se apresente brevemente (1 frase) e já faça a primeira pergunta relevante.
+2. Colete as informações necessárias de forma natural, sem parecer um formulário:
+   - Tipo de estabelecimento (${tiposAtividade})
+   - O que precisa ser auditado e por quê (motivação real: fiscalização, controle interno, certificação, etc.)
+   - Áreas/categorias de foco (${categoriasDisponiveis})
+   - Nível de profundidade desejado
+3. Em algum momento da conversa (quando fizer sentido, não como uma lista), explore estas configurações:
+   - Se alguma pergunta precisa de **respostas personalizadas** (ex: "Bom/Regular/Ruim" ou "1 a 5") em vez das padrão (Conforme/Não Conforme/N.A./Não Avaliado). Se sim, quais opções.
+   - Se determinadas perguntas devem **exigir foto** (ex: registrar evidência visual de uma não conformidade).
+   - Se determinadas perguntas devem **exigir observação escrita** (ex: detalhar o que foi encontrado).
+   - Sugira quando fizer sentido: "Em itens de higiene crítica, costuma ser útil exigir foto quando a resposta for Não Conforme. Quer que eu configure assim?"
+4. Adapte suas perguntas com base nas respostas anteriores. Se o contexto já está claro, pule etapas e avance.
+5. Use seu conhecimento para **sugerir ativamente**: "Para restaurante, costumo recomendar incluir controle de pragas e higiene de manipuladores. Faz sentido pra você?"
+6. Quando sentir que tem informação suficiente, faça um **breve resumo** do que entendeu e pergunte se pode gerar.
+
+FORMATO:
+- Respostas curtas e conversacionais (máx 120 palavras).
+- Use markdown (negrito, listas curtas) quando ajudar a clareza.
+- NÃO gere JSON, código ou estruturas técnicas. Apenas converse.
+- Sempre em português brasileiro.`;
   }
 
   private construirPromptGeracao(resumoConversa: string, contextoLegislacao: string): string {
@@ -271,7 +300,16 @@ RETORNE APENAS JSON válido (sem markdown, sem texto antes/depois) neste formato
           "obrigatorio": true,
           "legislacaoReferencia": "RDC 216/2004",
           "artigo": "Art. X",
-          "textoLegal": "Texto curto da lei"
+          "textoLegal": "Texto curto da lei",
+          "usarRespostasPersonalizadas": false,
+          "tipoRespostaCustomizada": null,
+          "opcoesResposta": null,
+          "opcoesRespostaConfig": [
+            { "valor": "conforme", "fotoObrigatoria": false, "observacaoObrigatoria": false },
+            { "valor": "nao_conforme", "fotoObrigatoria": true, "observacaoObrigatoria": true },
+            { "valor": "nao_aplicavel", "fotoObrigatoria": false, "observacaoObrigatoria": false },
+            { "valor": "nao_avaliado", "fotoObrigatoria": false, "observacaoObrigatoria": false }
+          ]
         }
       ]
     }
@@ -287,6 +325,19 @@ REGRAS:
 - Perguntas claras e objetivas
 - Agrupe logicamente
 - Use legislação quando possível
+
+RESPOSTAS PADRÃO: conforme, nao_conforme, nao_aplicavel, nao_avaliado
+- Se o item usar respostas padrão: "usarRespostasPersonalizadas": false, "opcoesResposta": null, "tipoRespostaCustomizada": null
+- Se o item usar respostas personalizadas: "usarRespostasPersonalizadas": true, "tipoRespostaCustomizada": "select", "opcoesResposta": ["Opção A", "Opção B"]
+- Tipos de resposta customizada: texto, numero, data, select
+
+REGRAS DE FOTO E OBSERVAÇÃO (opcoesRespostaConfig):
+- Para itens com criticidade "critica" ou "alta": configure fotoObrigatoria=true e observacaoObrigatoria=true na opção "nao_conforme"
+- Para itens com criticidade "media": configure observacaoObrigatoria=true na opção "nao_conforme"
+- Para itens com criticidade "baixa": ambos false
+- Se o usuário pediu configuração específica de foto/observação na conversa, siga exatamente o que ele pediu
+- Se usar respostas personalizadas, crie opcoesRespostaConfig para cada opção personalizada
+
 - APENAS o JSON, nada mais`;
   }
 
@@ -346,6 +397,10 @@ REGRAS:
             grupoId: grupo.id,
             secao: itemData.secao,
             ordem: iIdx,
+            usarRespostasPersonalizadas: itemData.usarRespostasPersonalizadas ?? false,
+            tipoRespostaCustomizada: this.resolverTipoResposta(itemData.tipoRespostaCustomizada),
+            opcoesResposta: itemData.opcoesResposta ?? undefined,
+            opcoesRespostaConfig: itemData.opcoesRespostaConfig ?? undefined,
           },
           usuario,
         );
@@ -368,5 +423,11 @@ REGRAS:
   private resolverCriticidade(valor: string): CriticidadeItem {
     const normalizado = valor?.toLowerCase().trim();
     return Object.values(CriticidadeItem).find((v) => v === normalizado) ?? CriticidadeItem.MEDIA;
+  }
+
+  private resolverTipoResposta(valor?: string): TipoRespostaCustomizada | undefined {
+    if (!valor) return undefined;
+    const normalizado = valor.toLowerCase().trim();
+    return Object.values(TipoRespostaCustomizada).find((v) => v === normalizado) ?? undefined;
   }
 }

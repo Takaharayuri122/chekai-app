@@ -5,7 +5,7 @@ import { Transporter } from 'nodemailer';
 import * as fs from 'fs';
 import * as path from 'path';
 
-type EmailProvider = 'smtp' | 'sendgrid' | 'ethereal';
+type EmailProvider = 'smtp' | 'sendgrid' | 'mailersend' | 'ethereal';
 
 /**
  * Serviço responsável pelo envio de e-mails via SMTP, SendGrid ou Ethereal (dev).
@@ -103,7 +103,9 @@ export class EmailService {
    * Envia um e-mail genérico.
    */
   async enviarEmail(destinatario: string, assunto: string, html: string): Promise<void> {
-    if (this.provider === 'sendgrid') {
+    if (this.provider === 'mailersend') {
+      await this.enviarEmailMailerSend(destinatario, assunto, html);
+    } else if (this.provider === 'sendgrid') {
       await this.enviarEmailSendGrid(destinatario, assunto, html);
     } else if (this.provider === 'ethereal') {
       await this.enviarEmailEthereal(destinatario, assunto, html);
@@ -225,6 +227,54 @@ export class EmailService {
         throw error;
       }
       throw new Error('Erro desconhecido ao enviar e-mail via SendGrid');
+    }
+  }
+
+  /**
+   * Envia e-mail via MailerSend HTTP API.
+   */
+  private async enviarEmailMailerSend(destinatario: string, assunto: string, html: string): Promise<void> {
+    const apiKey = this.configService.get<string>('MAILERSEND_API_KEY');
+    if (!apiKey) {
+      throw new Error('MAILERSEND_API_KEY não configurada. Configure a variável de ambiente.');
+    }
+    const fromEmail = this.configService.get<string>('MAILERSEND_FROM') || this.configService.get<string>('SMTP_FROM');
+    if (!fromEmail) {
+      throw new Error('MAILERSEND_FROM ou SMTP_FROM não configurado. Configure o e-mail remetente.');
+    }
+    const fromName = this.configService.get<string>('MAILERSEND_FROM_NAME') || 'ChekAI';
+    try {
+      const response = await fetch('https://api.mailersend.com/v1/email', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: { email: fromEmail, name: fromName },
+          to: [{ email: destinatario }],
+          subject: assunto,
+          html,
+        }),
+      });
+      if (!response.ok) {
+        const errorText = await response.text();
+        let errorMessage = `Erro ao enviar e-mail via MailerSend: ${response.status} ${response.statusText}`;
+        try {
+          const errorData = JSON.parse(errorText);
+          if (errorData.message) {
+            errorMessage = `Erro ao enviar e-mail via MailerSend: ${errorData.message}`;
+          }
+        } catch {
+          errorMessage = `Erro ao enviar e-mail via MailerSend: ${errorText || response.statusText}`;
+        }
+        throw new Error(errorMessage);
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('Erro desconhecido ao enviar e-mail via MailerSend');
     }
   }
 
