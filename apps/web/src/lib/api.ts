@@ -1495,6 +1495,7 @@ export interface RelatorioTecnicoResumo {
   id: string;
   clienteId: string;
   unidadeId?: string | null;
+  consultoraId: string;
   identificacao: string;
   status: 'rascunho' | 'finalizado';
   atualizadoEm: string;
@@ -1505,6 +1506,10 @@ export interface RelatorioTecnicoResumo {
     nomeFantasia?: string;
   };
   unidade?: {
+    id: string;
+    nome: string;
+  };
+  consultora?: {
     id: string;
     nome: string;
   };
@@ -1626,14 +1631,9 @@ export const relatorioTecnicoService = {
       throw new Error(error.message || 'Erro ao baixar PDF');
     }
     const blob = await response.blob();
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `relatorio-tecnico-${id}.pdf`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
+    const pdfBlob = new Blob([blob], { type: 'application/pdf' });
+    const url = window.URL.createObjectURL(pdfBlob);
+    window.open(url, '_blank');
   },
 };
 

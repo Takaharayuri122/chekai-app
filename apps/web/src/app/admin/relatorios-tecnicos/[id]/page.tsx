@@ -42,9 +42,11 @@ export default function RelatorioTecnicoDetalhePage() {
   const [autoSaving, setAutoSaving] = useState<boolean>(false);
   const [baixandoPdf, setBaixandoPdf] = useState<boolean>(false);
   const [formData, setFormData] = useState<RelatorioTecnicoFormData | null>(null);
+  const [consultoraId, setConsultoraId] = useState<string>('');
   const [ultimaSincronizacao, setUltimaSincronizacao] = useState<Date | null>(null);
   const snapshotSalvoRef = useRef<string>('');
   const carregandoInicialRef = useRef<boolean>(true);
+  const somenteLeitura = Boolean(usuario && consultoraId && usuario.id !== consultoraId);
 
   const payloadAtualizacao = useMemo(() => {
     if (!formData) {
@@ -69,6 +71,7 @@ export default function RelatorioTecnicoDetalhePage() {
     async function carregar(): Promise<void> {
       try {
         const data = await relatorioTecnicoService.buscarPorId(relatorioId);
+        setConsultoraId(data.consultoraId || '');
         const formMapeado = mapearParaFormulario(data);
         setFormData(formMapeado);
         snapshotSalvoRef.current = JSON.stringify({
@@ -136,7 +139,7 @@ export default function RelatorioTecnicoDetalhePage() {
   };
 
   useEffect(() => {
-    if (!payloadAtualizacao || carregandoInicialRef.current) {
+    if (!payloadAtualizacao || carregandoInicialRef.current || somenteLeitura) {
       return;
     }
     const snapshotAtual = JSON.stringify({
@@ -195,11 +198,13 @@ export default function RelatorioTecnicoDetalhePage() {
       <PageHeader
         title="Relatório Técnico"
         subtitle={
-          autoSaving
-            ? 'Salvando alterações automaticamente...'
-            : ultimaSincronizacao
-              ? `Última sincronização às ${ultimaSincronizacao.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
-              : 'Edite, gere apoio analítico e baixe o PDF'
+          somenteLeitura
+            ? 'Visualização do relatório (somente leitura)'
+            : autoSaving
+              ? 'Salvando alterações automaticamente...'
+              : ultimaSincronizacao
+                ? `Última sincronização às ${ultimaSincronizacao.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
+                : 'Edite, gere apoio analítico e baixe o PDF'
         }
         backHref="/admin/relatorios-tecnicos"
         action={(
@@ -213,15 +218,17 @@ export default function RelatorioTecnicoDetalhePage() {
               <Download className="w-4 h-4" />
               {baixandoPdf ? 'Gerando PDF...' : 'Baixar PDF'}
             </button>
-            <button
-              type="button"
-              className="btn btn-primary btn-sm gap-2"
-              onClick={handleSalvar}
-              disabled={saving}
-            >
-              <Save className="w-4 h-4" />
-              {saving ? 'Salvando...' : 'Salvar'}
-            </button>
+            {!somenteLeitura && (
+              <button
+                type="button"
+                className="btn btn-primary btn-sm gap-2"
+                onClick={handleSalvar}
+                disabled={saving}
+              >
+                <Save className="w-4 h-4" />
+                {saving ? 'Salvando...' : 'Salvar'}
+              </button>
+            )}
           </div>
         )}
       />
@@ -230,9 +237,10 @@ export default function RelatorioTecnicoDetalhePage() {
           relatorioId={relatorioId}
           valor={formData}
           onChange={setFormData}
+          somenteLeitura={somenteLeitura}
           nomeConsultoraLogada={usuario?.nome || ''}
-          onAntesGerarApoioAnalitico={async () => salvarRelatorio(false)}
-          onApoioAnaliticoGerado={(texto) => {
+          onAntesGerarApoioAnalitico={somenteLeitura ? undefined : async () => salvarRelatorio(false)}
+          onApoioAnaliticoGerado={somenteLeitura ? undefined : (texto) => {
             setFormData((prev) => (prev ? { ...prev, apoioAnaliticoChekAi: texto } : prev));
           }}
         />

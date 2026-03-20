@@ -48,7 +48,7 @@ export class RelatorioTecnicoController {
   @ApiResponse({ status: 201, description: 'Relatório técnico criado com sucesso' })
   async criar(
     @Body() dto: CriarRelatorioTecnicoDto,
-    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario },
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
   ): Promise<RelatorioTecnico> {
     return this.relatorioTecnicoService.criar(dto, usuario);
   }
@@ -58,7 +58,7 @@ export class RelatorioTecnicoController {
   @ApiResponse({ status: 201, description: 'Relatório técnico pré-criado com sucesso' })
   async iniciar(
     @Body() dto: IniciarRelatorioTecnicoDto,
-    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; nome?: string },
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; gestorId?: string | null; nome?: string },
   ): Promise<RelatorioTecnico> {
     return this.relatorioTecnicoService.iniciar(dto, usuario);
   }
@@ -68,7 +68,7 @@ export class RelatorioTecnicoController {
   @ApiResponse({ status: 200, description: 'Relatórios técnicos listados com sucesso' })
   async listar(
     @Query() filtro: ListarRelatoriosTecnicosDto,
-    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario },
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
   ): Promise<PaginatedResult<RelatorioTecnico>> {
     return this.relatorioTecnicoService.listar(filtro, usuario);
   }
@@ -78,7 +78,7 @@ export class RelatorioTecnicoController {
   @ApiResponse({ status: 200, description: 'Relatório técnico encontrado' })
   async buscarPorId(
     @Param('id', ParseUUIDPipe) id: string,
-    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario },
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
   ): Promise<RelatorioTecnico> {
     return this.relatorioTecnicoService.buscarPorId(id, usuario);
   }
@@ -89,7 +89,7 @@ export class RelatorioTecnicoController {
   async atualizar(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: Partial<CriarRelatorioTecnicoDto>,
-    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario },
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
   ): Promise<RelatorioTecnico> {
     return this.relatorioTecnicoService.atualizar(id, dto, usuario);
   }
@@ -99,7 +99,7 @@ export class RelatorioTecnicoController {
   @ApiResponse({ status: 200, description: 'Relatório técnico removido com sucesso' })
   async remover(
     @Param('id', ParseUUIDPipe) id: string,
-    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario },
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
   ): Promise<{ success: boolean }> {
     await this.relatorioTecnicoService.remover(id, usuario);
     return { success: true };
@@ -112,7 +112,7 @@ export class RelatorioTecnicoController {
   async adicionarFoto(
     @Param('id', ParseUUIDPipe) relatorioId: string,
     @UploadedFile() file: Express.Multer.File,
-    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario },
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
   ): Promise<{ id: string; url: string }> {
     if (!file) {
       throw new BadRequestException('Arquivo de imagem é obrigatório');
@@ -155,7 +155,7 @@ export class RelatorioTecnicoController {
   async removerFoto(
     @Param('id', ParseUUIDPipe) relatorioId: string,
     @Param('fotoId', ParseUUIDPipe) fotoId: string,
-    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario },
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
   ): Promise<{ success: boolean }> {
     await this.relatorioTecnicoService.removerFoto(relatorioId, fotoId, usuario);
     return { success: true };
@@ -167,7 +167,7 @@ export class RelatorioTecnicoController {
   async gerarApoioAnalitico(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: GerarApoioAnaliticoDto,
-    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario },
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
   ): Promise<RelatorioTecnico> {
     return this.relatorioTecnicoService.atualizarApoioAnalitico(id, dto.prompt, usuario);
   }
@@ -177,7 +177,7 @@ export class RelatorioTecnicoController {
   @ApiResponse({ status: 200, description: 'PDF gerado com sucesso' })
   async gerarPdf(
     @Param('id', ParseUUIDPipe) id: string,
-    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario },
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
     @Res() res: Response,
   ): Promise<void> {
     const relatorio = await this.relatorioTecnicoService.buscarPorId(id, usuario);

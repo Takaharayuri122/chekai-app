@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import { FileText, Filter, Plus, Search } from 'lucide-react';
 import { AppLayout, EmptyState, PageHeader } from '@/components';
 import { type RelatorioTecnicoResumo, relatorioTecnicoService } from '@/lib/api';
+import { useAuthStore } from '@/lib/store';
 
 type FiltroStatus = 'todos' | 'rascunho' | 'finalizado';
 
@@ -18,6 +19,7 @@ function formatarData(data: string): string {
 }
 
 export default function RelatoriosTecnicosPage() {
+  const { isAuditor } = useAuthStore();
   const [loading, setLoading] = useState<boolean>(true);
   const [busca, setBusca] = useState<string>('');
   const [filtroStatus, setFiltroStatus] = useState<FiltroStatus>('todos');
@@ -40,11 +42,13 @@ export default function RelatoriosTecnicosPage() {
       const matchStatus = filtroStatus === 'todos' || relatorio.status === filtroStatus;
       const nomeCliente = relatorio.cliente?.nomeFantasia || relatorio.cliente?.razaoSocial || '';
       const nomeUnidade = relatorio.unidade?.nome || '';
+      const nomeConsultora = relatorio.consultora?.nome || '';
       const termo = busca.trim().toLowerCase();
       const matchBusca =
         !termo ||
         nomeCliente.toLowerCase().includes(termo) ||
         nomeUnidade.toLowerCase().includes(termo) ||
+        nomeConsultora.toLowerCase().includes(termo) ||
         relatorio.identificacao.toLowerCase().includes(termo);
       return matchStatus && matchBusca;
     });
@@ -110,6 +114,7 @@ export default function RelatoriosTecnicosPage() {
             {relatoriosFiltrados.map((relatorio, index) => {
               const nomeCliente = relatorio.cliente?.nomeFantasia || relatorio.cliente?.razaoSocial || 'Cliente';
               const nomeUnidade = relatorio.unidade?.nome || 'Sem unidade';
+              const nomeConsultora = relatorio.consultora?.nome || '';
               return (
                 <motion.div
                   key={relatorio.id}
@@ -130,8 +135,13 @@ export default function RelatoriosTecnicosPage() {
                       </div>
                       <p className="text-sm text-base-content/60 mb-1">{nomeUnidade}</p>
                       <p className="text-sm">{relatorio.identificacao}</p>
-                      <div className="text-xs text-base-content/50 mt-2">
-                        Atualizado em {formatarData(relatorio.atualizadoEm)}
+                      <div className="flex items-center justify-between mt-2">
+                        {!isAuditor() && nomeConsultora && (
+                          <span className="text-xs badge badge-ghost badge-sm">{nomeConsultora}</span>
+                        )}
+                        <span className="text-xs text-base-content/50">
+                          Atualizado em {formatarData(relatorio.atualizadoEm)}
+                        </span>
                       </div>
                     </div>
                   </Link>

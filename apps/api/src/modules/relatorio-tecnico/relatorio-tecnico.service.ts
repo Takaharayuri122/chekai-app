@@ -5,7 +5,7 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Between, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { ClienteService } from '../cliente/cliente.service';
 import { IaService } from '../ia/ia.service';
 import { PerfilUsuario } from '../usuario/entities/usuario.entity';
@@ -22,6 +22,13 @@ import {
 } from './entities/relatorio-tecnico.entity';
 import { RelatorioTecnicoFoto } from './entities/relatorio-tecnico-foto.entity';
 
+interface UsuarioAutenticado {
+  id: string;
+  perfil: PerfilUsuario;
+  gestorId?: string | null;
+  nome?: string;
+}
+
 @Injectable()
 export class RelatorioTecnicoService {
   constructor(
@@ -35,7 +42,7 @@ export class RelatorioTecnicoService {
 
   async criar(
     dto: CriarRelatorioTecnicoDto,
-    usuario: { id: string; perfil: PerfilUsuario },
+    usuario: UsuarioAutenticado,
   ): Promise<RelatorioTecnico> {
     await this.validarVinculoClienteUnidade(dto.clienteId, dto.unidadeId, usuario);
     const entidade = this.relatorioTecnicoRepository.create({
@@ -52,7 +59,7 @@ export class RelatorioTecnicoService {
 
   async iniciar(
     dto: IniciarRelatorioTecnicoDto,
-    usuario: { id: string; perfil: PerfilUsuario; nome?: string },
+    usuario: UsuarioAutenticado,
   ): Promise<RelatorioTecnico> {
     await this.validarVinculoClienteUnidade(dto.clienteId, dto.unidadeId, usuario);
     const entidade = this.relatorioTecnicoRepository.create({
@@ -75,32 +82,44 @@ export class RelatorioTecnicoService {
 
   async listar(
     filtro: ListarRelatoriosTecnicosDto,
-    usuario: { id: string; perfil: PerfilUsuario },
+    usuario: UsuarioAutenticado,
   ): Promise<PaginatedResult<RelatorioTecnico>> {
-    const where: Record<string, unknown> = {};
-    where.consultoraId = usuario.id;
+    const qb = this.relatorioTecnicoRepository.createQueryBuilder('rt')
+      .leftJoinAndSelect('rt.cliente', 'cliente')
+      .leftJoinAndSelect('cliente.gestor', 'clienteGestor')
+      .leftJoinAndSelect('rt.unidade', 'unidade')
+      .leftJoinAndSelect('rt.consultora', 'consultora')
+      .leftJoinAndSelect('rt.fotos', 'fotos');
+    if (usuario.perfil === PerfilUsuario.MASTER || usuario.perfil === PerfilUsuario.GESTOR) {
+      qb.where(
+        '(rt.consultoraId = :userId OR consultora.gestorId = :userId)',
+        { userId: usuario.id },
+      );
+    } else {
+      qb.where('rt.consultoraId = :userId', { userId: usuario.id });
+    }
     if (filtro.clienteId) {
-      where.clienteId = filtro.clienteId;
+      qb.andWhere('rt.clienteId = :clienteId', { clienteId: filtro.clienteId });
     }
     if (filtro.status) {
-      where.status = filtro.status;
+      qb.andWhere('rt.status = :status', { status: filtro.status });
     }
     if (filtro.dataInicio && filtro.dataFim) {
-      where.criadoEm = Between(new Date(filtro.dataInicio), new Date(filtro.dataFim));
+      qb.andWhere('rt.criadoEm BETWEEN :dataInicio AND :dataFim', {
+        dataInicio: new Date(filtro.dataInicio),
+        dataFim: new Date(filtro.dataFim),
+      });
     }
-    const [items, total] = await this.relatorioTecnicoRepository.findAndCount({
-      where,
-      relations: ['cliente', 'cliente.gestor', 'unidade', 'consultora', 'fotos'],
-      order: { criadoEm: 'DESC' },
-      skip: (filtro.page - 1) * filtro.limit,
-      take: filtro.limit,
-    });
+    qb.orderBy('rt.criadoEm', 'DESC')
+      .skip((filtro.page - 1) * filtro.limit)
+      .take(filtro.limit);
+    const [items, total] = await qb.getManyAndCount();
     return createPaginatedResult(items, total, filtro.page, filtro.limit);
   }
 
   async buscarPorId(
     id: string,
-    usuario: { id: string; perfil: PerfilUsuario },
+    usuario: UsuarioAutenticado,
   ): Promise<RelatorioTecnico> {
     const relatorio = await this.relatorioTecnicoRepository.findOne({
       where: { id },
@@ -109,16 +128,14 @@ export class RelatorioTecnicoService {
     if (!relatorio) {
       throw new NotFoundException('Relatório técnico não encontrado');
     }
-    if (relatorio.consultoraId !== usuario.id) {
-      throw new ForbiddenException('Acesso negado a este relatório');
-    }
+    this.validarAcessoRelatorio(relatorio, usuario);
     return relatorio;
   }
 
   async atualizar(
     id: string,
     dto: Partial<CriarRelatorioTecnicoDto>,
-    usuario: { id: string; perfil: PerfilUsuario },
+    usuario: UsuarioAutenticado,
   ): Promise<RelatorioTecnico> {
     const relatorio = await this.buscarPorId(id, usuario);
     if (dto.clienteId || dto.unidadeId !== undefined) {
@@ -135,7 +152,7 @@ export class RelatorioTecnicoService {
     return this.relatorioTecnicoRepository.save(relatorio);
   }
 
-  async remover(id: string, usuario: { id: string; perfil: PerfilUsuario }): Promise<void> {
+  async remover(id: string, usuario: UsuarioAutenticado): Promise<void> {
     const relatorio = await this.buscarPorId(id, usuario);
     await this.relatorioTecnicoFotoRepository.delete({ relatorioTecnicoId: relatorio.id });
     await this.relatorioTecnicoRepository.delete({ id: relatorio.id });
@@ -144,7 +161,7 @@ export class RelatorioTecnicoService {
   async atualizarApoioAnalitico(
     id: string,
     promptComplementar: string | undefined,
-    usuario: { id: string; perfil: PerfilUsuario },
+    usuario: UsuarioAutenticado,
   ): Promise<RelatorioTecnico> {
     const relatorio = await this.buscarPorId(id, usuario);
     this.validarCamposObrigatoriosParaApoio(relatorio);
@@ -168,7 +185,7 @@ export class RelatorioTecnicoService {
   async atualizarPdfUrl(
     id: string,
     pdfUrl: string,
-    usuario: { id: string; perfil: PerfilUsuario },
+    usuario: UsuarioAutenticado,
   ): Promise<void> {
     const relatorio = await this.buscarPorId(id, usuario);
     relatorio.pdfUrl = pdfUrl;
@@ -185,7 +202,7 @@ export class RelatorioTecnicoService {
       tamanhoBytes?: number;
       exif?: Record<string, unknown> | null;
     },
-    usuario: { id: string; perfil: PerfilUsuario },
+    usuario: UsuarioAutenticado,
   ): Promise<RelatorioTecnicoFoto> {
     await this.buscarPorId(relatorioId, usuario);
     const foto = this.relatorioTecnicoFotoRepository.create({
@@ -202,7 +219,7 @@ export class RelatorioTecnicoService {
   async removerFoto(
     relatorioId: string,
     fotoId: string,
-    usuario: { id: string; perfil: PerfilUsuario },
+    usuario: UsuarioAutenticado,
   ): Promise<void> {
     await this.buscarPorId(relatorioId, usuario);
     const foto = await this.relatorioTecnicoFotoRepository.findOne({
@@ -214,10 +231,26 @@ export class RelatorioTecnicoService {
     await this.relatorioTecnicoFotoRepository.delete({ id: foto.id });
   }
 
+  private validarAcessoRelatorio(
+    relatorio: RelatorioTecnico,
+    usuario: UsuarioAutenticado,
+  ): void {
+    if (relatorio.consultoraId === usuario.id) {
+      return;
+    }
+    if (usuario.perfil === PerfilUsuario.MASTER || usuario.perfil === PerfilUsuario.GESTOR) {
+      const consultora = relatorio.consultora;
+      if (consultora && consultora.gestorId === usuario.id) {
+        return;
+      }
+    }
+    throw new ForbiddenException('Acesso negado a este relatório');
+  }
+
   private async validarVinculoClienteUnidade(
     clienteId: string,
     unidadeId: string | null | undefined,
-    usuario: { id: string; perfil: PerfilUsuario },
+    usuario: UsuarioAutenticado,
   ): Promise<void> {
     const cliente = await this.clienteService.buscarClientePorId(clienteId, usuario);
     if (!cliente) {
