@@ -24,7 +24,14 @@ export class RelatorioTecnicoPdfPuppeteerService {
   }
 
   async gerarPdf(relatorio: RelatorioTecnico): Promise<Buffer> {
-    const browser = await this.getBrowser();
+    let browser: Browser;
+    try {
+      browser = await this.getBrowser();
+    } catch (err) {
+      this.logger.error('Falha ao iniciar browser Puppeteer', err);
+      this.browser = null;
+      throw err;
+    }
     let page: Page | null = null;
     try {
       page = await browser.newPage();
@@ -56,25 +63,22 @@ export class RelatorioTecnicoPdfPuppeteerService {
         await new Promise((r) => setTimeout(r, 300));
       }
 
-      for (const foto of relatorio.fotos || []) {
-        await page.evaluate(
-          (fotoId: string, fotoUrl: string) => {
-            const img = Array.from(document.querySelectorAll<HTMLImageElement>('img[data-foto-id]'))
-              .find((el) => el.getAttribute('data-foto-id') === fotoId);
+      const fotos = relatorio.fotos || [];
+      if (fotos.length > 0) {
+        const fotosMap = fotos.map((f) => ({ id: f.id, url: f.url }));
+        await page.evaluate((lista: Array<{ id: string; url: string }>) => {
+          for (const item of lista) {
+            const img = document.querySelector<HTMLImageElement>(`img[data-foto-id="${item.id}"]`);
             if (img) {
-              img.src = fotoUrl;
+              img.src = item.url;
             }
-          },
-          foto.id,
-          foto.url,
-        );
-      }
-      if ((relatorio.fotos || []).length > 0) {
-        await page.evaluate(() => Promise.all(
-          Array.from(document.images)
-            .filter((img) => img.dataset.fotoId)
-            .map((img) => (img.complete ? Promise.resolve() : new Promise((r) => { img.onload = r; img.onerror = r; }))),
-        ));
+          }
+          return Promise.all(
+            Array.from(document.images)
+              .filter((img) => img.dataset.fotoId)
+              .map((img) => (img.complete ? Promise.resolve() : new Promise((r) => { img.onload = r; img.onerror = r; }))),
+          );
+        }, fotosMap);
       }
       const pdf = await page.pdf({
         format: 'A4',
@@ -82,10 +86,21 @@ export class RelatorioTecnicoPdfPuppeteerService {
         margin: { top: '6mm', right: '6mm', bottom: '6mm', left: '6mm' },
       });
       return Buffer.from(pdf);
+    } catch (err) {
+      this.logger.error('Erro ao gerar PDF do relatório técnico', err);
+      await this.fecharBrowser();
+      throw err;
     } finally {
       if (page) {
         await page.close().catch(() => undefined);
       }
+    }
+  }
+
+  private async fecharBrowser(): Promise<void> {
+    if (this.browser) {
+      await this.browser.close().catch(() => undefined);
+      this.browser = null;
     }
   }
 
@@ -107,15 +122,22 @@ export class RelatorioTecnicoPdfPuppeteerService {
     if (this.browser && this.browser.connected) {
       return this.browser;
     }
+    if (this.browser) {
+      await this.browser.close().catch(() => undefined);
+      this.browser = null;
+    }
     const executablePath = this.configService.get<string>('PUPPETEER_EXECUTABLE_PATH');
     const launchOptions: Parameters<typeof puppeteer.launch>[0] = {
       headless: true,
+      protocolTimeout: 180_000,
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
         '--disable-dev-shm-usage',
         '--disable-accelerated-2d-canvas',
         '--disable-gpu',
+        '--single-process',
+        '--no-zygote',
       ],
     };
     if (executablePath) {
