@@ -37,7 +37,7 @@ export class RelatorioTecnicoPdfPuppeteerService {
       page = await browser.newPage();
       await page.setViewport({ width: 1200, height: 800 });
       const html = this.relatorioTecnicoHtmlService.gerarHtml(relatorio);
-      await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: 60000 });
+      await page.setContent(html, { waitUntil: 'networkidle0', timeout: 60000 });
       const logoChekAi = this.logoChekAiUrl;
       const logoCliente = (relatorio.cliente as { logoUrl?: string | null } | undefined)?.logoUrl;
       if (logoChekAi) {
@@ -63,9 +63,9 @@ export class RelatorioTecnicoPdfPuppeteerService {
         await new Promise((r) => setTimeout(r, 300));
       }
 
-      const fotos = relatorio.fotos || [];
-      if (fotos.length > 0) {
-        const fotosMap = fotos.map((f) => ({ id: f.id, url: f.url }));
+      const fotosLegadas = (relatorio.fotos || []).filter((f) => f.url?.startsWith('data:'));
+      if (fotosLegadas.length > 0) {
+        const fotosMap = fotosLegadas.map((f) => ({ id: f.id, url: f.url }));
         await page.evaluate((lista: Array<{ id: string; url: string }>) => {
           for (const item of lista) {
             const img = document.querySelector<HTMLImageElement>(`img[data-foto-id="${item.id}"]`);
@@ -73,13 +73,15 @@ export class RelatorioTecnicoPdfPuppeteerService {
               img.src = item.url;
             }
           }
-          return Promise.all(
-            Array.from(document.images)
-              .filter((img) => img.dataset.fotoId)
-              .map((img) => (img.complete ? Promise.resolve() : new Promise((r) => { img.onload = r; img.onerror = r; }))),
-          );
         }, fotosMap);
       }
+      await page.evaluate(() =>
+        Promise.all(
+          Array.from(document.images)
+            .filter((img) => img.src && !img.complete)
+            .map((img) => new Promise((r) => { img.onload = r; img.onerror = r; })),
+        ),
+      );
       const pdf = await page.pdf({
         format: 'A4',
         printBackground: true,

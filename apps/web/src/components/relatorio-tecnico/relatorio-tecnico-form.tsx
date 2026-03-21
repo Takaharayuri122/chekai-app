@@ -1,6 +1,13 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from 'react';
 import { Camera, Loader2, Plus, Sparkles, Trash2, X } from 'lucide-react';
 import {
   clienteService,
@@ -18,6 +25,8 @@ export interface RelatorioTecnicoFormData extends CriarRelatorioTecnicoRequest {
   fotos?: Array<{
     id: string;
     url: string;
+    /** Blob URL local; enquanto existir, a miniatura usa o blob em vez da URL do servidor. */
+    previewLocal?: string;
   }>;
 }
 interface FotoPendente {
@@ -28,7 +37,7 @@ interface FotoPendente {
 interface RelatorioTecnicoFormProps {
   relatorioId?: string;
   valor: RelatorioTecnicoFormData;
-  onChange: (valor: RelatorioTecnicoFormData) => void;
+  onChange: Dispatch<SetStateAction<RelatorioTecnicoFormData | null>>;
   somenteLeitura?: boolean;
   onApoioAnaliticoGerado?: (texto: string) => void;
   onAntesGerarApoioAnalitico?: () => Promise<boolean>;
@@ -50,8 +59,18 @@ export function RelatorioTecnicoForm({
   const [gerandoApoioAnalitico, setGerandoApoioAnalitico] = useState<boolean>(false);
   const [enviandoFoto, setEnviandoFoto] = useState<boolean>(false);
   const [fotosPendentes, setFotosPendentes] = useState<FotoPendente[]>([]);
+  const [removendoFotoId, setRemovendoFotoId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const fotosRef = useRef<RelatorioTecnicoFormData['fotos']>(undefined);
   const MAX_FOTOS = 50;
+  fotosRef.current = valor.fotos;
+  useEffect(() => () => {
+    fotosRef.current?.forEach((f) => {
+      if (f.previewLocal) {
+        URL.revokeObjectURL(f.previewLocal);
+      }
+    });
+  }, []);
 
   useEffect(() => {
     async function carregarClientes(): Promise<void> {
@@ -74,19 +93,13 @@ export function RelatorioTecnicoForm({
     campo: K,
     novoValor: RelatorioTecnicoFormData[K],
   ): void => {
-    onChange({
-      ...valor,
-      [campo]: novoValor,
-    });
+    onChange((prev) => (prev ? { ...prev, [campo]: novoValor } : prev));
   };
   useEffect(() => {
     if (!nomeConsultoraLogada || valor.assinaturaNomeConsultora === nomeConsultoraLogada) {
       return;
     }
-    onChange({
-      ...valor,
-      assinaturaNomeConsultora: nomeConsultoraLogada,
-    });
+    onChange((prev) => (prev ? { ...prev, assinaturaNomeConsultora: nomeConsultoraLogada } : prev));
   }, [nomeConsultoraLogada, onChange, valor]);
 
   const adicionarAcao = (): void => {
@@ -144,11 +157,7 @@ export function RelatorioTecnicoForm({
             disabled={somenteLeitura || loadingClientes}
             onChange={(event) => {
               const clienteId = event.target.value;
-              onChange({
-                ...valor,
-                clienteId,
-                unidadeId: '',
-              });
+              onChange((prev) => (prev ? { ...prev, clienteId, unidadeId: '' } : prev));
             }}
           >
             <option value="">Selecione o cliente</option>
@@ -232,27 +241,91 @@ export function RelatorioTecnicoForm({
               setEnviandoFoto(true);
               try {
                 for (const fotoSelecionada of pendentesSelecionadas) {
-                  const { file, localId } = fotoSelecionada;
-                  await relatorioTecnicoService.adicionarFoto(relatorioId, file);
+                  const { file, localId, preview } = fotoSelecionada;
+                  const criada = await relatorioTecnicoService.adicionarFoto(relatorioId, file);
                   setFotosPendentes((prev) => prev.filter((item) => item.localId !== localId));
+                  onChange((prevForm) => {
+                    if (!prevForm) {
+                      return prevForm;
+                    }
+                    return {
+                      ...prevForm,
+                      fotos: [
+                        ...(prevForm.fotos || []),
+                        { id: criada.id, url: criada.url, previewLocal: preview },
+                      ],
+                    };
+                  });
                 }
-                const relatorioAtualizado = await relatorioTecnicoService.buscarPorId(relatorioId);
-                onChange({
-                  ...valor,
-                  apoioAnaliticoChekAi: relatorioAtualizado.apoioAnaliticoChekAi || '',
-                  fotos: relatorioAtualizado.fotos || [],
-                });
                 toastService.success('Fotos enviadas com sucesso.');
               } catch {
                 // Erro tratado por interceptor
               } finally {
-                setFotosPendentes([]);
                 setEnviandoFoto(false);
                 event.target.value = '';
               }
             }}
           />
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-3">
+            {valor.fotos?.map((foto) => {
+              const isRemovendo = removendoFotoId === foto.id;
+              const srcMiniatura = foto.previewLocal ?? foto.url;
+              return (
+                <div key={foto.id} className="relative aspect-square rounded-lg overflow-hidden border border-base-300">
+                  <img
+                    src={srcMiniatura}
+                    alt="Evidência"
+                    className={`w-full h-full object-cover ${isRemovendo ? 'grayscale opacity-50' : ''}`}
+                  />
+                  {isRemovendo ? (
+                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                      <Loader2 className="w-5 h-5 animate-spin text-white" />
+                    </div>
+                  ) : !somenteLeitura && relatorioId ? (
+                    <button
+                      type="button"
+                      className="btn btn-circle btn-xs btn-error absolute top-1 right-1"
+                      onClick={async () => {
+                        setRemovendoFotoId(foto.id);
+                        try {
+                          await relatorioTecnicoService.removerFoto(relatorioId, foto.id);
+                          if (foto.previewLocal) {
+                            URL.revokeObjectURL(foto.previewLocal);
+                          }
+                          const relatorioAtualizado = await relatorioTecnicoService.buscarPorId(relatorioId);
+                          onChange((prev) => {
+                            if (!prev) {
+                              return prev;
+                            }
+                            const mapaPreview = new Map(
+                              (prev.fotos || [])
+                                .filter((f) => f.id !== foto.id && f.previewLocal)
+                                .map((f) => [f.id, f.previewLocal!] as const),
+                            );
+                            const fotosMescladas = (relatorioAtualizado.fotos || []).map((f) => {
+                              const previewLocal = mapaPreview.get(f.id);
+                              return previewLocal ? { ...f, previewLocal } : f;
+                            });
+                            return {
+                              ...prev,
+                              apoioAnaliticoChekAi: relatorioAtualizado.apoioAnaliticoChekAi || '',
+                              fotos: fotosMescladas,
+                            };
+                          });
+                          toastService.success('Foto removida com sucesso.');
+                        } catch {
+                          // Erro tratado por interceptor
+                        } finally {
+                          setRemovendoFotoId(null);
+                        }
+                      }}
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  ) : null}
+                </div>
+              );
+            })}
             {fotosPendentes.map((foto) => (
               <div key={foto.localId} className="relative aspect-square rounded-lg overflow-hidden border border-base-300">
                 <img src={foto.preview} alt="Evidência em envio" className="w-full h-full object-cover grayscale blur-sm opacity-70" />
@@ -262,33 +335,6 @@ export function RelatorioTecnicoForm({
                     <span className="text-[10px] font-medium uppercase tracking-wide">Enviando...</span>
                   </div>
                 </div>
-              </div>
-            ))}
-            {valor.fotos?.map((foto) => (
-              <div key={foto.id} className="relative aspect-square rounded-lg overflow-hidden border border-base-300">
-                <img src={foto.url} alt="Evidência" className="w-full h-full object-cover" />
-                {!somenteLeitura && relatorioId ? (
-                  <button
-                    type="button"
-                    className="btn btn-circle btn-xs btn-error absolute top-1 right-1"
-                    onClick={async () => {
-                      try {
-                        await relatorioTecnicoService.removerFoto(relatorioId, foto.id);
-                        const relatorioAtualizado = await relatorioTecnicoService.buscarPorId(relatorioId);
-                        onChange({
-                          ...valor,
-                          apoioAnaliticoChekAi: relatorioAtualizado.apoioAnaliticoChekAi || '',
-                          fotos: relatorioAtualizado.fotos || [],
-                        });
-                        toastService.success('Foto removida com sucesso.');
-                      } catch {
-                        // Erro tratado por interceptor
-                      }
-                    }}
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                ) : null}
               </div>
             ))}
           </div>

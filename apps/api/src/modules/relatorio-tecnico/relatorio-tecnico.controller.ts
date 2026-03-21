@@ -30,18 +30,24 @@ import { RelatorioTecnicoService } from './relatorio-tecnico.service';
 import { ComprimirImagemService } from '../auditoria/services/comprimir-imagem.service';
 import { ExtrairExifService } from '../auditoria/services/extrair-exif.service';
 import { RelatorioTecnicoPdfPuppeteerService } from './services/relatorio-tecnico-pdf-puppeteer.service';
+import { SupabaseService } from '../supabase/supabase.service';
 
 @ApiTags('Relatórios Técnicos')
 @Controller('relatorios-tecnicos')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class RelatorioTecnicoController {
+  private readonly bucketFotos: string;
+
   constructor(
     private readonly relatorioTecnicoService: RelatorioTecnicoService,
     private readonly comprimirImagemService: ComprimirImagemService,
     private readonly extrairExifService: ExtrairExifService,
     private readonly relatorioTecnicoPdfPuppeteerService: RelatorioTecnicoPdfPuppeteerService,
-  ) {}
+    private readonly supabaseService: SupabaseService,
+  ) {
+    this.bucketFotos = 'relatorios-fotos';
+  }
 
   @Post()
   @ApiOperation({ summary: 'Cria um novo relatório técnico' })
@@ -133,12 +139,25 @@ export class RelatorioTecnicoController {
         'Não foi possível processar a imagem. Envie um arquivo de imagem válido (JPEG, PNG ou WebP).',
       );
     }
-    const base64 = resultado.buffer.toString('base64');
-    const dataUrl = `data:${resultado.mimeType};base64,${base64}`;
+    const extensao = resultado.mimeType === 'image/png' ? 'png' : 'jpg';
+    const filePath = `relatorios-tecnicos/${relatorioId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${extensao}`;
+    const supabase = this.supabaseService.getClient();
+    await this.garantirBucketFotosExiste();
+    const { error: uploadError } = await supabase.storage
+      .from(this.bucketFotos)
+      .upload(filePath, resultado.buffer, {
+        contentType: resultado.mimeType,
+        upsert: false,
+      });
+    if (uploadError) {
+      throw new BadRequestException(`Erro ao enviar imagem: ${uploadError.message}`);
+    }
+    const { data: urlData } = supabase.storage.from(this.bucketFotos).getPublicUrl(filePath);
+    const fotoUrl = urlData.publicUrl;
     const foto = await this.relatorioTecnicoService.adicionarFoto(
       relatorioId,
       {
-        url: dataUrl,
+        url: fotoUrl,
         nomeOriginal: file.originalname,
         mimeType: resultado.mimeType,
         tamanhoBytes: resultado.buffer.length,
@@ -146,7 +165,7 @@ export class RelatorioTecnicoController {
       },
       usuario,
     );
-    return { id: foto.id, url: dataUrl };
+    return { id: foto.id, url: fotoUrl };
   }
 
   @Delete(':id/fotos/:fotoId')
@@ -192,5 +211,19 @@ export class RelatorioTecnicoController {
     res.setHeader('Content-Disposition', `attachment; filename="${nomeArquivo}"`);
     res.setHeader('Content-Length', pdfBuffer.length.toString());
     res.send(pdfBuffer);
+  }
+
+  private async garantirBucketFotosExiste(): Promise<void> {
+    const supabase = this.supabaseService.getClient();
+    const { data: buckets } = await supabase.storage.listBuckets();
+    const existe = buckets?.some((b) => b.name === this.bucketFotos);
+    if (existe) {
+      return;
+    }
+    await supabase.storage.createBucket(this.bucketFotos, {
+      public: true,
+      fileSizeLimit: 10 * 1024 * 1024,
+      allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp'],
+    });
   }
 }

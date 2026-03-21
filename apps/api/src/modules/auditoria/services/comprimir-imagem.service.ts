@@ -1,8 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import sharp from 'sharp';
 
-const LADO_MAXIMO_PX = 1920;
-const QUALIDADE_JPEG = 85;
+const LADO_MAXIMO_PX = 1200;
+const QUALIDADE_JPEG = 80;
 
 export interface ResultadoCompressao {
   buffer: Buffer;

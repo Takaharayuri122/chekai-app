@@ -5,10 +5,10 @@ import { Transporter } from 'nodemailer';
 import * as fs from 'fs';
 import * as path from 'path';
 
-type EmailProvider = 'smtp' | 'sendgrid' | 'mailersend' | 'ethereal';
+type EmailProvider = 'smtp' | 'sendgrid' | 'mailersend' | 'resend' | 'ethereal';
 
 /**
- * Serviço responsável pelo envio de e-mails via SMTP, SendGrid ou Ethereal (dev).
+ * Serviço responsável pelo envio de e-mails via SMTP, APIs HTTP (SendGrid, MailerSend, Resend) ou Ethereal (dev).
  */
 @Injectable()
 export class EmailService {
@@ -105,6 +105,8 @@ export class EmailService {
   async enviarEmail(destinatario: string, assunto: string, html: string): Promise<void> {
     if (this.provider === 'mailersend') {
       await this.enviarEmailMailerSend(destinatario, assunto, html);
+    } else if (this.provider === 'resend') {
+      await this.enviarEmailResend(destinatario, assunto, html);
     } else if (this.provider === 'sendgrid') {
       await this.enviarEmailSendGrid(destinatario, assunto, html);
     } else if (this.provider === 'ethereal') {
@@ -275,6 +277,57 @@ export class EmailService {
         throw error;
       }
       throw new Error('Erro desconhecido ao enviar e-mail via MailerSend');
+    }
+  }
+
+  /**
+   * Envia e-mail via Resend HTTP API (https://api.resend.com/emails).
+   */
+  private async enviarEmailResend(destinatario: string, assunto: string, html: string): Promise<void> {
+    const apiKey = this.configService.get<string>('RESEND_API_KEY');
+    if (!apiKey) {
+      throw new Error('RESEND_API_KEY não configurada. Configure a variável de ambiente.');
+    }
+    const fromRaw = this.configService.get<string>('RESEND_FROM') || this.configService.get<string>('SMTP_FROM');
+    if (!fromRaw) {
+      throw new Error('RESEND_FROM ou SMTP_FROM não configurado. Configure o e-mail remetente.');
+    }
+    const fromTrimmed = fromRaw.trim();
+    const from = fromTrimmed.includes('<') && fromTrimmed.includes('>')
+      ? fromTrimmed
+      : `${this.configService.get<string>('RESEND_FROM_NAME') || 'ChekAI'} <${fromTrimmed}>`;
+    try {
+      const response = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from,
+          to: [destinatario],
+          subject: assunto,
+          html,
+        }),
+      });
+      if (!response.ok) {
+        const errorText = await response.text();
+        let errorMessage = `Erro ao enviar e-mail via Resend: ${response.status} ${response.statusText}`;
+        try {
+          const errorData = JSON.parse(errorText) as { message?: string };
+          if (errorData.message) {
+            errorMessage = `Erro ao enviar e-mail via Resend: ${errorData.message}`;
+          }
+        } catch {
+          errorMessage = `Erro ao enviar e-mail via Resend: ${errorText || response.statusText}`;
+        }
+        throw new Error(errorMessage);
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('Erro desconhecido ao enviar e-mail via Resend');
     }
   }
 

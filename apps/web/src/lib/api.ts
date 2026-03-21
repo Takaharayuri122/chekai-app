@@ -1620,6 +1620,11 @@ export const relatorioTecnicoService = {
 
   async baixarPdf(id: string): Promise<void> {
     const token = localStorage.getItem('token');
+    if (!token) {
+      const msg = 'Sessão expirada. Faça login novamente.';
+      toastService.error(msg);
+      throw new Error(msg);
+    }
     const response = await fetch(`${API_URL}/relatorios-tecnicos/${id}/pdf`, {
       method: 'GET',
       headers: {
@@ -1627,13 +1632,41 @@ export const relatorioTecnicoService = {
       },
     });
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || 'Erro ao baixar PDF');
+      const texto = await response.text();
+      let mensagem = `Erro ao gerar o PDF (${response.status}).`;
+      if (texto) {
+        try {
+          const parsed = JSON.parse(texto) as { message?: string | string[]; error?: string };
+          if (typeof parsed.message === 'string') {
+            mensagem = parsed.message;
+          } else if (Array.isArray(parsed.message) && parsed.message.length > 0) {
+            mensagem = parsed.message.join(', ');
+          } else if (typeof parsed.error === 'string') {
+            mensagem = parsed.error;
+          }
+        } catch {
+          if (texto.length < 500) {
+            mensagem = texto;
+          }
+        }
+      }
+      toastService.error(mensagem);
+      throw new Error(mensagem);
     }
     const blob = await response.blob();
-    const pdfBlob = new Blob([blob], { type: 'application/pdf' });
-    const url = window.URL.createObjectURL(pdfBlob);
-    window.open(url, '_blank');
+    if (blob.size === 0) {
+      const msg = 'O servidor retornou um PDF vazio.';
+      toastService.error(msg);
+      throw new Error(msg);
+    }
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `relatorio-tecnico-${id}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
   },
 };
 

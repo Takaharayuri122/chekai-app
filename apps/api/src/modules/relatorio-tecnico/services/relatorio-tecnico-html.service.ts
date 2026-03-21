@@ -15,11 +15,17 @@ export class RelatorioTecnicoHtmlService {
       .join('');
     const fotos = relatorio.fotos
       .map(
-        (foto) => `
+        (foto) => {
+          const isDataUrl = foto.url?.startsWith('data:');
+          const srcAttr = isDataUrl
+            ? `data-foto-id="${this.escapeHtml(foto.id)}"`
+            : `src="${this.escapeHtml(foto.url)}"`;
+          return `
           <div class="foto-item">
-            <img data-foto-id="${this.escapeHtml(foto.id)}" alt="Evidência fotográfica" />
+            <img ${srcAttr} alt="Evidência fotográfica" />
           </div>
-        `,
+        `;
+        },
       )
       .join('');
     const apoioAnaliticoHtml = this.gerarHtmlApoioAnalitico(relatorio.apoioAnaliticoChekAi || '');

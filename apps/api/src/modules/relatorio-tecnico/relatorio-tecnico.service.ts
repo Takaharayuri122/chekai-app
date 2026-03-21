@@ -145,6 +145,10 @@ export class RelatorioTecnicoService {
         usuario,
       );
     }
+    if (dto.status === StatusRelatorioTecnico.FINALIZADO) {
+      const mesclado = this.mesclarRelatorioParaAtualizacao(relatorio, dto);
+      this.validarRelatorioMinimoParaConclusao(mesclado, 'finalizacao');
+    }
     Object.assign(relatorio, {
       ...dto,
       unidadeId: dto.unidadeId === undefined ? relatorio.unidadeId : dto.unidadeId ?? null,
@@ -164,7 +168,7 @@ export class RelatorioTecnicoService {
     usuario: UsuarioAutenticado,
   ): Promise<RelatorioTecnico> {
     const relatorio = await this.buscarPorId(id, usuario);
-    this.validarCamposObrigatoriosParaApoio(relatorio);
+    this.validarRelatorioMinimoParaConclusao(relatorio, 'apoio');
     const apoioAnaliticoChekAi = await this.iaService.gerarApoioAnaliticoRelatorioTecnico(
       {
         identificacao: relatorio.identificacao,
@@ -265,7 +269,26 @@ export class RelatorioTecnicoService {
     }
   }
 
-  private validarCamposObrigatoriosParaApoio(relatorio: RelatorioTecnico): void {
+  private mesclarRelatorioParaAtualizacao(
+    relatorio: RelatorioTecnico,
+    dto: Partial<CriarRelatorioTecnicoDto>,
+  ): RelatorioTecnico {
+    return {
+      ...relatorio,
+      ...dto,
+      unidadeId:
+        dto.unidadeId === undefined ? relatorio.unidadeId : dto.unidadeId ?? null,
+    } as RelatorioTecnico;
+  }
+
+  private validarRelatorioMinimoParaConclusao(
+    relatorio: RelatorioTecnico,
+    contexto: 'apoio' | 'finalizacao',
+  ): void {
+    const sufixo =
+      contexto === 'apoio'
+        ? 'antes de gerar o apoio analítico'
+        : 'antes de finalizar o relatório';
     const camposObrigatorios: Array<keyof RelatorioTecnico> = [
       'identificacao',
       'descricaoOcorrenciaHtml',
@@ -277,13 +300,15 @@ export class RelatorioTecnicoService {
       const valor = relatorio[campo];
       if (!valor || (typeof valor === 'string' && valor.trim() === '')) {
         throw new ConflictException(
-          `Preencha o campo ${campo} antes de gerar o apoio analítico`,
+          `Preencha o campo ${campo} ${sufixo}`,
         );
       }
     }
     if (!relatorio.acoesExecutadas || relatorio.acoesExecutadas.length === 0) {
       throw new ConflictException(
-        'Adicione ao menos uma ação executada antes de gerar o apoio analítico',
+        contexto === 'apoio'
+          ? 'Adicione ao menos uma ação executada antes de gerar o apoio analítico'
+          : 'Adicione ao menos uma ação executada antes de finalizar o relatório',
       );
     }
   }

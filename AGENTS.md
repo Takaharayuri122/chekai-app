@@ -23,7 +23,7 @@
 - Checklist: templates com status rascunho/ativo/inativo, geração com IA via `IaService`, RAG via legislação e auditoria de tokens (`CreditoService`)
 - Relatório técnico é por cliente (sem auditoria/pontuação), com wizard/pré-criação, apoio analítico gerado por IA (somente leitura), evidências fotográficas sem IA nas imagens
 - Check-in: AUDITOR, GESTOR e MASTER podem usar; checkout exige `ConfirmDialog`; filtros de auditor/cliente refletem apenas o vínculo da conta
-- E-mail: em produção (Railway), SMTP em portas clássicas dá timeout — usar provider HTTP (MailerSend HTTPS/443); em dev, Ethereal via `nodemailer.createTestAccount()`; provider efetivo depende de `EMAIL_PROVIDER`
+- E-mail: em produção (Railway), SMTP em portas clássicas dá timeout — usar provider HTTP (Resend, MailerSend ou SendGrid via HTTPS/443); em dev, Ethereal via `nodemailer.createTestAccount()`; provider efetivo depende de `EMAIL_PROVIDER`
 - `FRONTEND_URL` deve existir em todos os ambientes; sem fallback para localhost — falhar claro se a variável faltar
 - Templates HTML de e-mail precisam estar listados em assets no `nest-cli.json` para irem para `dist` no build
 - TypeORM: salvar entidade após carregar relação filtrada pode anular FK nos filhos — atualizar metadados sem persistir array incompleto

@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { Download, Save } from 'lucide-react';
-import { AppLayout, PageHeader } from '@/components';
+import { CheckCircle2, Download, Save } from 'lucide-react';
+import { AppLayout, ConfirmDialog, PageHeader } from '@/components';
 import {
   relatorioTecnicoService,
   type CriarRelatorioTecnicoRequest,
@@ -41,6 +41,8 @@ export default function RelatorioTecnicoDetalhePage() {
   const [saving, setSaving] = useState<boolean>(false);
   const [autoSaving, setAutoSaving] = useState<boolean>(false);
   const [baixandoPdf, setBaixandoPdf] = useState<boolean>(false);
+  const [showFinalizarConfirm, setShowFinalizarConfirm] = useState<boolean>(false);
+  const [finalizando, setFinalizando] = useState<boolean>(false);
   const [formData, setFormData] = useState<RelatorioTecnicoFormData | null>(null);
   const [consultoraId, setConsultoraId] = useState<string>('');
   const [ultimaSincronizacao, setUltimaSincronizacao] = useState<Date | null>(null);
@@ -97,25 +99,32 @@ export default function RelatorioTecnicoDetalhePage() {
     }
   }, [relatorioId]);
 
+  const atualizarSnapshotAposSalvar = useCallback(
+    (payload: Partial<CriarRelatorioTecnicoRequest>): void => {
+      snapshotSalvoRef.current = JSON.stringify({
+        clienteId: payload.clienteId || '',
+        unidadeId: payload.unidadeId || '',
+        identificacao: payload.identificacao || '',
+        descricaoOcorrenciaHtml: payload.descricaoOcorrenciaHtml || '',
+        avaliacaoTecnicaHtml: payload.avaliacaoTecnicaHtml || '',
+        acoesExecutadas: payload.acoesExecutadas || [],
+        recomendacoesConsultoraHtml: payload.recomendacoesConsultoraHtml || '',
+        planoAcaoSugeridoHtml: payload.planoAcaoSugeridoHtml || '',
+        assinaturaNomeConsultora: payload.assinaturaNomeConsultora || '',
+        responsavel: payload.responsavel || '',
+        status: payload.status || 'rascunho',
+      });
+    },
+    [],
+  );
+
   const salvarRelatorio = useCallback(async (mostrarToastSucesso: boolean): Promise<boolean> => {
     if (!payloadAtualizacao) {
       return false;
     }
     try {
       await relatorioTecnicoService.atualizar(relatorioId, payloadAtualizacao);
-      snapshotSalvoRef.current = JSON.stringify({
-        clienteId: payloadAtualizacao.clienteId || '',
-        unidadeId: payloadAtualizacao.unidadeId || '',
-        identificacao: payloadAtualizacao.identificacao || '',
-        descricaoOcorrenciaHtml: payloadAtualizacao.descricaoOcorrenciaHtml || '',
-        avaliacaoTecnicaHtml: payloadAtualizacao.avaliacaoTecnicaHtml || '',
-        acoesExecutadas: payloadAtualizacao.acoesExecutadas || [],
-        recomendacoesConsultoraHtml: payloadAtualizacao.recomendacoesConsultoraHtml || '',
-        planoAcaoSugeridoHtml: payloadAtualizacao.planoAcaoSugeridoHtml || '',
-        assinaturaNomeConsultora: payloadAtualizacao.assinaturaNomeConsultora || '',
-        responsavel: payloadAtualizacao.responsavel || '',
-        status: payloadAtualizacao.status || 'rascunho',
-      });
+      atualizarSnapshotAposSalvar(payloadAtualizacao);
       setUltimaSincronizacao(new Date());
       if (mostrarToastSucesso) {
         toastService.success('Relatório técnico atualizado com sucesso!');
@@ -124,7 +133,7 @@ export default function RelatorioTecnicoDetalhePage() {
     } catch {
       return false;
     }
-  }, [payloadAtualizacao, relatorioId]);
+  }, [atualizarSnapshotAposSalvar, payloadAtualizacao, relatorioId]);
 
   const handleSalvar = async (): Promise<void> => {
     if (!payloadAtualizacao) {
@@ -178,6 +187,29 @@ export default function RelatorioTecnicoDetalhePage() {
     }
   };
 
+  const handleConfirmarFinalizar = async (): Promise<void> => {
+    if (!payloadAtualizacao) {
+      return;
+    }
+    setFinalizando(true);
+    try {
+      const payloadFinal: Partial<CriarRelatorioTecnicoRequest> = {
+        ...payloadAtualizacao,
+        status: 'finalizado',
+      };
+      await relatorioTecnicoService.atualizar(relatorioId, payloadFinal);
+      setFormData((prev) => (prev ? { ...prev, status: 'finalizado' } : prev));
+      atualizarSnapshotAposSalvar(payloadFinal);
+      setUltimaSincronizacao(new Date());
+      toastService.success('Relatório finalizado com sucesso.');
+      setShowFinalizarConfirm(false);
+    } catch {
+      // Erro tratado no interceptor
+    } finally {
+      setFinalizando(false);
+    }
+  };
+
   if (loading || !formData) {
     return (
       <AppLayout>
@@ -208,22 +240,36 @@ export default function RelatorioTecnicoDetalhePage() {
         }
         backHref="/admin/relatorios-tecnicos"
         action={(
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {formData.status === 'finalizado' && (
+              <span className="badge badge-success badge-sm whitespace-nowrap">Finalizado</span>
+            )}
             <button
               type="button"
               className="btn btn-outline btn-sm gap-2"
               onClick={handleBaixarPdf}
-              disabled={baixandoPdf}
+              disabled={baixandoPdf || finalizando}
             >
               <Download className="w-4 h-4" />
               {baixandoPdf ? 'Gerando PDF...' : 'Baixar PDF'}
             </button>
+            {!somenteLeitura && formData.status === 'rascunho' && (
+              <button
+                type="button"
+                className="btn btn-success btn-sm gap-2"
+                onClick={() => setShowFinalizarConfirm(true)}
+                disabled={saving || finalizando}
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                Finalizar
+              </button>
+            )}
             {!somenteLeitura && (
               <button
                 type="button"
                 className="btn btn-primary btn-sm gap-2"
                 onClick={handleSalvar}
-                disabled={saving}
+                disabled={saving || finalizando}
               >
                 <Save className="w-4 h-4" />
                 {saving ? 'Salvando...' : 'Salvar'}
@@ -231,6 +277,17 @@ export default function RelatorioTecnicoDetalhePage() {
             )}
           </div>
         )}
+      />
+      <ConfirmDialog
+        open={showFinalizarConfirm}
+        onClose={() => setShowFinalizarConfirm(false)}
+        onConfirm={handleConfirmarFinalizar}
+        title="Finalizar relatório técnico"
+        message="O relatório será marcado como finalizado. Você poderá continuar editando o conteúdo depois, se precisar."
+        confirmLabel="Finalizar"
+        cancelLabel="Cancelar"
+        variant="info"
+        loading={finalizando}
       />
       <div className="px-4 py-4 lg:px-8">
         <RelatorioTecnicoForm
