@@ -8,6 +8,7 @@ import { ArrowLeft } from 'lucide-react-native';
 import { useAuditoriaStore } from '../../../../src/store/auditoria';
 import { pushAuditoria, enqueuePush } from '../../../../src/sync/push';
 import { SyncService } from '../../../../src/sync/SyncService';
+import { getDatabase } from '../../../../src/db/client';
 
 export default function ResumoScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -38,6 +39,13 @@ export default function ResumoScreen() {
     setSending(true);
     setSendError(null);
     try {
+      // Persist signature to local DB
+      if (assinatura.trim()) {
+        getDatabase().runSync(
+          'UPDATE auditorias SET assinatura_nome = ?, updated_at = ? WHERE id = ?',
+          [assinatura.trim(), new Date().toISOString(), id!]
+        );
+      }
       const isOnline = await SyncService.isOnline();
       if (isOnline) {
         await pushAuditoria(id!);

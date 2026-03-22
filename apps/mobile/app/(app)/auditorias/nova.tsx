@@ -25,7 +25,15 @@ function loadUnidades(): UnidadeRow[] {
 
 export default function NovaAuditoriaScreen() {
   const [busca, setBusca] = useState('');
-  const unidades = useMemo(() => loadUnidades(), []);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const unidades = useMemo(() => {
+    try {
+      return loadUnidades();
+    } catch {
+      setLoadError('Erro ao carregar estabelecimentos.');
+      return [];
+    }
+  }, []);
 
   const filtradas = useMemo(
     () => unidades.filter(u =>
@@ -34,6 +42,14 @@ export default function NovaAuditoriaScreen() {
     ),
     [unidades, busca]
   );
+
+  if (loadError) {
+    return (
+      <View className="flex-1 items-center justify-center px-8">
+        <Text className="text-red-600 text-center">{loadError}</Text>
+      </View>
+    );
+  }
 
   return (
     <SafeAreaView className="flex-1 bg-base-200" edges={['bottom']}>

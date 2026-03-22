@@ -1,6 +1,6 @@
-import { View, Text, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getDatabase } from '../../../src/db/client';
 import { AuditoriaRepo } from '../../../src/db/repositories/auditoria.repo';
@@ -19,6 +19,7 @@ const itemRepo = new AuditoriaItemRepo();
 export default function NovaTemplateScreen() {
   const { unidadeId, clienteId } = useLocalSearchParams<{ unidadeId: string; clienteId: string }>();
   const [loading, setLoading] = useState(false);
+  const creating = useRef(false);
 
   const templates = useMemo((): TemplateRow[] => {
     const db = getDatabase();
@@ -37,43 +38,51 @@ export default function NovaTemplateScreen() {
   }, [unidadeId]);
 
   const handleSelect = (template: TemplateRow) => {
+    if (creating.current) return;
+    creating.current = true;
     setLoading(true);
-    const newId = crypto.randomUUID();
-    const now = new Date().toISOString();
+    try {
+      const newId = crypto.randomUUID();
+      const now = new Date().toISOString();
 
-    // Create auditoria
-    auditoriaRepo.create({
-      id: newId,
-      clienteId: clienteId!,
-      unidadeId: unidadeId!,
-      templateId: template.id,
-      dataInicio: now,
-    });
+      // Create auditoria
+      auditoriaRepo.create({
+        id: newId,
+        clienteId: clienteId!,
+        unidadeId: unidadeId!,
+        templateId: template.id,
+        dataInicio: now,
+      });
 
-    // Bulk-create items
-    const db = getDatabase();
-    const itens = db.getAllSync<TemplateItemRaw>(
-      `SELECT id, descricao, ordem, categoria, tipo_resposta,
-              foto_obrigatoria, observacao_obrigatoria, pontuacao_maxima,
-              opcoes_resposta_config, criticidade
-       FROM template_itens WHERE template_id = ? ORDER BY categoria, ordem`,
-      [template.id]
-    );
+      // Bulk-create items
+      const db = getDatabase();
+      const itens = db.getAllSync<TemplateItemRaw>(
+        `SELECT id, descricao, ordem, categoria, tipo_resposta,
+                foto_obrigatoria, observacao_obrigatoria, pontuacao_maxima,
+                opcoes_resposta_config, criticidade
+         FROM template_itens WHERE template_id = ? ORDER BY categoria, ordem`,
+        [template.id]
+      );
 
-    itemRepo.bulkCreate(newId, itens.map(i => ({
-      id: i.id,
-      descricao: i.descricao,
-      ordem: i.ordem,
-      categoria: i.categoria,
-      tipoResposta: i.tipo_resposta,
-      fotoObrigatoria: i.foto_obrigatoria === 1,
-      observacaoObrigatoria: i.observacao_obrigatoria === 1,
-      pontuacaoMaxima: i.pontuacao_maxima,
-      opcoesRespostaConfig: i.opcoes_resposta_config,
-      criticidade: i.criticidade,
-    })));
+      itemRepo.bulkCreate(newId, itens.map(i => ({
+        id: i.id,
+        descricao: i.descricao,
+        ordem: i.ordem,
+        categoria: i.categoria,
+        tipoResposta: i.tipo_resposta,
+        fotoObrigatoria: i.foto_obrigatoria === 1,
+        observacaoObrigatoria: i.observacao_obrigatoria === 1,
+        pontuacaoMaxima: i.pontuacao_maxima,
+        opcoesRespostaConfig: i.opcoes_resposta_config,
+        criticidade: i.criticidade,
+      })));
 
-    router.replace({ pathname: '/(app)/auditorias/[id]/checklist', params: { id: newId } });
+      router.replace({ pathname: '/(app)/auditorias/[id]/checklist', params: { id: newId } });
+    } catch (e) {
+      creating.current = false;
+      setLoading(false);
+      Alert.alert('Erro', 'Não foi possível criar a auditoria. Tente novamente.');
+    }
   };
 
   if (loading) {

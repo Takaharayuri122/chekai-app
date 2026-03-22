@@ -28,7 +28,7 @@ export default function ItemScreen() {
   const [descricaoNc, setDescricaoNc] = useState(item?.descricaoNaoConformidade ?? '');
   const [planoAcao, setPlanoAcao] = useState(item?.planoAcaoFinal ?? '');
   const [pontuacao, setPontuacao] = useState(item?.pontuacao ?? 0);
-  const [fotos, setFotos] = useState(() => fotoRepo.findByItem(itemId!));
+  const [fotos, setFotos] = useState(() => itemId ? fotoRepo.findByItem(itemId) : []);
   const [loadingIa, setLoadingIa] = useState(false);
   const [descricaoIa, setDescricaoIa] = useState(item?.descricaoIa ?? undefined);
   const [planoIa, setPlanoIa] = useState(item?.planoAcaoSugerido ?? undefined);
@@ -58,6 +58,7 @@ export default function ItemScreen() {
   };
 
   const handleAddFoto = useCallback(async () => {
+    if (!itemId) return;
     const result = await ImagePicker.launchCameraAsync({
       quality: 0.8,
       allowsEditing: false,

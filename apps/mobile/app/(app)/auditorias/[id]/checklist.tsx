@@ -29,7 +29,7 @@ export default function ChecklistScreen() {
   useEffect(() => {
     if (id) iniciar(id);
     return () => limpar();
-  }, [id]);
+  }, [id, iniciar, limpar]);
 
   const respondidos = useMemo(() => itens.filter(i => i.resposta !== 'nao_avaliado').length, [itens]);
 
