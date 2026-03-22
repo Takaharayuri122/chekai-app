@@ -1,6 +1,14 @@
-import { View } from 'react-native';
+import { router } from 'expo-router';
+import { useAuthStore } from '../../src/store/auth';
+import { PermissionOnboarding } from '../../src/components/onboarding/PermissionOnboarding';
 
-// Tela de onboarding — implementada na Task 12
 export default function OnboardingScreen() {
-  return <View className="flex-1 bg-base-200" />;
+  const setOnboardingCompleted = useAuthStore((s) => s.setOnboardingCompleted);
+
+  function handleComplete() {
+    setOnboardingCompleted();
+    router.replace('/(app)');
+  }
+
+  return <PermissionOnboarding onComplete={handleComplete} />;
 }
