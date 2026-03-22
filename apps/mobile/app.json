@@ -1,0 +1,67 @@
+{
+  "expo": {
+    "name": "chekAI",
+    "slug": "chekai",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#00B8A9"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.evobit.chekai",
+      "infoPlist": {
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Para detectar automaticamente quando você chega em uma unidade cliente e registrar o check-in sem precisar abrir o app.",
+        "NSLocationAlwaysUsageDescription": "Para detectar automaticamente quando você chega em uma unidade cliente e registrar o check-in sem precisar abrir o app.",
+        "NSLocationWhenInUseUsageDescription": "Para registrar sua localização durante auditorias e check-ins.",
+        "NSCameraUsageDescription": "Para registrar evidências fotográficas durante as auditorias.",
+        "NSPhotoLibraryUsageDescription": "Para acessar fotos da galeria como evidências nas auditorias.",
+        "UIBackgroundModes": ["location", "fetch"]
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#00B8A9"
+      },
+      "package": "com.evobit.chekai",
+      "permissions": [
+        "ACCESS_BACKGROUND_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "CAMERA",
+        "READ_MEDIA_IMAGES",
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Para detectar automaticamente quando você chega em uma unidade cliente e registrar o check-in sem precisar abrir o app."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#00B8A9"
+        }
+      ]
+    ],
+    "scheme": "chekai",
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

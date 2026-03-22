@@ -17,11 +17,25 @@
     "test": {
       "dependsOn": ["^build"]
     },
+    "typecheck": {
+      "dependsOn": ["^build"]
+    },
     "db:migrate": {
       "cache": false
     },
     "db:seed": {
       "cache": false
+    },
+    "@meta-app/mobile#dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "@meta-app/mobile#test": {
+      "cache": false,
+      "dependsOn": []
+    },
+    "@meta-app/mobile#typecheck": {
+      "dependsOn": ["^build"]
     }
   }
 }
