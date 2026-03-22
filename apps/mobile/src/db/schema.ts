@@ -82,7 +82,7 @@ export const SCHEMA_V1 = `
     pdf_url TEXT,
     cliente_id TEXT NOT NULL REFERENCES clientes(id),
     unidade_id TEXT NOT NULL REFERENCES unidades(id),
-    template_id TEXT REFERENCES templates_auditoria(id),
+    template_id TEXT REFERENCES checklist_templates(id),
     sync_status TEXT NOT NULL DEFAULT 'pending',
     updated_at TEXT NOT NULL,
     deleted_at TEXT
@@ -92,7 +92,7 @@ export const SCHEMA_V1 = `
     id TEXT PRIMARY KEY,
     remote_id TEXT,
     auditoria_id TEXT NOT NULL,
-    template_item_id TEXT NOT NULL,
+    template_item_id TEXT NOT NULL REFERENCES template_itens(id),
     resposta TEXT NOT NULL DEFAULT 'nao_avaliado',
     observacao TEXT,
     descricao_nao_conformidade TEXT,
@@ -127,7 +127,7 @@ export const SCHEMA_V1 = `
     remote_id TEXT,
     local_id TEXT NOT NULL,
     cliente_id TEXT NOT NULL REFERENCES clientes(id),
-    unidade_id TEXT,
+    unidade_id TEXT, -- nullable: relatório pode não estar vinculado a uma unidade específica
     identificacao TEXT NOT NULL,
     descricao_ocorrencia_html TEXT,
     avaliacao_tecnica_html TEXT,

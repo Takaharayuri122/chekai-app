@@ -9,6 +9,7 @@ export function getDatabase(): SQLite.SQLiteDatabase {
   if (!_db) {
     _db = SQLite.openDatabaseSync('chekai.db');
     runMigrations(_db);
+    _db.execSync('PRAGMA foreign_keys = ON');
   }
   return _db;
 }
