@@ -39,3 +39,10 @@ export enum SyncStatus {
   PENDING = 'pending',
   CONFLICT = 'conflict',
 }
+
+export enum RiscoGeral {
+  BAIXO = 'baixo',
+  MEDIO = 'medio',
+  ALTO = 'alto',
+  CRITICO = 'critico',
+}

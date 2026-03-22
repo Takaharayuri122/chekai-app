@@ -1,11 +1,11 @@
-import { StatusAuditoria, RespostaItem } from './enums';
+import { StatusAuditoria, RespostaItem, RiscoGeral } from './enums';
 
 export interface ResumoExecutivo {
   resumo: string;
   pontosFortes: string[];
   pontosFracos: string[];
   recomendacoesPrioritarias: string[];
-  riscoGeral: 'baixo' | 'medio' | 'alto' | 'critico';
+  riscoGeral: RiscoGeral;
   tendencias: string[];
 }
 
