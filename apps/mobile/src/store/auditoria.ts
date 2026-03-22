@@ -48,7 +48,9 @@ export const useAuditoriaStore = create<AuditoriaStore>((set, get) => ({
               observacao: resposta.observacao ?? null,
               descricaoNaoConformidade: resposta.descricaoNaoConformidade ?? null,
               planoAcaoFinal: resposta.planoAcaoFinal ?? null,
-              pontuacao: resposta.pontuacao ?? 0 }
+              pontuacao: resposta.pontuacao ?? 0,
+              descricaoIa: resposta.descricaoIa ?? null,
+              planoAcaoSugerido: resposta.planoAcaoSugerido ?? null }
           : i
       ),
     }));
