@@ -72,6 +72,9 @@ export default function AppLayout() {
             headerShown: false,
           }}
         />
+        <Tabs.Screen name="auditorias/nova" options={{ href: null }} />
+        <Tabs.Screen name="auditorias/nova-template" options={{ href: null }} />
+        <Tabs.Screen name="auditorias/[id]" options={{ href: null }} />
       </Tabs>
     </SafeAreaView>
   );
