@@ -1,4 +1,4 @@
-import { apiGet, apiPost } from './client';
+import { apiPost } from './client';
 import * as FileSystem from 'expo-file-system';
 import * as SecureStore from 'expo-secure-store';
 
