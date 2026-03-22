@@ -7,9 +7,12 @@ export default function PerfilScreen() {
   const { user, logout } = useAuthStore();
 
   async function handleLogout() {
-    await AuthService.logout();
-    logout();
-    router.replace('/(auth)/login');
+    try {
+      await AuthService.logout();
+    } finally {
+      logout();
+      router.replace('/(auth)/login');
+    }
   }
 
   return (
