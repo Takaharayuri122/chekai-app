@@ -71,6 +71,8 @@ module.exports = {
       modulePaths: ['<rootDir>/../../node_modules'],
       moduleNameMapper: {
         '^@meta-app/shared$': '<rootDir>/../../packages/shared/src/types/index.ts',
+        '^expo-secure-store$': '<rootDir>/__mocks__/expo-secure-store.js',
+        '^expo-file-system$': '<rootDir>/__mocks__/expo-file-system.js',
       },
       transform: {
         '\\.[jt]sx?$': [

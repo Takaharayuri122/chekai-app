@@ -1,6 +1,7 @@
 // apps/mobile/src/sync/SyncService.ts
 import NetInfo from '@react-native-community/netinfo';
 import { pullAll } from './pull';
+import { pushPending } from './push';
 
 let _syncInProgress = false;
 
@@ -13,8 +14,8 @@ export const SyncService = {
 
     _syncInProgress = true;
     try {
+      await pushPending();   // push before pull to avoid conflicts
       await pullAll();
-      // push será adicionado no Plano 2
     } catch (error) {
       console.error('[SyncService] Erro no sync:', error);
     } finally {
