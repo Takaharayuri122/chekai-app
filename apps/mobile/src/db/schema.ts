@@ -79,7 +79,9 @@ export const SCHEMA_V1 = `
     observacoes_gerais TEXT,
     pontuacao_total REAL,
     resumo_executivo TEXT,
+    analise_ia TEXT,
     pdf_url TEXT,
+    assinatura_nome TEXT,
     cliente_id TEXT NOT NULL REFERENCES clientes(id),
     unidade_id TEXT NOT NULL REFERENCES unidades(id),
     template_id TEXT REFERENCES checklist_templates(id),
@@ -203,4 +205,6 @@ export const SCHEMA_V2 = `
   ALTER TABLE template_itens ADD COLUMN foto_obrigatoria INTEGER NOT NULL DEFAULT 0;
   ALTER TABLE template_itens ADD COLUMN observacao_obrigatoria INTEGER NOT NULL DEFAULT 0;
   ALTER TABLE template_itens ADD COLUMN criticidade TEXT;
+  ALTER TABLE auditorias ADD COLUMN analise_ia TEXT;
+  ALTER TABLE auditorias ADD COLUMN assinatura_nome TEXT;
 `;

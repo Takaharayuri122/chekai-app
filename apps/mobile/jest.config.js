@@ -29,6 +29,9 @@ module.exports = {
       testEnvironment: 'node',
       testMatch: ['<rootDir>/src/db/__tests__/**/*.test.ts'],
       modulePaths: ['<rootDir>/../../node_modules'],
+      moduleNameMapper: {
+        '^expo-sqlite$': '<rootDir>/__mocks__/expo-sqlite.js',
+      },
       transform: {
         '\\.[jt]sx?$': [
           'ts-jest',
