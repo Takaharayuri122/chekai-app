@@ -14,18 +14,26 @@ config.resolver.nodeModulesPaths = [
   path.resolve(workspaceRoot, 'node_modules'),
 ];
 
+// Add react-native + browser conditions so packages like axios use their
+// React Native / browser build instead of the Node.js build.
+// Expo sets only ['require', 'import'] by default, which causes axios to
+// load dist/node/axios.cjs (requires http/https) → "Requiring unknown module".
+config.resolver.unstable_conditionNames = [
+  'react-native',
+  'browser',
+  'require',
+  'import',
+];
+
 // Force singleton React/RN — prevents dual-version crash when root has React 19
 // while apps/mobile has React 18. resolveRequest handles all sub-paths (jsx-runtime, etc.)
 const resolveFromApp = (moduleName) =>
   require.resolve(moduleName, { paths: [projectRoot] });
 
 config.resolver.resolveRequest = (context, moduleName, platform) => {
-  if (
-    moduleName === 'react' ||
-    moduleName.startsWith('react/') ||
-    moduleName === 'react-dom' ||
-    moduleName.startsWith('react-dom/')
-  ) {
+  // Force React 18 (apps/mobile) to prevent dual-version crash with root React 19.
+  // Only intercept react and react sub-paths — react-dom is not installed in RN.
+  if (moduleName === 'react' || moduleName.startsWith('react/')) {
     return { filePath: resolveFromApp(moduleName), type: 'sourceFile' };
   }
   return context.resolveRequest(context, moduleName, platform);
