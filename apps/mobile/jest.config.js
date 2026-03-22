@@ -1,12 +1,15 @@
 /**
- * Jest configuration using projects to handle two test environments:
+ * Jest configuration using projects to handle three test environments:
  *
  * 1. "db-unit" — pure Node.js tests for the SQLite layer (src/db/__tests__).
  *    Uses ts-jest to avoid the babel-preset-expo / @babel/core 7.28 incompatibility
  *    caused by @babel/plugin-transform-export-namespace-from@7.27 shipping an
  *    `exports.default` that the new @babel/core plugin validator rejects.
  *
- * 2. "react-native" — all other tests via the standard jest-expo preset.
+ * 2. "auth-unit" — pure Node.js tests for auth logic (src/auth/__tests__).
+ *    Also uses ts-jest for the same babel incompatibility reason.
+ *
+ * 3. "react-native" — all other tests via the standard jest-expo preset.
  */
 module.exports = {
   projects: [
@@ -16,6 +19,26 @@ module.exports = {
       testEnvironment: 'node',
       testMatch: ['<rootDir>/src/db/__tests__/**/*.test.ts'],
       modulePaths: ['<rootDir>/../../node_modules'],
+      transform: {
+        '\\.[jt]sx?$': [
+          'ts-jest',
+          {
+            tsconfig: {
+              esModuleInterop: true,
+            },
+          },
+        ],
+      },
+    },
+    // ── Pure logic / Auth unit tests ──────────────────────────────────────────
+    {
+      displayName: 'auth-unit',
+      testEnvironment: 'node',
+      testMatch: ['<rootDir>/src/auth/__tests__/**/*.test.ts'],
+      modulePaths: ['<rootDir>/../../node_modules'],
+      moduleNameMapper: {
+        '^@meta-app/shared$': '<rootDir>/../../packages/shared/src/types/index.ts',
+      },
       transform: {
         '\\.[jt]sx?$': [
           'ts-jest',
@@ -42,6 +65,8 @@ module.exports = {
       testPathIgnorePatterns: [
         // Handled by the db-unit project above
         '<rootDir>/src/db/__tests__/',
+        // Handled by the auth-unit project above
+        '<rootDir>/src/auth/__tests__/',
       ],
     },
   ],
