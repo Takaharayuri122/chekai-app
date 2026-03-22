@@ -21,7 +21,6 @@ module.exports = {
           'ts-jest',
           {
             tsconfig: {
-              jsx: 'react',
               esModuleInterop: true,
             },
           },
