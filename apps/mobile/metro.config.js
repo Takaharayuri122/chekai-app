@@ -14,15 +14,14 @@ config.resolver.nodeModulesPaths = [
   path.resolve(workspaceRoot, 'node_modules'),
 ];
 
-// Add react-native + browser conditions so packages like axios use their
-// React Native / browser build instead of the Node.js build.
-// Expo sets only ['require', 'import'] by default, which causes axios to
-// load dist/node/axios.cjs (requires http/https) → "Requiring unknown module".
-config.resolver.unstable_conditionNames = [
-  'react-native',
-  'require',
-  'import',
-];
+// Expo's Metro sets only ['require', 'import'] as package export conditions,
+// so axios would resolve to dist/node/axios.cjs (requires http/https which
+// don't exist in RN) → "Requiring unknown module 'undefined'".
+// Force axios to its browser build to avoid Node.js built-in dependencies.
+config.resolver.extraNodeModules = {
+  ...config.resolver.extraNodeModules,
+  axios: path.resolve(workspaceRoot, 'node_modules/axios/dist/browser/axios.cjs'),
+};
 
 // Force singleton React/RN — prevents dual-version crash when root has React 19
 // while apps/mobile has React 18. resolveRequest handles all sub-paths (jsx-runtime, etc.)
