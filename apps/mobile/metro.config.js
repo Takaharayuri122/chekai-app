@@ -20,7 +20,6 @@ config.resolver.nodeModulesPaths = [
 // load dist/node/axios.cjs (requires http/https) → "Requiring unknown module".
 config.resolver.unstable_conditionNames = [
   'react-native',
-  'browser',
   'require',
   'import',
 ];
