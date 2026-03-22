@@ -1,5 +1,5 @@
 // apps/mobile/src/components/OfflineBanner.tsx
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { View, Text, Animated } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 import { WifiOff, RefreshCw } from 'lucide-react-native';
@@ -8,21 +8,23 @@ import { syncQueue } from '../sync/SyncQueue';
 export function OfflineBanner() {
   const [isOffline, setIsOffline] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
-  const opacity = new Animated.Value(0);
+  const opacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     const unsubscribe = NetInfo.addEventListener((state) => {
       const offline = !state.isConnected;
-      setIsOffline(offline);
       if (offline) {
         setPendingCount(syncQueue.size());
+        setIsOffline(true);
         Animated.timing(opacity, { toValue: 1, duration: 300, useNativeDriver: true }).start();
       } else {
-        Animated.timing(opacity, { toValue: 0, duration: 300, useNativeDriver: true }).start();
+        Animated.timing(opacity, { toValue: 0, duration: 300, useNativeDriver: true }).start(
+          () => setIsOffline(false)
+        );
       }
     });
     return unsubscribe;
-  }, []);
+  }, [opacity]);
 
   if (!isOffline) return null;
 
