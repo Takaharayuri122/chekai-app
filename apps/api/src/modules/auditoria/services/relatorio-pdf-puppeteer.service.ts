@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import puppeteer, { Browser, Page } from 'puppeteer';
+import { PdfPreparacaoService } from '../../pdf/pdf-preparacao.service';
+import { registrarMetricaGeracaoPdf } from '../../pdf/pdf-geracao-metricas.util';
 import { SupabaseService } from '../../supabase/supabase.service';
 import { Auditoria } from '../entities/auditoria.entity';
 import { RelatorioHtmlService } from './relatorio-html.service';
@@ -18,6 +20,7 @@ export class RelatorioPdfPuppeteerService {
     private readonly configService: ConfigService,
     private readonly supabaseService: SupabaseService,
     private readonly relatorioHtmlService: RelatorioHtmlService,
+    private readonly pdfPreparacao: PdfPreparacaoService,
   ) {
     this.bucketName =
       this.configService.get<string>('SUPABASE_STORAGE_BUCKET_RELATORIOS') ||
@@ -43,6 +46,7 @@ export class RelatorioPdfPuppeteerService {
     const executablePath = this.configService.get<string>('PUPPETEER_EXECUTABLE_PATH');
     const launchOptions: Parameters<typeof puppeteer.launch>[0] = {
       headless: true,
+      protocolTimeout: 180_000,
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
@@ -77,67 +81,39 @@ export class RelatorioPdfPuppeteerService {
     historico: Auditoria[] | undefined,
     jaTentouRecuperar: boolean,
   ): Promise<Buffer> {
+    const metricas = this.configService.get<string>('PDF_GERACAO_METRICAS') === 'true';
+    const t0 = process.hrtime.bigint();
     const browser = await this.getBrowser();
     let page: Page | null = null;
 
     try {
       page = await browser.newPage();
-      
-      // Configurar viewport e encoding
       await page.setViewport({
         width: 1200,
         height: 800,
       });
-      
       this.logger.log(`Gerando HTML do relatório para auditoria ${auditoria.id}`);
-      const html = this.relatorioHtmlService.gerarHtml(auditoria, historico);
-      
-      // Validar que o HTML foi gerado
+      const preparo = await this.pdfPreparacao.prepararAuditoria(auditoria);
+      const html = this.relatorioHtmlService.gerarHtml(auditoria, historico, {
+        fotosDataUriPorId: preparo.fotosPorId,
+      });
       if (!html || html.length === 0) {
         throw new Error('HTML gerado está vazio');
       }
-      
       this.logger.log(`Convertendo HTML para PDF para auditoria ${auditoria.id} (HTML: ${html.length} caracteres)`);
-      
       await page.setContent(html, {
         waitUntil: 'domcontentloaded',
         timeout: 60000,
       });
-
-      const logoConsultoria = (auditoria.unidade?.cliente?.gestor as { logoUrl?: string | null })?.logoUrl;
-      const logoCliente = (auditoria.unidade?.cliente as { logoUrl?: string | null })?.logoUrl;
-      if (logoConsultoria) {
-        await page.evaluate((url: string) => {
-          const img = document.querySelector<HTMLImageElement>('img[data-logo="consultoria"]');
-          if (img) img.src = url;
-        }, logoConsultoria);
-      }
-      if (logoCliente) {
-        await page.evaluate((url: string) => {
-          const img = document.querySelector<HTMLImageElement>('img[data-logo="cliente"]');
-          if (img) img.src = url;
-        }, logoCliente);
-      }
-      if (logoConsultoria || logoCliente) {
-        await page.evaluate(() =>
-          Promise.all(
-            Array.from(document.querySelectorAll<HTMLImageElement>('img[data-logo]'))
-              .filter((img) => img.src && !img.complete)
-              .map((img) => new Promise<void>((r) => { img.onload = () => r(); img.onerror = () => r(); })),
-          ),
-        );
-        await new Promise((r) => setTimeout(r, 300));
-      }
-
-      const fotos: { id: string; url: string }[] = [];
+      const fotosFaltando: { id: string; url: string }[] = [];
       auditoria.itens?.forEach((item) => {
         item.fotos?.forEach((foto) => {
-          if (foto.id && foto.url) {
-            fotos.push({ id: foto.id, url: foto.url });
+          if (foto.id && foto.url && !preparo.fotosPorId[foto.id]) {
+            fotosFaltando.push({ id: foto.id, url: foto.url });
           }
         });
       });
-      for (const { id, url } of fotos) {
+      for (const { id, url } of fotosFaltando) {
         await page.evaluate(
           (fotoId: string, fotoUrl: string) => {
             const img = Array.from(document.querySelectorAll<HTMLImageElement>('img[data-foto-id]'))
@@ -150,7 +126,7 @@ export class RelatorioPdfPuppeteerService {
           url,
         );
       }
-      if (fotos.length > 0) {
+      if (fotosFaltando.length > 0) {
         await page.evaluate(() => Promise.all(
           Array.from(document.images)
             .filter((img) => img.dataset.fotoId)
@@ -185,27 +161,48 @@ export class RelatorioPdfPuppeteerService {
                 img.src = dataUrl;
               }
             } catch {
-              // mantém src original se canvas falhar
             }
           });
         });
         await new Promise((r) => setTimeout(r, 200));
       }
-
+      await page.evaluate(() =>
+        Promise.all(
+          Array.from(document.images)
+            .filter((img) => img.src && !img.complete)
+            .map((img) => new Promise((r) => { img.onload = r; img.onerror = r; })),
+        ),
+      );
       await page.evaluateHandle('document.fonts.ready');
-
+      const headerTemplate = this.pdfPreparacao.montarHeaderTemplateHtml({
+        logoChekAiDataUri: preparo.logoChekAiDataUri,
+        logoClienteDataUri: preparo.logoClienteDataUri,
+        logoConsultoriaDataUri: preparo.logoConsultoriaDataUri,
+      });
+      const footerTemplate = this.pdfPreparacao.montarFooterTemplateHtml({
+        referenciaId: auditoria.id,
+      });
       const pdfBuffer = await page.pdf({
         format: 'A4',
         printBackground: true,
         preferCSSPageSize: false,
+        displayHeaderFooter: true,
+        headerTemplate,
+        footerTemplate,
         margin: {
-          top: '5mm',
+          top: '18mm',
           right: '5mm',
-          bottom: '5mm',
+          bottom: '16mm',
           left: '5mm',
         },
       });
-
+      registrarMetricaGeracaoPdf(
+        this.logger,
+        metricas,
+        t0,
+        `auditoria ${auditoria.id}`,
+        pdfBuffer.length,
+      );
       this.logger.log(`PDF gerado com sucesso para auditoria ${auditoria.id} (${pdfBuffer.length} bytes)`);
       
       // Garantir que o buffer está correto

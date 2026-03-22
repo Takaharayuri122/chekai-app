@@ -1,5 +1,8 @@
 import axios, { AxiosError } from 'axios';
+import { abrirPdfBlobEmNovaAba, type ResultadoAberturaPdf } from './pdf-abertura';
 import { toastService } from './toast';
+
+export type { ResultadoAberturaPdf } from './pdf-abertura';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 
@@ -1009,7 +1012,7 @@ export const auditoriaService = {
     return response.data.data;
   },
 
-  async baixarPdf(id: string): Promise<void> {
+  async baixarPdf(id: string): Promise<ResultadoAberturaPdf> {
     const token = localStorage.getItem('token');
     const response = await fetch(`${API_URL}/auditorias/${id}/pdf`, {
       method: 'GET',
@@ -1024,14 +1027,7 @@ export const auditoriaService = {
     }
 
     const blob = await response.blob();
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `relatorio-auditoria-${id}.pdf`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
+    return abrirPdfBlobEmNovaAba(blob, `relatorio-auditoria-${id}.pdf`);
   },
 };
 
@@ -1618,7 +1614,7 @@ export const relatorioTecnicoService = {
     return response.data.data;
   },
 
-  async baixarPdf(id: string): Promise<void> {
+  async baixarPdf(id: string): Promise<ResultadoAberturaPdf> {
     const token = localStorage.getItem('token');
     if (!token) {
       const msg = 'Sessão expirada. Faça login novamente.';
@@ -1659,14 +1655,7 @@ export const relatorioTecnicoService = {
       toastService.error(msg);
       throw new Error(msg);
     }
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `relatorio-tecnico-${id}.pdf`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
+    return abrirPdfBlobEmNovaAba(blob, `relatorio-tecnico-${id}.pdf`);
   },
 };
 

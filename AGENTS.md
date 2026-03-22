@@ -8,7 +8,7 @@
 - CRUDs administrativos no web seguem a skill `crud-frontend` com `CrudFiltros` + `CrudTable`: filtros com Pesquisar/Limpar, listagem com menu de ações, carga inicial ~20 registros
 - Tabela CRUD: mesmo card visual dos filtros; menu de ações não pode ser cortado por overflow — usar posicionamento fixed + getBoundingClientRect
 - Interfaces de checklist: tooltips em todas as ações, ícones sempre visíveis (não só hover), botões `btn-square`, ordem: duplicar → editar → remover; exclusões com `ConfirmDialog`, não `confirm()` nativo
-- PDFs e downloads: preferir abrir/visualizar no navegador (nova aba) quando a intenção for "ver o arquivo", não só salvar em disco
+- PDFs e downloads: preferir abrir/visualizar no navegador (nova aba) quando a intenção for "ver o arquivo"; tratar bloqueio de pop-up com orientação ao usuário e download manual; durante geração de PDF de relatório, usar overlay de carregamento em tela cheia alinhado ao padrão visual dos modais
 - Fotos em itens de auditoria: permitir múltiplas seleções, upload e processamento de IA em sequência (não paralelo), feedback visual imediato, grid de duas colunas no mobile
 - Para mudanças de schema no banco, preferir scripts SQL em `scripts/` em vez de migrations do TypeORM
 - Isolamento e autorização de dados devem ser garantidos na API (não só no front); regras de vínculo gestor/consultor/tenant prevalecem para todos os perfis
@@ -17,7 +17,7 @@
 
 ## Learned Workspace Facts
 
-- Monorepo: API NestJS em `apps/api`, frontend Next.js em `apps/web`, UI com DaisyUI/Tailwind; componentes compartilhados em `apps/web/src/components/ui/` (form-modal, crud-table, crud-filtros)
+- Monorepo: API NestJS em `apps/api`, frontend Next.js em `apps/web`, UI com DaisyUI/Tailwind; componentes compartilhados em `apps/web/src/components/ui/` (form-modal, crud-table, crud-filtros, overlay de loading em PDF); geração de PDF de relatórios na API com Puppeteer/Chromium (Docker) e preparação de imagens com sharp; variáveis opcionais `CHEKAI_LOGO_URL` e `PDF_GERACAO_METRICAS`; PWA offline completo abandonado em favor de API direta; skills em `.cursor/skills/` (ex.: crud-frontend) e subagentes em `.cursor/agents/` (ex.: skill-architect, use-case-driven-dev)
 - Isolamento de dados combina `gestorId` (clientes, checklists, usuários) e `consultorId` (auditorias, relatórios técnicos); JWT enriquecido e `@CurrentUser()` injetam contexto; padrão gestor vê recursos dos auditores vinculados
 - Perfis de usuário: MASTER, GESTOR, AUDITOR (enum `PerfilUsuario`); fluxo de criação por convite, enum `StatusUsuario`, OTP só para conta ativa após aceite
 - Checklist: templates com status rascunho/ativo/inativo, geração com IA via `IaService`, RAG via legislação e auditoria de tokens (`CreditoService`)
@@ -27,5 +27,4 @@
 - `FRONTEND_URL` deve existir em todos os ambientes; sem fallback para localhost — falhar claro se a variável faltar
 - Templates HTML de e-mail precisam estar listados em assets no `nest-cli.json` para irem para `dist` no build
 - TypeORM: salvar entidade após carregar relação filtrada pode anular FK nos filhos — atualizar metadados sem persistir array incompleto
-- O caminho "PWA offline completo" (IndexedDB/fila/sync) foi abandonado em favor de API direta
-- Skills do projeto em `.cursor/skills/` (crud-frontend) e subagentes em `.cursor/agents/` (skill-architect, use-case-driven-dev)
+- Respostas binárias ou stream na API (ex.: PDF): interceptores globais não devem envolver em JSON quando `res.headersSent` ou quando o handler já enviou o corpo / `StreamableFile`

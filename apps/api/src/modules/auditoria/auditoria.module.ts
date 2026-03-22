@@ -15,12 +15,14 @@ import { ChecklistModule } from '../checklist/checklist.module';
 import { PlanoModule } from '../plano/plano.module';
 import { IaModule } from '../ia/ia.module';
 import { SupabaseModule } from '../supabase/supabase.module';
+import { PdfModule } from '../pdf/pdf.module';
 
 /**
  * Módulo responsável pela gestão de auditorias.
  */
 @Module({
   imports: [
+    PdfModule,
     TypeOrmModule.forFeature([Auditoria, AuditoriaItem, Foto, Unidade]),
     MulterModule.register({
       limits: { fileSize: 10 * 1024 * 1024 }, // 10MB max

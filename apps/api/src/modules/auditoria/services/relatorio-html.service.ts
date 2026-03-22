@@ -13,6 +13,11 @@ interface GrupoMetricas {
   itens: AuditoriaItem[];
 }
 
+/** Mapas opcionais para embutir fotos já normalizadas no HTML (geração PDF). */
+export interface RelatorioAuditoriaPdfAssetsHtml {
+  readonly fotosDataUriPorId?: Record<string, string>;
+}
+
 /**
  * Serviço responsável pela geração do HTML do relatório de auditoria.
  */
@@ -22,7 +27,11 @@ export class RelatorioHtmlService {
    * Gera o HTML completo do relatório de auditoria.
    * @param historico - Lista de auditorias finalizadas da mesma unidade (para seção de evolução)
    */
-  gerarHtml(auditoria: Auditoria, historico?: Auditoria[]): string {
+  gerarHtml(
+    auditoria: Auditoria,
+    historico?: Auditoria[],
+    assetsPdf?: RelatorioAuditoriaPdfAssetsHtml,
+  ): string {
     const grupos = this.calcularGruposMetricas(auditoria);
     const metricasGerais = this.calcularMetricasGerais(grupos, auditoria);
     const aproveitamento = Number(auditoria.pontuacaoTotal) || 0;
@@ -81,19 +90,6 @@ export class RelatorioHtmlService {
       display: flex;
       align-items: center;
       gap: 4px;
-    }
-    .header-logos {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      gap: 16px;
-      margin-bottom: 8px;
-    }
-    .header-logo-consultoria,
-    .header-logo-cliente {
-      width: 56px;
-      height: 56px;
-      object-fit: contain;
     }
     .section {
       margin-bottom: 12px;
@@ -567,7 +563,7 @@ export class RelatorioHtmlService {
     ${this.gerarCabecalho(auditoria)}
     ${this.gerarMetricasGerais(metricasGerais, aproveitamento, grupos)}
     ${historico?.length ? this.gerarHistoricoEvolucao(historico, auditoria.id) : ''}
-    ${this.gerarDetalhamentoPorGrupo(grupos)}
+    ${this.gerarDetalhamentoPorGrupo(grupos, assetsPdf)}
     ${this.gerarResumoExecutivo(auditoria.resumoExecutivo)}
   </div>
 </body>
@@ -593,19 +589,8 @@ export class RelatorioHtmlService {
           year: 'numeric',
         })
       : 'N/A';
-    const gestor = auditoria.unidade?.cliente?.gestor as { logoUrl?: string | null } | undefined;
-    const logoConsultoriaUrl = gestor?.logoUrl || null;
-    const logoClienteUrl = (auditoria.unidade?.cliente as { logoUrl?: string | null })?.logoUrl || null;
-    const temAlgumaLogo = !!(logoConsultoriaUrl || logoClienteUrl);
-
     return `
     <div class="header">
-      ${temAlgumaLogo ? `
-      <div class="header-logos">
-        ${logoConsultoriaUrl ? `<img class="header-logo-consultoria" data-logo="consultoria" alt="Logo da consultoria" />` : ''}
-        ${logoClienteUrl ? `<img class="header-logo-cliente" data-logo="cliente" alt="Logo do cliente" />` : ''}
-      </div>
-      ` : ''}
       <h1>${this.escapeHtml(auditoria.unidade?.nome || 'Unidade')}</h1>
       <div class="subtitle">
         ${this.escapeHtml(
@@ -966,7 +951,10 @@ export class RelatorioHtmlService {
   /**
    * Gera o detalhamento por grupo.
    */
-  private gerarDetalhamentoPorGrupo(grupos: GrupoMetricas[]): string {
+  private gerarDetalhamentoPorGrupo(
+    grupos: GrupoMetricas[],
+    assetsPdf?: RelatorioAuditoriaPdfAssetsHtml,
+  ): string {
     let html = `
     <div class="section">
       <h2 class="section-title">Detalhamento por Grupo</h2>
@@ -1054,10 +1042,12 @@ export class RelatorioHtmlService {
                         <span class="item-detail-label">Fotos: </span>
                         <div class="item-fotos">
                           ${item.fotos
-                            .map(
-                              (foto) =>
-                                `<img class="item-foto" data-foto-id="${this.escapeHtml(foto.id)}" alt="Foto do item" />`,
-                            )
+                            .map((foto) => {
+                              const embutida = assetsPdf?.fotosDataUriPorId?.[foto.id];
+                              return embutida
+                                ? `<img class="item-foto" src="${embutida}" alt="Foto do item" />`
+                                : `<img class="item-foto" data-foto-id="${this.escapeHtml(foto.id)}" alt="Foto do item" />`;
+                            })
                             .join('')}
                         </div>
                       </div>`

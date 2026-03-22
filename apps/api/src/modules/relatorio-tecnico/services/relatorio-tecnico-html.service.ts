@@ -1,9 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { RelatorioTecnico } from '../entities/relatorio-tecnico.entity';
 
+/** Assets opcionais para PDF (fotos e logos embutidos no HTML). */
+export interface RelatorioTecnicoPdfAssetsHtml {
+  readonly fotosPorId: Record<string, string>;
+}
+
 @Injectable()
 export class RelatorioTecnicoHtmlService {
-  gerarHtml(relatorio: RelatorioTecnico): string {
+  gerarHtml(relatorio: RelatorioTecnico, assetsPdf?: RelatorioTecnicoPdfAssetsHtml): string {
     const nomeCliente =
       relatorio.cliente?.nomeFantasia || relatorio.cliente?.razaoSocial || 'Cliente';
     const nomeUnidade = relatorio.unidade?.nome || 'Sem unidade';
@@ -14,24 +19,26 @@ export class RelatorioTecnicoHtmlService {
       .map((acao) => `<li>${this.escapeHtml(acao)}</li>`)
       .join('');
     const fotos = relatorio.fotos
-      .map(
-        (foto) => {
-          const isDataUrl = foto.url?.startsWith('data:');
-          const srcAttr = isDataUrl
-            ? `data-foto-id="${this.escapeHtml(foto.id)}"`
-            : `src="${this.escapeHtml(foto.url)}"`;
-          return `
+      .map((foto) => {
+        const embutida = assetsPdf?.fotosPorId[foto.id];
+        let srcAttr: string;
+        if (embutida) {
+          srcAttr = `src="${embutida}"`;
+        } else if (foto.url?.startsWith('data:')) {
+          srcAttr = `data-foto-id="${this.escapeHtml(foto.id)}"`;
+        } else if (foto.url) {
+          srcAttr = `src="${this.escapeHtml(foto.url)}"`;
+        } else {
+          return '<div class="foto-item"><span class="rich">Sem imagem</span></div>';
+        }
+        return `
           <div class="foto-item">
             <img ${srcAttr} alt="Evidência fotográfica" />
           </div>
         `;
-        },
-      )
+      })
       .join('');
     const apoioAnaliticoHtml = this.gerarHtmlApoioAnalitico(relatorio.apoioAnaliticoChekAi || '');
-    const logoChekAiUrl = 'logo-large.png';
-    const logoClienteUrl = (relatorio.cliente as { logoUrl?: string | null } | undefined)?.logoUrl || null;
-    const temAlgumaLogo = Boolean(logoChekAiUrl || logoClienteUrl);
     return `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -43,9 +50,6 @@ export class RelatorioTecnicoHtmlService {
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; color: #1B2A4A; padding: 12px; }
     .container { max-width: 1120px; margin: 0 auto; }
     .header { border-bottom: 1px solid #E5E9F0; padding-bottom: 8px; margin-bottom: 12px; }
-    .header-logos { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 8px; }
-    .header-logo-chekai, .header-logo-cliente { width: 56px; height: 56px; object-fit: contain; }
-    .header-logo-fallback { width: 56px; height: 56px; border: 1px solid #E5E9F0; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #4b5563; background: #f8fafc; text-align: center; padding: 4px; font-weight: 700; }
     .header h1 { font-size: 20px; margin-bottom: 6px; }
     .meta { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px; color: #4b5563; }
     .section { margin-top: 14px; border: 1px solid #E5E9F0; border-radius: 6px; padding: 10px; }
@@ -69,21 +73,6 @@ export class RelatorioTecnicoHtmlService {
 <body>
   <div class="container">
     <div class="header">
-      ${temAlgumaLogo ? `
-      <div class="header-logos">
-        ${logoChekAiUrl
-          ? '<img class="header-logo-chekai" data-logo="chekai" alt="Logo ChekAi" />'
-          : '<div class="header-logo-fallback">ChekAi</div>'}
-        ${logoClienteUrl
-          ? '<img class="header-logo-cliente" data-logo="cliente" alt="Logo do cliente" />'
-          : '<div class="header-logo-fallback">Cliente</div>'}
-      </div>
-      ` : `
-      <div class="header-logos">
-        <div class="header-logo-fallback">ChekAi</div>
-        <div class="header-logo-fallback">Cliente</div>
-      </div>
-      `}
       <h1>Relatório Técnico</h1>
       <div class="meta">
         <span><strong>Cliente:</strong> ${this.escapeHtml(nomeCliente)}</span>

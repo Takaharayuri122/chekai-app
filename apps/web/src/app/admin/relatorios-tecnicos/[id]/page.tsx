@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { CheckCircle2, Download, Save } from 'lucide-react';
-import { AppLayout, ConfirmDialog, PageHeader } from '@/components';
+import { CheckCircle2, Download, Loader2, Save } from 'lucide-react';
+import { AppLayout, ConfirmDialog, PageHeader, PageLoadingOverlay, PdfAberturaBloqueadaModal } from '@/components';
 import {
   relatorioTecnicoService,
   type CriarRelatorioTecnicoRequest,
@@ -41,6 +41,10 @@ export default function RelatorioTecnicoDetalhePage() {
   const [saving, setSaving] = useState<boolean>(false);
   const [autoSaving, setAutoSaving] = useState<boolean>(false);
   const [baixandoPdf, setBaixandoPdf] = useState<boolean>(false);
+  const [pdfAberturaBloqueada, setPdfAberturaBloqueada] = useState<{
+    blobUrl: string;
+    nomeArquivo: string;
+  } | null>(null);
   const [showFinalizarConfirm, setShowFinalizarConfirm] = useState<boolean>(false);
   const [finalizando, setFinalizando] = useState<boolean>(false);
   const [formData, setFormData] = useState<RelatorioTecnicoFormData | null>(null);
@@ -178,8 +182,18 @@ export default function RelatorioTecnicoDetalhePage() {
   const handleBaixarPdf = async (): Promise<void> => {
     setBaixandoPdf(true);
     try {
-      await relatorioTecnicoService.baixarPdf(relatorioId);
-      toastService.success('PDF gerado e baixado com sucesso!');
+      const resultado = await relatorioTecnicoService.baixarPdf(relatorioId);
+      if (resultado.bloqueado) {
+        setPdfAberturaBloqueada({
+          blobUrl: resultado.blobUrl,
+          nomeArquivo: resultado.nomeArquivo,
+        });
+        toastService.warning(
+          'O navegador pode ter bloqueado a nova aba com o PDF. Siga as instruções na janela ou use Baixar PDF.',
+        );
+      } else {
+        toastService.success('PDF aberto em nova aba.');
+      }
     } catch {
       // Erro tratado no interceptor
     } finally {
@@ -227,6 +241,17 @@ export default function RelatorioTecnicoDetalhePage() {
 
   return (
     <AppLayout>
+      <PdfAberturaBloqueadaModal
+        open={pdfAberturaBloqueada !== null}
+        blobUrl={pdfAberturaBloqueada?.blobUrl ?? ''}
+        nomeArquivo={pdfAberturaBloqueada?.nomeArquivo ?? ''}
+        onClose={() => setPdfAberturaBloqueada(null)}
+      />
+      <PageLoadingOverlay
+        open={baixandoPdf}
+        title="Gerando o relatório"
+        subtitle="Aguarde enquanto o PDF é preparado. Isso pode levar alguns instantes."
+      />
       <PageHeader
         title="Relatório Técnico"
         subtitle={
@@ -250,8 +275,17 @@ export default function RelatorioTecnicoDetalhePage() {
               onClick={handleBaixarPdf}
               disabled={baixandoPdf || finalizando}
             >
-              <Download className="w-4 h-4" />
-              {baixandoPdf ? 'Gerando PDF...' : 'Baixar PDF'}
+              {baixandoPdf ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Gerando…
+                </>
+              ) : (
+                <>
+                  <Download className="w-4 h-4" />
+                  Baixar PDF
+                </>
+              )}
             </button>
             {!somenteLeitura && formData.status === 'rascunho' && (
               <button

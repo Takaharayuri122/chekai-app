@@ -20,7 +20,7 @@ import {
   Loader2,
   Image as ImageIcon,
 } from 'lucide-react';
-import { AppLayout, PageHeader, FormModal } from '@/components';
+import { AppLayout, PageHeader, FormModal, PageLoadingOverlay, PdfAberturaBloqueadaModal } from '@/components';
 import { GraficoAproveitamentoGrupos } from '@/components/relatorio/grafico-aproveitamento-grupos';
 import { GraficoDistribuicaoPontos } from '@/components/relatorio/grafico-distribuicao-pontos';
 import { HistoricoEvolucao } from '@/components/relatorio/historico-evolucao';
@@ -74,6 +74,10 @@ export default function RelatorioPage() {
   const [gerandoResumo, setGerandoResumo] = useState(false);
   const [gruposMetricas, setGruposMetricas] = useState<GrupoMetricas[]>([]);
   const [baixandoPdf, setBaixandoPdf] = useState(false);
+  const [pdfAberturaBloqueada, setPdfAberturaBloqueada] = useState<{
+    blobUrl: string;
+    nomeArquivo: string;
+  } | null>(null);
   const [metricasGerais, setMetricasGerais] = useState({
     aproveitamento: 0,
     pontosPossiveis: 0,
@@ -201,8 +205,18 @@ export default function RelatorioPage() {
     if (!auditoria) return;
     try {
       setBaixandoPdf(true);
-      await auditoriaService.baixarPdf(auditoria.id);
-      toastService.success('PDF baixado com sucesso!');
+      const resultado = await auditoriaService.baixarPdf(auditoria.id);
+      if (resultado.bloqueado) {
+        setPdfAberturaBloqueada({
+          blobUrl: resultado.blobUrl,
+          nomeArquivo: resultado.nomeArquivo,
+        });
+        toastService.warning(
+          'O navegador pode ter bloqueado a nova aba com o PDF. Siga as instruções na janela ou use Baixar PDF.',
+        );
+      } else {
+        toastService.success('PDF aberto em nova aba.');
+      }
     } catch (error: any) {
       const errorMessage = error?.message || 'Erro ao baixar PDF';
       toastService.error(`Erro ao baixar PDF: ${errorMessage}`);
@@ -649,6 +663,17 @@ export default function RelatorioPage() {
 
   return (
     <AppLayout>
+      <PdfAberturaBloqueadaModal
+        open={pdfAberturaBloqueada !== null}
+        blobUrl={pdfAberturaBloqueada?.blobUrl ?? ''}
+        nomeArquivo={pdfAberturaBloqueada?.nomeArquivo ?? ''}
+        onClose={() => setPdfAberturaBloqueada(null)}
+      />
+      <PageLoadingOverlay
+        open={baixandoPdf}
+        title="Gerando o relatório"
+        subtitle="Aguarde enquanto o PDF é preparado. Isso pode levar alguns instantes."
+      />
       <PageHeader title="Relatório de Auditoria" />
       <div className="px-4 py-4 lg:px-8 space-y-4">
         {/* Cabeçalho */}
@@ -670,7 +695,7 @@ export default function RelatorioPage() {
                 {baixandoPdf ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    Gerando PDF...
+                    Gerando…
                   </>
                 ) : (
                   <>

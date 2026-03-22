@@ -10,11 +10,13 @@ import { RelatorioTecnicoService } from './relatorio-tecnico.service';
 import { ComprimirImagemService } from '../auditoria/services/comprimir-imagem.service';
 import { ExtrairExifService } from '../auditoria/services/extrair-exif.service';
 import { SupabaseModule } from '../supabase/supabase.module';
+import { PdfModule } from '../pdf/pdf.module';
 import { RelatorioTecnicoPdfPuppeteerService } from './services/relatorio-tecnico-pdf-puppeteer.service';
 import { RelatorioTecnicoHtmlService } from './services/relatorio-tecnico-html.service';
 
 @Module({
   imports: [
+    PdfModule,
     TypeOrmModule.forFeature([RelatorioTecnico, RelatorioTecnicoFoto]),
     MulterModule.register({
       limits: { fileSize: 10 * 1024 * 1024 },

@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import puppeteer, { Browser, Page } from 'puppeteer';
+import { PdfPreparacaoService } from '../../pdf/pdf-preparacao.service';
+import { registrarMetricaGeracaoPdf } from '../../pdf/pdf-geracao-metricas.util';
 import { SupabaseService } from '../../supabase/supabase.service';
 import { RelatorioTecnico } from '../entities/relatorio-tecnico.entity';
 import { RelatorioTecnicoHtmlService } from './relatorio-tecnico-html.service';
@@ -10,13 +12,12 @@ export class RelatorioTecnicoPdfPuppeteerService {
   private readonly logger = new Logger(RelatorioTecnicoPdfPuppeteerService.name);
   private browser: Browser | null = null;
   private readonly bucketName: string;
-  private readonly logoChekAiUrl =
-    'https://www.chekai.com.br/_next/image?url=%2Fimages%2Flogo-large.png&w=256&q=75';
 
   constructor(
     private readonly configService: ConfigService,
     private readonly supabaseService: SupabaseService,
     private readonly relatorioTecnicoHtmlService: RelatorioTecnicoHtmlService,
+    private readonly pdfPreparacao: PdfPreparacaoService,
   ) {
     this.bucketName =
       this.configService.get<string>('SUPABASE_STORAGE_BUCKET_RELATORIOS') ||
@@ -24,6 +25,8 @@ export class RelatorioTecnicoPdfPuppeteerService {
   }
 
   async gerarPdf(relatorio: RelatorioTecnico): Promise<Buffer> {
+    const metricas = this.configService.get<string>('PDF_GERACAO_METRICAS') === 'true';
+    const t0 = process.hrtime.bigint();
     let browser: Browser;
     try {
       browser = await this.getBrowser();
@@ -36,36 +39,16 @@ export class RelatorioTecnicoPdfPuppeteerService {
     try {
       page = await browser.newPage();
       await page.setViewport({ width: 1200, height: 800 });
-      const html = this.relatorioTecnicoHtmlService.gerarHtml(relatorio);
-      await page.setContent(html, { waitUntil: 'networkidle0', timeout: 60000 });
-      const logoChekAi = this.logoChekAiUrl;
-      const logoCliente = (relatorio.cliente as { logoUrl?: string | null } | undefined)?.logoUrl;
-      if (logoChekAi) {
-        await page.evaluate((url: string) => {
-          const img = document.querySelector<HTMLImageElement>('img[data-logo="chekai"]');
-          if (img) img.src = url;
-        }, logoChekAi);
-      }
-      if (logoCliente) {
-        await page.evaluate((url: string) => {
-          const img = document.querySelector<HTMLImageElement>('img[data-logo="cliente"]');
-          if (img) img.src = url;
-        }, logoCliente);
-      }
-      if (logoChekAi || logoCliente) {
-        await page.evaluate(() =>
-          Promise.all(
-            Array.from(document.querySelectorAll<HTMLImageElement>('img[data-logo]'))
-              .filter((img) => img.src && !img.complete)
-              .map((img) => new Promise<void>((r) => { img.onload = () => r(); img.onerror = () => r(); })),
-          ),
-        );
-        await new Promise((r) => setTimeout(r, 300));
-      }
-
-      const fotosLegadas = (relatorio.fotos || []).filter((f) => f.url?.startsWith('data:'));
-      if (fotosLegadas.length > 0) {
-        const fotosMap = fotosLegadas.map((f) => ({ id: f.id, url: f.url }));
+      const preparo = await this.pdfPreparacao.prepararRelatorioTecnico(relatorio);
+      const html = this.relatorioTecnicoHtmlService.gerarHtml(relatorio, {
+        fotosPorId: preparo.fotosPorId,
+      });
+      await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: 60000 });
+      const fotosLegadasSemEmbutir = (relatorio.fotos || []).filter(
+        (f) => f.url?.startsWith('data:') && !preparo.fotosPorId[f.id],
+      );
+      if (fotosLegadasSemEmbutir.length > 0) {
+        const fotosMap = fotosLegadasSemEmbutir.map((f) => ({ id: f.id, url: f.url! }));
         await page.evaluate((lista: Array<{ id: string; url: string }>) => {
           for (const item of lista) {
             const img = document.querySelector<HTMLImageElement>(`img[data-foto-id="${item.id}"]`);
@@ -82,12 +65,31 @@ export class RelatorioTecnicoPdfPuppeteerService {
             .map((img) => new Promise((r) => { img.onload = r; img.onerror = r; })),
         ),
       );
+      await page.evaluateHandle('document.fonts.ready');
+      const headerTemplate = this.pdfPreparacao.montarHeaderTemplateHtml({
+        logoChekAiDataUri: preparo.logoChekAiDataUri,
+        logoClienteDataUri: preparo.logoClienteDataUri,
+      });
+      const footerTemplate = this.pdfPreparacao.montarFooterTemplateHtml({
+        referenciaId: relatorio.id,
+      });
       const pdf = await page.pdf({
         format: 'A4',
         printBackground: true,
-        margin: { top: '6mm', right: '6mm', bottom: '6mm', left: '6mm' },
+        displayHeaderFooter: true,
+        headerTemplate,
+        footerTemplate,
+        margin: { top: '18mm', right: '6mm', bottom: '16mm', left: '6mm' },
       });
-      return Buffer.from(pdf);
+      const buf = Buffer.from(pdf);
+      registrarMetricaGeracaoPdf(
+        this.logger,
+        metricas,
+        t0,
+        `relatório-técnico ${relatorio.id}`,
+        buf.length,
+      );
+      return buf;
     } catch (err) {
       this.logger.error('Erro ao gerar PDF do relatório técnico', err);
       await this.fecharBrowser();
