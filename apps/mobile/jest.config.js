@@ -50,6 +50,26 @@ module.exports = {
         ],
       },
     },
+    // ── Pure logic / Sync unit tests ─────────────────────────────────────────
+    {
+      displayName: 'sync-unit',
+      testEnvironment: 'node',
+      testMatch: ['<rootDir>/src/sync/__tests__/**/*.test.ts'],
+      modulePaths: ['<rootDir>/../../node_modules'],
+      moduleNameMapper: {
+        '^@meta-app/shared$': '<rootDir>/../../packages/shared/src/types/index.ts',
+      },
+      transform: {
+        '\\.[jt]sx?$': [
+          'ts-jest',
+          {
+            tsconfig: {
+              esModuleInterop: true,
+            },
+          },
+        ],
+      },
+    },
     // ── React-Native / Expo component tests ───────────────────────────────────
     {
       displayName: 'react-native',
@@ -67,6 +87,8 @@ module.exports = {
         '<rootDir>/src/db/__tests__/',
         // Handled by the auth-unit project above
         '<rootDir>/src/auth/__tests__/',
+        // Handled by the sync-unit project above
+        '<rootDir>/src/sync/__tests__/',
       ],
     },
   ],
