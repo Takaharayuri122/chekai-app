@@ -40,6 +40,9 @@ O chekAI possui um app web para auditoria alimentar. O objetivo é criar um app 
 | Câmera/fotos | expo-image-picker + expo-file-system |
 | Geolocalização | expo-location + react-native-geofencing |
 | Rich text | react-native-pell-rich-editor |
+| Notificações | expo-notifications (local + push remoto via Expo Push Service) |
+| Background sync | expo-background-fetch |
+| Network detection | @react-native-community/netinfo |
 | Build/deploy | EAS Build (iOS + Android) |
 
 ### Design System
@@ -91,7 +94,7 @@ usuarios (id, nome, email, perfil, status, tenant_id, logo_url, updated_at)
 clientes (id, remote_id, razao_social, nome_fantasia, cnpj, tipo_atividade, logo_url, sync_status, updated_at)
 unidades (id, remote_id, nome, endereco, cidade, estado, latitude, longitude, raio_geofencing, cliente_id, sync_status, updated_at)
 checklist_templates (id, remote_id, nome, descricao, tipo_atividade, versao, status, sync_status, updated_at)
-template_itens (id, remote_id, template_id, descricao, ordem, referencia_legal, pontuacao_maxima)
+template_itens (id, remote_id, template_id, descricao, ordem, referencia_legal, pontuacao_maxima, sync_status, updated_at)
 
 -- Dados operacionais
 auditorias (id, remote_id, status, data_inicio, data_fim, latitude_inicio, longitude_inicio, latitude_fim, longitude_fim, observacoes_gerais, pontuacao_total, resumo_executivo, pdf_url, cliente_id, unidade_id, template_id, sync_status, local_id, updated_at, deleted_at)
@@ -144,8 +147,9 @@ Toda mutação offline gera uma entrada na `sync_queue`. O `SyncService` process
 1. `checkins` (time-sensitive)
 2. `auditoria_itens` (respostas em texto)
 3. finalização de `auditorias`
-4. upload de `fotos` (binário, mais pesado)
-5. `relatorios_tecnicos`
+4. finalização de `relatorios_tecnicos` (transição de status `rascunho → finalizado` é enfileirada offline normalmente)
+5. upload de `fotos` e `relatorio_fotos` (binário, mais pesado)
+6. conteúdo de `relatorios_tecnicos` (rich text e metadados)
 
 **Retry de fotos:** backoff exponencial (1s → 2s → 4s → 8s), máximo 5 tentativas. Após 5 falhas: `sync_status: 'conflict'` + notificação ao usuário.
 
@@ -154,12 +158,21 @@ Toda mutação offline gera uma entrada na `sync_queue`. O `SyncService` process
 - **Dados de referência** (clientes, templates): server wins
 - **Respostas de auditoria**: client wins — o auditor é a fonte de verdade do campo
 
+**Recuperação manual de conflitos:** Registros com `sync_status: 'conflict'` aparecem em um painel de "Pendências" acessível no Dashboard (badge de alerta) e no Perfil. Para cada conflito, o usuário pode:
+- **Tentar novamente** — re-enfileira na `sync_queue` com `retries: 0`
+- **Descartar** — marca como `deleted_at` local (dado perdido, com confirmação explícita)
+
+O app nunca descarta silenciosamente dados com conflito.
+
 ### IDs offline
 
 Auditorias criadas offline recebem `local_id` (UUID v4). Após push:
 1. Backend retorna `remote_id`
-2. App atualiza `remote_id` na tabela local
-3. Filhos (`auditoria_itens`, `fotos`) são atualizados em cascata
+2. Em uma **única transação SQLite**, o app atualiza:
+   - `auditoria.remote_id`
+   - todos os `auditoria_itens` filhos (`auditoria_id` → `remote_id`)
+   - todas as `fotos` filhas (`auditoria_item_id` → `remote_id` do item pai)
+3. Se a transação falhar em qualquer ponto, ela é revertida completamente — o registro permanece com `remote_id: null` e `sync_status: 'pending'` para retry.
 
 ---
 
@@ -231,7 +244,10 @@ Exibido uma única vez após o primeiro login. Cada tela solicita uma permissão
 **Tela 4 — Pronto**
 - Resumo das permissões concedidas
 - Aviso de que podem ser ajustadas nas configurações do celular
+- Botão "Ajustar permissões" → abre as configurações do sistema operacional (deep link nativo)
 - Botão "Começar" → Dashboard
+
+**Estado degradado (todas as permissões negadas):** o app funciona, mas exibe um aviso persistente no Dashboard listando as funcionalidades indisponíveis. O botão "Ajustar permissões" fica sempre visível no Perfil. O app nunca bloqueia o uso — apenas informa o que está limitado.
 
 ---
 
@@ -293,6 +309,7 @@ Banner sutil no topo em todas as telas quando sem internet, exibindo o número d
 ### Login
 - **Online:** OTP por email, JWT retornado e salvo no keychain
 - **Offline:** não é possível fazer login pela primeira vez sem internet (OTP requer backend). Se já logado, o token válido permite uso completo offline.
+- **Token expiry offline:** o app tenta silent refresh (usando refresh token armazenado no `expo-secure-store`) toda vez que volta ao foreground enquanto online. Se o usuário ficar offline por período superior ao TTL do token, ao reconectar o app tenta o refresh automaticamente; se falhar, exibe tela "Sessão expirada — reconecte para continuar" sem apagar dados locais. Dados offline criados durante a sessão expirada são preservados e sincronizados após novo login.
 
 ### Auditorias — Criar nova offline (Opção B)
 - Auditor seleciona cliente/unidade/template do banco local (pre-sincronizados)
@@ -314,6 +331,7 @@ Banner sutil no topo em todas as telas quando sem internet, exibindo o número d
 - Criados e editados 100% offline
 - Rich text salvo localmente em HTML
 - Push sincroniza quando online
+- **Finalização offline:** o usuário pode finalizar o relatório (status `rascunho → finalizado`) sem internet. A transição de status é enfileirada na `sync_queue` como operação `update`. O relatório aparece como "Finalizado (pendente sync)" localmente até confirmação do backend.
 
 ### Check-in
 - Geofencing funciona offline (nativo iOS/Android)
@@ -333,3 +351,6 @@ Banner sutil no topo em todas as telas quando sem internet, exibindo o número d
 | Client wins para respostas | Server wins | Auditor é fonte de verdade do campo |
 | Onboarding de permissões | Solicitar no momento de uso | Melhor taxa de aprovação com explicação de contexto upfront |
 | Always location permission | When in use | Geofencing com app fechado requer background location |
+| react-native-pell-rich-editor para rich text | 10tap-editor, react-native-cn-quill | Maturidade de API, suporte a HTML nativo compatível com conteúdo já existente no web; risco de manutenção documentado — avaliar 10tap-editor se surgirem problemas |
+| SQLite sem encriptação por padrão | SQLCipher (encriptação em repouso) | Risco aceito: iOS File Data Protection e Android Keystore fornecem encriptação em nível de OS; dados de auditoria alimentar não contêm PII sensível além de localização e texto. Reavaliar se requisito de compliance exigir encriptação explícita. |
+| Refresh token em expo-secure-store | Renovação manual pelo usuário | Evita logout forçado durante uso offline prolongado preservando dados criados |
