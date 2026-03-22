@@ -43,8 +43,8 @@ export async function pushAuditoria(localId: string): Promise<void> {
       try {
         const { id: fotoRemoteId, url } = await uploadFoto(remoteId, item.id, foto.filePath);
         fotoRepo.markSynced(foto.id, fotoRemoteId, url);
-      } catch {
-        fotoRepo.markSynced(foto.id, '', ''); // mark as attempted; URL empty signals error
+      } catch (e) {
+        console.warn(`[pushAuditoria] foto upload failed for foto ${foto.id}:`, e);
       }
     }
   }

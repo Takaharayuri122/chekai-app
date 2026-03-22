@@ -140,9 +140,12 @@ export async function pullAuditorias(): Promise<void> {
         // INSERT OR IGNORE: never overwrite local pending answers
         db.runSync(
           `INSERT OR IGNORE INTO auditoria_itens
-           (id, auditoria_id, template_item_id, resposta, pontuacao, sync_status, updated_at)
-           VALUES (?, ?, ?, ?, ?, 'synced', ?)`,
-          [item.id, localId, item.templateItemId, item.resposta, item.pontuacao, now]
+           (id, auditoria_id, template_item_id, resposta, observacao,
+            descricao_nao_conformidade, plano_acao_final, pontuacao, sync_status, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'synced', ?)`,
+          [item.id, localId, item.templateItemId, item.resposta,
+           item.observacao ?? null, item.descricaoNaoConformidade ?? null,
+           item.planoAcaoFinal ?? null, item.pontuacao, now]
         );
       }
     }
