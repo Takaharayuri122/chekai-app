@@ -77,10 +77,20 @@ export async function pullTemplates(): Promise<void> {
       for (const item of t.itens ?? []) {
         db.runSync(
           `INSERT OR REPLACE INTO template_itens
-           (id, remote_id, template_id, descricao, ordem, referencia_legal, pontuacao_maxima, sync_status, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, 'synced', ?)`,
+           (id, remote_id, template_id, descricao, ordem, referencia_legal, pontuacao_maxima,
+            categoria, tipo_resposta, opcoes_resposta_config,
+            foto_obrigatoria, observacao_obrigatoria, criticidade,
+            sync_status, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'synced', ?)`,
           [item.id, item.id, t.id, item.descricao, item.ordem,
-           item.referenciaLegal ?? null, item.pontuacaoMaxima, now]
+           item.referenciaLegal ?? null, item.pontuacaoMaxima,
+           (item as any).categoria ?? null,
+           (item as any).tipoResposta ?? 'padrao',
+           (item as any).opcoesRespostaConfig ? JSON.stringify((item as any).opcoesRespostaConfig) : null,
+           (item as any).fotoObrigatoria ? 1 : 0,
+           (item as any).observacaoObrigatoria ? 1 : 0,
+           (item as any).criticidade ?? null,
+           now]
         );
       }
     }
@@ -89,8 +99,60 @@ export async function pullTemplates(): Promise<void> {
   setLastSyncedAt(db, 'templates', now);
 }
 
+export async function pullAuditorias(): Promise<void> {
+  const db = getDatabase();
+  const since = getLastSyncedAt(db, 'auditorias');
+  const auditorias = await apiGet<Array<{
+    id: string; localId?: string; status: string;
+    dataInicio?: string; dataFim?: string;
+    clienteId: string; unidadeId: string; templateId?: string;
+    pontuacaoTotal?: number; itens?: Array<{
+      id: string; templateItemId: string; resposta: string;
+      observacao?: string; descricaoNaoConformidade?: string;
+      planoAcaoFinal?: string; pontuacao: number;
+    }>;
+  }>>(`/auditorias?updatedSince=${since}&status=rascunho,em_andamento`);
+
+  const now = new Date().toISOString();
+
+  db.withTransactionSync(() => {
+    for (const a of auditorias) {
+      const localId = a.localId ?? a.id;
+      // Only update if not pending local changes
+      db.runSync(
+        `INSERT INTO auditorias
+           (id, remote_id, local_id, status, data_inicio, data_fim,
+            cliente_id, unidade_id, template_id, sync_status, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'synced', ?)
+         ON CONFLICT(id) DO UPDATE SET
+           status = excluded.status,
+           data_inicio = excluded.data_inicio,
+           data_fim = excluded.data_fim,
+           remote_id = excluded.remote_id,
+           sync_status = 'synced',
+           updated_at = excluded.updated_at
+         WHERE auditorias.sync_status != 'pending'`,
+        [localId, a.id, localId, a.status, a.dataInicio ?? null, a.dataFim ?? null,
+         a.clienteId, a.unidadeId, a.templateId ?? null, now]
+      );
+
+      for (const item of a.itens ?? []) {
+        // INSERT OR IGNORE: never overwrite local pending answers
+        db.runSync(
+          `INSERT OR IGNORE INTO auditoria_itens
+           (id, auditoria_id, template_item_id, resposta, pontuacao, sync_status, updated_at)
+           VALUES (?, ?, ?, ?, ?, 'synced', ?)`,
+          [item.id, localId, item.templateItemId, item.resposta, item.pontuacao, now]
+        );
+      }
+    }
+  });
+
+  setLastSyncedAt(db, 'auditorias', now);
+}
+
 export async function pullAll(): Promise<void> {
   await pullClientes();
   await pullTemplates();
-  // pullAuditorias e pullRelatorios serão adicionados nos Planos 2 e 3
+  await pullAuditorias();
 }
