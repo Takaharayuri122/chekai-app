@@ -11,13 +11,16 @@ export const apiClient = axios.create({
 });
 
 // Adiciona token JWT em todas as requisições
-apiClient.interceptors.request.use(async (config) => {
-  const token = await SecureStore.getItemAsync('auth_token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
+apiClient.interceptors.request.use(
+  async (config) => {
+    const token = await SecureStore.getItemAsync('auth_token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
 
 // Normaliza respostas da API (formato: { data: { ... } })
 apiClient.interceptors.response.use(
