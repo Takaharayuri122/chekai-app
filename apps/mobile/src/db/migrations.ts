@@ -1,5 +1,5 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
-import { SCHEMA_V1, SCHEMA_VERSION } from './schema';
+import { SCHEMA_V1, SCHEMA_V2, SCHEMA_VERSION } from './schema';
 
 export function getSchemaVersion(db: SQLiteDatabase): number {
   const result = db.getFirstSync<{ user_version: number }>('PRAGMA user_version');
@@ -23,6 +23,12 @@ export function runMigrations(db: SQLiteDatabase): void {
       db.execSync(SCHEMA_V1);
       setSchemaVersion(db, 1);
     }
-    // Future migrations: if (currentVersion < 2) { db.execSync(SCHEMA_V2); setSchemaVersion(db, 2); }
+    if (currentVersion < 2) {
+      // ALTER TABLE does not support multiple statements — run each separately
+      for (const stmt of SCHEMA_V2.trim().split(';').map(s => s.trim()).filter(Boolean)) {
+        db.execSync(stmt + ';');
+      }
+      setSchemaVersion(db, 2);
+    }
   });
 }

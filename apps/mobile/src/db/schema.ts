@@ -1,4 +1,4 @@
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 export const SCHEMA_V1 = `
   CREATE TABLE IF NOT EXISTS usuarios (
@@ -194,4 +194,13 @@ export const SCHEMA_V1 = `
   CREATE INDEX IF NOT EXISTS idx_fotos_item ON fotos(auditoria_item_id);
   CREATE INDEX IF NOT EXISTS idx_sync_queue_entity ON sync_queue(entity);
   CREATE INDEX IF NOT EXISTS idx_unidades_cliente ON unidades(cliente_id);
+`;
+
+export const SCHEMA_V2 = `
+  ALTER TABLE template_itens ADD COLUMN categoria TEXT;
+  ALTER TABLE template_itens ADD COLUMN tipo_resposta TEXT NOT NULL DEFAULT 'padrao';
+  ALTER TABLE template_itens ADD COLUMN opcoes_resposta_config TEXT;
+  ALTER TABLE template_itens ADD COLUMN foto_obrigatoria INTEGER NOT NULL DEFAULT 0;
+  ALTER TABLE template_itens ADD COLUMN observacao_obrigatoria INTEGER NOT NULL DEFAULT 0;
+  ALTER TABLE template_itens ADD COLUMN criticidade TEXT;
 `;

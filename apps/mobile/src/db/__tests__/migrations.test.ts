@@ -27,7 +27,7 @@ describe('runMigrations', () => {
   });
 
   it('skips migrations when database is already at current version', () => {
-    mockDb.getFirstSync.mockReturnValue({ user_version: 1 });
+    mockDb.getFirstSync.mockReturnValue({ user_version: 2 });
 
     runMigrations(mockDb as any);
 
@@ -41,5 +41,26 @@ describe('runMigrations', () => {
     const version = getSchemaVersion(mockDb as any);
 
     expect(version).toBe(0);
+  });
+
+  it('executes schema v2 on a v1 database', () => {
+    mockDb.getFirstSync.mockReturnValue({ user_version: 1 });
+
+    runMigrations(mockDb as any);
+
+    expect(mockDb.execSync).toHaveBeenCalledWith(
+      expect.stringContaining('ALTER TABLE template_itens ADD COLUMN categoria TEXT;')
+    );
+    expect(mockDb.execSync).toHaveBeenCalledWith(
+      expect.stringContaining('PRAGMA user_version = 2')
+    );
+  });
+
+  it('skips v2 when database is already at version 2', () => {
+    mockDb.getFirstSync.mockReturnValue({ user_version: 2 });
+
+    runMigrations(mockDb as any);
+
+    expect(mockDb.withTransactionSync).not.toHaveBeenCalled();
   });
 });
