@@ -5,6 +5,7 @@ export interface Foto {
   auditoriaItemId: string;
   filePath: string | null;
   url: string | null;
+  remoteId: string | null;
   syncStatus: string;
   latitude: number | null;
   longitude: number | null;
@@ -29,12 +30,12 @@ export class FotoRepo {
   findByItem(itemId: string): Foto[] {
     const rows = this.db.getAllSync<{
       id: string; auditoria_item_id: string; file_path: string | null;
-      url: string | null; sync_status: string;
+      url: string | null; remote_id: string | null; sync_status: string;
       latitude: number | null; longitude: number | null;
     }>('SELECT * FROM fotos WHERE auditoria_item_id = ?', [itemId]);
     return rows.map(r => ({
       id: r.id, auditoriaItemId: r.auditoria_item_id,
-      filePath: r.file_path, url: r.url, syncStatus: r.sync_status,
+      filePath: r.file_path, url: r.url, remoteId: r.remote_id, syncStatus: r.sync_status,
       latitude: r.latitude, longitude: r.longitude,
     }));
   }
@@ -42,7 +43,7 @@ export class FotoRepo {
   findByAuditoria(auditoriaId: string): Foto[] {
     const rows = this.db.getAllSync<{
       id: string; auditoria_item_id: string; file_path: string | null;
-      url: string | null; sync_status: string;
+      url: string | null; remote_id: string | null; sync_status: string;
       latitude: number | null; longitude: number | null;
     }>(
       `SELECT f.* FROM fotos f
@@ -52,7 +53,7 @@ export class FotoRepo {
     );
     return rows.map(r => ({
       id: r.id, auditoriaItemId: r.auditoria_item_id,
-      filePath: r.file_path, url: r.url, syncStatus: r.sync_status,
+      filePath: r.file_path, url: r.url, remoteId: r.remote_id, syncStatus: r.sync_status,
       latitude: r.latitude, longitude: r.longitude,
     }));
   }

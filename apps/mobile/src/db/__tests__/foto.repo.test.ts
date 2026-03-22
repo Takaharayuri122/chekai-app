@@ -37,4 +37,24 @@ describe('FotoRepo', () => {
       expect.arrayContaining(['remote-f1', 'https://cdn.example.com/f1.jpg', 'synced', 'f1'])
     );
   });
+
+  it('remove deletes the foto by id', () => {
+    repo.remove('f1');
+    expect(mockDb.runSync).toHaveBeenCalledWith(
+      expect.stringContaining('DELETE FROM fotos'),
+      ['f1']
+    );
+  });
+
+  it('findByAuditoria returns photos for all items in the audit', () => {
+    mockDb.getAllSync.mockReturnValue([
+      { id: 'f1', auditoria_item_id: 'item-1', file_path: '/path.jpg',
+        url: null, remote_id: null, sync_status: 'pending',
+        latitude: null, longitude: null },
+    ]);
+
+    const fotos = repo.findByAuditoria('audit-1');
+    expect(fotos).toHaveLength(1);
+    expect(fotos[0].remoteId).toBeNull();
+  });
 });

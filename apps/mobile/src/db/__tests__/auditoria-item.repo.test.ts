@@ -59,4 +59,32 @@ describe('AuditoriaItemRepo', () => {
     expect(items[0].descricao).toBe('Item 1');
     expect(items[0].tipoResposta).toBe('padrao');
   });
+
+  it('findById returns the item when found', () => {
+    mockDb.getFirstSync.mockReturnValue({
+      id: 'item-1', auditoria_id: 'audit-1', template_item_id: 'ti-1',
+      resposta: 'conforme', observacao: null,
+      descricao_nao_conformidade: null, plano_acao_final: null,
+      descricao_ia: null, plano_acao_sugerido: null,
+      pontuacao: 10, sync_status: 'pending',
+      descricao: 'Item 1', ordem: 1, categoria: 'Higiene',
+      tipo_resposta: 'padrao', opcoes_resposta_config: null,
+      foto_obrigatoria: 0, observacao_obrigatoria: 0,
+      criticidade: null, pontuacao_maxima: 10,
+    });
+
+    const item = repo.findById('item-1');
+
+    expect(item).not.toBeNull();
+    expect(item!.id).toBe('item-1');
+    expect(item!.fotoObrigatoria).toBe(false);
+  });
+
+  it('findById returns null when item not found', () => {
+    mockDb.getFirstSync.mockReturnValue(null);
+
+    const item = repo.findById('nonexistent');
+
+    expect(item).toBeNull();
+  });
 });
