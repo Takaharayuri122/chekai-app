@@ -15,6 +15,7 @@ A wing do projeto é **chekai** com os seguintes rooms:
 | `ux-patterns` | Padrões de UX/UI (mobile-first, modais, CRUD, checklist) |
 | `bugs` | Bugs encontrados e suas soluções |
 | `features` | Features implementadas e contexto de negócio |
+| `platform-parity` | Divergências aceitas entre plataformas, decisões de paridade web/mobile |
 
 ## Protocolo de Uso
 
@@ -40,6 +41,7 @@ A wing do projeto é **chekai** com os seguintes rooms:
 - `ux-patterns` — novos padrões de UX definidos
 - `bugs` — bugs e suas soluções
 - `features` — features implementadas com contexto de negócio
+- `platform-parity` — divergências aceitas entre plataformas, decisões de paridade
 
 ## Ferramentas MCP Disponíveis
 

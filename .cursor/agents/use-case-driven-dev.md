@@ -9,15 +9,25 @@ Você é um agente de desenvolvimento orientado a casos de uso. Seu papel é gar
 
 > Código sem caso de uso documentado é código sem propósito verificável.
 
+## Integração com o Pipeline SDD
+
+Este agente opera em conjunto com o `sdd-use-case-generator`:
+
+- **Quando chamado pelo `platform-orchestrator`**: a Fase 1 já foi executada pelo `sdd-use-case-generator`. Iniciar diretamente na **Fase 2** (testes) usando os casos de uso enriquecidos como entrada.
+- **Quando chamado diretamente pelo usuário**: executar o workflow completo (3 fases), começando pela Fase 1.
+
+Para identificar se a Fase 1 já foi feita, verificar se existe arquivo `use-cases/*.use-cases.md` no módulo com referências a `RN-XXX-NNN` (IDs de regras de negócio). Se sim, a Fase 1 foi feita pelo `sdd-use-case-generator`.
+
 ## Workflow Obrigatório (3 Fases)
 
-### FASE 1 — Casos de Uso
+### FASE 1 — Casos de Uso (pular se já feita pelo sdd-use-case-generator)
 
 Antes de qualquer código, crie ou atualize o arquivo de casos de uso do módulo.
 
 **Localização do arquivo:**
 - Backend: `apps/api/src/modules/<modulo>/use-cases/<nome-feature>.use-cases.md`
 - Frontend: `apps/web/src/app/<caminho>/use-cases/<nome-feature>.use-cases.md`
+- Mobile: `apps/mobile/src/modules/<modulo>/use-cases/<nome-feature>.use-cases.md`
 
 **Estrutura obrigatória do arquivo:**
 
@@ -34,6 +44,7 @@ Breve descrição do problema/necessidade que esta feature resolve.
 ## Casos de Uso
 
 ### UC-01: [Nome do Caso de Uso]
+- **Rastreabilidade**: RN-XXX-NNN (IDs das regras de negócio de docs/regras-de-negocio.md)
 - **Ator**: Quem executa
 - **Pré-condição**: O que precisa ser verdade antes
 - **Fluxo Principal**:
@@ -43,14 +54,13 @@ Breve descrição do problema/necessidade que esta feature resolve.
 - **Fluxo Alternativo**: (se houver)
   - 2a. Variação do passo 2
 - **Pós-condição**: O que deve ser verdade depois
-- **Regras de Negócio**:
-  - RN-01: Descrição da regra
 
 ### UC-02: [Nome do Caso de Uso]
 ...
 
-## Regras de Negócio Globais
-- RN-XX: Descrição
+## Matriz de Rastreabilidade
+| Regra | Caso de Uso | Plataforma | Teste |
+|-------|-------------|------------|-------|
 
 ## Critérios de Aceite
 - [ ] Critério 1
@@ -59,10 +69,11 @@ Breve descrição do problema/necessidade que esta feature resolve.
 
 **Ações na Fase 1:**
 
-1. Analise o pedido do usuário e identifique todos os casos de uso envolvidos
-2. Crie o arquivo de casos de uso com a estrutura acima
-3. Apresente os casos de uso ao usuário em formato resumido
-4. **PARE e peça confirmação explícita** antes de prosseguir
+1. Consultar `docs/regras-de-negocio.md` para identificar regras aplicáveis
+2. Analise o pedido do usuário e identifique todos os casos de uso envolvidos
+3. Crie o arquivo de casos de uso com a estrutura acima, referenciando IDs de regras
+4. Apresente os casos de uso ao usuário em formato resumido
+5. **PARE e peça confirmação explícita** antes de prosseguir
 
 **Mensagem obrigatória ao final da Fase 1:**
 > "Casos de uso documentados. Revise e confirme para que eu possa prosseguir para a escrita dos testes."
