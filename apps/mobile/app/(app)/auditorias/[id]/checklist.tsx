@@ -1,46 +1,57 @@
-import { View, Text, SectionList, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useMemo, useCallback } from 'react';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft } from 'lucide-react-native';
+import { useEffect, useMemo, useCallback, useState } from 'react';
+import { ArrowLeft, List, Layers } from 'lucide-react-native';
+import { MMKV } from 'react-native-mmkv';
 import { useAuditoriaStore } from '../../../../src/store/auditoria';
 import { ChecklistProgress } from '../../../../src/components/auditoria/ChecklistProgress';
 import { AuditoriaStatusBadge } from '../../../../src/components/auditoria/AuditoriaStatusBadge';
-import type { AuditoriaItemCompleto } from '../../../../src/db/repositories/auditoria-item.repo';
+import { ChecklistFilterBar, type FiltroChecklist } from '../../../../src/components/auditoria/ChecklistFilterBar';
+import { ChecklistListMode } from '../../../../src/components/auditoria/ChecklistListMode';
+import { ChecklistTinderMode } from '../../../../src/components/auditoria/ChecklistTinderMode';
 
-const RESPOSTA_DOT: Record<string, string> = {
-  conforme: '#16a34a',
-  nao_conforme: '#dc2626',
-  na: '#94a3b8',
-  nao_avaliado: '#cbd5e1',
-};
+type ModoChecklist = 'lista' | 'cards';
 
-const RESPOSTA_BADGE: Record<string, { label: string; bg: string; text: string }> = {
-  conforme:     { label: 'C',   bg: '#dcfce7', text: '#16a34a' },
-  nao_conforme: { label: 'NC',  bg: '#fee2e2', text: '#dc2626' },
-  na:           { label: 'N/A', bg: '#f1f5f9', text: '#94a3b8' },
-  nao_avaliado: { label: '—',   bg: '#f1f5f9', text: '#94a3b8' },
-};
+const storage = new MMKV({ id: 'checklist-prefs' });
+const MODO_KEY = 'checklist-modo';
+
+function getModoSalvo(): ModoChecklist {
+  const salvo = storage.getString(MODO_KEY);
+  return salvo === 'cards' ? 'cards' : 'lista';
+}
 
 export default function ChecklistScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
-  const { auditoria, itens, isLoading, error, iniciar, finalizar, limpar } = useAuditoriaStore();
+  const { id, readonly: readonlyParam } = useLocalSearchParams<{ id: string; readonly?: string }>();
+  const { auditoria, itens, isLoading, error, iniciar, carregar, finalizar, salvarResposta, limpar } = useAuditoriaStore();
+
+  const isReadonly = readonlyParam === '1' || (auditoria?.status === 'concluida' && auditoria?.syncStatus === 'synced');
+
+  const [modo, setModo] = useState<ModoChecklist>(getModoSalvo);
+  const [filtro, setFiltro] = useState<FiltroChecklist>('todos');
 
   useEffect(() => {
-    if (id) iniciar(id);
+    if (!id) return;
+    if (readonlyParam === '1') {
+      carregar(id);
+    } else {
+      iniciar(id);
+    }
     return () => limpar();
-  }, [id, iniciar, limpar]);
+  }, [id, readonlyParam, iniciar, carregar, limpar]);
 
   const respondidos = useMemo(() => itens.filter(i => i.resposta !== 'nao_avaliado').length, [itens]);
 
-  const sections = useMemo(() => {
-    const byCategoria: Record<string, AuditoriaItemCompleto[]> = {};
-    for (const item of itens) {
-      const cat = item.categoria ?? 'Geral';
-      (byCategoria[cat] ??= []).push(item);
-    }
-    return Object.entries(byCategoria).map(([title, data]) => ({ title, data }));
-  }, [itens]);
+  const contadores = useMemo(() => ({
+    todos: itens.length,
+    pendentes: itens.filter(i => i.resposta === 'nao_avaliado').length,
+    naoConformes: itens.filter(i => i.resposta === 'nao_conforme').length,
+  }), [itens]);
+
+  const handleToggleModo = useCallback(() => {
+    const novoModo: ModoChecklist = modo === 'lista' ? 'cards' : 'lista';
+    setModo(novoModo);
+    storage.set(MODO_KEY, novoModo);
+  }, [modo]);
 
   const handleFinalizar = useCallback(() => {
     const pendentes = itens.filter(i => i.resposta === 'nao_avaliado').length;
@@ -58,6 +69,20 @@ export default function ChecklistScreen() {
       doFinalize();
     }
   }, [itens, finalizar, id]);
+
+  const handleResponderLista = useCallback((itemId: string, resposta: string) => {
+    salvarResposta(itemId, { resposta });
+  }, [salvarResposta]);
+
+  const handleResponderTinder = useCallback((itemId: string, resposta: string, extras?: {
+    observacao?: string;
+    descricaoNaoConformidade?: string;
+    planoAcaoFinal?: string;
+    descricaoIa?: string;
+    planoAcaoSugerido?: string;
+  }) => {
+    salvarResposta(itemId, { resposta, ...extras });
+  }, [salvarResposta]);
 
   if (isLoading) {
     return (
@@ -79,7 +104,7 @@ export default function ChecklistScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-base-200" edges={['top', 'bottom']}>
+    <View className="flex-1 bg-base-200">
       {/* Header */}
       <View className="bg-neutral px-4 py-3 flex-row items-center gap-3">
         <TouchableOpacity onPress={() => router.back()}>
@@ -93,55 +118,52 @@ export default function ChecklistScreen() {
             {auditoria?.unidadeNome ?? ''}
           </Text>
         </View>
+        {!isReadonly && (
+          <TouchableOpacity onPress={handleToggleModo} className="p-1.5 rounded-lg bg-white/10 mr-1">
+            {modo === 'lista'
+              ? <Layers size={18} color="white" />
+              : <List size={18} color="white" />}
+          </TouchableOpacity>
+        )}
         <AuditoriaStatusBadge status={auditoria?.status ?? 'rascunho'} />
       </View>
 
-      <ChecklistProgress respondidos={respondidos} total={itens.length} />
-
-      <SectionList
-        sections={sections}
-        keyExtractor={i => i.id}
-        stickySectionHeadersEnabled
-        renderSectionHeader={({ section: { title, data } }) => {
-          const secRespondidos = data.filter(i => i.resposta !== 'nao_avaliado').length;
-          return (
-            <View className="bg-gray-50 px-4 py-2 border-b border-gray-200 flex-row justify-between">
-              <Text className="text-xs font-bold text-gray-500 uppercase tracking-wide">{title}</Text>
-              <Text className="text-xs text-gray-400">{secRespondidos}/{data.length}</Text>
+      {/* Modo Lista */}
+      {modo === 'lista' && (
+        <>
+          <ChecklistProgress respondidos={respondidos} total={itens.length} />
+          {!isReadonly && (
+            <ChecklistFilterBar
+              filtroAtual={filtro}
+              onFiltroChange={setFiltro}
+              contadores={contadores}
+            />
+          )}
+          <ChecklistListMode
+            auditoriaId={id!}
+            itens={itens}
+            filtro={filtro}
+            isReadonly={isReadonly}
+            onResponder={handleResponderLista}
+          />
+          {!isReadonly && (
+            <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-4">
+              <TouchableOpacity onPress={handleFinalizar} className="bg-primary rounded-xl py-4 items-center">
+                <Text className="text-white font-bold text-base">Finalizar Auditoria</Text>
+              </TouchableOpacity>
             </View>
-          );
-        }}
-        renderItem={({ item }) => {
-          const badge = RESPOSTA_BADGE[item.resposta] ?? RESPOSTA_BADGE.nao_avaliado;
-          const dot = RESPOSTA_DOT[item.resposta] ?? RESPOSTA_DOT.nao_avaliado;
-          return (
-            <TouchableOpacity
-              onPress={() => router.push({
-                pathname: '/(app)/auditorias/[id]/item/[itemId]',
-                params: { id: id!, itemId: item.id },
-              })}
-              className="bg-white px-4 py-3 border-b border-gray-50 flex-row items-center gap-3"
-            >
-              <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: dot, flexShrink: 0 }} />
-              <Text className="flex-1 text-sm text-neutral" numberOfLines={2}>{item.descricao}</Text>
-              <View style={{ backgroundColor: badge.bg, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4 }}>
-                <Text style={{ color: badge.text, fontSize: 10, fontWeight: '700' }}>{badge.label}</Text>
-              </View>
-            </TouchableOpacity>
-          );
-        }}
-        contentContainerStyle={{ paddingBottom: 80 }}
-      />
+          )}
+        </>
+      )}
 
-      {/* Footer */}
-      <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-4">
-        <TouchableOpacity
-          onPress={handleFinalizar}
-          className="bg-primary rounded-xl py-4 items-center"
-        >
-          <Text className="text-white font-bold text-base">Finalizar Auditoria</Text>
-        </TouchableOpacity>
-      </View>
-    </SafeAreaView>
+      {/* Modo Cards (Tinder) */}
+      {modo === 'cards' && !isReadonly && (
+        <ChecklistTinderMode
+          itens={itens}
+          onResponder={handleResponderTinder}
+          onFinalizar={handleFinalizar}
+        />
+      )}
+    </View>
   );
 }

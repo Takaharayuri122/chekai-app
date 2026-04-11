@@ -9,8 +9,10 @@ interface AuditoriaStore {
   error: string | null;
 
   iniciar(auditoriaId: string): void;
+  carregar(auditoriaId: string): void;
   salvarResposta(itemId: string, resposta: RespostaInput): void;
   finalizar(): void;
+  recarregar(): void;
   limpar(): void;
 }
 
@@ -32,8 +34,26 @@ export const useAuditoriaStore = create<AuditoriaStore>((set, get) => ({
         return;
       }
       const itens = itemRepo.findByAuditoria(auditoriaId);
-      auditoriaRepo.updateStatus(auditoriaId, 'em_andamento');
-      set({ auditoria: { ...auditoria, status: 'em_andamento' }, itens, isLoading: false });
+      if (auditoria.status === 'rascunho') {
+        auditoriaRepo.updateStatus(auditoriaId, 'em_andamento');
+      }
+      const status = auditoria.status === 'rascunho' ? 'em_andamento' : auditoria.status;
+      set({ auditoria: { ...auditoria, status }, itens, isLoading: false });
+    } catch {
+      set({ isLoading: false, error: 'Erro ao carregar auditoria.' });
+    }
+  },
+
+  carregar(auditoriaId) {
+    set({ isLoading: true, error: null });
+    try {
+      const auditoria = auditoriaRepo.findById(auditoriaId);
+      if (!auditoria) {
+        set({ isLoading: false, error: 'Auditoria não encontrada.' });
+        return;
+      }
+      const itens = itemRepo.findByAuditoria(auditoriaId);
+      set({ auditoria, itens, isLoading: false });
     } catch {
       set({ isLoading: false, error: 'Erro ao carregar auditoria.' });
     }
@@ -60,13 +80,23 @@ export const useAuditoriaStore = create<AuditoriaStore>((set, get) => ({
     const { auditoria, itens } = get();
     if (!auditoria) return;
     const pontuacao = itens.reduce((sum, i) => sum + i.pontuacao, 0);
-    auditoriaRepo.updateStatus(auditoria.id, 'concluida');
-    auditoriaRepo.updatePontuacao(auditoria.id, pontuacao);
+    auditoriaRepo.finalizarLocal(auditoria.id, pontuacao);
+    const dataFim = new Date().toISOString();
     set(state => ({
       auditoria: state.auditoria
-        ? { ...state.auditoria, status: 'concluida', pontuacaoTotal: pontuacao }
+        ? { ...state.auditoria, status: 'concluida', pontuacaoTotal: pontuacao, dataFim }
         : null,
     }));
+  },
+
+  recarregar() {
+    const { auditoria } = get();
+    if (!auditoria) return;
+    const updated = auditoriaRepo.findById(auditoria.id);
+    if (updated) {
+      const itens = itemRepo.findByAuditoria(auditoria.id);
+      set({ auditoria: updated, itens });
+    }
   },
 
   limpar() {

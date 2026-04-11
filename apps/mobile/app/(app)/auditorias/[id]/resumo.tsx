@@ -3,21 +3,29 @@ import {
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState, useMemo } from 'react';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft } from 'lucide-react-native';
 import { useAuditoriaStore } from '../../../../src/store/auditoria';
-import { pushAuditoria, enqueuePush } from '../../../../src/sync/push';
+import { pushAuditoria, enqueuePush, type PushEtapa } from '../../../../src/sync/push';
 import { SyncService } from '../../../../src/sync/SyncService';
 import { getDatabase } from '../../../../src/db/client';
 
+const ETAPA_LABELS: Record<PushEtapa, string> = {
+  criando: 'Criando auditoria no servidor...',
+  itens: 'Enviando respostas...',
+  fotos: 'Enviando fotos...',
+  finalizando: 'Finalizando...',
+  concluido: 'Concluído!',
+};
+
 export default function ResumoScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { auditoria, itens } = useAuditoriaStore();
+  const { auditoria, itens, recarregar } = useAuditoriaStore();
 
   const [assinatura, setAssinatura] = useState('');
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
+  const [etapaAtual, setEtapaAtual] = useState<PushEtapa | null>(null);
 
   const ncs = useMemo(() => itens.filter(i => i.resposta === 'nao_conforme'), [itens]);
   const pontuacaoTotal = useMemo(() => itens.reduce((s, i) => s + i.pontuacao, 0), [itens]);
@@ -38,8 +46,8 @@ export default function ResumoScreen() {
   const handleEnviar = async () => {
     setSending(true);
     setSendError(null);
+    setEtapaAtual(null);
     try {
-      // Persist signature to local DB
       if (assinatura.trim()) {
         getDatabase().runSync(
           'UPDATE auditorias SET assinatura_nome = ?, updated_at = ? WHERE id = ?',
@@ -48,11 +56,12 @@ export default function ResumoScreen() {
       }
       const isOnline = await SyncService.isOnline();
       if (isOnline) {
-        await pushAuditoria(id!);
+        await pushAuditoria(id!, (etapa) => setEtapaAtual(etapa));
+        recarregar();
         setSent(true);
       } else {
         enqueuePush(id!);
-        setSent(true); // optimistic: will sync when online
+        setSent(true);
       }
     } catch (e) {
       setSendError(e instanceof Error ? e.message : 'Erro ao enviar.');
@@ -62,8 +71,7 @@ export default function ResumoScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-base-200" edges={['top', 'bottom']}>
-      {/* Header */}
+    <View className="flex-1 bg-base-200">
       <View className="bg-neutral px-4 py-3 flex-row items-center gap-3">
         <TouchableOpacity onPress={() => router.back()}>
           <ArrowLeft color="white" size={20} />
@@ -146,15 +154,21 @@ export default function ResumoScreen() {
               disabled={sending}
               className={`rounded-xl py-4 items-center ${sending ? 'bg-gray-400' : 'bg-primary'}`}
             >
-              {sending
-                ? <ActivityIndicator color="white" />
-                : <Text className="text-white font-bold text-base">Enviar Relatório</Text>
-              }
+              {sending ? (
+                <View className="flex-row items-center gap-2">
+                  <ActivityIndicator color="white" size="small" />
+                  <Text className="text-white font-medium text-sm">
+                    {etapaAtual ? ETAPA_LABELS[etapaAtual] : 'Enviando...'}
+                  </Text>
+                </View>
+              ) : (
+                <Text className="text-white font-bold text-base">Enviar Relatório</Text>
+              )}
             </TouchableOpacity>
           </View>
         ) : (
           <View className="bg-green-50 border border-green-200 rounded-2xl p-4 items-center">
-            <Text className="text-green-700 font-semibold">✓ Auditoria enviada com sucesso</Text>
+            <Text className="text-green-700 font-semibold">Auditoria enviada com sucesso</Text>
             <TouchableOpacity
               onPress={() => router.replace('/(app)/auditorias')}
               className="mt-3"
@@ -164,6 +178,6 @@ export default function ResumoScreen() {
           </View>
         )}
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }

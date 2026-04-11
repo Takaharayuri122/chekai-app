@@ -2,6 +2,7 @@ import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Alert } from
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState, useMemo, useRef } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import * as Location from 'expo-location';
 import { getDatabase } from '../../../src/db/client';
 import { AuditoriaRepo } from '../../../src/db/repositories/auditoria.repo';
 import { AuditoriaItemRepo } from '../../../src/db/repositories/auditoria-item.repo';
@@ -37,21 +38,35 @@ export default function NovaTemplateScreen() {
     );
   }, [unidadeId]);
 
-  const handleSelect = (template: TemplateRow) => {
+  const handleSelect = async (template: TemplateRow) => {
     if (creating.current) return;
     creating.current = true;
     setLoading(true);
     try {
+      let latitude: number | undefined;
+      let longitude: number | undefined;
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status === 'granted') {
+          const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+          latitude = loc.coords.latitude;
+          longitude = loc.coords.longitude;
+        }
+      } catch {
+        console.warn('[NovaAuditoria] GPS indisponível');
+      }
+
       const newId = crypto.randomUUID();
       const now = new Date().toISOString();
 
-      // Create auditoria
       auditoriaRepo.create({
         id: newId,
         clienteId: clienteId!,
         unidadeId: unidadeId!,
         templateId: template.id,
         dataInicio: now,
+        latitudeInicio: latitude,
+        longitudeInicio: longitude,
       });
 
       // Bulk-create items

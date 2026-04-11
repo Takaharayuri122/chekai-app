@@ -3,7 +3,6 @@ import {
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState, useCallback } from 'react';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuditoriaStore } from '../../../../../src/store/auditoria';
@@ -18,8 +17,9 @@ const fotoRepo = new FotoRepo();
 const itemRepo = new AuditoriaItemRepo();
 
 export default function ItemScreen() {
-  const { id, itemId } = useLocalSearchParams<{ id: string; itemId: string }>();
-  const { itens, salvarResposta } = useAuditoriaStore();
+  const { id, itemId, readonly: readonlyParam } = useLocalSearchParams<{ id: string; itemId: string; readonly?: string }>();
+  const { itens, auditoria, salvarResposta } = useAuditoriaStore();
+  const isReadonly = readonlyParam === '1' || (auditoria?.status === 'concluida' && auditoria?.syncStatus === 'synced');
 
   const item = itens.find(i => i.id === itemId);
 
@@ -106,8 +106,7 @@ export default function ItemScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-white" edges={['top', 'bottom']}>
-      {/* Header */}
+    <View className="flex-1 bg-white">
       <View className="bg-neutral px-4 py-3 flex-row items-center gap-3">
         <TouchableOpacity onPress={() => router.back()}>
           <ArrowLeft color="white" size={20} />
@@ -123,13 +122,14 @@ export default function ItemScreen() {
           tipo={item.tipoResposta as any}
           opcoes={opcoes}
           valorAtual={resposta === 'nao_avaliado' ? null : resposta}
-          onSelect={handleSelectResposta}
+          onSelect={isReadonly ? () => {} : handleSelectResposta}
+          disabled={isReadonly}
         />
 
         {/* Observação */}
         <View>
           <Text className="text-sm font-medium text-gray-600 mb-2">
-            Observação{item.observacaoObrigatoria ? ' *' : ''}
+            Observação{item.observacaoObrigatoria && !isReadonly ? ' *' : ''}
           </Text>
           <TextInput
             className="border border-gray-200 rounded-xl px-4 py-3 text-base text-neutral min-h-[72px]"
@@ -137,15 +137,16 @@ export default function ItemScreen() {
             multiline
             value={observacao}
             onChangeText={setObservacao}
-            placeholder="Adicione uma observação..."
+            placeholder={isReadonly ? 'Sem observação' : 'Adicione uma observação...'}
             placeholderTextColor="#9CA3AF"
+            editable={!isReadonly}
           />
         </View>
 
         {/* Foto obrigatória warning */}
-        {item.fotoObrigatoria && fotos.length === 0 && (
+        {!isReadonly && item.fotoObrigatoria && fotos.length === 0 && (
           <View className="bg-orange-50 border border-orange-200 rounded-xl px-4 py-3 flex-row items-center gap-2">
-            <Text className="text-orange-700 text-sm">📷 Foto obrigatória para este item</Text>
+            <Text className="text-orange-700 text-sm">Foto obrigatoria para este item</Text>
           </View>
         )}
 
@@ -157,7 +158,8 @@ export default function ItemScreen() {
             loadingIa={loadingIa}
             descricao={descricaoNc}
             planoAcao={planoAcao}
-            onChange={(d, p) => { setDescricaoNc(d); setPlanoAcao(p); }}
+            onChange={isReadonly ? () => {} : (d, p) => { setDescricaoNc(d); setPlanoAcao(p); }}
+            readonly={isReadonly}
           />
         )}
 
@@ -166,20 +168,22 @@ export default function ItemScreen() {
           <Text className="text-sm font-medium text-gray-600 mb-2">Fotos</Text>
           <FotoGrid
             fotos={fotos}
-            onAdd={handleAddFoto}
-            onRemove={handleRemoveFoto}
-            obrigatoria={item.fotoObrigatoria}
+            onAdd={isReadonly ? undefined : handleAddFoto}
+            onRemove={isReadonly ? undefined : handleRemoveFoto}
+            obrigatoria={!isReadonly && item.fotoObrigatoria}
           />
         </View>
 
         {/* Salvar button */}
-        <TouchableOpacity
-          onPress={handleSalvar}
-          className="bg-primary rounded-xl py-4 items-center mt-4"
-        >
-          <Text className="text-white font-bold text-base">Salvar</Text>
-        </TouchableOpacity>
+        {!isReadonly && (
+          <TouchableOpacity
+            onPress={handleSalvar}
+            className="bg-primary rounded-xl py-4 items-center mt-4"
+          >
+            <Text className="text-white font-bold text-base">Salvar</Text>
+          </TouchableOpacity>
+        )}
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }

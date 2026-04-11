@@ -2,7 +2,6 @@ import { View, Text, FlatList, TouchableOpacity, RefreshControl } from 'react-na
 import { router } from 'expo-router';
 import { useState, useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Plus } from 'lucide-react-native';
 import { AuditoriaRepo, type AuditoriaListItem } from '../../../src/db/repositories/auditoria.repo';
 import { AuditoriaStatusBadge } from '../../../src/components/auditoria/AuditoriaStatusBadge';
@@ -18,7 +17,12 @@ export default function AuditoriasListScreen() {
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(() => {
-    setAuditorias(repo.findAll());
+    const items = repo.findAll();
+    console.log(`[AuditoriasScreen] Carregadas ${items.length} auditorias do banco local`);
+    if (items.length > 0) {
+      console.log(`[AuditoriasScreen] Primeira: id=${items[0].id}, status=${items[0].status}, sync=${items[0].syncStatus}`);
+    }
+    setAuditorias(items);
   }, []);
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
@@ -40,15 +44,12 @@ export default function AuditoriasListScreen() {
 
   return (
     <View className="flex-1 bg-base-200">
-      <SafeAreaView edges={['top']} className="bg-white">
-        {/* Header */}
+      <View className="bg-white">
         <View className="px-4 pb-3 border-b border-gray-100">
           <Text className="text-xl font-bold text-neutral" style={{ fontFamily: 'Montserrat_700Bold' }}>
             Auditorias
           </Text>
         </View>
-
-        {/* Filtros */}
         <View className="flex-row border-b border-gray-100 px-4 gap-4">
         {(['todas', 'em_andamento', 'concluida'] as Filtro[]).map(f => (
           <TouchableOpacity
@@ -62,7 +63,7 @@ export default function AuditoriasListScreen() {
           </TouchableOpacity>
         ))}
         </View>
-      </SafeAreaView>
+      </View>
 
       <FlatList
         data={filtered}
@@ -76,7 +77,13 @@ export default function AuditoriasListScreen() {
         }
         renderItem={({ item: a }) => (
           <TouchableOpacity
-            onPress={() => router.push({ pathname: '/(app)/auditorias/[id]/checklist', params: { id: a.id } })}
+            onPress={() => {
+              const isSynced = a.status === 'concluida' && a.syncStatus === 'synced';
+              router.push({
+                pathname: '/(app)/auditorias/[id]/checklist',
+                params: { id: a.id, ...(isSynced ? { readonly: '1' } : {}) },
+              });
+            }}
             className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100"
           >
             <View className="flex-row justify-between items-start mb-1">

@@ -31,8 +31,12 @@ async function requestJson<T>(method: string, path: string, body?: unknown): Pro
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   const url = `${API_URL}${path.startsWith('/') ? path : `/${path}`}`;
+  const inicio = Date.now();
+  console.log(`[API] ${method} ${url}`);
   try {
     const headers = await buildHeaders();
+    const hasAuth = !!headers.Authorization;
+    console.log(`[API] Auth: ${hasAuth ? 'Bearer ***' : 'sem token'}`);
     const response = await fetch(url, {
       method,
       headers,
@@ -40,27 +44,35 @@ async function requestJson<T>(method: string, path: string, body?: unknown): Pro
       signal: controller.signal,
     });
     clearTimeout(timeoutId);
+    const elapsed = Date.now() - inicio;
     const text = await response.text();
+    console.log(`[API] ${method} ${path} → ${response.status} (${elapsed}ms, ${text.length} bytes)`);
     const json = text ? (JSON.parse(text) as { data?: T; message?: string | string[] }) : {};
     if (!response.ok) {
+      console.error(`[API] Erro ${response.status}: ${text.substring(0, 300)}`);
       throw new Error(extrairMensagemErro(json));
     }
     if (json.data === undefined) {
+      console.error(`[API] Resposta sem campo 'data': ${text.substring(0, 300)}`);
       throw new Error('Resposta inválida do servidor.');
     }
     return json.data;
   } catch (err) {
     clearTimeout(timeoutId);
+    const elapsed = Date.now() - inicio;
     if (err instanceof Error) {
       if (err.name === 'AbortError') {
+        console.error(`[API] Timeout ${method} ${path} (${elapsed}ms)`);
         throw new Error('Tempo de conexão expirado.');
       }
       const msg = err.message;
       if (msg.includes('Network request failed') || msg.includes('Failed to fetch')) {
+        console.error(`[API] Sem rede: ${method} ${path} (${elapsed}ms)`);
         throw new Error('Sem conexão com o servidor.');
       }
       throw err;
     }
+    console.error(`[API] Erro desconhecido: ${method} ${path}`, err);
     throw new Error('Sem conexão com o servidor.');
   }
 }

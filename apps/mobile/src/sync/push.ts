@@ -10,11 +10,19 @@ const auditoriaRepo = new AuditoriaRepo();
 const itemRepo = new AuditoriaItemRepo();
 const fotoRepo = new FotoRepo();
 
-export async function pushAuditoria(localId: string): Promise<void> {
+export type PushEtapa = 'criando' | 'itens' | 'fotos' | 'finalizando' | 'concluido';
+export type PushProgressCallback = (etapa: PushEtapa, detalhe?: string) => void;
+
+export async function pushAuditoria(
+  localId: string,
+  onProgress?: PushProgressCallback,
+): Promise<void> {
+  const inicio = Date.now();
   const auditoria = auditoriaRepo.findById(localId);
   if (!auditoria) throw new Error(`Auditoria ${localId} não encontrada.`);
+  console.log(`[pushAuditoria] Iniciando push — local=${localId}, cliente=${auditoria.clienteNome}`);
 
-  // 1. Create on backend (API also creates all items from the template)
+  onProgress?.('criando');
   const { id: remoteId, itens: remoteItens } = await createAuditoria({
     localId: auditoria.localId,
     clienteId: auditoria.clienteId,
@@ -22,15 +30,22 @@ export async function pushAuditoria(localId: string): Promise<void> {
     templateId: auditoria.templateId!,
     dataInicio: auditoria.dataInicio!,
   });
+  console.log(`[pushAuditoria] Criada no servidor — remoteId=${remoteId}, ${remoteItens.length} itens remotos`);
 
-  // Map templateItemId → remote item ID
   const remoteItemMap = new Map(remoteItens.map(i => [i.templateItemId, i.id]));
 
-  // 2. Submit items
+  onProgress?.('itens');
   const itens = itemRepo.findByAuditoria(localId);
+  let itensEnviados = 0;
+  let fotosSucesso = 0;
+  let fotosErro = 0;
+
   for (const item of itens) {
     const remoteItemId = remoteItemMap.get(item.templateItemId);
-    if (!remoteItemId) continue; // item not in remote template, skip
+    if (!remoteItemId) {
+      console.warn(`[pushAuditoria] Item ${item.id} sem mapeamento remoto (templateItemId=${item.templateItemId})`);
+      continue;
+    }
     await submitItem(remoteId, remoteItemId, {
       localId: item.id,
       templateItemId: item.templateItemId,
@@ -40,32 +55,39 @@ export async function pushAuditoria(localId: string): Promise<void> {
       planoAcaoFinal: item.planoAcaoFinal ?? undefined,
       pontuacao: item.pontuacao,
     });
+    itensEnviados++;
 
-    // 3. Upload fotos for this item
+    onProgress?.('fotos', `${itensEnviados}/${itens.length} itens`);
     const fotos = fotoRepo.findByItem(item.id);
     for (const foto of fotos) {
       if (!foto.filePath) continue;
       try {
-        const { id: fotoRemoteId, url } = await uploadFoto(remoteId, item.id, foto.filePath);
+        const { id: fotoRemoteId, url } = await uploadFoto(remoteId, remoteItemId, foto.filePath);
         fotoRepo.markSynced(foto.id, fotoRemoteId, url);
+        fotosSucesso++;
       } catch (e) {
-        console.warn(`[pushAuditoria] foto upload failed for foto ${foto.id}:`, e);
+        fotosErro++;
+        console.warn(`[pushAuditoria] Falha upload foto ${foto.id}:`, e);
       }
     }
   }
+  console.log(`[pushAuditoria] Itens: ${itensEnviados}/${itens.length}, Fotos: ${fotosSucesso} ok / ${fotosErro} erro`);
 
-  // 4. Finalize
+  onProgress?.('finalizando');
   const resumo = await finalizarAuditoria(remoteId, {
-    dataFim: new Date().toISOString(),
+    dataFim: auditoria.dataFim ?? new Date().toISOString(),
+    assinaturaNome: auditoria.assinaturaNome ?? undefined,
   });
 
-  // 5. Mark synced
   auditoriaRepo.markSynced(localId, remoteId);
   auditoriaRepo.updateAfterFinalize(localId, {
     analiseIa: resumo.analiseIa ?? undefined,
     pdfUrl: resumo.pdfUrl ?? undefined,
     resumoExecutivo: resumo.resumoExecutivo ?? undefined,
   });
+
+  onProgress?.('concluido');
+  console.log(`[pushAuditoria] Concluído em ${Date.now() - inicio}ms — remoteId=${remoteId}`);
 }
 
 export async function pushPending(): Promise<void> {
@@ -73,17 +95,20 @@ export async function pushPending(): Promise<void> {
   const items = db.getAllSync<{ id: string; payload: string; retries: number }>(
     `SELECT id, payload, retries FROM sync_queue WHERE entity = 'auditoria' ORDER BY created_at`
   );
+  console.log(`[pushPending] ${items.length} item(s) na fila`);
 
   for (const item of items) {
     try {
       const { localId } = JSON.parse(item.payload) as { localId: string };
       await pushAuditoria(localId);
       db.runSync('DELETE FROM sync_queue WHERE id = ?', [item.id]);
-    } catch {
+      console.log(`[pushPending] Sucesso: ${localId}`);
+    } catch (e) {
       db.runSync(
         'UPDATE sync_queue SET retries = retries + 1 WHERE id = ?',
         [item.id]
       );
+      console.error(`[pushPending] Erro ao enviar item ${item.id}:`, e);
     }
   }
 }
@@ -95,4 +120,5 @@ export function enqueuePush(localId: string): void {
      VALUES (?, 'auditoria', 'push', ?, 0, datetime('now'))`,
     [crypto.randomUUID(), JSON.stringify({ localId })]
   );
+  console.log(`[enqueuePush] Auditoria ${localId} adicionada à fila`);
 }

@@ -105,7 +105,8 @@ export class AuditoriaService {
       .leftJoinAndSelect('auditoria.unidade', 'unidade')
       .leftJoinAndSelect('unidade.cliente', 'cliente')
       .leftJoinAndSelect('auditoria.template', 'template')
-      .leftJoinAndSelect('auditoria.consultor', 'consultor');
+      .leftJoinAndSelect('auditoria.consultor', 'consultor')
+      .leftJoinAndSelect('auditoria.itens', 'itens');
     if (usuarioAutenticado.perfil === PerfilUsuario.MASTER || usuarioAutenticado.perfil === PerfilUsuario.GESTOR) {
       queryBuilder.where(
         '(auditoria.consultorId = :userId OR consultor.gestorId = :userId)',

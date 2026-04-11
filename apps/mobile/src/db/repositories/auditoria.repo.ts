@@ -125,6 +125,14 @@ export class AuditoriaRepo {
     );
   }
 
+  finalizarLocal(id: string, pontuacao: number): void {
+    const now = new Date().toISOString();
+    this.db.runSync(
+      `UPDATE auditorias SET status = 'concluida', pontuacao_total = ?, data_fim = ?, updated_at = ? WHERE id = ?`,
+      [pontuacao, now, now, id]
+    );
+  }
+
   updatePontuacao(id: string, pontuacao: number): void {
     this.db.runSync(
       `UPDATE auditorias SET pontuacao_total = ?, updated_at = ? WHERE id = ?`,

@@ -7,9 +7,10 @@ interface Props {
   descricao: string;
   planoAcao: string;
   onChange: (descricao: string, planoAcao: string) => void;
+  readonly?: boolean;
 }
 
-export function ItemCamposNc({ descricaoIa, planoAcaoIa, loadingIa, descricao, planoAcao, onChange }: Props) {
+export function ItemCamposNc({ descricaoIa, planoAcaoIa, loadingIa, descricao, planoAcao, onChange, readonly }: Props) {
   return (
     <View className="bg-orange-50 border border-orange-200 rounded-xl p-4 gap-3">
       <View className="flex-row items-center gap-2">
@@ -27,6 +28,7 @@ export function ItemCamposNc({ descricaoIa, planoAcaoIa, loadingIa, descricao, p
           onChangeText={(t) => onChange(t, planoAcao)}
           placeholder={loadingIa ? 'Aguardando sugestão de IA...' : (descricaoIa ?? 'Descreva a não conformidade')}
           placeholderTextColor="#9CA3AF"
+          editable={!readonly}
         />
       </View>
 
@@ -40,6 +42,7 @@ export function ItemCamposNc({ descricaoIa, planoAcaoIa, loadingIa, descricao, p
           onChangeText={(t) => onChange(descricao, t)}
           placeholder={loadingIa ? 'Aguardando sugestão de IA...' : (planoAcaoIa ?? 'Defina o plano de ação')}
           placeholderTextColor="#9CA3AF"
+          editable={!readonly}
         />
       </View>
     </View>

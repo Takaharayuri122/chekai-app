@@ -10,12 +10,13 @@ interface Props {
   tipo: 'padrao' | 'customizado' | 'numero' | 'texto';
   opcoes?: OpcaoCustomizada[];
   valorAtual: string | null;
-  unidade?: string;           // for tipo='numero'
+  unidade?: string;
   onSelect: (valor: string, pontuacao?: number) => void;
-  onTextChange?: (text: string) => void;  // for tipo='texto' and 'numero'
+  onTextChange?: (text: string) => void;
+  disabled?: boolean;
 }
 
-export function ItemRespostaButtons({ tipo, opcoes, valorAtual, unidade, onSelect, onTextChange }: Props) {
+export function ItemRespostaButtons({ tipo, opcoes, valorAtual, unidade, onSelect, onTextChange, disabled }: Props) {
   if (tipo === 'padrao') {
     return (
       <View className="flex-row gap-2">
@@ -27,8 +28,9 @@ export function ItemRespostaButtons({ tipo, opcoes, valorAtual, unidade, onSelec
           <TouchableOpacity
             key={v}
             onPress={() => onSelect(v)}
+            disabled={disabled}
             className={`flex-1 py-3 rounded-xl border-2 items-center justify-center
-              ${valorAtual === v ? active : 'border-gray-200 bg-white'}`}
+              ${valorAtual === v ? active : 'border-gray-200 bg-white'} ${disabled ? 'opacity-70' : ''}`}
           >
             <Text className={`text-sm font-bold ${valorAtual === v ? text : 'text-gray-500'}`}>
               {label}
@@ -46,8 +48,9 @@ export function ItemRespostaButtons({ tipo, opcoes, valorAtual, unidade, onSelec
           <TouchableOpacity
             key={o.label}
             onPress={() => onSelect(o.label, o.pontuacao)}
+            disabled={disabled}
             className={`px-4 py-2 rounded-xl border-2
-              ${valorAtual === o.label ? 'border-primary bg-teal-50' : 'border-gray-200 bg-white'}`}
+              ${valorAtual === o.label ? 'border-primary bg-teal-50' : 'border-gray-200 bg-white'} ${disabled ? 'opacity-70' : ''}`}
           >
             <Text className={`text-sm font-semibold ${valorAtual === o.label ? 'text-primary' : 'text-gray-600'}`}>
               {o.label} ({o.pontuacao}pts)
@@ -72,13 +75,13 @@ export function ItemRespostaButtons({ tipo, opcoes, valorAtual, unidade, onSelec
           }}
           placeholder="0"
           placeholderTextColor="#9CA3AF"
+          editable={!disabled}
         />
         {unidade && <Text className="text-gray-500 text-base">{unidade}</Text>}
       </View>
     );
   }
 
-  // tipo === 'texto'
   return (
     <TextInput
       className="border-2 border-primary rounded-xl px-4 py-3 text-base text-neutral min-h-[80px]"
@@ -91,6 +94,7 @@ export function ItemRespostaButtons({ tipo, opcoes, valorAtual, unidade, onSelec
       }}
       placeholder="Descreva sua observação..."
       placeholderTextColor="#9CA3AF"
+      editable={!disabled}
     />
   );
 }
