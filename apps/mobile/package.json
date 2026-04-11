@@ -4,8 +4,8 @@
   "main": "expo-router/entry",
   "scripts": {
     "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
     "test": "jest --watchAll=false",
     "typecheck": "tsc --noEmit"
   },
@@ -15,7 +15,8 @@
     "@meta-app/shared": "*",
     "@react-native-community/netinfo": "11.4.1",
     "@tanstack/react-query": "^5.62.0",
-    "axios": "^1.7.9",
+    "@types/react": "~18.3.12",
+    "@types/react-dom": "~18.3.1",
     "expo": "~52.0.0",
     "expo-background-fetch": "~13.0.6",
     "expo-file-system": "~18.0.6",

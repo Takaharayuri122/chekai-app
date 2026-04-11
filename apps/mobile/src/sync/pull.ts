@@ -4,17 +4,6 @@ import { getDatabase } from '../db/client';
 import { apiGet } from '../api/client';
 import type { Cliente } from '@meta-app/shared';
 
-// Singleton contrato: getDatabase() sempre retorna a mesma instância.
-// Passamos `db` explicitamente para evitar divergência entre chamadas.
-function getLastSyncedAt(db: SQLite.SQLiteDatabase, entity: string): string {
-  const row = db.getFirstSync<{ last_synced_at: string }>(
-    'SELECT last_synced_at FROM sync_meta WHERE entity = ?',
-    [entity]
-  );
-  // Padrão: 90 dias atrás para primeira sync
-  return row?.last_synced_at ?? new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
-}
-
 function setLastSyncedAt(db: SQLite.SQLiteDatabase, entity: string, timestamp: string): void {
   db.runSync(
     `INSERT OR REPLACE INTO sync_meta (entity, last_synced_at) VALUES (?, ?)`,
@@ -24,8 +13,8 @@ function setLastSyncedAt(db: SQLite.SQLiteDatabase, entity: string, timestamp: s
 
 export async function pullClientes(): Promise<void> {
   const db = getDatabase();
-  const since = getLastSyncedAt(db, 'clientes');
-  const clientes = await apiGet<Cliente[]>(`/clientes?updatedSince=${since}`);
+  const result = await apiGet<{ items: Cliente[] }>(`/clientes?limit=1000`);
+  const clientes = result.items ?? [];
   const now = new Date().toISOString();
 
   db.withTransactionSync(() => {
@@ -54,14 +43,14 @@ export async function pullClientes(): Promise<void> {
 
 export async function pullTemplates(): Promise<void> {
   const db = getDatabase();
-  const since = getLastSyncedAt(db, 'templates');
-  const templates = await apiGet<Array<{
+  const result = await apiGet<{ items: Array<{
     id: string; nome: string; descricao?: string; tipoAtividade: string;
     versao: string; status: string; itens: Array<{
       id: string; descricao: string; ordem: number;
       referenciaLegal?: string; pontuacaoMaxima: number;
     }>;
-  }>>(`/checklist/templates?updatedSince=${since}`);
+  }> }>(`/checklists/templates?limit=1000`);
+  const templates = result.items ?? [];
 
   const now = new Date().toISOString();
 
@@ -101,8 +90,7 @@ export async function pullTemplates(): Promise<void> {
 
 export async function pullAuditorias(): Promise<void> {
   const db = getDatabase();
-  const since = getLastSyncedAt(db, 'auditorias');
-  const auditorias = await apiGet<Array<{
+  const result = await apiGet<{ items: Array<{
     id: string; localId?: string; status: string;
     dataInicio?: string; dataFim?: string;
     clienteId: string; unidadeId: string; templateId?: string;
@@ -111,7 +99,8 @@ export async function pullAuditorias(): Promise<void> {
       observacao?: string; descricaoNaoConformidade?: string;
       planoAcaoFinal?: string; pontuacao: number;
     }>;
-  }>>(`/auditorias?updatedSince=${since}&status=rascunho,em_andamento`);
+  }> }>(`/auditorias?limit=1000`);
+  const auditorias = result.items ?? [];
 
   const now = new Date().toISOString();
 

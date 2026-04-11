@@ -1,0 +1,61 @@
+<h2>Fluxo de navegação das Auditorias</h2>
+<p class="subtitle">Como o auditor navega do início ao fim de uma auditoria?</p>
+
+<div class="cards">
+
+  <div class="card" data-choice="A" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:20px;background:#f8fafc;">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;">
+        <div style="background:#00B8A9;color:white;padding:6px 12px;border-radius:8px;font-weight:600;">Lista</div>
+        <div style="color:#94a3b8">→</div>
+        <div style="background:#0ea5e9;color:white;padding:6px 12px;border-radius:8px;font-weight:600;">Nova/Detalhes</div>
+        <div style="color:#94a3b8">→</div>
+        <div style="background:#8b5cf6;color:white;padding:6px 12px;border-radius:8px;font-weight:600;">Checklist</div>
+        <div style="color:#94a3b8">→</div>
+        <div style="background:#f59e0b;color:white;padding:6px 12px;border-radius:8px;font-weight:600;">Item</div>
+        <div style="color:#94a3b8">→</div>
+        <div style="background:#10b981;color:white;padding:6px 12px;border-radius:8px;font-weight:600;">Resumo</div>
+      </div>
+      <div style="margin-top:12px;font-size:12px;color:#64748b;">
+        Stack (push): cada tela empilha sobre a anterior.<br>
+        Voltar sempre disponível. Checklist é a tela central — scroll pelos itens.
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Stack linear (recomendado)</h3>
+      <p>Lista → Nova Auditoria → Checklist com todos os itens → Tela de item (ao tocar) → Resumo final. Fluxo direto, um caminho claro.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="B" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding:20px;background:#f8fafc;">
+      <div style="display:flex;gap:16px;align-items:flex-start;font-size:13px;">
+        <div style="text-align:center">
+          <div style="background:#00B8A9;color:white;padding:6px 12px;border-radius:8px;font-weight:600;margin-bottom:8px;">Lista</div>
+        </div>
+        <div style="color:#94a3b8;padding-top:8px">→</div>
+        <div style="text-align:center">
+          <div style="background:#0ea5e9;color:white;padding:6px 12px;border-radius:8px;font-weight:600;margin-bottom:8px;">Detalhes</div>
+          <div style="font-size:11px;color:#94a3b8">tabs internas:</div>
+          <div style="display:flex;gap:4px;margin-top:4px;">
+            <div style="background:#e2e8f0;padding:3px 6px;border-radius:4px;font-size:11px;">Checklist</div>
+            <div style="background:#e2e8f0;padding:3px 6px;border-radius:4px;font-size:11px;">Resumo</div>
+          </div>
+        </div>
+        <div style="color:#94a3b8;padding-top:8px">→</div>
+        <div style="text-align:center">
+          <div style="background:#8b5cf6;color:white;padding:6px 12px;border-radius:8px;font-weight:600;margin-bottom:8px;">Item</div>
+          <div style="font-size:11px;color:#94a3b8">(modal/sheet)</div>
+        </div>
+      </div>
+      <div style="margin-top:12px;font-size:12px;color:#64748b;">
+        Tela de Detalhes tem tabs internas (Checklist / Resumo). Item abre como bottom sheet.
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Detalhes com tabs internas</h3>
+      <p>Lista → Detalhes (tab Checklist / tab Resumo) → Item como bottom sheet. Mais compacto, menos navegação, mas tabs adicionam complexidade.</p>
+    </div>
+  </div>
+
+</div>

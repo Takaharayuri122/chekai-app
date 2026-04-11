@@ -39,16 +39,17 @@ export default function AuditoriasListScreen() {
     a.syncStatus === 'pending' && a.status === 'concluida' ? 'pending_sync' : a.status;
 
   return (
-    <SafeAreaView className="flex-1 bg-base-200" edges={['top']}>
-      {/* Header */}
-      <View className="px-4 py-3 bg-white border-b border-gray-100">
-        <Text className="text-xl font-bold text-neutral" style={{ fontFamily: 'Montserrat_700Bold' }}>
-          Auditorias
-        </Text>
-      </View>
+    <View className="flex-1 bg-base-200">
+      <SafeAreaView edges={['top']} className="bg-white">
+        {/* Header */}
+        <View className="px-4 pb-3 border-b border-gray-100">
+          <Text className="text-xl font-bold text-neutral" style={{ fontFamily: 'Montserrat_700Bold' }}>
+            Auditorias
+          </Text>
+        </View>
 
-      {/* Filtros */}
-      <View className="flex-row bg-white border-b border-gray-100 px-4 gap-4">
+        {/* Filtros */}
+        <View className="flex-row border-b border-gray-100 px-4 gap-4">
         {(['todas', 'em_andamento', 'concluida'] as Filtro[]).map(f => (
           <TouchableOpacity
             key={f}
@@ -60,7 +61,8 @@ export default function AuditoriasListScreen() {
             </Text>
           </TouchableOpacity>
         ))}
-      </View>
+        </View>
+      </SafeAreaView>
 
       <FlatList
         data={filtered}
@@ -101,6 +103,6 @@ export default function AuditoriasListScreen() {
       >
         <Plus color="white" size={24} />
       </TouchableOpacity>
-    </SafeAreaView>
+    </View>
   );
 }

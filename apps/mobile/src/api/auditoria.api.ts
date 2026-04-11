@@ -1,4 +1,4 @@
-import { apiPost } from './client';
+import { apiPost, apiPut } from './client';
 import * as FileSystem from 'expo-file-system';
 import * as SecureStore from 'expo-secure-store';
 
@@ -39,12 +39,26 @@ export interface AuditoriaResumo {
   pontuacaoTotal: number;
 }
 
-export async function createAuditoria(payload: CreateAuditoriaPayload): Promise<{ id: string }> {
-  return apiPost<{ id: string }>('/auditorias', payload);
+export async function createAuditoria(
+  payload: CreateAuditoriaPayload,
+): Promise<{ id: string; itens: Array<{ id: string; templateItemId: string }> }> {
+  return apiPost<{ id: string; itens: Array<{ id: string; templateItemId: string }> }>(
+    '/auditorias',
+    { unidadeId: payload.unidadeId, templateId: payload.templateId },
+  );
 }
 
-export async function submitItem(auditoriaRemoteId: string, item: ItemPayload): Promise<void> {
-  return apiPost<void>(`/auditorias/${auditoriaRemoteId}/itens`, item);
+export async function submitItem(
+  auditoriaRemoteId: string,
+  itemRemoteId: string,
+  item: ItemPayload,
+): Promise<void> {
+  return apiPut<void>(`/auditorias/${auditoriaRemoteId}/itens/${itemRemoteId}`, {
+    resposta: item.resposta,
+    observacao: item.observacao,
+    descricaoNaoConformidade: item.descricaoNaoConformidade,
+    planoAcaoSugerido: item.planoAcaoFinal,
+  });
 }
 
 export async function uploadFoto(
@@ -74,7 +88,7 @@ export async function finalizarAuditoria(
   auditoriaRemoteId: string,
   payload: FinalizarPayload
 ): Promise<AuditoriaResumo> {
-  return apiPost<AuditoriaResumo>(`/auditorias/${auditoriaRemoteId}/finalizar`, payload);
+  return apiPut<AuditoriaResumo>(`/auditorias/${auditoriaRemoteId}/finalizar`, payload);
 }
 
 export async function getSugestaoIa(

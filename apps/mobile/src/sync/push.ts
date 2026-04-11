@@ -14,8 +14,8 @@ export async function pushAuditoria(localId: string): Promise<void> {
   const auditoria = auditoriaRepo.findById(localId);
   if (!auditoria) throw new Error(`Auditoria ${localId} não encontrada.`);
 
-  // 1. Create on backend
-  const { id: remoteId } = await createAuditoria({
+  // 1. Create on backend (API also creates all items from the template)
+  const { id: remoteId, itens: remoteItens } = await createAuditoria({
     localId: auditoria.localId,
     clienteId: auditoria.clienteId,
     unidadeId: auditoria.unidadeId,
@@ -23,10 +23,15 @@ export async function pushAuditoria(localId: string): Promise<void> {
     dataInicio: auditoria.dataInicio!,
   });
 
+  // Map templateItemId → remote item ID
+  const remoteItemMap = new Map(remoteItens.map(i => [i.templateItemId, i.id]));
+
   // 2. Submit items
   const itens = itemRepo.findByAuditoria(localId);
   for (const item of itens) {
-    await submitItem(remoteId, {
+    const remoteItemId = remoteItemMap.get(item.templateItemId);
+    if (!remoteItemId) continue; // item not in remote template, skip
+    await submitItem(remoteId, remoteItemId, {
       localId: item.id,
       templateItemId: item.templateItemId,
       resposta: item.resposta,

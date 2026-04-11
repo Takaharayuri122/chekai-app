@@ -1,0 +1,111 @@
+<h2>Variações da tela de Item</h2>
+<p class="subtitle">A mesma tela se adapta conforme o tipo de resposta do template. Quais variações entram no Plano 2?</p>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:8px;" class="options" data-multiselect>
+
+  <!-- Variação 1: Padrão -->
+  <div class="option" data-choice="standard" onclick="toggleSelect(this)" style="flex-direction:column;align-items:stretch;">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+      <div class="letter">1</div>
+      <strong style="font-size:13px;">Respostas padrão</strong>
+    </div>
+    <div style="background:#f8fafc;border-radius:8px;padding:10px;font-size:11px;">
+      <div style="display:flex;gap:4px;margin-bottom:8px;">
+        <div style="background:#dcfce7;border:1.5px solid #16a34a;border-radius:6px;padding:5px 8px;font-weight:700;color:#16a34a;font-size:10px;">✓ Conforme</div>
+        <div style="background:#fee2e2;border:1.5px solid #dc2626;border-radius:6px;padding:5px 8px;font-weight:700;color:#dc2626;font-size:10px;">✗ N.Conforme</div>
+        <div style="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:6px;padding:5px 8px;color:#64748b;font-size:10px;">N/A</div>
+      </div>
+      <div style="color:#64748b;">+ observação + fotos</div>
+    </div>
+    <p style="font-size:11px;color:#64748b;margin-top:6px;">Comportamento base. Mais comum.</p>
+  </div>
+
+  <!-- Variação 2: Respostas customizadas -->
+  <div class="option" data-choice="custom-options" onclick="toggleSelect(this)" style="flex-direction:column;align-items:stretch;">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+      <div class="letter">2</div>
+      <strong style="font-size:13px;">Opções personalizadas</strong>
+    </div>
+    <div style="background:#f8fafc;border-radius:8px;padding:10px;font-size:11px;">
+      <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px;">
+        <div style="background:#dbeafe;border:1.5px solid #2563eb;border-radius:6px;padding:5px 8px;font-weight:600;color:#2563eb;font-size:10px;">Ótimo (10pts)</div>
+        <div style="background:#dcfce7;border:1.5px solid #16a34a;border-radius:6px;padding:5px 8px;color:#16a34a;font-size:10px;">Bom (7pts)</div>
+        <div style="background:#fef9c3;border:1.5px solid #ca8a04;border-radius:6px;padding:5px 8px;color:#a16207;font-size:10px;">Regular (4pts)</div>
+        <div style="background:#fee2e2;border:1.5px solid #dc2626;border-radius:6px;padding:5px 8px;color:#dc2626;font-size:10px;">Ruim (0pts)</div>
+      </div>
+      <div style="color:#64748b;">Botões dinâmicos com pontuação própria</div>
+    </div>
+    <p style="font-size:11px;color:#64748b;margin-top:6px;">Escala ou múltiplas opções definidas no template.</p>
+  </div>
+
+  <!-- Variação 3: Tipo Número -->
+  <div class="option" data-choice="numeric" onclick="toggleSelect(this)" style="flex-direction:column;align-items:stretch;">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+      <div class="letter">3</div>
+      <strong style="font-size:13px;">Entrada numérica</strong>
+    </div>
+    <div style="background:#f8fafc;border-radius:8px;padding:10px;font-size:11px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+        <input type="text" value="178" style="width:80px;border:1.5px solid #00B8A9;border-radius:6px;padding:6px 8px;font-size:14px;font-weight:700;text-align:center;" readonly />
+        <span style="color:#64748b;">°C</span>
+      </div>
+      <div style="color:#64748b;">Teclado numérico. Unidade opcional.</div>
+    </div>
+    <p style="font-size:11px;color:#64748b;margin-top:6px;">Ex: temperatura, peso, umidade.</p>
+  </div>
+
+  <!-- Variação 4: Tipo Texto -->
+  <div class="option" data-choice="text" onclick="toggleSelect(this)" style="flex-direction:column;align-items:stretch;">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+      <div class="letter">4</div>
+      <strong style="font-size:13px;">Texto livre</strong>
+    </div>
+    <div style="background:#f8fafc;border-radius:8px;padding:10px;font-size:11px;">
+      <div style="border:1.5px solid #00B8A9;border-radius:6px;padding:6px 8px;min-height:48px;background:white;color:#64748b;">
+        Campo de texto multilinha...
+      </div>
+    </div>
+    <p style="font-size:11px;color:#64748b;margin-top:6px;">Descrição aberta. Pontuação zero.</p>
+  </div>
+
+  <!-- Variação 5: Foto obrigatória -->
+  <div class="option" data-choice="photo-required" onclick="toggleSelect(this)" style="flex-direction:column;align-items:stretch;">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+      <div class="letter">5</div>
+      <strong style="font-size:13px;">Foto obrigatória por resposta</strong>
+    </div>
+    <div style="background:#f8fafc;border-radius:8px;padding:10px;font-size:11px;">
+      <div style="display:flex;gap:4px;margin-bottom:8px;">
+        <div style="background:#fee2e2;border:2px solid #dc2626;border-radius:6px;padding:5px 8px;font-weight:700;color:#dc2626;font-size:10px;">✗ N.Conforme</div>
+      </div>
+      <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:6px;padding:6px;color:#92400e;font-size:10px;">
+        📷 Foto obrigatória para esta resposta
+      </div>
+    </div>
+    <p style="font-size:11px;color:#64748b;margin-top:6px;">Aviso contextual quando a resposta exige foto.</p>
+  </div>
+
+  <!-- Variação 6: Campos contextuais NC -->
+  <div class="option" data-choice="nc-fields" onclick="toggleSelect(this)" style="flex-direction:column;align-items:stretch;">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+      <div class="letter">6</div>
+      <strong style="font-size:13px;">Campos extras ao marcar NC</strong>
+    </div>
+    <div style="background:#f8fafc;border-radius:8px;padding:10px;font-size:11px;">
+      <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:6px;padding:6px;margin-bottom:6px;">
+        <div style="color:#92400e;font-size:10px;font-weight:600;margin-bottom:4px;">Descrição da NC</div>
+        <div style="height:20px;background:white;border-radius:3px;"></div>
+      </div>
+      <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:6px;padding:6px;">
+        <div style="color:#92400e;font-size:10px;font-weight:600;margin-bottom:4px;">Plano de ação</div>
+        <div style="height:20px;background:white;border-radius:3px;"></div>
+      </div>
+    </div>
+    <p style="font-size:11px;color:#64748b;margin-top:6px;">Aparecem quando resposta indica NC.</p>
+  </div>
+
+</div>
+
+<div style="margin-top:16px;padding:12px;background:#f0fdf4;border-radius:8px;font-size:12px;color:#166534;">
+  <strong>Selecione todas as variações que devem estar no Plano 2.</strong> As não selecionadas ficam para o Plano 3.
+</div>

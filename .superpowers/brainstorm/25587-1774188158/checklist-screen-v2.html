@@ -1,0 +1,101 @@
+<h2>Tela de Checklist</h2>
+<p class="subtitle">Como os itens aparecem na lista durante a auditoria?</p>
+
+<div class="options">
+
+  <div class="option" data-choice="A" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content" style="width:100%;">
+      <h3>Agrupado por categoria</h3>
+      <p>Itens agrupados por categoria (Higiene, Equipamentos...). Barra de progresso global. Badge C/NC/N/A. Botão Finalizar no rodapé.</p>
+      <!-- Phone mockup -->
+      <div style="margin-top:12px;background:#f1f5f9;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0;max-width:320px;">
+        <div style="background:#1e293b;padding:10px 14px;">
+          <div style="color:white;font-size:12px;font-weight:600;">← Restaurante Bom Sabor</div>
+          <div style="color:#94a3b8;font-size:10px;">Template: Vigilância Sanitária • 24 itens</div>
+        </div>
+        <div style="background:#e2e8f0;height:4px;"><div style="background:#00B8A9;height:4px;width:58%;"></div></div>
+        <div style="padding:6px 14px;background:white;font-size:10px;color:#64748b;display:flex;justify-content:space-between;">
+          <span>14/24 respondidos</span><span style="color:#00B8A9;font-weight:600;">58%</span>
+        </div>
+        <div style="background:#f8fafc;padding:6px 14px;font-size:10px;font-weight:700;color:#475569;border-top:1px solid #e2e8f0;">HIGIENE</div>
+        <div style="background:white;">
+          <div style="padding:10px 14px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;gap:10px;">
+            <div style="width:8px;height:8px;border-radius:50%;background:#16a34a;flex-shrink:0;"></div>
+            <div style="flex:1;font-size:11px;color:#1e293b;">Lavatórios com sabão líquido e papel toalha</div>
+            <div style="font-size:9px;background:#dcfce7;color:#16a34a;padding:2px 6px;border-radius:4px;font-weight:600;">C</div>
+          </div>
+          <div style="padding:10px 14px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;gap:10px;">
+            <div style="width:8px;height:8px;border-radius:50%;background:#dc2626;flex-shrink:0;"></div>
+            <div style="flex:1;font-size:11px;color:#1e293b;">Temperatura do óleo de fritura ≤ 180°C</div>
+            <div style="font-size:9px;background:#fee2e2;color:#dc2626;padding:2px 6px;border-radius:4px;font-weight:600;">NC</div>
+          </div>
+          <div style="padding:10px 14px;display:flex;align-items:center;gap:10px;opacity:0.6;">
+            <div style="width:8px;height:8px;border-radius:50%;background:#cbd5e1;flex-shrink:0;"></div>
+            <div style="flex:1;font-size:11px;color:#64748b;">Uniformes limpos e íntegros</div>
+            <div style="font-size:9px;background:#f1f5f9;color:#94a3b8;padding:2px 6px;border-radius:4px;">—</div>
+          </div>
+        </div>
+        <div style="background:#f8fafc;padding:6px 14px;font-size:10px;font-weight:700;color:#475569;border-top:1px solid #e2e8f0;">EQUIPAMENTOS</div>
+        <div style="background:white;">
+          <div style="padding:10px 14px;display:flex;align-items:center;gap:10px;">
+            <div style="width:8px;height:8px;border-radius:50%;background:#94a3b8;flex-shrink:0;"></div>
+            <div style="flex:1;font-size:11px;color:#64748b;">Câmara fria com temperatura adequada</div>
+            <div style="font-size:9px;background:#f8fafc;color:#94a3b8;padding:2px 6px;border-radius:4px;">—</div>
+          </div>
+        </div>
+        <div style="padding:10px 14px;background:white;border-top:1px solid #e2e8f0;">
+          <div style="background:#64748b;color:white;padding:8px;border-radius:8px;text-align:center;font-size:11px;font-weight:600;">Finalizar Auditoria</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="B" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content" style="width:100%;">
+      <h3>Lista plana com filtros</h3>
+      <p>Lista plana com tabs: Todos / NC / Pendentes. Cada item mostra categoria e criticidade. Ícone de foto quando há evidência.</p>
+      <!-- Phone mockup -->
+      <div style="margin-top:12px;background:#f1f5f9;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0;max-width:320px;">
+        <div style="background:#1e293b;padding:10px 14px;">
+          <div style="color:white;font-size:12px;font-weight:600;">← Restaurante Bom Sabor</div>
+          <div style="color:#94a3b8;font-size:10px;">Vigilância Sanitária • 14/24 respondidos</div>
+        </div>
+        <div style="display:flex;background:white;border-bottom:1px solid #e2e8f0;">
+          <div style="flex:1;padding:8px;text-align:center;font-size:10px;font-weight:700;color:#00B8A9;border-bottom:2px solid #00B8A9;">Todos (24)</div>
+          <div style="flex:1;padding:8px;text-align:center;font-size:10px;color:#64748b;">NC (3)</div>
+          <div style="flex:1;padding:8px;text-align:center;font-size:10px;color:#64748b;">Pendentes (10)</div>
+        </div>
+        <div style="background:white;">
+          <div style="padding:10px 14px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;gap:10px;">
+            <div style="width:28px;height:28px;border-radius:6px;background:#dcfce7;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#16a34a;flex-shrink:0;">C</div>
+            <div style="flex:1;">
+              <div style="font-size:11px;color:#1e293b;">Lavatórios com sabão e papel</div>
+              <div style="font-size:9px;color:#94a3b8;">Higiene • Crítico</div>
+            </div>
+          </div>
+          <div style="padding:10px 14px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;gap:10px;">
+            <div style="width:28px;height:28px;border-radius:6px;background:#fee2e2;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#dc2626;flex-shrink:0;">NC</div>
+            <div style="flex:1;">
+              <div style="font-size:11px;color:#1e293b;">Temperatura do óleo ≤ 180°C</div>
+              <div style="font-size:9px;color:#94a3b8;">Higiene • Alto</div>
+            </div>
+            <div style="font-size:14px;">📷</div>
+          </div>
+          <div style="padding:10px 14px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;gap:10px;">
+            <div style="width:28px;height:28px;border-radius:6px;background:#f1f5f9;border:1.5px dashed #cbd5e1;display:flex;align-items:center;justify-content:center;font-size:14px;color:#94a3b8;flex-shrink:0;">?</div>
+            <div style="flex:1;">
+              <div style="font-size:11px;color:#64748b;">Uniformes limpos e íntegros</div>
+              <div style="font-size:9px;color:#94a3b8;">Higiene • Médio</div>
+            </div>
+          </div>
+        </div>
+        <div style="padding:10px 14px;background:white;border-top:1px solid #e2e8f0;">
+          <div style="background:#64748b;color:white;padding:8px;border-radius:8px;text-align:center;font-size:11px;font-weight:600;">Finalizar Auditoria</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>

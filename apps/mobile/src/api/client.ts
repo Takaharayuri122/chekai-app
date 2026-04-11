@@ -1,64 +1,116 @@
-// apps/mobile/src/api/client.ts
-import axios, { AxiosError } from 'axios';
 import * as SecureStore from 'expo-secure-store';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3001/api';
+const REQUEST_TIMEOUT_MS = 15000;
 
-export const apiClient = axios.create({
-  baseURL: API_URL,
-  headers: { 'Content-Type': 'application/json' },
-  timeout: 15000,
-});
-
-// Adiciona token JWT em todas as requisições
-apiClient.interceptors.request.use(
-  async (config) => {
-    const token = await SecureStore.getItemAsync('auth_token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
-
-// Normaliza respostas da API (formato: { data: { ... } })
-apiClient.interceptors.response.use(
-  (response) => response,
-  (error: AxiosError<{ message?: string | string[] }>) => {
-    const data = error.response?.data;
-    let message = 'Erro inesperado. Tente novamente.';
-
-    if (data?.message) {
-      message = Array.isArray(data.message) ? data.message[0] : data.message;
-    }
-
-    if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
-      message = 'Tempo de conexão expirado.';
-    } else if (!error.response) {
-      message = 'Sem conexão com o servidor.';
-    }
-
-    return Promise.reject(new Error(message));
+async function buildHeaders(): Promise<Record<string, string>> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  const token = await SecureStore.getItemAsync('auth_token');
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
   }
-);
+  return headers;
+}
 
-// Helper para desembrulhar o wrapper { data: T }
+function extrairMensagemErro(payload: unknown): string {
+  if (payload && typeof payload === 'object' && 'message' in payload) {
+    const m = (payload as { message?: string | string[] }).message;
+    if (Array.isArray(m)) {
+      return m[0] ?? 'Erro inesperado. Tente novamente.';
+    }
+    if (typeof m === 'string') {
+      return m;
+    }
+  }
+  return 'Erro inesperado. Tente novamente.';
+}
+
+async function requestJson<T>(method: string, path: string, body?: unknown): Promise<T> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const url = `${API_URL}${path.startsWith('/') ? path : `/${path}`}`;
+  try {
+    const headers = await buildHeaders();
+    const response = await fetch(url, {
+      method,
+      headers,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    const text = await response.text();
+    const json = text ? (JSON.parse(text) as { data?: T; message?: string | string[] }) : {};
+    if (!response.ok) {
+      throw new Error(extrairMensagemErro(json));
+    }
+    if (json.data === undefined) {
+      throw new Error('Resposta inválida do servidor.');
+    }
+    return json.data;
+  } catch (err) {
+    clearTimeout(timeoutId);
+    if (err instanceof Error) {
+      if (err.name === 'AbortError') {
+        throw new Error('Tempo de conexão expirado.');
+      }
+      const msg = err.message;
+      if (msg.includes('Network request failed') || msg.includes('Failed to fetch')) {
+        throw new Error('Sem conexão com o servidor.');
+      }
+      throw err;
+    }
+    throw new Error('Sem conexão com o servidor.');
+  }
+}
+
+async function requestVoid(method: string, path: string, body?: unknown): Promise<void> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const url = `${API_URL}${path.startsWith('/') ? path : `/${path}`}`;
+  try {
+    const headers = await buildHeaders();
+    const response = await fetch(url, {
+      method,
+      headers,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    const text = await response.text();
+    if (!response.ok) {
+      const json = text ? JSON.parse(text) : {};
+      throw new Error(extrairMensagemErro(json));
+    }
+  } catch (err) {
+    clearTimeout(timeoutId);
+    if (err instanceof Error) {
+      if (err.name === 'AbortError') {
+        throw new Error('Tempo de conexão expirado.');
+      }
+      const msg = err.message;
+      if (msg.includes('Network request failed') || msg.includes('Failed to fetch')) {
+        throw new Error('Sem conexão com o servidor.');
+      }
+      throw err;
+    }
+    throw new Error('Sem conexão com o servidor.');
+  }
+}
+
 export async function apiGet<T>(url: string): Promise<T> {
-  const response = await apiClient.get<{ data: T }>(url);
-  return response.data.data;
+  return requestJson<T>('GET', url);
 }
 
 export async function apiPost<T>(url: string, body?: unknown): Promise<T> {
-  const response = await apiClient.post<{ data: T }>(url, body);
-  return response.data.data;
+  return requestJson<T>('POST', url, body);
 }
 
 export async function apiPut<T>(url: string, body?: unknown): Promise<T> {
-  const response = await apiClient.put<{ data: T }>(url, body);
-  return response.data.data;
+  return requestJson<T>('PUT', url, body);
 }
 
 export async function apiDelete(url: string): Promise<void> {
-  await apiClient.delete(url);
+  return requestVoid('DELETE', url);
 }

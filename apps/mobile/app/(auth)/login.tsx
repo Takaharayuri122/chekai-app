@@ -71,8 +71,10 @@ export default function LoginScreen() {
                 Digite seu e-mail para receber o código de acesso.
               </Text>
               <TextInput
-                className="border border-gray-300 rounded-xl px-4 py-3.5 font-sans text-neutral text-base"
+                className="border border-gray-300 rounded-xl text-neutral text-base"
+                style={{ paddingVertical: 16, paddingHorizontal: 16, lineHeight: 0, fontFamily: 'Inter_400Regular' }}
                 placeholder="seu@email.com"
+                placeholderTextColor="#9CA3AF"
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoComplete="email"
@@ -101,8 +103,10 @@ export default function LoginScreen() {
                 <Text className="text-neutral font-sans-medium">{email}</Text>
               </Text>
               <TextInput
-                className="border border-gray-300 rounded-xl px-4 py-3.5 font-sans text-neutral text-2xl text-center tracking-widest"
+                className="border border-gray-300 rounded-xl text-neutral text-2xl text-center tracking-widest"
+                style={{ padding:16, lineHeight: 0, fontFamily: 'Inter_400Regular' }}
                 placeholder="000000"
+                placeholderTextColor="#9CA3AF"
                 keyboardType="number-pad"
                 maxLength={6}
                 value={codigo}

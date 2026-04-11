@@ -52,11 +52,11 @@ export default function NovaAuditoriaScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-base-200" edges={['bottom']}>
+    <SafeAreaView className="flex-1 pt-4 bg-base-200" edges={['bottom']}>
       <View className="px-4 py-3 bg-white border-b border-gray-100">
         <TextInput
           className="bg-gray-100 rounded-xl px-4 py-2.5 text-base text-neutral"
-          style={{ lineHeight: 22 }}
+          style={{ paddingVertical: 16, paddingHorizontal: 16, lineHeight: 0, fontFamily: 'Inter_400Regular' }}
           placeholder="Buscar estabelecimento..."
           placeholderTextColor="#9CA3AF"
           value={busca}

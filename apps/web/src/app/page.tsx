@@ -8,7 +8,6 @@ import { motion, useScroll, useTransform } from 'framer-motion';
 import {
   ClipboardCheck,
   Camera,
-  FileText,
   Shield,
   ArrowRight,
   Sparkles,
@@ -16,87 +15,100 @@ import {
   Users,
   MapPin,
   Zap,
-  TrendingUp,
   Clock,
-  Award,
   BarChart3,
   Star,
   ChevronDown,
-  Play,
   FileCheck,
   HelpCircle,
   FileDown,
-  Upload,
   Smartphone,
   Coins,
   Instagram,
+  Building2,
+  ClipboardList,
+  LineChart,
+  UserCog,
 } from 'lucide-react';
 import { useAuthStore } from '@/lib/store';
 import { CookieConsent } from '@/components/ui/cookie-consent';
 import { LandingHeader } from '@/components/layout/landing-header';
 import { FloatingCloud } from '@/components/ui/floating-cloud';
 import { ListaEsperaModal } from '@/components/ui/lista-espera-modal';
+import { LandingVideoSection } from '@/components/ui/landing-video-section';
 
 const features = [
   {
     icon: ClipboardCheck,
-    title: 'Checklists Inteligentes',
-    description: 'Templates prontos baseados em RDC 216, 275 e outras legislações. Personalize conforme sua necessidade.',
+    title: 'Templates de checklist',
+    description:
+      'Monte templates com itens e regras do seu processo. Importe planilhas Excel e publique versões rascunho ou ativas.',
   },
   {
-    icon: Camera,
-    title: 'Análise Automática de Imagens',
-    description: 'Fotografe durante a auditoria e receba análise automática de não conformidades com sugestões de correção.',
-  },
-  {
-    icon: FileText,
-    title: 'Relatórios Automáticos',
-    description: 'Gere textos técnicos, planos de ação e relatórios completos automaticamente, baseados na legislação vigente.',
+    icon: Sparkles,
+    title: 'Criação de checklist com IA',
+    description:
+      'Gere e refine checklists com apoio de IA, alinhados à legislação e ao contexto da sua consultoria.',
   },
   {
     icon: Shield,
-    title: 'Base de Legislação Inteligente',
-    description: 'Acesso rápido a normas atualizadas com busca inteligente que encontra exatamente o que você precisa.',
+    title: 'Legislação e RAG',
+    description:
+      'Consulte normas e use a base legal como apoio inteligente na elaboração de itens e na auditoria.',
   },
   {
-    icon: Users,
-    title: 'Gestão de Clientes',
-    description: 'Organize clientes e unidades em um só lugar. Controle histórico completo de auditorias.',
+    icon: ClipboardList,
+    title: 'Auditorias completas',
+    description:
+      'Execute auditorias com pontuação, não conformidades, evidências e reabertura quando precisar corrigir.',
   },
   {
-    icon: MapPin,
-    title: 'Geolocalização',
-    description: 'Registre automaticamente a localização de início e fim de cada auditoria para rastreabilidade.',
+    icon: LineChart,
+    title: 'Relatórios técnicos por cliente',
+    description:
+      'Fluxo dedicado ao relatório técnico (distinto da auditoria), com assistência de IA para análise e texto.',
   },
   {
-    icon: Zap,
-    title: 'Sugestões Inteligentes',
-    description: 'Receba sugestões automáticas de referências legais, descrições técnicas e ações corretivas.',
-  },
-  {
-    icon: CheckCircle,
-    title: 'Controle Total',
-    description: 'Acompanhe status, pontuações e histórico. Reabra auditorias para correções quando necessário.',
+    icon: Camera,
+    title: 'Análise de imagens com IA',
+    description:
+      'Registre fotos na auditoria e receba sugestões de não conformidades e melhorias — sempre para validação humana.',
   },
   {
     icon: FileDown,
-    title: 'Exportação em PDF',
-    description: 'Gere relatórios profissionais em PDF prontos para enviar aos clientes. Histórico de evolução incluído.',
+    title: 'PDF e exportação',
+    description:
+      'Gere documentos em PDF para clientes e acompanhe histórico e evolução das entregas.',
   },
   {
-    icon: Upload,
-    title: 'Importação de Checklists',
-    description: 'Importe seus checklists existentes a partir de planilhas Excel. Migre facilmente para o ChekAI.',
+    icon: Building2,
+    title: 'Clientes e unidades',
+    description:
+      'Organize carteira de clientes, unidades e histórico de visitas e entregas em um só lugar.',
+  },
+  {
+    icon: UserCog,
+    title: 'Equipe e perfis',
+    description:
+      'Convites, perfis de gestor e auditor e visão alinhada ao vínculo da sua consultoria com a equipe.',
+  },
+  {
+    icon: MapPin,
+    title: 'Check-in e geolocalização',
+    description:
+      'Registre presença e localização quando fizer sentido operacional, com transparência e rastreabilidade.',
   },
   {
     icon: Smartphone,
-    title: 'Funciona Offline',
-    description: 'PWA instalável no celular. Realize auditorias em campo sem internet e sincronize quando voltar.',
+    title: 'App iOS e Android',
+    description:
+      'Acesse o ChekAI no campo pelo aplicativo, com a mesma base da plataforma web.',
   },
   {
     icon: Coins,
-    title: 'Sistema de Créditos',
-    description: 'Controle o uso de IA com créditos. Gestores distribuam créditos para sua equipe de auditores.',
+    title: 'Créditos de IA',
+    description:
+      'Controle consumo de recursos de IA: gestores distribuem créditos e acompanham o uso pela equipe.',
   },
 ];
 
@@ -113,7 +125,7 @@ const stats = [
   { value: '70%', label: 'Redução de tempo', icon: Clock },
   { value: '100%', label: 'Conformidade legal', icon: Shield },
   { value: '24/7', label: 'Disponibilidade', icon: Zap },
-  { value: '99%', label: 'Precisão na análise', icon: Award },
+  { value: 'Web+App', label: 'Acesso unificado', icon: Smartphone },
 ];
 
 const testimonials = [
@@ -157,6 +169,11 @@ const faqs = [
   {
     question: 'Preciso de treinamento para usar?',
     answer: 'Não! A interface é intuitiva e fácil de usar. Oferecemos também tutoriais e suporte completo para você começar rapidamente.',
+  },
+  {
+    question: 'Existe aplicativo para celular?',
+    answer:
+      'Sim. O ChekAI está disponível para iOS e Android, com o mesmo ecossistema da versão web, ideal para uso em campo.',
   },
 ];
 
@@ -292,52 +309,24 @@ function HomePageContent() {
         </div>
       </section>
 
-      {/* Demo Section */}
-      <section id="demo" className="px-4 py-20 lg:px-8 bg-base-100 relative">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <motion.h2
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              className="text-3xl md:text-4xl lg:text-5xl font-bold text-base-content mb-4 font-display"
-            >
-              Veja o ChekAI em ação
-            </motion.h2>
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.1 }}
-              className="text-lg text-base-content/70 max-w-2xl mx-auto"
-            >
-              Interface intuitiva e poderosa que transforma sua forma de trabalhar
-            </motion.p>
-          </div>
-
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.2 }}
-            className="relative rounded-2xl overflow-hidden shadow-2xl border border-base-300 bg-base-200"
-          >
-            <div className="aspect-video bg-gradient-to-br from-primary/10 to-secondary/10 flex items-center justify-center">
-              <div className="text-center">
-                <div className="w-24 h-24 bg-primary/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Play className="w-12 h-12 text-primary" />
-                </div>
-                <p className="text-base-content/60">
-                  [Placeholder para screenshot/vídeo do dashboard]
-                </p>
-                <p className="text-sm text-base-content/40 mt-2">
-                  Adicione uma imagem 1920x1080px aqui
-                </p>
-              </div>
-            </div>
-          </motion.div>
-        </div>
-      </section>
+      <LandingVideoSection
+        sectionId="demo"
+        titulo="Veja o ChekAI em ação"
+        subtitulo="Interface intuitiva e poderosa que transforma sua forma de trabalhar"
+        embedUrl={process.env.NEXT_PUBLIC_LANDING_VIDEO_URL_DEMO ?? ''}
+        placeholderHint="Vídeo em breve: demonstração geral do sistema."
+        instrucaoEnv="Defina NEXT_PUBLIC_LANDING_VIDEO_URL_DEMO com a URL de incorporação (embed) do YouTube, Vimeo ou similar."
+        className="bg-base-100"
+      />
+      <LandingVideoSection
+        sectionId="demo-checklist-ia"
+        titulo="Checklist inteligente com IA"
+        subtitulo="Crie e refine checklists com apoio de IA e legislação integrada ao seu processo"
+        embedUrl={process.env.NEXT_PUBLIC_LANDING_VIDEO_URL_CHECKLIST_IA ?? ''}
+        placeholderHint="Vídeo em breve: criação de checklist com IA."
+        instrucaoEnv="Defina NEXT_PUBLIC_LANDING_VIDEO_URL_CHECKLIST_IA com a URL de incorporação (embed)."
+        className="bg-base-200"
+      />
 
       {/* Features Section */}
       <section id="features" className="px-4 py-20 lg:px-8 bg-base-200">
@@ -642,6 +631,11 @@ function HomePageContent() {
                 <li>
                   <Link href="#demo" className="hover:text-primary transition-colors">
                     Demonstração
+                  </Link>
+                </li>
+                <li>
+                  <Link href="#demo-checklist-ia" className="hover:text-primary transition-colors">
+                    Checklist com IA
                   </Link>
                 </li>
                 <li>
