@@ -1,0 +1,56 @@
+---
+name: mempalace
+description: Protocolo de memória persistente via MemPalace MCP — consultar antes de agir, registrar ao final
+---
+
+# MemPalace — Protocolo de Memória do Projeto
+
+O projeto utiliza o MemPalace MCP para manter memória persistente entre sessões do Cursor.
+A wing do projeto é **chekai** com os seguintes rooms:
+
+| Room | Conteúdo |
+|------|----------|
+| `architecture` | Stack, módulos, isolamento de dados, perfis de usuário |
+| `decisions` | Decisões técnicas (email, TypeORM, PDF, schema) |
+| `ux-patterns` | Padrões de UX/UI (mobile-first, modais, CRUD, checklist) |
+| `bugs` | Bugs encontrados e suas soluções |
+| `features` | Features implementadas e contexto de negócio |
+
+## Protocolo de Uso
+
+### Ao iniciar sessão
+1. Chamar `mempalace_status` para carregar visão geral do palace
+2. Se for trabalhar em algo específico, chamar `mempalace_search` na wing `chekai` para buscar contexto relevante
+
+### Antes de responder sobre arquitetura, decisões passadas ou padrões
+1. Chamar `mempalace_search` ou `mempalace_kg_query` ANTES de responder
+2. Nunca adivinhar — verificar no palace primeiro
+
+### Ao finalizar sessão ou completar tarefa significativa
+1. Chamar `mempalace_add_drawer` para registrar novos aprendizados na wing `chekai` e room apropriado
+2. Se houver novo fato estrutural, chamar `mempalace_kg_add` para adicionar ao grafo de conhecimento
+3. Chamar `mempalace_diary_write` com `agent_name: "cursor-chekai"` para registrar o que foi feito
+
+### Ao encontrar bug e resolver
+1. Registrar no room `bugs` com `mempalace_add_drawer` para evitar reincidência
+
+### Rooms disponíveis para novos registros
+- `architecture` — mudanças de stack, módulos, infraestrutura
+- `decisions` — decisões técnicas relevantes
+- `ux-patterns` — novos padrões de UX definidos
+- `bugs` — bugs e suas soluções
+- `features` — features implementadas com contexto de negócio
+
+## Ferramentas MCP Disponíveis
+
+| Ferramenta | Uso |
+|------------|-----|
+| `mempalace_status` | Visão geral do palace |
+| `mempalace_search` | Busca semântica nos drawers |
+| `mempalace_kg_query` | Consultar entidade no grafo de conhecimento |
+| `mempalace_kg_add` | Adicionar fato ao grafo |
+| `mempalace_add_drawer` | Registrar conteúdo verbatim |
+| `mempalace_diary_write` | Diário do agente |
+| `mempalace_diary_read` | Ler entradas passadas do diário |
+| `mempalace_list_wings` | Listar todas as wings |
+| `mempalace_list_rooms` | Listar rooms de uma wing |

@@ -1,109 +1,329 @@
 {
   "version": 1,
   "transcripts": {
-    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/0c83cafb-8e1e-49c8-96a2-d74e541ed3f5/0c83cafb-8e1e-49c8-96a2-d74e541ed3f5.jsonl": {
-      "mtimeMs": 1772681529212.5476,
-      "lastProcessedAt": "2026-03-22T01:28:48.334Z"
-    },
-    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/0d51459a-94ef-4696-bc6a-c3f7ad80d144/0d51459a-94ef-4696-bc6a-c3f7ad80d144.jsonl": {
-      "mtimeMs": 1773525561404.911,
-      "lastProcessedAt": "2026-03-22T01:28:48.334Z"
-    },
-    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/0e1fac15-45d8-46d0-b477-26dcbf9b7564/0e1fac15-45d8-46d0-b477-26dcbf9b7564.jsonl": {
-      "mtimeMs": 1772667964076.3208,
-      "lastProcessedAt": "2026-03-22T01:28:48.334Z"
-    },
-    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/0e6fbfaf-8b34-491f-8cac-a403dbc4cafb/0e6fbfaf-8b34-491f-8cac-a403dbc4cafb.jsonl": {
-      "mtimeMs": 1774142874860.008,
-      "lastProcessedAt": "2026-03-22T01:28:48.334Z"
-    },
-    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/157cfc86-b2a9-4ce3-89d2-f1348cd4c69f/157cfc86-b2a9-4ce3-89d2-f1348cd4c69f.jsonl": {
-      "mtimeMs": 1772880645708.687,
-      "lastProcessedAt": "2026-03-22T01:28:48.334Z"
+    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/67ce6adf-e7fd-4ac8-af48-d7ef277ad3db/67ce6adf-e7fd-4ac8-af48-d7ef277ad3db.jsonl": {
+      "mtimeMs": 1772672876165.3591,
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
     },
     "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/20ce1be8-8e01-486a-b5cc-26ccca0e5068/20ce1be8-8e01-486a-b5cc-26ccca0e5068.jsonl": {
       "mtimeMs": 1771981141250.7302,
-      "lastProcessedAt": "2026-03-22T01:28:48.334Z"
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
     },
-    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/3144fe8d-8c67-43a7-9a34-1159ebed1393/3144fe8d-8c67-43a7-9a34-1159ebed1393.jsonl": {
-      "mtimeMs": 1773798087131.6924,
-      "lastProcessedAt": "2026-03-22T01:28:48.334Z"
+    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/20ce1be8-8e01-486a-b5cc-26ccca0e5068/subagents/23d771e7-e156-4a7c-992b-b9cd7df739c3.jsonl": {
+      "mtimeMs": 1771981068762.8535,
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
     },
-    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/34fbb4e1-f16c-478c-8c58-5d2e0957db6f/34fbb4e1-f16c-478c-8c58-5d2e0957db6f.jsonl": {
-      "mtimeMs": 1772676797354.9204,
-      "lastProcessedAt": "2026-03-22T01:28:48.334Z"
-    },
-    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/3f587a3b-5606-4e60-9efa-61d27f7848de/3f587a3b-5606-4e60-9efa-61d27f7848de.jsonl": {
-      "mtimeMs": 1773522689520.521,
-      "lastProcessedAt": "2026-03-22T01:28:48.334Z"
-    },
-    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/50927ee4-85fe-4338-b21e-3e4d392658e8/50927ee4-85fe-4338-b21e-3e4d392658e8.jsonl": {
-      "mtimeMs": 1774059296012.5356,
-      "lastProcessedAt": "2026-03-22T01:28:48.334Z"
-    },
-    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/531f986f-04e4-4d5f-a9bd-495bd12da420/531f986f-04e4-4d5f-a9bd-495bd12da420.jsonl": {
-      "mtimeMs": 1774058544353.658,
-      "lastProcessedAt": "2026-03-22T01:28:48.334Z"
+    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/20ce1be8-8e01-486a-b5cc-26ccca0e5068/subagents/af5960a2-b9ad-44d6-be12-bb3e3366bd96.jsonl": {
+      "mtimeMs": 1771981062113.457,
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
     },
     "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/64b5d699-79d8-4506-9530-e579118be2b2/64b5d699-79d8-4506-9530-e579118be2b2.jsonl": {
-      "mtimeMs": 1772672486726.8447,
-      "lastProcessedAt": "2026-03-22T01:28:48.334Z"
+      "mtimeMs": 1772672486726.8445,
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
     },
-    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/670a439b-e8cf-4ec6-bb17-c36e4f355d5f/670a439b-e8cf-4ec6-bb17-c36e4f355d5f.jsonl": {
-      "mtimeMs": 1774059565068.9048,
-      "lastProcessedAt": "2026-03-22T01:28:48.334Z"
+    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/64b5d699-79d8-4506-9530-e579118be2b2/subagents/fc449e4b-91b4-4b33-a30f-01f358ff64c7.jsonl": {
+      "mtimeMs": 1772588509435.2427,
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
     },
-    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/67ce6adf-e7fd-4ac8-af48-d7ef277ad3db/67ce6adf-e7fd-4ac8-af48-d7ef277ad3db.jsonl": {
-      "mtimeMs": 1772672876165.3591,
-      "lastProcessedAt": "2026-03-22T01:28:48.334Z"
-    },
-    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/6ccdf5e3-53e8-4be4-b9e3-e4fcaf1944ab/6ccdf5e3-53e8-4be4-b9e3-e4fcaf1944ab.jsonl": {
-      "mtimeMs": 1772672145853.7532,
-      "lastProcessedAt": "2026-03-22T01:28:48.334Z"
-    },
-    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/89e02e6c-f7d3-4b33-bf9a-49e2b4c03402/89e02e6c-f7d3-4b33-bf9a-49e2b4c03402.jsonl": {
-      "mtimeMs": 1773411344546.1016,
-      "lastProcessedAt": "2026-03-22T01:28:48.334Z"
-    },
-    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/96847cbb-0330-40ab-814c-0a17c43ccc56/96847cbb-0330-40ab-814c-0a17c43ccc56.jsonl": {
-      "mtimeMs": 1773519809378.9019,
-      "lastProcessedAt": "2026-03-22T01:28:48.334Z"
-    },
-    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/a103bfb3-8750-4e93-96f1-347522dec8ac/a103bfb3-8750-4e93-96f1-347522dec8ac.jsonl": {
-      "mtimeMs": 1772670831330.5881,
-      "lastProcessedAt": "2026-03-22T01:28:48.334Z"
+    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/64b5d699-79d8-4506-9530-e579118be2b2/subagents/c3f8b72f-6881-47de-a8f3-2b43a47eaef2.jsonl": {
+      "mtimeMs": 1772588543633.0498,
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
     },
     "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/a4ccc043-14f0-4c0b-a399-8b2666543feb/a4ccc043-14f0-4c0b-a399-8b2666543feb.jsonl": {
       "mtimeMs": 1773834105765.4521,
-      "lastProcessedAt": "2026-03-22T01:28:48.334Z"
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
     },
-    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/ae8e1793-83cb-466f-8017-0ec0f5e53b2b/ae8e1793-83cb-466f-8017-0ec0f5e53b2b.jsonl": {
-      "mtimeMs": 1772681150421.1948,
-      "lastProcessedAt": "2026-03-22T01:28:48.334Z"
+    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/09b3eec6-ef2b-4de3-a3a6-ddbe5030b9ab/09b3eec6-ef2b-4de3-a3a6-ddbe5030b9ab.jsonl": {
+      "mtimeMs": 1775931052559.9744,
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
     },
-    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/b0d0e49c-df89-48f6-af06-64bc19cfdc5b/b0d0e49c-df89-48f6-af06-64bc19cfdc5b.jsonl": {
-      "mtimeMs": 1771983443416.1125,
-      "lastProcessedAt": "2026-03-22T01:28:48.334Z"
+    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/09b3eec6-ef2b-4de3-a3a6-ddbe5030b9ab/subagents/27463fa8-4d82-4827-a3ed-7eb4f90c9da4.jsonl": {
+      "mtimeMs": 1775930537044.72,
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
     },
-    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/c161acd7-d71c-4de3-8da8-dd223eed672e/c161acd7-d71c-4de3-8da8-dd223eed672e.jsonl": {
-      "mtimeMs": 1772682026831.76,
-      "lastProcessedAt": "2026-03-22T01:28:48.334Z"
+    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/09b3eec6-ef2b-4de3-a3a6-ddbe5030b9ab/subagents/870fc524-d53d-46e4-8055-da12909ff3e6.jsonl": {
+      "mtimeMs": 1775931074313.622,
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
+    },
+    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/531f986f-04e4-4d5f-a9bd-495bd12da420/531f986f-04e4-4d5f-a9bd-495bd12da420.jsonl": {
+      "mtimeMs": 1774058544353.658,
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
+    },
+    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/531f986f-04e4-4d5f-a9bd-495bd12da420/subagents/2c221ff7-613b-4f3a-af4f-7f4d070d85c2.jsonl": {
+      "mtimeMs": 1774013275329.994,
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
+    },
+    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/531f986f-04e4-4d5f-a9bd-495bd12da420/subagents/b7c442f4-eba7-4e02-9652-173543edd42c.jsonl": {
+      "mtimeMs": 1774013272817.7817,
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
+    },
+    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/ab6603ea-3a08-42a0-b85d-39bcd8c85438/ab6603ea-3a08-42a0-b85d-39bcd8c85438.jsonl": {
+      "mtimeMs": 1775919257418.9382,
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
     },
     "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/cbf1d185-27f1-44cf-8f9c-c636cea428fa/cbf1d185-27f1-44cf-8f9c-c636cea428fa.jsonl": {
       "mtimeMs": 1773520225094.3936,
-      "lastProcessedAt": "2026-03-22T01:28:48.334Z"
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
     },
-    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/e1634cae-1d25-4f9f-bd0d-67728acdbc96/e1634cae-1d25-4f9f-bd0d-67728acdbc96.jsonl": {
-      "mtimeMs": 1773526008997.1772,
-      "lastProcessedAt": "2026-03-22T01:28:48.334Z"
+    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/cbf1d185-27f1-44cf-8f9c-c636cea428fa/subagents/2ab18884-36f6-4f57-9535-34dbc19f9906.jsonl": {
+      "mtimeMs": 1773520162065.4866,
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
     },
-    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/f3fe0ca8-8828-4af8-a642-91c3748fcafa/f3fe0ca8-8828-4af8-a642-91c3748fcafa.jsonl": {
-      "mtimeMs": 1772674127004.554,
-      "lastProcessedAt": "2026-03-22T01:28:48.334Z"
+    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/0d51459a-94ef-4696-bc6a-c3f7ad80d144/0d51459a-94ef-4696-bc6a-c3f7ad80d144.jsonl": {
+      "mtimeMs": 1773525561404.911,
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
+    },
+    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/0d51459a-94ef-4696-bc6a-c3f7ad80d144/subagents/87d92c0b-fe8a-4801-a016-a61d621c0621.jsonl": {
+      "mtimeMs": 1773521609905.7598,
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
+    },
+    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/0d51459a-94ef-4696-bc6a-c3f7ad80d144/subagents/7abddc74-f3c3-4db7-b73a-a929b6f8225e.jsonl": {
+      "mtimeMs": 1773521570189.1865,
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
+    },
+    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/0d51459a-94ef-4696-bc6a-c3f7ad80d144/subagents/b0febb5d-a05f-4a97-a554-5d556041e17f.jsonl": {
+      "mtimeMs": 1773521567507.588,
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
+    },
+    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/b0d0e49c-df89-48f6-af06-64bc19cfdc5b/b0d0e49c-df89-48f6-af06-64bc19cfdc5b.jsonl": {
+      "mtimeMs": 1771983443416.1125,
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
+    },
+    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/3f587a3b-5606-4e60-9efa-61d27f7848de/3f587a3b-5606-4e60-9efa-61d27f7848de.jsonl": {
+      "mtimeMs": 1773522689520.5212,
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
+    },
+    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/3f587a3b-5606-4e60-9efa-61d27f7848de/subagents/5e7e8d3c-88ab-4ad8-af68-5cdfc3183798.jsonl": {
+      "mtimeMs": 1773518230582.838,
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
     },
     "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/fbf05124-0568-47a1-b099-99a306352272/fbf05124-0568-47a1-b099-99a306352272.jsonl": {
       "mtimeMs": 1772676179723.396,
-      "lastProcessedAt": "2026-03-22T01:28:48.334Z"
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
+    },
+    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/ae8e1793-83cb-466f-8017-0ec0f5e53b2b/ae8e1793-83cb-466f-8017-0ec0f5e53b2b.jsonl": {
+      "mtimeMs": 1772681150421.1948,
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
+    },
+    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/ae8e1793-83cb-466f-8017-0ec0f5e53b2b/subagents/2e5faa2e-a136-4668-b653-3b1c2ebfaefc.jsonl": {
+      "mtimeMs": 1772674808832.8284,
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
+    },
+    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/ae8e1793-83cb-466f-8017-0ec0f5e53b2b/subagents/8d06d18f-e590-4a08-b358-ea25ec350018.jsonl": {
+      "mtimeMs": 1772674798143.9336,
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
+    },
+    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/ae8e1793-83cb-466f-8017-0ec0f5e53b2b/subagents/8d7a5232-16c1-4d4a-87fd-4f40ad68d819.jsonl": {
+      "mtimeMs": 1772674793962.6396,
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
+    },
+    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/ae8e1793-83cb-466f-8017-0ec0f5e53b2b/subagents/22e7f4bf-100e-4ab5-96aa-11fa0b9213e9.jsonl": {
+      "mtimeMs": 1772674804057.876,
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
+    },
+    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/6ccdf5e3-53e8-4be4-b9e3-e4fcaf1944ab/6ccdf5e3-53e8-4be4-b9e3-e4fcaf1944ab.jsonl": {
+      "mtimeMs": 1772672145853.7532,
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
+    },
+    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/9d8b0a57-1f92-4f5e-877d-6571dcb28c2a/9d8b0a57-1f92-4f5e-877d-6571dcb28c2a.jsonl": {
+      "mtimeMs": 1775929539056.0146,
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
+    },
+    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/a103bfb3-8750-4e93-96f1-347522dec8ac/a103bfb3-8750-4e93-96f1-347522dec8ac.jsonl": {
+      "mtimeMs": 1772670831330.5881,
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
+    },
+    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/0e6fbfaf-8b34-491f-8cac-a403dbc4cafb/0e6fbfaf-8b34-491f-8cac-a403dbc4cafb.jsonl": {
+      "mtimeMs": 1774142931910.6497,
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
+    },
+    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/34fbb4e1-f16c-478c-8c58-5d2e0957db6f/34fbb4e1-f16c-478c-8c58-5d2e0957db6f.jsonl": {
+      "mtimeMs": 1772676797354.9204,
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
+    },
+    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/34fbb4e1-f16c-478c-8c58-5d2e0957db6f/subagents/010fc409-bc93-4706-8802-4b6af05f3699.jsonl": {
+      "mtimeMs": 1772675952199.718,
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
+    },
+    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/34fbb4e1-f16c-478c-8c58-5d2e0957db6f/subagents/4e79ebd9-7789-4d24-ae7f-52f16ccefd19.jsonl": {
+      "mtimeMs": 1772675951631.2014,
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
+    },
+    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/34fbb4e1-f16c-478c-8c58-5d2e0957db6f/subagents/9b3d62e2-2772-4c9d-ad21-88eb232b1608.jsonl": {
+      "mtimeMs": 1772675955907.0542,
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
+    },
+    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/34fbb4e1-f16c-478c-8c58-5d2e0957db6f/subagents/7ac2e2b7-08f8-4b15-832c-95af39c315c1.jsonl": {
+      "mtimeMs": 1772675951573.7227,
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
+    },
+    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/4b5e4075-a0c9-4340-9abf-22e5e944cc3a/4b5e4075-a0c9-4340-9abf-22e5e944cc3a.jsonl": {
+      "mtimeMs": 1774187379294.1165,
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
+    },
+    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/0e1fac15-45d8-46d0-b477-26dcbf9b7564/0e1fac15-45d8-46d0-b477-26dcbf9b7564.jsonl": {
+      "mtimeMs": 1772667964076.3208,
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
+    },
+    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/0e1fac15-45d8-46d0-b477-26dcbf9b7564/subagents/f833014d-dd81-48e0-9ee3-8ac56d5d621c.jsonl": {
+      "mtimeMs": 1771984687638.164,
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
+    },
+    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/50927ee4-85fe-4338-b21e-3e4d392658e8/50927ee4-85fe-4338-b21e-3e4d392658e8.jsonl": {
+      "mtimeMs": 1774059296012.5356,
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
+    },
+    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/96847cbb-0330-40ab-814c-0a17c43ccc56/96847cbb-0330-40ab-814c-0a17c43ccc56.jsonl": {
+      "mtimeMs": 1773519809378.9016,
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
+    },
+    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/f3fe0ca8-8828-4af8-a642-91c3748fcafa/f3fe0ca8-8828-4af8-a642-91c3748fcafa.jsonl": {
+      "mtimeMs": 1772674127004.554,
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
+    },
+    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/f3fe0ca8-8828-4af8-a642-91c3748fcafa/subagents/cdac6ad6-15a7-44b3-a74b-1071dfeeccd5.jsonl": {
+      "mtimeMs": 1772669547722.7222,
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
+    },
+    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/f3fe0ca8-8828-4af8-a642-91c3748fcafa/subagents/942e1e1c-4c3c-44f4-b514-f50b5dc6457e.jsonl": {
+      "mtimeMs": 1772673946290.246,
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
+    },
+    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/f3fe0ca8-8828-4af8-a642-91c3748fcafa/subagents/8b275e27-847f-4250-8043-dbbaebc282d1.jsonl": {
+      "mtimeMs": 1772669548410.9717,
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
+    },
+    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/f3fe0ca8-8828-4af8-a642-91c3748fcafa/subagents/8a139f1a-d304-41a8-9c0c-004c4486c5b6.jsonl": {
+      "mtimeMs": 1772669556262.2988,
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
+    },
+    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/c161acd7-d71c-4de3-8da8-dd223eed672e/c161acd7-d71c-4de3-8da8-dd223eed672e.jsonl": {
+      "mtimeMs": 1772682026831.76,
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
+    },
+    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/c161acd7-d71c-4de3-8da8-dd223eed672e/subagents/325ef7f7-c23e-43a4-92c5-7be8567e2769.jsonl": {
+      "mtimeMs": 1772679225153.802,
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
+    },
+    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/c161acd7-d71c-4de3-8da8-dd223eed672e/subagents/88d3613e-367e-4b73-803d-311f0880021f.jsonl": {
+      "mtimeMs": 1772679220605.7266,
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
+    },
+    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/c161acd7-d71c-4de3-8da8-dd223eed672e/subagents/af61698f-572b-4067-a2d6-653235b2ed79.jsonl": {
+      "mtimeMs": 1772679219879.5298,
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
+    },
+    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/c161acd7-d71c-4de3-8da8-dd223eed672e/subagents/17835ef7-7b7e-42ee-880a-e81c482ed6ba.jsonl": {
+      "mtimeMs": 1772679225539.2412,
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
+    },
+    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/ac4b2759-0a5b-46f4-8e46-e53540f69f3c/ac4b2759-0a5b-46f4-8e46-e53540f69f3c.jsonl": {
+      "mtimeMs": 1775928611634.1692,
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
+    },
+    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/ac4b2759-0a5b-46f4-8e46-e53540f69f3c/subagents/171d08dd-f349-4ebc-9b37-db85f2a7a8d8.jsonl": {
+      "mtimeMs": 1775919512277.3293,
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
+    },
+    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/ac4b2759-0a5b-46f4-8e46-e53540f69f3c/subagents/a492b30f-b7f9-478f-8caf-352a521c43ec.jsonl": {
+      "mtimeMs": 1775920632653.4968,
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
+    },
+    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/670a439b-e8cf-4ec6-bb17-c36e4f355d5f/670a439b-e8cf-4ec6-bb17-c36e4f355d5f.jsonl": {
+      "mtimeMs": 1774059565068.9048,
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
+    },
+    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/4917aa34-8434-4153-b0c1-c429acd32a55/4917aa34-8434-4153-b0c1-c429acd32a55.jsonl": {
+      "mtimeMs": 1774212106799.0557,
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
+    },
+    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/e1634cae-1d25-4f9f-bd0d-67728acdbc96/e1634cae-1d25-4f9f-bd0d-67728acdbc96.jsonl": {
+      "mtimeMs": 1773526008997.1772,
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
+    },
+    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/e1634cae-1d25-4f9f-bd0d-67728acdbc96/subagents/defd9cf0-bb75-40e4-a055-75af7b924888.jsonl": {
+      "mtimeMs": 1773523112044.7537,
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
+    },
+    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/e1634cae-1d25-4f9f-bd0d-67728acdbc96/subagents/f51e4389-fe56-4569-b922-3ae2097a2c4b.jsonl": {
+      "mtimeMs": 1773523097418.4556,
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
+    },
+    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/e1634cae-1d25-4f9f-bd0d-67728acdbc96/subagents/c9bbc2b2-7f38-4503-9ece-d927cce81fc1.jsonl": {
+      "mtimeMs": 1773523095652.5757,
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
+    },
+    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/0c83cafb-8e1e-49c8-96a2-d74e541ed3f5/0c83cafb-8e1e-49c8-96a2-d74e541ed3f5.jsonl": {
+      "mtimeMs": 1772681529212.5476,
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
+    },
+    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/e3d56bee-83e6-4ddd-8b93-d75ba79de7dd/e3d56bee-83e6-4ddd-8b93-d75ba79de7dd.jsonl": {
+      "mtimeMs": 1775929847817.1719,
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
+    },
+    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/e3d56bee-83e6-4ddd-8b93-d75ba79de7dd/subagents/5303be0c-4a81-423c-96c9-ea68f1ddf6b2.jsonl": {
+      "mtimeMs": 1775920689825.6824,
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
+    },
+    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/e3d56bee-83e6-4ddd-8b93-d75ba79de7dd/subagents/f2148ad8-df03-4afe-97f6-e0b64bc32b21.jsonl": {
+      "mtimeMs": 1775929052019.6694,
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
+    },
+    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/e3d56bee-83e6-4ddd-8b93-d75ba79de7dd/subagents/661da086-eabc-4e2b-9d46-f2c9e60b5d71.jsonl": {
+      "mtimeMs": 1775929040730.502,
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
+    },
+    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/e3d56bee-83e6-4ddd-8b93-d75ba79de7dd/subagents/7adb72f7-3649-467a-a387-4093c8852a6d.jsonl": {
+      "mtimeMs": 1775929046238.766,
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
+    },
+    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/e3d56bee-83e6-4ddd-8b93-d75ba79de7dd/subagents/d8cb8d08-89b5-4cf6-a6ab-45dd8855a054.jsonl": {
+      "mtimeMs": 1775920690616.2156,
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
+    },
+    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/e3d56bee-83e6-4ddd-8b93-d75ba79de7dd/subagents/056a7bf8-3463-4cc7-962e-4d86e734e10f.jsonl": {
+      "mtimeMs": 1775920689552.8584,
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
+    },
+    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/3144fe8d-8c67-43a7-9a34-1159ebed1393/3144fe8d-8c67-43a7-9a34-1159ebed1393.jsonl": {
+      "mtimeMs": 1773798087131.6924,
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
+    },
+    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/3144fe8d-8c67-43a7-9a34-1159ebed1393/subagents/b18f25a2-cfbe-4fe8-a8f6-5282cd0493d3.jsonl": {
+      "mtimeMs": 1773707757293.5542,
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
+    },
+    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/3144fe8d-8c67-43a7-9a34-1159ebed1393/subagents/910bd7bb-a8eb-42a8-89c9-5144702a796e.jsonl": {
+      "mtimeMs": 1773707766507.3726,
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
+    },
+    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/3144fe8d-8c67-43a7-9a34-1159ebed1393/subagents/34ebd0f4-284b-4dc3-9e2b-80fc5993b519.jsonl": {
+      "mtimeMs": 1773707754670.2793,
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
+    },
+    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/3144fe8d-8c67-43a7-9a34-1159ebed1393/subagents/f08bd38f-9a8f-4400-8d22-b7838c433958.jsonl": {
+      "mtimeMs": 1773707762691.7703,
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
+    },
+    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/89e02e6c-f7d3-4b33-bf9a-49e2b4c03402/89e02e6c-f7d3-4b33-bf9a-49e2b4c03402.jsonl": {
+      "mtimeMs": 1773411344546.1016,
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
+    },
+    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/157cfc86-b2a9-4ce3-89d2-f1348cd4c69f/157cfc86-b2a9-4ce3-89d2-f1348cd4c69f.jsonl": {
+      "mtimeMs": 1772880645708.687,
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
+    },
+    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/157cfc86-b2a9-4ce3-89d2-f1348cd4c69f/subagents/b398e2c8-7e33-442f-83ea-c18a83c83e01.jsonl": {
+      "mtimeMs": 1772683789676.4429,
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
+    },
+    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/157cfc86-b2a9-4ce3-89d2-f1348cd4c69f/subagents/9a415a41-6fe2-495e-85d9-7176d8193503.jsonl": {
+      "mtimeMs": 1772682690489.1035,
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
+    },
+    "/Users/yuricarvalho/.cursor/projects/Users-yuricarvalho-Projetos-evobit-meta-app/agent-transcripts/157cfc86-b2a9-4ce3-89d2-f1348cd4c69f/subagents/5003a5f3-0445-420f-a1ff-4b7e9a9e1440.jsonl": {
+      "mtimeMs": 1772682692774.336,
+      "lastProcessedAt": "2026-04-11T18:12:12.998Z"
     }
   }
 }
