@@ -13,7 +13,7 @@ async function bootstrap(): Promise<void> {
   app.enableCors({
     origin: (origin, callback) => {
       const allowedOrigins = [
-        'http://localhost:3000',
+        'http://localhost:3031',
         'http://localhost:3001',
         process.env.CORS_ORIGIN,
       ].filter(Boolean);
@@ -28,8 +28,11 @@ async function bootstrap(): Promise<void> {
       
       // Permite IPs de rede local (192.168.x.x, 10.x.x.x, 172.16-31.x.x)
       const isLocalNetwork = /^http:\/\/(192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+)(:\d+)?$/.test(origin);
-      
-      if (allowedOrigins.includes(origin) || isVercelDomain || isLocalNetwork) {
+
+      // Next dev usa --hostname 0.0.0.0; o browser envia Origin com 0.0.0.0 ou 127.0.0.1
+      const isLocalDevHost = /^http:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0)(:\d+)?$/.test(origin);
+
+      if (allowedOrigins.includes(origin) || isVercelDomain || isLocalNetwork || isLocalDevHost) {
         return callback(null, true);
       }
       
