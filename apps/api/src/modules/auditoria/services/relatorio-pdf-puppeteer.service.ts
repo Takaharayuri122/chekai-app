@@ -388,6 +388,9 @@ export class RelatorioPdfPuppeteerService {
         }
 
         for (const arquivo of arquivos) {
+          if (!arquivo.created_at) {
+            continue;
+          }
           const dataCriacao = new Date(arquivo.created_at);
           if (dataCriacao < trintaDiasAtras) {
             const filePath = `auditorias/${pasta.name}/${arquivo.name}`;
