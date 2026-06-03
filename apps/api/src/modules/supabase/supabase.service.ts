@@ -1,6 +1,11 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import ws from 'ws';
+
+type TransporteRealtime = NonNullable<
+  NonNullable<Parameters<typeof createClient>[2]>['realtime']
+>['transport'];
 
 /**
  * Serviço que fornece o cliente Supabase.
@@ -38,6 +43,9 @@ export class SupabaseService implements OnModuleInit {
       auth: {
         autoRefreshToken: false,
         persistSession: false,
+      },
+      realtime: {
+        transport: ws as unknown as TransporteRealtime,
       },
     });
     
