@@ -12,9 +12,7 @@ import {
   ArrowRight,
   Sparkles,
   CheckCircle,
-  Users,
   MapPin,
-  Zap,
   Clock,
   BarChart3,
   Star,
@@ -29,6 +27,15 @@ import {
   ClipboardList,
   LineChart,
   UserCog,
+  Database,
+  RefreshCw,
+  Images,
+  FileText,
+  KeyRound,
+  CreditCard,
+  PieChart,
+  Monitor,
+  Server,
 } from 'lucide-react';
 import { useAuthStore } from '@/lib/store';
 import { CookieConsent } from '@/components/ui/cookie-consent';
@@ -40,140 +47,221 @@ import { LandingVideoSection } from '@/components/ui/landing-video-section';
 const features = [
   {
     icon: ClipboardCheck,
-    title: 'Templates de checklist',
+    title: 'Checklists personalizáveis',
     description:
-      'Monte templates com itens e regras do seu processo. Importe planilhas Excel e publique versões rascunho ou ativas.',
+      'Crie templates com itens e grupos. Importe de planilhas Excel, duplique trechos e controle versões como rascunho ou publicadas.',
   },
   {
     icon: Sparkles,
-    title: 'Criação de checklist com IA',
+    title: 'Geração de checklist com IA',
     description:
-      'Gere e refine checklists com apoio de IA, alinhados à legislação e ao contexto da sua consultoria.',
+      'O sistema sugere itens com base na legislação cadastrada e no contexto da consultoria. Você revisa e ajusta antes de publicar.',
   },
   {
     icon: Shield,
-    title: 'Legislação e RAG',
+    title: 'Base de legislação integrada',
     description:
-      'Consulte normas e use a base legal como apoio inteligente na elaboração de itens e na auditoria.',
+      'Cadastre normas como RDC 216, RDC 275 e outras. O sistema consulta esse material ao sugerir itens e ao analisar visitas.',
   },
   {
     icon: ClipboardList,
     title: 'Auditorias completas',
     description:
-      'Execute auditorias com pontuação, não conformidades, evidências e reabertura quando precisar corrigir.',
+      'Pontuação, não conformidades, evidências fotográficas, finalização e reabertura. Histórico por unidade disponível no painel web.',
+  },
+  {
+    icon: FileText,
+    title: 'Resumo executivo com IA',
+    description:
+      'Gere o resumo executivo da auditoria com apoio do sistema, agilizando a entrega ao cliente.',
   },
   {
     icon: LineChart,
-    title: 'Relatórios técnicos por cliente',
+    title: 'Relatórios técnicos',
     description:
-      'Fluxo dedicado ao relatório técnico (distinto da auditoria), com assistência de IA para análise e texto.',
+      'Fluxo separado da auditoria, com apoio analítico por IA e inclusão de evidências fotográficas.',
   },
   {
     icon: Camera,
-    title: 'Análise de imagens com IA',
+    title: 'Análise de fotos com IA',
     description:
-      'Registre fotos na auditoria e receba sugestões de não conformidades e melhorias — sempre para validação humana.',
+      'Anexe várias fotos por item. O sistema sugere achados com base nas normas — processamento em sequência para controle de qualidade e custo.',
+  },
+  {
+    icon: Images,
+    title: 'Galeria de evidências',
+    description:
+      'No app, visualize fotos em grade ou tela cheia. As imagens são otimizadas antes do envio.',
   },
   {
     icon: FileDown,
-    title: 'PDF e exportação',
+    title: 'Geração de PDF',
     description:
-      'Gere documentos em PDF para clientes e acompanhe histórico e evolução das entregas.',
+      'Exporte auditorias e relatórios técnicos em PDF pelo painel web, com histórico de entregas.',
   },
   {
     icon: Building2,
     title: 'Clientes e unidades',
     description:
-      'Organize carteira de clientes, unidades e histórico de visitas e entregas em um só lugar.',
+      'Organize a carteira por cliente e unidade. Defina quem da equipe acompanha cada local.',
   },
   {
     icon: UserCog,
-    title: 'Equipe e perfis',
+    title: 'Gestão de equipe',
     description:
-      'Convites, perfis de gestor e auditor e visão alinhada ao vínculo da sua consultoria com a equipe.',
+      'Convite por e-mail, perfis com diferentes níveis de acesso e separação de dados por consultoria.',
+  },
+  {
+    icon: KeyRound,
+    title: 'Acesso por código no e-mail',
+    description:
+      'Login sem senha fixa: um código é enviado ao e-mail a cada acesso, no app e no site.',
   },
   {
     icon: MapPin,
     title: 'Check-in e geolocalização',
     description:
-      'Registre presença e localização quando fizer sentido operacional, com transparência e rastreabilidade.',
+      'Registre presença no local da visita. O acompanhamento administrativo fica disponível no painel web.',
   },
   {
     icon: Smartphone,
-    title: 'App iOS e Android',
+    title: 'App para iOS e Android',
     description:
-      'Acesse o ChekAI no campo pelo aplicativo, com a mesma base da plataforma web.',
+      'O mesmo sistema do computador no celular: responder itens, registrar fotos e sincronizar quando houver conexão.',
+  },
+  {
+    icon: Database,
+    title: 'Funciona sem internet',
+    description:
+      'Auditorias, itens e clientes ficam disponíveis no aparelho. O trabalho continua offline e sincroniza ao voltar a conexão.',
+  },
+  {
+    icon: RefreshCw,
+    title: 'Sincronização automática',
+    description:
+      'O app baixa atualizações do servidor e envia o que foi feito em campo, com fila de envio para garantir que nada se perca.',
   },
   {
     icon: Coins,
     title: 'Créditos de IA',
     description:
-      'Controle consumo de recursos de IA: gestores distribuem créditos e acompanham o uso pela equipe.',
+      'O administrador da conta distribui créditos e acompanha o consumo da equipe.',
+  },
+  {
+    icon: PieChart,
+    title: 'Histórico de uso de IA',
+    description:
+      'Registro detalhado do consumo de IA para previsão de custos e acompanhamento administrativo.',
+  },
+  {
+    icon: CreditCard,
+    title: 'Planos e assinaturas',
+    description:
+      'Planos com limites configuráveis e visibilidade do que está contratado.',
+  },
+];
+
+const ecossistemaPilares = [
+  {
+    icon: Monitor,
+    titulo: 'No computador: gestão completa',
+    texto:
+      'Checklists, normas, clientes, visitas, relatórios, PDFs, registro de presença, planos e equipe — o que a consultoria precisa para organizar e cobrar com clareza.',
+  },
+  {
+    icon: Smartphone,
+    titulo: 'No celular: a visita em primeiro lugar',
+    texto:
+      'Comece e acompanhe visitas mesmo sem sinal, responda itens, anexe fotos e, quando a internet voltar, tudo se atualiza. É o mesmo sistema — não é um “modo limitado”.',
+  },
+  {
+    icon: Server,
+    titulo: 'Um só sistema, do escritório à visita',
+    texto:
+      'O que você faz no app e o que faz no site falam a mesma língua: mesmos dados, mesmas regras, e cada perfil vê só o que deve.',
   },
 ];
 
 const benefits = [
-  'Reduza o tempo de auditorias em até 70%',
-  'Elimine erros de interpretação da legislação',
-  'Padronize relatórios e planos de ação automaticamente',
-  'Facilite a comunicação com clientes com relatórios profissionais',
-  'Aumente a produtividade da sua equipe',
-  'Mantenha histórico completo e organizado',
+  'Reduza o tempo gasto em auditorias e na elaboração de relatórios',
+  'Consulte a legislação cadastrada diretamente durante a análise',
+  'Padronize relatórios e PDFs com apoio de IA',
+  'Continue trabalhando em campo mesmo sem conexão com a internet',
+  'Acompanhe o consumo de IA com créditos e histórico de uso',
+  'Gerencie tudo em um só lugar: painel web e aplicativo mobile integrados',
 ];
 
 const stats = [
   { value: '70%', label: 'Redução de tempo', icon: Clock },
-  { value: '100%', label: 'Conformidade legal', icon: Shield },
-  { value: '24/7', label: 'Disponibilidade', icon: Zap },
-  { value: 'Web+App', label: 'Acesso unificado', icon: Smartphone },
+  { value: 'IA', label: 'Apoio inteligente', icon: Sparkles },
+  { value: 'Offline', label: 'Funciona sem internet', icon: Database },
+  { value: 'Web+App', label: 'Painel e aplicativo', icon: Smartphone },
 ];
 
 const testimonials = [
   {
     name: 'Maria Silva',
     role: 'Consultora em Segurança de Alimentos',
-    content: 'O ChekAI transformou completamente minha forma de trabalhar. Agora consigo finalizar auditorias em muito menos tempo e com muito mais qualidade.',
+    content:
+      'Consegui organizar melhor as visitas e entregar relatórios mais rápido. O sistema centraliza tudo em um lugar só.',
     rating: 5,
   },
   {
     name: 'João Santos',
-    role: 'Auditor Certificado',
-    content: 'A análise automática de imagens é incrível! Identifica não conformidades que eu poderia passar despercebidas. Recomendo muito!',
+    role: 'Engenheiro de Alimentos',
+    content:
+      'A análise das fotos ajuda a identificar pontos que poderiam passar despercebidos. Reviso tudo, mas tenho um bom ponto de partida.',
     rating: 5,
   },
   {
     name: 'Ana Costa',
-    role: 'Coordenadora de Qualidade',
-    content: 'Os relatórios gerados são profissionais e completos. Meus clientes ficam impressionados com a qualidade e rapidez.',
+    role: 'Nutricionista',
+    content:
+      'Os relatórios ficam mais consistentes e a entrega ao cliente é mais ágil. Fez diferença na rotina.',
     rating: 5,
   },
 ];
 
 const faqs = [
   {
-    question: 'Como funciona a análise automática de imagens?',
-    answer: 'Nossa IA analisa fotos tiradas durante a auditoria e identifica automaticamente não conformidades, sugerindo correções baseadas na legislação vigente.',
+    question: 'Como funciona a análise de fotos?',
+    answer:
+      'Você anexa uma ou mais fotos em cada item da auditoria. O sistema sugere não conformidades e melhorias com base na legislação cadastrada. O processamento é feito em sequência e a decisão final é sempre do profissional.',
+  },
+  {
+    question: 'O aplicativo funciona sem internet?',
+    answer:
+      'Sim. Auditorias, itens e clientes ficam armazenados no celular. O trabalho continua normalmente e tudo sincroniza quando a conexão estiver disponível.',
+  },
+  {
+    question: 'Como funciona o login?',
+    answer:
+      'O acesso é feito por um código enviado ao e-mail, sem necessidade de senha fixa. O administrador da conta cadastra a equipe e envia convites.',
   },
   {
     question: 'Quais legislações estão disponíveis?',
-    answer: 'Trabalhamos com RDC 216, RDC 275, Portaria 3214/78 e outras normas relevantes para segurança de alimentos. A base é constantemente atualizada.',
+    answer:
+      'A plataforma permite cadastrar normas como RDC 216, RDC 275, Portaria 3214/78 e outras. O sistema passa a usar esse material como referência nas análises e sugestões.',
   },
   {
-    question: 'Posso personalizar os templates de checklist?',
-    answer: 'Sim! Você pode criar seus próprios templates ou adaptar os existentes conforme suas necessidades específicas.',
+    question: 'Posso criar meus próprios checklists?',
+    answer:
+      'Sim. Crie do zero, importe de planilha, duplique itens e grupos. Também é possível usar a geração com IA para ter um ponto de partida.',
+  },
+  {
+    question: 'Como funciona o custo da IA?',
+    answer:
+      'O sistema usa créditos. O administrador distribui créditos para a equipe e acompanha o consumo pelo painel, facilitando o controle de custos.',
   },
   {
     question: 'Os dados são seguros?',
-    answer: 'Sim, utilizamos criptografia de ponta a ponta e seguimos todas as normas de proteção de dados (LGPD). Seus dados estão completamente seguros.',
-  },
-  {
-    question: 'Preciso de treinamento para usar?',
-    answer: 'Não! A interface é intuitiva e fácil de usar. Oferecemos também tutoriais e suporte completo para você começar rapidamente.',
+    answer:
+      'Sim. Cada consultoria tem seus dados isolados, o acesso é controlado por perfil e seguimos práticas de segurança em conformidade com a LGPD.',
   },
   {
     question: 'Existe aplicativo para celular?',
     answer:
-      'Sim. O ChekAI está disponível para iOS e Android, com o mesmo ecossistema da versão web, ideal para uso em campo.',
+      'Sim, disponível para iOS e Android. É o mesmo sistema do painel web, com foco em auditorias, fotos e sincronização.',
   },
 ];
 
@@ -227,7 +315,7 @@ function HomePageContent() {
               className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium mb-6 backdrop-blur-sm"
             >
               <Sparkles className="w-4 h-4" />
-              <span>Sistema para Consultorias com IA</span>
+              <span>Consultoria em segurança de alimentos com IA</span>
             </motion.div>
 
             <motion.h1
@@ -237,7 +325,7 @@ function HomePageContent() {
               style={{ opacity: heroOpacity, y: heroY }}
               className="text-4xl md:text-5xl lg:text-7xl font-bold text-base-content mb-6 font-display leading-tight"
             >
-              <span className="text-primary">ChekAI</span> - Sistema Completo para Consultorias em{' '}
+              <span className="text-primary">ChekAI</span> — Auditorias, relatórios e checklists em{' '}
               <br />
               <span className="text-3xl md:text-4xl lg:text-5xl text-primary">Segurança de Alimentos</span>
             </motion.h1>
@@ -248,8 +336,8 @@ function HomePageContent() {
               transition={{ delay: 0.2 }}
               className="text-lg md:text-xl text-base-content/70 max-w-3xl mx-auto mb-4"
             >
-              Plataforma para consultorias automatizarem auditorias, identificarem não conformidades
-              e gerarem relatórios técnicos profissionais em minutos. Entregue muito mais valor aos seus clientes.
+              Organize visitas, registre achados com fotos, gere relatórios técnicos e PDFs —
+              no computador ou no celular, com ou sem internet.
             </motion.p>
             <motion.p
               initial={{ opacity: 0, y: 20 }}
@@ -312,7 +400,7 @@ function HomePageContent() {
       <LandingVideoSection
         sectionId="demo"
         titulo="Veja o ChekAI em ação"
-        subtitulo="Interface intuitiva e poderosa que transforma sua forma de trabalhar"
+        subtitulo="Uma visão geral do painel web e do aplicativo mobile"
         embedUrl={process.env.NEXT_PUBLIC_LANDING_VIDEO_URL_DEMO ?? ''}
         placeholderHint="Vídeo em breve: demonstração geral do sistema."
         instrucaoEnv="Defina NEXT_PUBLIC_LANDING_VIDEO_URL_DEMO com a URL de incorporação (embed) do YouTube, Vimeo ou similar."
@@ -320,13 +408,61 @@ function HomePageContent() {
       />
       <LandingVideoSection
         sectionId="demo-checklist-ia"
-        titulo="Checklist inteligente com IA"
-        subtitulo="Crie e refine checklists com apoio de IA e legislação integrada ao seu processo"
+        titulo="Checklists com apoio de IA"
+        subtitulo="Criação de templates com sugestões baseadas na legislação cadastrada"
         embedUrl={process.env.NEXT_PUBLIC_LANDING_VIDEO_URL_CHECKLIST_IA ?? ''}
         placeholderHint="Vídeo em breve: criação de checklist com IA."
         instrucaoEnv="Defina NEXT_PUBLIC_LANDING_VIDEO_URL_CHECKLIST_IA com a URL de incorporação (embed)."
         className="bg-base-200"
       />
+      <LandingVideoSection
+        sectionId="demo-app-campo"
+        titulo="Aplicativo em campo"
+        subtitulo="Auditorias, fotos e sincronização automática no aplicativo mobile"
+        embedUrl={process.env.NEXT_PUBLIC_LANDING_VIDEO_URL_APP_CAMPO ?? ''}
+        placeholderHint="Vídeo em breve: auditoria no app e sincronização."
+        instrucaoEnv="Defina NEXT_PUBLIC_LANDING_VIDEO_URL_APP_CAMPO com a URL de incorporação (embed)."
+        className="bg-base-100"
+      />
+
+      <section id="ecossistema" className="px-4 py-16 lg:px-8 bg-base-200 border-y border-base-300">
+        <div className="max-w-7xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-12"
+          >
+            <h2 className="text-3xl md:text-4xl font-bold text-base-content mb-3 font-display">
+              Como o sistema funciona
+            </h2>
+            <p className="text-lg text-base-content/70 max-w-3xl mx-auto">
+              Painel web para gestão, aplicativo mobile para campo e uma base de dados compartilhada
+              com controle de acesso por perfil.
+            </p>
+          </motion.div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {ecossistemaPilares.map((pilar, index) => (
+              <motion.div
+                key={pilar.titulo}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: index * 0.08 }}
+                className="card bg-base-100 border border-base-300 shadow-sm"
+              >
+                <div className="card-body">
+                  <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mb-3">
+                    <pilar.icon className="w-6 h-6 text-primary" />
+                  </div>
+                  <h3 className="card-title text-lg">{pilar.titulo}</h3>
+                  <p className="text-sm text-base-content/65 leading-relaxed">{pilar.texto}</p>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
 
       {/* Features Section */}
       <section id="features" className="px-4 py-20 lg:px-8 bg-base-200">
@@ -338,20 +474,21 @@ function HomePageContent() {
               viewport={{ once: true }}
               className="text-3xl md:text-4xl lg:text-5xl font-bold text-base-content mb-4 font-display"
             >
-              Principais Funcionalidades
+              Funcionalidades
             </motion.h2>
             <motion.p
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: 0.1 }}
-              className="text-lg text-base-content/70 max-w-2xl mx-auto"
+              className="text-lg text-base-content/70 max-w-3xl mx-auto"
             >
-              Tecnologia avançada que transforma a forma como <br /> você realiza auditorias e gera relatórios.
+              Checklists, auditorias, relatórios técnicos, análise de fotos com IA,
+              geração de PDF, gestão de equipe e funcionamento offline.
             </motion.p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {features.map((feature, index) => (
               <motion.div
                 key={feature.title}
@@ -387,7 +524,7 @@ function HomePageContent() {
               Por que usar o ChekAI?
             </h2>
             <p className="text-lg text-white/90 max-w-2xl mx-auto">
-              Benefícios reais que fazem a diferença no seu dia a dia
+              O que muda na rotina da consultoria
             </p>
           </motion.div>
 
@@ -422,7 +559,7 @@ function HomePageContent() {
               O que nossos clientes dizem
             </h2>
             <p className="text-lg text-base-content/70 max-w-2xl mx-auto">
-              Confira o feedback de quem já usa o ChekAI em suas auditorias
+              Feedback de profissionais que usam o ChekAI na rotina
             </p>
           </motion.div>
 
@@ -464,10 +601,10 @@ function HomePageContent() {
             className="text-center mb-16"
           >
             <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-base-content mb-4 font-display">
-              Interface Moderna e Intuitiva
+              Interface web e mobile
             </h2>
             <p className="text-lg text-base-content/70 max-w-2xl mx-auto">
-              Design pensado para facilitar seu trabalho
+              Painel administrativo no computador e telas otimizadas para uso em campo no celular
             </p>
           </motion.div>
 
@@ -481,8 +618,8 @@ function HomePageContent() {
               <div className="aspect-video bg-gradient-to-br from-primary/10 to-secondary/10 flex items-center justify-center">
                 <div className="text-center">
                   <FileCheck className="w-16 h-16 text-primary/40 mx-auto mb-4" />
-                  <p className="text-base-content/60">[Placeholder para imagem do checklist]</p>
-                  <p className="text-sm text-base-content/40 mt-2">Adicione uma imagem 1200x800px</p>
+                  <p className="text-base-content/60">Checklists, normas e cadastros no painel web</p>
+                  <p className="text-sm text-base-content/40 mt-2">Imagem sugerida: tela do painel 1200×800px</p>
                 </div>
               </div>
             </motion.div>
@@ -496,8 +633,8 @@ function HomePageContent() {
               <div className="aspect-video bg-gradient-to-br from-secondary/10 to-primary/10 flex items-center justify-center">
                 <div className="text-center">
                   <BarChart3 className="w-16 h-16 text-secondary/40 mx-auto mb-4" />
-                  <p className="text-base-content/60">[Placeholder para imagem de relatórios]</p>
-                  <p className="text-sm text-base-content/40 mt-2">Adicione uma imagem 1200x800px</p>
+                  <p className="text-base-content/60">Relatórios, PDFs e indicadores para o cliente</p>
+                  <p className="text-sm text-base-content/40 mt-2">Imagem sugerida: relatório ou dashboard 1200×800px</p>
                 </div>
               </div>
             </motion.div>
@@ -573,10 +710,10 @@ function HomePageContent() {
             viewport={{ once: true }}
           >
             <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-6 font-display">
-              Pronto para transformar suas auditorias?
+              Conheça o ChekAI
             </h2>
             <p className="text-xl text-white/90 mb-8 max-w-2xl mx-auto">
-              Comece hoje mesmo e veja a diferença que a inteligência artificial pode fazer no seu trabalho.
+              Veja como o sistema pode se encaixar na rotina da sua consultoria.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <button
@@ -601,8 +738,8 @@ function HomePageContent() {
       {/* Footer */}
       <footer className="px-4 py-12 lg:px-8 bg-base-100 border-t border-base-300">
         <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
-            <div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 mb-8">
+            <div className="lg:col-span-1">
               <div className="flex items-center justify-center md:justify-start mb-4">
                 <Image
                   src="/images/logo-large.png"
@@ -613,7 +750,8 @@ function HomePageContent() {
                 />
               </div>
               <p className="text-sm text-base-content/60 text-center md:text-left">
-                Sistema para consultorias em segurança de alimentos com inteligência artificial.
+                Sistema para consultoria em segurança de alimentos com inteligência artificial, legislação integrada
+                e aplicativo mobile.
               </p>
               <p className="text-sm font-medium text-primary italic mt-2 text-center md:text-left">
                 Fácil no check, inteligente no controle.
@@ -623,6 +761,11 @@ function HomePageContent() {
             <div>
               <h4 className="font-semibold mb-4">Produto</h4>
               <ul className="space-y-2 text-sm text-base-content/60">
+                <li>
+                  <Link href="#ecossistema" className="hover:text-primary transition-colors">
+                    Visão geral
+                  </Link>
+                </li>
                 <li>
                   <Link href="#features" className="hover:text-primary transition-colors">
                     Funcionalidades
@@ -636,6 +779,11 @@ function HomePageContent() {
                 <li>
                   <Link href="#demo-checklist-ia" className="hover:text-primary transition-colors">
                     Checklist com IA
+                  </Link>
+                </li>
+                <li>
+                  <Link href="#demo-app-campo" className="hover:text-primary transition-colors">
+                    App no campo
                   </Link>
                 </li>
                 <li>
@@ -682,6 +830,32 @@ function HomePageContent() {
                   </a>
                 </li>
                 <li className="text-xs">© {new Date().getFullYear()} Todos os direitos reservados</li>
+              </ul>
+            </div>
+
+            <div>
+              <h4 className="font-semibold mb-4">Jurídico</h4>
+              <ul className="space-y-2 text-sm text-base-content/60">
+                <li>
+                  <Link href="/politica-privacidade" className="hover:text-primary transition-colors">
+                    Política de Privacidade
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/politica-cookies" className="hover:text-primary transition-colors">
+                    Política de Cookies
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/lgpd" className="hover:text-primary transition-colors">
+                    LGPD
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/termos-uso" className="hover:text-primary transition-colors">
+                    Termos de Uso
+                  </Link>
+                </li>
               </ul>
             </div>
           </div>

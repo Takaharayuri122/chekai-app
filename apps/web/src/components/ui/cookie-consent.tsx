@@ -94,6 +94,14 @@ export function CookieConsent() {
                           Utilizamos cookies para melhorar sua experiência, analisar o desempenho do site e personalizar conteúdo.
                           Ao continuar navegando, você concorda com nossa{' '}
                           <Link
+                            href="/politica-cookies"
+                            className="text-primary hover:underline font-medium inline"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            Política de Cookies
+                          </Link>
+                          ,{' '}
+                          <Link
                             href="/politica-privacidade"
                             className="text-primary hover:underline font-medium inline"
                             onClick={(e) => e.stopPropagation()}
