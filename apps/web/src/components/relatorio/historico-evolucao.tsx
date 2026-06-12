@@ -129,7 +129,7 @@ export function HistoricoEvolucao({
                 borderRadius: 'var(--rounded-box, 0.5rem)',
               }}
               labelStyle={{ color: 'oklch(var(--bc))' }}
-              formatter={(value: number | undefined) => [`${value != null ? Number(value).toFixed(2) : 0}%`, 'Aproveitamento']}
+              formatter={(value) => [`${value != null ? Number(value).toFixed(2) : 0}%`, 'Aproveitamento']}
               labelFormatter={(_, payload) => {
                 const p = payload[0]?.payload;
                 return p ? `${p.data}${p.isAtual ? ' (atual)' : ''}` : '';

@@ -60,9 +60,12 @@ export function GraficoDistribuicaoPontos({
                 border: '1px solid oklch(var(--b3))',
                 borderRadius: 'var(--rounded-box, 0.5rem)',
               }}
-              formatter={(value: number | undefined) => [
-                `${value ?? 0} (${total > 0 && value != null ? ((value / total) * 100).toFixed(1) : 0}%)`,
-              ]}
+              formatter={(value) => {
+                const numero = Number(value ?? 0);
+                return [
+                  `${numero} (${total > 0 ? ((numero / total) * 100).toFixed(1) : 0}%)`,
+                ];
+              }}
             />
             <Legend
               layout="horizontal"
