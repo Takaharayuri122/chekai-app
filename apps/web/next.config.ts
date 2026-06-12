@@ -28,17 +28,14 @@ const pwaConfig = withPWA({
         cacheName: 'auth-requests',
       },
     },
-    // API calls: NetworkFirst, TTL curto (dados dinâmicos)
+    // API calls: NetworkOnly. Dados dinâmicos (checklists, auditorias etc.) NUNCA
+    // devem ser servidos do cache do SW — offline foi abandonado em favor de API direta.
+    // Cachear respostas de API fazia o PWA exibir o último estado salvo (dados velhos).
     {
       urlPattern: /^https?:\/\/.*\/api\/.*/i,
-      handler: 'NetworkFirst',
+      handler: 'NetworkOnly',
       options: {
         cacheName: 'api-cache',
-        networkTimeoutSeconds: 10,
-        expiration: {
-          maxEntries: 50,
-          maxAgeSeconds: 60,
-        },
       },
     },
     // Documentos HTML (navegação): StaleWhileRevalidate, TTL longo
