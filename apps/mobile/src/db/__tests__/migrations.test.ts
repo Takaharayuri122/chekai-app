@@ -27,7 +27,7 @@ describe('runMigrations', () => {
   });
 
   it('skips migrations when database is already at current version', () => {
-    mockDb.getFirstSync.mockReturnValue({ user_version: 2 });
+    mockDb.getFirstSync.mockReturnValue({ user_version: 5 });
 
     runMigrations(mockDb as any);
 
@@ -56,8 +56,47 @@ describe('runMigrations', () => {
     );
   });
 
-  it('skips v2 when database is already at version 2', () => {
+  it('executes schema v3 on a v2 database', () => {
     mockDb.getFirstSync.mockReturnValue({ user_version: 2 });
+
+    runMigrations(mockDb as any);
+
+    expect(mockDb.execSync).toHaveBeenCalledWith(
+      expect.stringContaining('ALTER TABLE auditorias ADD COLUMN pdf_local_path TEXT;')
+    );
+    expect(mockDb.execSync).toHaveBeenCalledWith(
+      expect.stringContaining('PRAGMA user_version = 3')
+    );
+  });
+
+  it('executes schema v4 on a v3 database', () => {
+    mockDb.getFirstSync.mockReturnValue({ user_version: 3 });
+
+    runMigrations(mockDb as any);
+
+    expect(mockDb.execSync).toHaveBeenCalledWith(
+      expect.stringContaining('ALTER TABLE relatorios_tecnicos ADD COLUMN pdf_url TEXT;')
+    );
+    expect(mockDb.execSync).toHaveBeenCalledWith(
+      expect.stringContaining('PRAGMA user_version = 4')
+    );
+  });
+
+  it('executes schema v5 on a v4 database', () => {
+    mockDb.getFirstSync.mockReturnValue({ user_version: 4 });
+
+    runMigrations(mockDb as any);
+
+    expect(mockDb.execSync).toHaveBeenCalledWith(
+      expect.stringContaining('CREATE TABLE checkins')
+    );
+    expect(mockDb.execSync).toHaveBeenCalledWith(
+      expect.stringContaining('PRAGMA user_version = 5')
+    );
+  });
+
+  it('skips v5 when database is already at version 5', () => {
+    mockDb.getFirstSync.mockReturnValue({ user_version: 5 });
 
     runMigrations(mockDb as any);
 

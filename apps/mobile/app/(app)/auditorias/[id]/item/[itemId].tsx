@@ -1,20 +1,19 @@
 import {
-  View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert, TextInput,
+  View, Text, ScrollView, TouchableOpacity, Alert, TextInput,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState, useCallback } from 'react';
 import { ArrowLeft } from 'lucide-react-native';
-import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system';
 import { useAuditoriaStore } from '../../../../../src/store/auditoria';
 import { FotoRepo } from '../../../../../src/db/repositories/foto.repo';
-import { AuditoriaItemRepo } from '../../../../../src/db/repositories/auditoria-item.repo';
 import { ItemRespostaButtons } from '../../../../../src/components/auditoria/ItemRespostaButtons';
 import { ItemCamposNc } from '../../../../../src/components/auditoria/ItemCamposNc';
 import { FotoGrid } from '../../../../../src/components/auditoria/FotoGrid';
-import { getSugestaoIa } from '../../../../../src/api/auditoria.api';
+import { getSugestaoIa, CreditoInsuficienteError } from '../../../../../src/api/ia.api';
+import { abrirFotoPicker } from '../../../../../src/utils/foto-picker';
 
 const fotoRepo = new FotoRepo();
-const itemRepo = new AuditoriaItemRepo();
 
 export default function ItemScreen() {
   const { id, itemId, readonly: readonlyParam } = useLocalSearchParams<{ id: string; itemId: string; readonly?: string }>();
@@ -32,8 +31,9 @@ export default function ItemScreen() {
   const [loadingIa, setLoadingIa] = useState(false);
   const [descricaoIa, setDescricaoIa] = useState(item?.descricaoIa ?? undefined);
   const [planoIa, setPlanoIa] = useState(item?.planoAcaoSugerido ?? undefined);
+  const [referenciaLegal, setReferenciaLegal] = useState(item?.referenciaLegal ?? undefined);
+  const [carregandoFoto, setCarregandoFoto] = useState(false);
 
-  // Parse opcoes customizadas
   const opcoes = item?.opcoesRespostaConfig
     ? JSON.parse(item.opcoesRespostaConfig)
     : undefined;
@@ -41,41 +41,51 @@ export default function ItemScreen() {
   const handleSelectResposta = (v: string, pts?: number) => {
     setResposta(v);
     if (pts !== undefined) setPontuacao(pts);
-
-    // IA: trigger on NC
     if (v === 'nao_conforme' && !descricaoNc && !loadingIa) {
       setLoadingIa(true);
-      getSugestaoIa(itemId!, item?.descricao ?? '')
-        .then(({ descricao, planoAcao: pa }) => {
+      getSugestaoIa(item?.descricao ?? '')
+        .then(({ descricao, planoAcao: pa, referenciaLegal: ref }) => {
           setDescricaoIa(descricao);
           setPlanoIa(pa);
+          if (ref) setReferenciaLegal(ref);
           if (!descricaoNc) setDescricaoNc(descricao);
           if (!planoAcao) setPlanoAcao(pa);
         })
-        .catch(() => { /* best-effort */ })
+        .catch((e) => {
+          if (e instanceof CreditoInsuficienteError) {
+            Alert.alert('Créditos de IA esgotados', e.message);
+          }
+        })
         .finally(() => setLoadingIa(false));
     }
   };
 
   const handleAddFoto = useCallback(async () => {
     if (!itemId) return;
-    const result = await ImagePicker.launchCameraAsync({
-      quality: 0.8,
-      allowsEditing: false,
-    });
-    if (!result.canceled && result.assets[0]) {
-      fotoRepo.add(itemId!, result.assets[0].uri);
-      setFotos(fotoRepo.findByItem(itemId!));
+    setCarregandoFoto(true);
+    try {
+      const novasFotos = await abrirFotoPicker(fotos.length);
+      for (const foto of novasFotos) {
+        fotoRepo.add(itemId, foto.uri, foto.coords ?? undefined, foto.tamanhoBytes);
+      }
+      if (novasFotos.length > 0) {
+        setFotos(fotoRepo.findByItem(itemId));
+      }
+    } finally {
+      setCarregandoFoto(false);
     }
-  }, [itemId]);
+  }, [itemId, fotos.length]);
 
-  const handleRemoveFoto = useCallback((fotoId: string) => {
+  const handleRemoveFoto = useCallback(async (fotoId: string) => {
+    const foto = fotos.find(f => f.id === fotoId);
     fotoRepo.remove(fotoId);
+    if (foto?.filePath) {
+      FileSystem.deleteAsync(foto.filePath, { idempotent: true }).catch(() => {});
+    }
     setFotos(fotoRepo.findByItem(itemId!));
-  }, [itemId]);
+  }, [itemId, fotos]);
 
   const handleSalvar = () => {
-    // Validate required fields
     if (item?.fotoObrigatoria && fotos.length === 0) {
       Alert.alert('Foto obrigatória', 'Adicione pelo menos uma foto para este item.');
       return;
@@ -84,7 +94,6 @@ export default function ItemScreen() {
       Alert.alert('Observação obrigatória', 'Preencha a observação para este item.');
       return;
     }
-
     salvarResposta(itemId!, {
       resposta,
       observacao: observacao || undefined,
@@ -93,6 +102,7 @@ export default function ItemScreen() {
       pontuacao,
       descricaoIa: descricaoIa,
       planoAcaoSugerido: planoIa,
+      referenciaLegal: resposta === 'nao_conforme' ? referenciaLegal : undefined,
     });
     router.back();
   };
@@ -117,7 +127,6 @@ export default function ItemScreen() {
       </View>
 
       <ScrollView className="flex-1" contentContainerStyle={{ padding: 16, gap: 16 }}>
-        {/* Response buttons */}
         <ItemRespostaButtons
           tipo={item.tipoResposta as any}
           opcoes={opcoes}
@@ -126,7 +135,6 @@ export default function ItemScreen() {
           disabled={isReadonly}
         />
 
-        {/* Observação */}
         <View>
           <Text className="text-sm font-medium text-gray-600 mb-2">
             Observação{item.observacaoObrigatoria && !isReadonly ? ' *' : ''}
@@ -143,14 +151,6 @@ export default function ItemScreen() {
           />
         </View>
 
-        {/* Foto obrigatória warning */}
-        {!isReadonly && item.fotoObrigatoria && fotos.length === 0 && (
-          <View className="bg-orange-50 border border-orange-200 rounded-xl px-4 py-3 flex-row items-center gap-2">
-            <Text className="text-orange-700 text-sm">Foto obrigatoria para este item</Text>
-          </View>
-        )}
-
-        {/* NC fields */}
         {resposta === 'nao_conforme' && (
           <ItemCamposNc
             descricaoIa={descricaoIa}
@@ -163,7 +163,6 @@ export default function ItemScreen() {
           />
         )}
 
-        {/* Fotos */}
         <View>
           <Text className="text-sm font-medium text-gray-600 mb-2">Fotos</Text>
           <FotoGrid
@@ -171,10 +170,12 @@ export default function ItemScreen() {
             onAdd={isReadonly ? undefined : handleAddFoto}
             onRemove={isReadonly ? undefined : handleRemoveFoto}
             obrigatoria={!isReadonly && item.fotoObrigatoria}
+            carregando={carregandoFoto}
+            analiseContexto={isReadonly ? undefined : { perguntaChecklist: item.descricao, categoria: item.categoria ?? undefined }}
+            onAnaliseAtualizada={() => setFotos(fotoRepo.findByItem(itemId!))}
           />
         </View>
 
-        {/* Salvar button */}
         {!isReadonly && (
           <TouchableOpacity
             onPress={handleSalvar}

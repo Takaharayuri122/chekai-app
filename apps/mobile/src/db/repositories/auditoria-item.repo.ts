@@ -1,4 +1,5 @@
 import { getDatabase } from '../client';
+import { gerarUUID } from '../../utils/uuid';
 
 export interface TemplateItemRow {
   id: string;
@@ -20,7 +21,9 @@ export interface RespostaInput {
   planoAcaoFinal?: string;
   pontuacao?: number;
   descricaoIa?: string;
+  complementoDescricao?: string;
   planoAcaoSugerido?: string;
+  referenciaLegal?: string;
 }
 
 export interface AuditoriaItemCompleto {
@@ -32,7 +35,9 @@ export interface AuditoriaItemCompleto {
   descricaoNaoConformidade: string | null;
   planoAcaoFinal: string | null;
   descricaoIa: string | null;
+  complementoDescricao: string | null;
   planoAcaoSugerido: string | null;
+  referenciaLegal: string | null;
   pontuacao: number;
   syncStatus: string;
   // campos do template_item
@@ -53,7 +58,7 @@ export class AuditoriaItemRepo {
   bulkCreate(auditoriaId: string, templateItens: TemplateItemRow[]): void {
     const now = new Date().toISOString();
     for (const ti of templateItens) {
-      const id = crypto.randomUUID();
+      const id = gerarUUID();
       this.db.runSync(
         `INSERT INTO auditoria_itens
          (id, auditoria_id, template_item_id, resposta, pontuacao, sync_status, updated_at)
@@ -72,13 +77,16 @@ export class AuditoriaItemRepo {
          plano_acao_final = ?,
          pontuacao = ?,
          descricao_ia = ?,
+         complemento_descricao = ?,
          plano_acao_sugerido = ?,
+         referencia_legal = ?,
          sync_status = 'pending',
          updated_at = ?
        WHERE id = ?`,
       [r.resposta, r.observacao ?? null, r.descricaoNaoConformidade ?? null,
        r.planoAcaoFinal ?? null, r.pontuacao ?? 0,
-       r.descricaoIa ?? null, r.planoAcaoSugerido ?? null,
+       r.descricaoIa ?? null, r.complementoDescricao ?? null,
+       r.planoAcaoSugerido ?? null, r.referenciaLegal ?? null,
        new Date().toISOString(), itemId]
     );
   }
@@ -88,7 +96,8 @@ export class AuditoriaItemRepo {
       id: string; auditoria_id: string; template_item_id: string;
       resposta: string; observacao: string | null;
       descricao_nao_conformidade: string | null; plano_acao_final: string | null;
-      descricao_ia: string | null; plano_acao_sugerido: string | null;
+      descricao_ia: string | null; complemento_descricao: string | null;
+      plano_acao_sugerido: string | null; referencia_legal: string | null;
       pontuacao: number; sync_status: string;
       descricao: string; ordem: number; categoria: string | null;
       tipo_resposta: string; opcoes_resposta_config: string | null;
@@ -110,7 +119,8 @@ export class AuditoriaItemRepo {
       resposta: r.resposta, observacao: r.observacao,
       descricaoNaoConformidade: r.descricao_nao_conformidade,
       planoAcaoFinal: r.plano_acao_final,
-      descricaoIa: r.descricao_ia, planoAcaoSugerido: r.plano_acao_sugerido,
+      descricaoIa: r.descricao_ia, complementoDescricao: r.complemento_descricao,
+      planoAcaoSugerido: r.plano_acao_sugerido, referenciaLegal: r.referencia_legal,
       pontuacao: r.pontuacao, syncStatus: r.sync_status,
       descricao: r.descricao, ordem: r.ordem, categoria: r.categoria,
       tipoResposta: r.tipo_resposta, opcoesRespostaConfig: r.opcoes_resposta_config,
@@ -125,7 +135,8 @@ export class AuditoriaItemRepo {
       id: string; auditoria_id: string; template_item_id: string;
       resposta: string; observacao: string | null;
       descricao_nao_conformidade: string | null; plano_acao_final: string | null;
-      descricao_ia: string | null; plano_acao_sugerido: string | null;
+      descricao_ia: string | null; complemento_descricao: string | null;
+      plano_acao_sugerido: string | null; referencia_legal: string | null;
       pontuacao: number; sync_status: string;
       descricao: string; ordem: number; categoria: string | null;
       tipo_resposta: string; opcoes_resposta_config: string | null;
@@ -147,7 +158,8 @@ export class AuditoriaItemRepo {
       resposta: r.resposta, observacao: r.observacao,
       descricaoNaoConformidade: r.descricao_nao_conformidade,
       planoAcaoFinal: r.plano_acao_final,
-      descricaoIa: r.descricao_ia, planoAcaoSugerido: r.plano_acao_sugerido,
+      descricaoIa: r.descricao_ia, complementoDescricao: r.complemento_descricao,
+      planoAcaoSugerido: r.plano_acao_sugerido, referenciaLegal: r.referencia_legal,
       pontuacao: r.pontuacao, syncStatus: r.sync_status,
       descricao: r.descricao, ordem: r.ordem, categoria: r.categoria,
       tipoResposta: r.tipo_resposta, opcoesRespostaConfig: r.opcoes_resposta_config,

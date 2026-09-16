@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { AuditoriaRepo, type AuditoriaCompleta } from '../db/repositories/auditoria.repo';
 import { AuditoriaItemRepo, type AuditoriaItemCompleto, type RespostaInput } from '../db/repositories/auditoria-item.repo';
+import { pullAuditoriaDetalhe } from '../sync/pull';
+import { SyncService } from '../sync/SyncService';
 
 interface AuditoriaStore {
   auditoria: AuditoriaCompleta | null;
@@ -10,6 +12,7 @@ interface AuditoriaStore {
 
   iniciar(auditoriaId: string): void;
   carregar(auditoriaId: string): void;
+  hidratarDetalhe(auditoriaId: string): Promise<void>;
   salvarResposta(itemId: string, resposta: RespostaInput): void;
   finalizar(): void;
   recarregar(): void;
@@ -59,6 +62,21 @@ export const useAuditoriaStore = create<AuditoriaStore>((set, get) => ({
     }
   },
 
+  async hidratarDetalhe(auditoriaId) {
+    const auditoria = auditoriaRepo.findById(auditoriaId);
+    if (!auditoria?.remoteId) return;
+    const online = await SyncService.isOnline();
+    if (!online) return;
+    try {
+      await pullAuditoriaDetalhe({ localId: auditoria.id, remoteId: auditoria.remoteId });
+      if (get().auditoria?.id !== auditoriaId) return;
+      const itens = itemRepo.findByAuditoria(auditoriaId);
+      set({ itens });
+    } catch (e) {
+      console.warn('[useAuditoriaStore] Falha ao hidratar detalhe; mantendo dados locais:', e);
+    }
+  },
+
   salvarResposta(itemId, resposta) {
     itemRepo.upsertResposta(itemId, resposta);
     set(state => ({
@@ -70,7 +88,9 @@ export const useAuditoriaStore = create<AuditoriaStore>((set, get) => ({
               planoAcaoFinal: resposta.planoAcaoFinal ?? null,
               pontuacao: resposta.pontuacao ?? 0,
               descricaoIa: resposta.descricaoIa ?? null,
-              planoAcaoSugerido: resposta.planoAcaoSugerido ?? null }
+              complementoDescricao: resposta.complementoDescricao ?? null,
+              planoAcaoSugerido: resposta.planoAcaoSugerido ?? null,
+              referenciaLegal: resposta.referenciaLegal ?? null }
           : i
       ),
     }));

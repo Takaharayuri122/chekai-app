@@ -15,7 +15,7 @@ export interface PageLoadingOverlayProps {
 
 /**
  * Overlay de carregamento em tela cheia, alinhado ao backdrop dos modais padrão
- * (`bg-black/60 backdrop-blur-sm`) e painel central com borda arredondada.
+ * (`bg-black/60`) e painel central com borda arredondada.
  */
 export function PageLoadingOverlay({ open, title, subtitle }: PageLoadingOverlayProps): ReactElement {
   useEffect(() => {
@@ -33,9 +33,11 @@ export function PageLoadingOverlay({ open, title, subtitle }: PageLoadingOverlay
     <AnimatePresence>
       {open && (
         <motion.div
+          key="page-loading-overlay"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
+          transition={{ duration: 0.12, ease: 'easeOut' }}
           className="fixed inset-0 z-[100] flex items-center justify-center p-4"
           role="alertdialog"
           aria-modal="true"
@@ -43,17 +45,8 @@ export function PageLoadingOverlay({ open, title, subtitle }: PageLoadingOverlay
           aria-live="polite"
           aria-labelledby="page-loading-overlay-titulo"
         >
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            aria-hidden
-          />
-          <motion.div
-            initial={{ scale: 0.95, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.95, opacity: 0 }}
+          <div className="absolute inset-0 bg-black/60" aria-hidden />
+          <div
             onClick={(e) => e.stopPropagation()}
             className="relative w-full max-w-md rounded-xl border border-base-300 bg-base-100 px-8 py-10 shadow-2xl"
           >
@@ -68,7 +61,7 @@ export function PageLoadingOverlay({ open, title, subtitle }: PageLoadingOverlay
                 ) : null}
               </div>
             </div>
-          </motion.div>
+          </div>
         </motion.div>
       )}
     </AnimatePresence>

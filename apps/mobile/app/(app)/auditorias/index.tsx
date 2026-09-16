@@ -1,11 +1,12 @@
-import { View, Text, FlatList, TouchableOpacity, RefreshControl } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, RefreshControl, Alert } from 'react-native';
 import { router } from 'expo-router';
 import { useState, useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
-import { Plus } from 'lucide-react-native';
+import { Plus, FileText, RotateCcw } from 'lucide-react-native';
 import { AuditoriaRepo, type AuditoriaListItem } from '../../../src/db/repositories/auditoria.repo';
 import { AuditoriaStatusBadge } from '../../../src/components/auditoria/AuditoriaStatusBadge';
 import { SyncService } from '../../../src/sync/SyncService';
+import { reabrirAuditoria } from '../../../src/api/auditoria.api';
 
 const repo = new AuditoriaRepo();
 
@@ -15,6 +16,7 @@ export default function AuditoriasListScreen() {
   const [auditorias, setAuditorias] = useState<AuditoriaListItem[]>([]);
   const [filtro, setFiltro] = useState<Filtro>('todas');
   const [refreshing, setRefreshing] = useState(false);
+  const [reabrindoId, setReabrindoId] = useState<string | null>(null);
 
   const load = useCallback(() => {
     const items = repo.findAll();
@@ -41,6 +43,42 @@ export default function AuditoriasListScreen() {
 
   const effectiveStatus = (a: AuditoriaListItem): string =>
     a.syncStatus === 'pending' && a.status === 'concluida' ? 'pending_sync' : a.status;
+
+  const isFinalizadaSincronizada = (a: AuditoriaListItem): boolean =>
+    a.status === 'concluida' && a.syncStatus === 'synced';
+
+  const executarReabertura = useCallback(async (a: AuditoriaListItem) => {
+    if (!a.remoteId) {
+      Alert.alert('Indisponível', 'Esta auditoria ainda não foi sincronizada com o servidor.');
+      return;
+    }
+    setReabrindoId(a.id);
+    try {
+      const online = await SyncService.isOnline();
+      if (!online) {
+        Alert.alert('Sem conexão', 'É necessário estar online para reabrir uma auditoria.');
+        return;
+      }
+      await reabrirAuditoria(a.remoteId);
+      repo.reabrirLocal(a.id);
+      load();
+    } catch (e) {
+      Alert.alert('Erro ao reabrir', e instanceof Error ? e.message : 'Tente novamente.');
+    } finally {
+      setReabrindoId(null);
+    }
+  }, [load]);
+
+  const confirmarReabertura = useCallback((a: AuditoriaListItem) => {
+    Alert.alert(
+      'Reabrir auditoria',
+      'A auditoria voltará para "em andamento" e a pontuação, o resumo e o PDF serão limpos. Deseja continuar?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Reabrir', style: 'destructive', onPress: () => { void executarReabertura(a); } },
+      ],
+    );
+  }, [executarReabertura]);
 
   return (
     <View className="flex-1 bg-base-200">
@@ -99,6 +137,32 @@ export default function AuditoriasListScreen() {
                 <Text className="text-sm font-bold text-primary">{a.pontuacaoTotal} pts</Text>
               )}
             </View>
+            {isFinalizadaSincronizada(a) && (
+              <View className="flex-row gap-2 mt-3 pt-3 border-t border-gray-100">
+                <TouchableOpacity
+                  onPress={() => router.push({
+                    pathname: '/(app)/auditorias/[id]/relatorio',
+                    params: { id: a.id },
+                  })}
+                  className="flex-1 flex-row items-center justify-center gap-1.5 bg-primary/10 rounded-xl py-2.5"
+                  activeOpacity={0.8}
+                >
+                  <FileText size={16} color="#00B8A9" />
+                  <Text className="text-primary font-semibold text-sm">Relatório</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => confirmarReabertura(a)}
+                  disabled={reabrindoId === a.id}
+                  className="flex-1 flex-row items-center justify-center gap-1.5 bg-gray-100 rounded-xl py-2.5"
+                  activeOpacity={0.8}
+                >
+                  <RotateCcw size={16} color="#4b5563" />
+                  <Text className="text-gray-600 font-semibold text-sm">
+                    {reabrindoId === a.id ? 'Reabrindo...' : 'Reabrir'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </TouchableOpacity>
         )}
       />

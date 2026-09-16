@@ -13,6 +13,7 @@ interface Props {
     planoAcaoFinal?: string;
     descricaoIa?: string;
     planoAcaoSugerido?: string;
+    referenciaLegal?: string;
   }) => void;
   onFinalizar: () => void;
 }
@@ -43,6 +44,7 @@ export function ChecklistTinderMode({ itens, onResponder, onFinalizar }: Props) 
       planoAcaoFinal: dados.resposta === 'nao_conforme' ? (dados.planoAcao || undefined) : undefined,
       descricaoIa: dados.descricaoIa,
       planoAcaoSugerido: dados.planoAcaoSugerido,
+      referenciaLegal: dados.resposta === 'nao_conforme' ? dados.referenciaLegal : undefined,
     });
     if (!isLastItem) {
       setCurrentIndex(prev => prev + 1);

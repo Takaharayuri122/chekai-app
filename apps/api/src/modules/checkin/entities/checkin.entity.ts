@@ -70,6 +70,12 @@ export class Checkin {
   @Column({ name: 'alerta_3h_emitido_em', type: 'timestamp', nullable: true })
   alerta3hEmitidoEm: Date | null;
 
+  @Column({ type: 'text', nullable: true })
+  comentario: string | null;
+
+  @Column({ name: 'encerrado_automaticamente', type: 'boolean', default: false })
+  encerradoAutomaticamente: boolean;
+
   @CreateDateColumn()
   criadoEm: Date;
 

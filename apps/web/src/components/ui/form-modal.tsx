@@ -29,9 +29,14 @@ const MAX_WIDTH_MAP: Record<MaxWidth, string> = {
   '5xl': 'max-w-5xl',
 };
 
+const TRANSICAO_MODAL = { duration: 0.12, ease: 'easeOut' as const };
+
 /**
  * Modal reutilizável com header fixo, footer fixo, scroll vertical no conteúdo
  * e proteção contra perda de dados (isDirty).
+ *
+ * Overlay sem backdrop-filter e sem scale: blur+scale animados no compositor
+ * do macOS/Chrome geram uma piscada ao montar/desmontar a camada.
  */
 export function FormModal({
   open,
@@ -90,26 +95,22 @@ export function FormModal({
       <AnimatePresence>
         {open && (
           <motion.div
+            key="form-modal"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            transition={TRANSICAO_MODAL}
             className="fixed inset-0 z-50 flex items-center justify-center p-4"
             role="dialog"
             aria-modal="true"
             aria-labelledby="form-modal-titulo"
           >
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            <div
+              className="absolute inset-0 bg-black/60"
               onClick={handleBackdropClick}
             />
 
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
+            <div
               onClick={(e) => e.stopPropagation()}
               className={`relative flex flex-col bg-base-100 rounded-xl shadow-2xl border border-base-300 w-full ${MAX_WIDTH_MAP[maxWidth]} max-h-[90vh] overflow-hidden`}
             >
@@ -140,7 +141,7 @@ export function FormModal({
                   {footer}
                 </div>
               )}
-            </motion.div>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

@@ -1,13 +1,22 @@
+import { useEffect } from 'react';
 import { Redirect, Tabs } from 'expo-router';
 import { View, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../src/store/auth';
 import { Home, ClipboardList, FileText, User } from 'lucide-react-native';
 import { OfflineBanner } from '../../src/components/OfflineBanner';
+import { CheckinFab } from '../../src/components/checkin/CheckinFab';
+import { SyncService } from '../../src/sync/SyncService';
 
 export default function AppLayout() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const hasHydrated = useAuthStore((s) => s._hasHydrated);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const cancelarAutoSync = SyncService.initAutoSync();
+    return cancelarAutoSync;
+  }, [isAuthenticated]);
 
   // Aguardar hidratação do store antes de redirecionar
   // (evita race condition no primeiro acesso)
@@ -72,7 +81,16 @@ export default function AppLayout() {
             headerShown: false,
           }}
         />
+        {/* Planos: rota acessível via Dashboard (GESTOR/MASTER), oculta da tab bar */}
+        <Tabs.Screen
+          name="planos"
+          options={{
+            href: null,
+            headerShown: false,
+          }}
+        />
       </Tabs>
+      <CheckinFab />
     </SafeAreaView>
   );
 }

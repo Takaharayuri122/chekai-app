@@ -1,7 +1,7 @@
 import { View, Text, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useCallback, useState } from 'react';
-import { ArrowLeft, List, Layers } from 'lucide-react-native';
+import { ArrowLeft, List, Layers, FileText } from 'lucide-react-native';
 import { MMKV } from 'react-native-mmkv';
 import { useAuditoriaStore } from '../../../../src/store/auditoria';
 import { ChecklistProgress } from '../../../../src/components/auditoria/ChecklistProgress';
@@ -22,7 +22,7 @@ function getModoSalvo(): ModoChecklist {
 
 export default function ChecklistScreen() {
   const { id, readonly: readonlyParam } = useLocalSearchParams<{ id: string; readonly?: string }>();
-  const { auditoria, itens, isLoading, error, iniciar, carregar, finalizar, salvarResposta, limpar } = useAuditoriaStore();
+  const { auditoria, itens, isLoading, error, iniciar, carregar, hidratarDetalhe, finalizar, salvarResposta, limpar } = useAuditoriaStore();
 
   const isReadonly = readonlyParam === '1' || (auditoria?.status === 'concluida' && auditoria?.syncStatus === 'synced');
 
@@ -36,8 +36,9 @@ export default function ChecklistScreen() {
     } else {
       iniciar(id);
     }
+    hidratarDetalhe(id);
     return () => limpar();
-  }, [id, readonlyParam, iniciar, carregar, limpar]);
+  }, [id, readonlyParam, iniciar, carregar, hidratarDetalhe, limpar]);
 
   const respondidos = useMemo(() => itens.filter(i => i.resposta !== 'nao_avaliado').length, [itens]);
 
@@ -80,6 +81,7 @@ export default function ChecklistScreen() {
     planoAcaoFinal?: string;
     descricaoIa?: string;
     planoAcaoSugerido?: string;
+    referenciaLegal?: string;
   }) => {
     salvarResposta(itemId, { resposta, ...extras });
   }, [salvarResposta]);
@@ -150,6 +152,17 @@ export default function ChecklistScreen() {
             <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-4">
               <TouchableOpacity onPress={handleFinalizar} className="bg-primary rounded-xl py-4 items-center">
                 <Text className="text-white font-bold text-base">Finalizar Auditoria</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+          {isReadonly && (
+            <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-4">
+              <TouchableOpacity
+                onPress={() => router.push({ pathname: '/(app)/auditorias/[id]/relatorio', params: { id: id! } })}
+                className="bg-primary rounded-xl py-4 flex-row items-center justify-center gap-2"
+              >
+                <FileText size={18} color="white" />
+                <Text className="text-white font-bold text-base">Ver relatório</Text>
               </TouchableOpacity>
             </View>
           )}

@@ -21,6 +21,8 @@ CREATE TABLE IF NOT EXISTS checkins (
   latitude_checkout NUMERIC(10, 8),
   longitude_checkout NUMERIC(11, 8),
   alerta_3h_emitido_em TIMESTAMP,
+  comentario TEXT,
+  encerrado_automaticamente BOOLEAN NOT NULL DEFAULT false,
   "criadoEm" TIMESTAMP NOT NULL DEFAULT now(),
   "atualizadoEm" TIMESTAMP NOT NULL DEFAULT now(),
   CONSTRAINT fk_checkins_usuario

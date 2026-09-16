@@ -248,22 +248,17 @@ export function ChecklistIaChatModal({ open, onClose, onChecklistGerado }: Check
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            transition={{ duration: 0.12, ease: 'easeOut' }}
             className="fixed inset-0 z-50 flex items-center justify-center p-4"
             role="dialog"
             aria-modal="true"
           >
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            <div
+              className="absolute inset-0 bg-black/60"
               onClick={solicitarFechamento}
             />
 
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
+            <div
               onClick={(e) => e.stopPropagation()}
               className="relative flex flex-col bg-base-100 rounded-xl shadow-2xl border border-base-300 w-full max-w-3xl h-[85vh] overflow-hidden"
             >
@@ -473,7 +468,7 @@ export function ChecklistIaChatModal({ open, onClose, onChecklistGerado }: Check
                   </button>
                 </div>
               </div>
-            </motion.div>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

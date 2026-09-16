@@ -4,6 +4,8 @@ import { pullAll } from './pull';
 import { pushPending } from './push';
 
 let _syncInProgress = false;
+let _autoSyncUnsubscribe: (() => void) | null = null;
+let _wasConnected: boolean | null = null;
 
 export const SyncService = {
   async sync(): Promise<void> {
@@ -36,5 +38,30 @@ export const SyncService = {
 
   isOnline(): Promise<boolean> {
     return NetInfo.fetch().then((s) => !!s.isConnected);
+  },
+
+  /**
+   * Registra um listener de conexão que dispara o sync (push antes de pull)
+   * sempre que o aparelho recupera a conexão. Idempotente: retorna o mesmo
+   * cancelamento se já estiver ativo.
+   */
+  initAutoSync(): () => void {
+    if (_autoSyncUnsubscribe) {
+      return _autoSyncUnsubscribe;
+    }
+    const unsubscribe = NetInfo.addEventListener((state) => {
+      const isConnected = !!state.isConnected;
+      if (_wasConnected === false && isConnected) {
+        console.log('[SyncService] Conexão recuperada, drenando fila e atualizando dados...');
+        void SyncService.sync();
+      }
+      _wasConnected = isConnected;
+    });
+    _autoSyncUnsubscribe = () => {
+      unsubscribe();
+      _autoSyncUnsubscribe = null;
+      _wasConnected = null;
+    };
+    return _autoSyncUnsubscribe;
   },
 };

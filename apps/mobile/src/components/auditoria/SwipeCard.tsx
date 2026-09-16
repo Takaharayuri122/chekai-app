@@ -1,4 +1,4 @@
-import { View, Text, TextInput, TouchableOpacity, ScrollView, useWindowDimensions } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, useWindowDimensions, Alert } from 'react-native';
 import { useState, useCallback, useEffect } from 'react';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -11,11 +11,12 @@ import Animated, {
   Extrapolation,
 } from 'react-native-reanimated';
 import { Camera, AlertTriangle, FileText } from 'lucide-react-native';
-import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system';
 import { FotoGrid } from './FotoGrid';
 import { ItemCamposNc } from './ItemCamposNc';
 import { FotoRepo } from '../../db/repositories/foto.repo';
-import { getSugestaoIa } from '../../api/auditoria.api';
+import { getSugestaoIa, CreditoInsuficienteError } from '../../api/ia.api';
+import { abrirFotoPicker } from '../../utils/foto-picker';
 import type { AuditoriaItemCompleto } from '../../db/repositories/auditoria-item.repo';
 import type { Foto } from '../../db/repositories/foto.repo';
 
@@ -36,6 +37,7 @@ export interface CardFormData {
   planoAcao: string;
   descricaoIa?: string;
   planoAcaoSugerido?: string;
+  referenciaLegal?: string;
 }
 
 interface Props {
@@ -58,6 +60,8 @@ export function SwipeCard({ item, indice, total, onSalvarEAvancar, isActive }: P
   const [loadingIa, setLoadingIa] = useState(false);
   const [descricaoIa, setDescricaoIa] = useState(item.descricaoIa ?? undefined);
   const [planoIa, setPlanoIa] = useState(item.planoAcaoSugerido ?? undefined);
+  const [referenciaLegal, setReferenciaLegal] = useState(item.referenciaLegal ?? undefined);
+  const [carregandoFoto, setCarregandoFoto] = useState(false);
 
   const isNc = resposta === 'nao_conforme';
   const criticidadeCor = item.criticidade ? CRITICIDADE_COR[item.criticidade] : undefined;
@@ -65,14 +69,19 @@ export function SwipeCard({ item, indice, total, onSalvarEAvancar, isActive }: P
   useEffect(() => {
     if (resposta === 'nao_conforme' && !descricaoNc && !loadingIa && !descricaoIa) {
       setLoadingIa(true);
-      getSugestaoIa(item.id, item.descricao)
-        .then(({ descricao, planoAcao: pa }) => {
+      getSugestaoIa(item.descricao)
+        .then(({ descricao, planoAcao: pa, referenciaLegal: ref }) => {
           setDescricaoIa(descricao);
           setPlanoIa(pa);
+          if (ref) setReferenciaLegal(ref);
           if (!descricaoNc) setDescricaoNc(descricao);
           if (!planoAcao) setPlanoAcao(pa);
         })
-        .catch(() => {})
+        .catch((e) => {
+          if (e instanceof CreditoInsuficienteError) {
+            Alert.alert('Créditos de IA esgotados', e.message);
+          }
+        })
         .finally(() => setLoadingIa(false));
     }
   }, [resposta]);
@@ -84,12 +93,27 @@ export function SwipeCard({ item, indice, total, onSalvarEAvancar, isActive }: P
     planoAcao,
     descricaoIa,
     planoAcaoSugerido: planoIa,
-  }), [resposta, observacao, descricaoNc, planoAcao, descricaoIa, planoIa]);
+    referenciaLegal,
+  }), [resposta, observacao, descricaoNc, planoAcao, descricaoIa, planoIa, referenciaLegal]);
+
+  const validarAntesDeSalvar = useCallback((respostaFinal?: string): boolean => {
+    const r = respostaFinal ?? resposta;
+    if (item.fotoObrigatoria && fotos.length === 0 && r !== 'na') {
+      Alert.alert('Foto obrigatória', 'Adicione pelo menos uma foto para este item.');
+      return false;
+    }
+    if (item.observacaoObrigatoria && !observacao.trim() && r !== 'na') {
+      Alert.alert('Observação obrigatória', 'Preencha a observação para este item.');
+      return false;
+    }
+    return true;
+  }, [resposta, fotos.length, observacao, item.fotoObrigatoria, item.observacaoObrigatoria]);
 
   const confirmarSwipe = useCallback((direcao: 'direita' | 'esquerda') => {
     const respostaSwipe = direcao === 'direita' ? 'conforme' : 'nao_conforme';
+    if (!validarAntesDeSalvar(respostaSwipe)) return;
     onSalvarEAvancar(buildFormData(respostaSwipe));
-  }, [buildFormData, onSalvarEAvancar]);
+  }, [buildFormData, onSalvarEAvancar, validarAntesDeSalvar]);
 
   const panGesture = Gesture.Pan()
     .enabled(isActive)
@@ -130,21 +154,33 @@ export function SwipeCard({ item, indice, total, onSalvarEAvancar, isActive }: P
   };
 
   const handleConfirmar = () => {
+    if (!validarAntesDeSalvar()) return;
     onSalvarEAvancar(buildFormData());
   };
 
   const handleAddFoto = useCallback(async () => {
-    const result = await ImagePicker.launchCameraAsync({ quality: 0.8, allowsEditing: false });
-    if (!result.canceled && result.assets[0]) {
-      fotoRepo.add(item.id, result.assets[0].uri);
-      setFotos(fotoRepo.findByItem(item.id));
+    setCarregandoFoto(true);
+    try {
+      const novasFotos = await abrirFotoPicker(fotos.length);
+      for (const foto of novasFotos) {
+        fotoRepo.add(item.id, foto.uri, foto.coords ?? undefined, foto.tamanhoBytes);
+      }
+      if (novasFotos.length > 0) {
+        setFotos(fotoRepo.findByItem(item.id));
+      }
+    } finally {
+      setCarregandoFoto(false);
     }
-  }, [item.id]);
+  }, [item.id, fotos.length]);
 
-  const handleRemoveFoto = useCallback((fotoId: string) => {
+  const handleRemoveFoto = useCallback(async (fotoId: string) => {
+    const foto = fotos.find(f => f.id === fotoId);
     fotoRepo.remove(fotoId);
+    if (foto?.filePath) {
+      FileSystem.deleteAsync(foto.filePath, { idempotent: true }).catch(() => {});
+    }
     setFotos(fotoRepo.findByItem(item.id));
-  }, [item.id]);
+  }, [item.id, fotos]);
 
   return (
     <GestureDetector gesture={panGesture}>
@@ -284,6 +320,9 @@ export function SwipeCard({ item, indice, total, onSalvarEAvancar, isActive }: P
                 onAdd={handleAddFoto}
                 onRemove={handleRemoveFoto}
                 obrigatoria={item.fotoObrigatoria}
+                carregando={carregandoFoto}
+                analiseContexto={{ perguntaChecklist: item.descricao, categoria: item.categoria ?? undefined }}
+                onAnaliseAtualizada={() => setFotos(fotoRepo.findByItem(item.id))}
               />
             </View>
           </ScrollView>

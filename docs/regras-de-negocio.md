@@ -58,7 +58,7 @@
 | RN-ISO-002 | Templates são isolados por `gestorId`: AUDITOR vê apenas templates **ativos** do seu gestor |
 | RN-ISO-003 | Auditorias são isoladas por `consultorId`: AUDITOR vê apenas as próprias; MASTER/GESTOR veem as próprias E as de auditores vinculados (`consultor.gestorId = usuario.id`) |
 | RN-ISO-004 | Relatórios técnicos seguem a mesma regra de isolamento das auditorias (`consultoraId`) |
-| RN-ISO-005 | Check-ins: GESTOR vê apenas check-ins de clientes onde é `gestorId`; AUDITOR não acessa listagem administrativa |
+| RN-ISO-005 | Check-ins: GESTOR vê e edita apenas check-ins de clientes onde é `gestorId`; AUDITOR não acessa listagem administrativa |
 | RN-ISO-006 | Créditos de IA são contabilizados por gestor; auditor consome quota do seu gestor |
 
 ---
@@ -163,11 +163,14 @@
 | RN-CKI-001 | Apenas 1 check-in aberto por usuário; tentativa de abrir segundo retorna erro |
 | RN-CKI-002 | Check-in exige unidade ativa pertencente ao cliente informado |
 | RN-CKI-003 | Validação de acesso: MASTER livre; GESTOR se for gestor do cliente; AUDITOR se seu `gestorId` for o gestor do cliente |
-| RN-CKI-004 | Checkout: apenas o próprio usuário pode finalizar seu check-in |
-| RN-CKI-005 | Alerta após 3 horas de check-in aberto; flag `alerta3hEmitidoEm` para não repetir |
+| RN-CKI-004 | Checkout pelo próprio usuário (FAB); GESTOR/MASTER podem encerrar ou editar check-ins no isolamento do cliente (`gestorId`) |
+| RN-CKI-005 | Alerta após 3 horas de check-in aberto; flag `alerta3hEmitidoEm` para não repetir; no web também via Notification API (toast se a permissão for negada) |
 | RN-CKI-006 | Listagem administrativa (tela de check-ins): AUDITOR não tem acesso; GESTOR vê apenas check-ins de seus clientes |
 | RN-CKI-007 | Check-in registra geolocalização de entrada e saída (latitude/longitude) |
 | RN-CKI-008 | Filtros na listagem: por auditor, cliente, período (dataInicio/dataFim) |
+| RN-CKI-009 | Check-in aberto há mais de 12h é encerrado automaticamente; `dataCheckout = dataCheckin + 12h`; lat/lng de checkout = lat/lng do check-in; comentário `Encerrado automaticamente após 12 horas.` |
+| RN-CKI-010 | GESTOR/MASTER podem alterar `dataCheckin`, `dataCheckout` e `comentario` de check-ins do seu isolamento. `dataCheckout` não pode ser anterior a `dataCheckin`. Preencher checkout em registro aberto fecha o status. Não reabrir check-in já fechado |
+| RN-CKI-011 | Relatório de horas (GESTOR/MASTER) agrupa por cliente ou usuário no período, com o mesmo isolamento da listagem. Totais = soma dos fechados + tempo decorrido dos abertos (em andamento) |
 
 ---
 

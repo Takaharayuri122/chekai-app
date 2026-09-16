@@ -105,7 +105,7 @@ DEEPSEEK_BASE_URL=https://api.deepseek.com
 OPENAI_API_KEY=sua-api-key-openai
 
 # CORS
-CORS_ORIGIN=http://localhost:3000
+CORS_ORIGIN=http://localhost:3031
 ```
 
 **⚠️ IMPORTANTE**: A `SUPABASE_SERVICE_ROLE_KEY` tem privilégios administrativos. Nunca exponha no frontend!

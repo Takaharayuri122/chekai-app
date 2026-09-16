@@ -6,11 +6,15 @@ export default function AuditoriasLayout() {
       <Stack.Screen name="index" />
       <Stack.Screen
         name="nova"
-        options={{ headerShown: true, title: 'Nova Auditoria', headerBackTitle: '' }}
+        options={{ headerShown: true, title: 'Selecionar Cliente', headerBackTitle: '' }}
+      />
+      <Stack.Screen
+        name="nova-unidade"
+        options={{ headerShown: true, title: 'Selecionar Unidade', headerBackTitle: '' }}
       />
       <Stack.Screen
         name="nova-template"
-        options={{ headerShown: true, title: 'Selecionar Template', headerBackTitle: '' }}
+        options={{ headerShown: true, title: 'Selecionar Checklist', headerBackTitle: '' }}
       />
       <Stack.Screen name="[id]" options={{ headerShown: false }} />
     </Stack>

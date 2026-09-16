@@ -3,7 +3,9 @@ import { useEffect, useRef, useState } from 'react';
 import { View, Text, Animated } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 import { WifiOff, RefreshCw } from 'lucide-react-native';
-import { syncQueue } from '../sync/SyncQueue';
+import { getPendingCount } from '../sync/push';
+
+const REFRESH_INTERVAL_MS = 3000;
 
 export function OfflineBanner() {
   const [isOffline, setIsOffline] = useState(false);
@@ -11,10 +13,11 @@ export function OfflineBanner() {
   const opacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    const atualizarPendentes = () => setPendingCount(getPendingCount());
     const unsubscribe = NetInfo.addEventListener((state) => {
       const offline = !state.isConnected;
       if (offline) {
-        setPendingCount(syncQueue.size());
+        atualizarPendentes();
         setIsOffline(true);
         Animated.timing(opacity, { toValue: 1, duration: 300, useNativeDriver: true }).start();
       } else {
@@ -25,6 +28,12 @@ export function OfflineBanner() {
     });
     return unsubscribe;
   }, [opacity]);
+
+  useEffect(() => {
+    if (!isOffline) return;
+    const intervalo = setInterval(() => setPendingCount(getPendingCount()), REFRESH_INTERVAL_MS);
+    return () => clearInterval(intervalo);
+  }, [isOffline]);
 
   if (!isOffline) return null;
 

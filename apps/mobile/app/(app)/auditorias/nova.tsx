@@ -2,45 +2,48 @@ import { View, Text, FlatList, TouchableOpacity, TextInput } from 'react-native'
 import { router } from 'expo-router';
 import { useState, useMemo } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Building2 } from 'lucide-react-native';
 import { getDatabase } from '../../../src/db/client';
 
-interface UnidadeRow {
+interface ClienteRow {
   id: string;
-  nome: string;
-  cliente_id: string;
   razao_social: string;
-  cidade: string | null;
-  estado: string | null;
+  nome_fantasia: string | null;
+  totalUnidades: number;
 }
 
-function loadUnidades(): UnidadeRow[] {
+function carregarClientes(): ClienteRow[] {
   const db = getDatabase();
-  return db.getAllSync<UnidadeRow>(
-    `SELECT u.id, u.nome, u.cliente_id, c.razao_social, u.cidade, u.estado
-     FROM unidades u
-     JOIN clientes c ON c.id = u.cliente_id
-     ORDER BY c.razao_social, u.nome`
+  return db.getAllSync<ClienteRow>(
+    `SELECT c.id, c.razao_social, c.nome_fantasia,
+            COUNT(u.id) AS totalUnidades
+     FROM clientes c
+     LEFT JOIN unidades u ON u.cliente_id = c.id
+     GROUP BY c.id
+     ORDER BY c.razao_social`
   );
 }
 
 export default function NovaAuditoriaScreen() {
   const [busca, setBusca] = useState('');
   const [loadError, setLoadError] = useState<string | null>(null);
-  const unidades = useMemo(() => {
+
+  const clientes = useMemo(() => {
     try {
-      return loadUnidades();
+      return carregarClientes();
     } catch {
-      setLoadError('Erro ao carregar estabelecimentos.');
+      setLoadError('Erro ao carregar clientes.');
       return [];
     }
   }, []);
 
-  const filtradas = useMemo(
-    () => unidades.filter(u =>
-      u.nome.toLowerCase().includes(busca.toLowerCase()) ||
-      u.razao_social.toLowerCase().includes(busca.toLowerCase())
-    ),
-    [unidades, busca]
+  const filtrados = useMemo(
+    () => clientes.filter(c => {
+      const termo = busca.toLowerCase();
+      return c.razao_social.toLowerCase().includes(termo) ||
+        (c.nome_fantasia?.toLowerCase().includes(termo) ?? false);
+    }),
+    [clientes, busca]
   );
 
   if (loadError) {
@@ -52,12 +55,12 @@ export default function NovaAuditoriaScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 pt-4 bg-base-200" edges={['bottom']}>
+    <SafeAreaView className="flex-1 bg-base-200" edges={['bottom']}>
       <View className="px-4 py-3 bg-white border-b border-gray-100">
         <TextInput
           className="bg-gray-100 rounded-xl px-4 py-2.5 text-base text-neutral"
           style={{ paddingVertical: 16, paddingHorizontal: 16, lineHeight: 0, fontFamily: 'Inter_400Regular' }}
-          placeholder="Buscar estabelecimento..."
+          placeholder="Buscar cliente..."
           placeholderTextColor="#9CA3AF"
           value={busca}
           onChangeText={setBusca}
@@ -66,24 +69,34 @@ export default function NovaAuditoriaScreen() {
       </View>
 
       <FlatList
-        data={filtradas}
-        keyExtractor={u => u.id}
+        data={filtrados}
+        keyExtractor={c => c.id}
         contentContainerStyle={{ padding: 16, gap: 8 }}
-        renderItem={({ item: u }) => (
+        ListEmptyComponent={
+          <View className="items-center py-12 px-8">
+            <Building2 color="#D1D5DB" size={48} />
+            <Text className="text-base text-gray-400 text-center mt-3">
+              Nenhum cliente encontrado
+            </Text>
+          </View>
+        }
+        renderItem={({ item: c }) => (
           <TouchableOpacity
             onPress={() => router.push({
-              pathname: '/(app)/auditorias/nova-template',
-              params: { unidadeId: u.id, clienteId: u.cliente_id },
+              pathname: '/(app)/auditorias/nova-unidade',
+              params: { clienteId: c.id },
             })}
             className="bg-white rounded-xl p-4 border border-gray-100"
           >
-            <Text className="font-semibold text-neutral">{u.razao_social}</Text>
-            <Text className="text-sm text-gray-500">{u.nome}</Text>
-            {(u.cidade || u.estado) && (
-              <Text className="text-xs text-gray-400 mt-0.5">
-                {[u.cidade, u.estado].filter(Boolean).join(', ')}
-              </Text>
+            <Text className="font-semibold text-neutral">
+              {c.nome_fantasia || c.razao_social}
+            </Text>
+            {c.nome_fantasia && (
+              <Text className="text-sm text-gray-500">{c.razao_social}</Text>
             )}
+            <Text className="text-xs text-gray-400 mt-1">
+              {c.totalUnidades} {c.totalUnidades === 1 ? 'unidade' : 'unidades'}
+            </Text>
           </TouchableOpacity>
         )}
       />

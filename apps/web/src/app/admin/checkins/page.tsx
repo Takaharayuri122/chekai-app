@@ -1,10 +1,12 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Clock3, Eye, Filter, MapPin, Search } from 'lucide-react';
+import { BarChart3, Clock3, Edit, Eye, Filter, MapPin } from 'lucide-react';
+import Link from 'next/link';
 import {
   AppLayout,
   EmptyState,
+  FormModal,
   PageHeader,
   CrudFiltros,
   CrudTable,
@@ -13,7 +15,10 @@ import {
 } from '@/components';
 import { PerfilUsuario } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
-import { checkinService, CheckinRegistro } from '@/lib/services/checkin.service';
+import { toastService } from '@/lib/toast';
+import { checkinService, CheckinRegistro, EditarCheckinRequest } from '@/lib/services/checkin.service';
+import { CheckinMapa, type PontoCheckinMapa } from '@/components/checkin/checkin-mapa';
+import { CheckinEditarModal } from '@/components/checkin/checkin-editar-modal';
 
 function formatarDataHora(data?: string | null): string {
   if (!data) return '-';
@@ -26,6 +31,17 @@ function formatarDataHora(data?: string | null): string {
   });
 }
 
+function formatarFim(dataCheckin: string, dataCheckout?: string | null): string {
+  if (!dataCheckout) return '-';
+  const inicio = new Date(dataCheckin);
+  const fim = new Date(dataCheckout);
+  const mesmoDia = inicio.toDateString() === fim.toDateString();
+  if (mesmoDia) {
+    return fim.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  }
+  return formatarDataHora(dataCheckout);
+}
+
 function formatarDuracao(dataCheckin: string, dataCheckout?: string | null): string {
   const inicio = new Date(dataCheckin).getTime();
   const fim = dataCheckout ? new Date(dataCheckout).getTime() : Date.now();
@@ -33,6 +49,14 @@ function formatarDuracao(dataCheckin: string, dataCheckout?: string | null): str
   const horas = Math.floor(diferenca / (1000 * 60 * 60));
   const minutos = Math.floor((diferenca % (1000 * 60 * 60)) / (1000 * 60));
   return `${horas}h ${minutos}min`;
+}
+
+function numeroCoord(valor?: number | string | null): number | null {
+  if (valor === null || valor === undefined || valor === '') {
+    return null;
+  }
+  const numero = Number(valor);
+  return Number.isFinite(numero) ? numero : null;
 }
 
 interface FiltrosCheckin {
@@ -73,10 +97,18 @@ const colunas: ColunaTabela<CheckinRegistro>[] = [
     ),
   },
   {
-    label: 'Data',
+    label: 'Início',
     render: (c) => (
       <span className="text-sm text-base-content/70 tabular-nums">
         {formatarDataHora(c.dataCheckin)}
+      </span>
+    ),
+  },
+  {
+    label: 'Fim',
+    render: (c) => (
+      <span className="text-sm text-base-content/70 tabular-nums">
+        {formatarFim(c.dataCheckin, c.dataCheckout)}
       </span>
     ),
   },
@@ -91,8 +123,13 @@ const colunas: ColunaTabela<CheckinRegistro>[] = [
   {
     label: 'Status',
     render: (c) => (
-      <span className={`badge badge-sm ${c.status === 'aberto' ? 'badge-warning' : 'badge-success'}`}>
-        {c.status === 'aberto' ? 'Aberto' : 'Fechado'}
+      <span className="flex flex-col items-start gap-1">
+        <span className={`badge badge-sm ${c.status === 'aberto' ? 'badge-warning' : 'badge-success'}`}>
+          {c.status === 'aberto' ? 'Aberto' : 'Fechado'}
+        </span>
+        {c.encerradoAutomaticamente ? (
+          <span className="badge badge-sm badge-ghost">Auto</span>
+        ) : null}
       </span>
     ),
   },
@@ -101,12 +138,15 @@ const colunas: ColunaTabela<CheckinRegistro>[] = [
 export default function CheckinsPage() {
   const { usuario } = useAuthStore();
   const [loading, setLoading] = useState(false);
+  const [salvando, setSalvando] = useState(false);
   const [checkins, setCheckins] = useState<CheckinRegistro[]>([]);
-  const [isPesquisado, setIsPesquisado] = useState(false);
   const [auditoresOpcoes, setAuditoresOpcoes] = useState<Array<{ value: string; label: string }>>([]);
   const [clientesOpcoes, setClientesOpcoes] = useState<Array<{ value: string; label: string }>>([]);
   const [detalheCheckin, setDetalheCheckin] = useState<CheckinRegistro | null>(null);
   const [isDetalheAberto, setIsDetalheAberto] = useState(false);
+  const [edicaoCheckin, setEdicaoCheckin] = useState<CheckinRegistro | null>(null);
+  const [isEdicaoAberta, setIsEdicaoAberta] = useState(false);
+  const [ultimoFiltro, setUltimoFiltro] = useState<FiltrosCheckin>(FILTROS_INICIAIS);
 
   const podeVisualizar = useMemo(
     () => usuario?.perfil === PerfilUsuario.GESTOR || usuario?.perfil === PerfilUsuario.MASTER,
@@ -130,12 +170,13 @@ export default function CheckinsPage() {
     carregarOpcoes().catch(() => undefined);
   }, [podeVisualizar]);
 
-  const carregarCheckins = async (filtros: FiltrosCheckin): Promise<void> => {
+  const carregarCheckins = async (filtros: FiltrosCheckin, limite = 20): Promise<void> => {
     setLoading(true);
+    setUltimoFiltro(filtros);
     try {
       const resposta = await checkinService.listar({
         page: 1,
-        limit: 200,
+        limit: limite,
         auditorId: filtros.auditorId || undefined,
         clienteId: filtros.clienteId || undefined,
         dataInicio: filtros.dataInicio || undefined,
@@ -153,9 +194,76 @@ export default function CheckinsPage() {
     setIsDetalheAberto(true);
   };
 
+  const handleEditar = async (checkin: CheckinRegistro): Promise<void> => {
+    const detalhe = await checkinService.buscarPorId(checkin.id);
+    setEdicaoCheckin(detalhe);
+    setIsEdicaoAberta(true);
+  };
+
+  const handleSalvarEdicao = async (dados: {
+    dataCheckin: string;
+    dataCheckout: string | null;
+    comentario: string;
+  }): Promise<void> => {
+    if (!edicaoCheckin) {
+      return;
+    }
+    const payload: EditarCheckinRequest = {
+      dataCheckin: dados.dataCheckin,
+      comentario: dados.comentario,
+    };
+    if (dados.dataCheckout) {
+      payload.dataCheckout = dados.dataCheckout;
+    } else if (edicaoCheckin.status === 'fechado') {
+      toastService.warning('Não é possível reabrir um check-in já finalizado.');
+      return;
+    }
+    setSalvando(true);
+    try {
+      await checkinService.editar(edicaoCheckin.id, payload);
+      toastService.success('Check-in atualizado.');
+      setIsEdicaoAberta(false);
+      setEdicaoCheckin(null);
+      await carregarCheckins(ultimoFiltro, 20);
+    } finally {
+      setSalvando(false);
+    }
+  };
+
   const acoes: AcaoTabela<CheckinRegistro>[] = [
     { label: 'Visualizar', icon: Eye, onClick: (c) => { void handleVisualizar(c); } },
+    { label: 'Editar', icon: Edit, onClick: (c) => { void handleEditar(c); } },
   ];
+
+  const pontosMapa: PontoCheckinMapa[] = useMemo(() => {
+    if (!detalheCheckin) {
+      return [];
+    }
+    const pontos: PontoCheckinMapa[] = [];
+    const latIn = numeroCoord(detalheCheckin.latitudeCheckin);
+    const lngIn = numeroCoord(detalheCheckin.longitudeCheckin);
+    if (latIn !== null && lngIn !== null) {
+      pontos.push({
+        latitude: latIn,
+        longitude: lngIn,
+        titulo: 'Check-in',
+        descricao: formatarDataHora(detalheCheckin.dataCheckin),
+        cor: '#16a34a',
+      });
+    }
+    const latOut = numeroCoord(detalheCheckin.latitudeCheckout);
+    const lngOut = numeroCoord(detalheCheckin.longitudeCheckout);
+    if (latOut !== null && lngOut !== null) {
+      pontos.push({
+        latitude: latOut,
+        longitude: lngOut,
+        titulo: 'Checkout',
+        descricao: formatarDataHora(detalheCheckin.dataCheckout),
+        cor: '#dc2626',
+      });
+    }
+    return pontos;
+  }, [detalheCheckin]);
 
   if (!podeVisualizar) {
     return (
@@ -177,6 +285,12 @@ export default function CheckinsPage() {
       <PageHeader
         title="Checkins"
         subtitle="Visualize checkins realizados com filtros por auditor, período e cliente"
+        action={(
+          <Link href="/admin/checkins/relatorio" className="btn btn-primary btn-sm gap-2">
+            <BarChart3 className="w-4 h-4" />
+            Relatório de horas
+          </Link>
+        )}
       />
 
       <div className="px-4 py-4 lg:px-8 space-y-4">
@@ -189,75 +303,72 @@ export default function CheckinsPage() {
           ]}
           valoresIniciais={FILTROS_INICIAIS}
           onPesquisar={(filtros) => {
-            void carregarCheckins(filtros);
-            setIsPesquisado(true);
+            void carregarCheckins(filtros, 200);
           }}
           onLimpar={() => {
-            setCheckins([]);
-            setIsPesquisado(false);
+            void carregarCheckins(FILTROS_INICIAIS, 20);
           }}
         />
 
-        {!isPesquisado && !loading ? (
-          <div className="card bg-base-100 shadow-sm border border-base-300">
-            <div className="card-body items-center text-center py-12">
-              <div className="w-16 h-16 bg-base-200 rounded-full flex items-center justify-center mb-4">
-                <Search className="w-8 h-8 text-base-content/40" />
-              </div>
-              <h3 className="text-lg font-semibold text-base-content font-display">
-                Realize uma pesquisa
-              </h3>
-              <p className="text-sm text-base-content/60 max-w-xs">
-                Use os filtros acima para buscar checkins realizados.
-              </p>
-            </div>
-          </div>
-        ) : (
-          <CrudTable
-            colunas={colunas}
-            dados={checkins}
-            acoes={acoes}
-            keyExtractor={(c) => c.id}
-            loading={loading}
-            emptyState={{
-              icon: Clock3,
-              title: 'Nenhum checkin encontrado',
-              description: 'Ajuste os filtros para visualizar os checkins realizados.',
-            }}
-          />
-        )}
+        <CrudTable
+          colunas={colunas}
+          dados={checkins}
+          acoes={acoes}
+          keyExtractor={(c) => c.id}
+          loading={loading}
+          emptyState={{
+            icon: Clock3,
+            title: 'Nenhum checkin encontrado',
+            description: 'Ajuste os filtros para visualizar os checkins realizados.',
+          }}
+        />
       </div>
 
-      {isDetalheAberto && detalheCheckin && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/60" onClick={() => setIsDetalheAberto(false)} />
-          <div className="relative w-full max-w-2xl rounded-2xl border border-base-300 bg-base-100 shadow-2xl">
-            <div className="border-b border-base-300 px-6 py-4">
-              <h3 className="text-lg font-semibold">Detalhes do Checkin</h3>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 px-6 py-5 text-sm">
+      <FormModal
+        open={isDetalheAberto}
+        onClose={() => setIsDetalheAberto(false)}
+        title="Detalhes do Checkin"
+        maxWidth="3xl"
+        footer={(
+          <button className="btn btn-ghost" onClick={() => setIsDetalheAberto(false)}>
+            Fechar
+          </button>
+        )}
+      >
+        {detalheCheckin && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
               <div><strong>Cliente:</strong> {detalheCheckin.cliente?.nomeFantasia || detalheCheckin.cliente?.razaoSocial || '-'}</div>
               <div><strong>Unidade:</strong> {detalheCheckin.unidade?.nome || '-'}</div>
               <div><strong>Auditor:</strong> {detalheCheckin.usuario?.nome || '-'}</div>
-              <div><strong>Status:</strong> {detalheCheckin.status}</div>
-              <div><strong>Data do checkin:</strong> {formatarDataHora(detalheCheckin.dataCheckin)}</div>
-              <div><strong>Data do checkout:</strong> {formatarDataHora(detalheCheckin.dataCheckout)}</div>
-              <div><strong>Latitude checkin:</strong> {detalheCheckin.latitudeCheckin}</div>
-              <div><strong>Longitude checkin:</strong> {detalheCheckin.longitudeCheckin}</div>
-              <div><strong>Latitude checkout:</strong> {detalheCheckin.latitudeCheckout ?? '-'}</div>
-              <div><strong>Longitude checkout:</strong> {detalheCheckin.longitudeCheckout ?? '-'}</div>
+              <div>
+                <strong>Status:</strong>{' '}
+                {detalheCheckin.status === 'aberto' ? 'Aberto' : 'Fechado'}
+                {detalheCheckin.encerradoAutomaticamente ? ' · encerrado automaticamente' : ''}
+              </div>
+              <div><strong>Início:</strong> {formatarDataHora(detalheCheckin.dataCheckin)}</div>
+              <div><strong>Fim:</strong> {formatarDataHora(detalheCheckin.dataCheckout)}</div>
               <div className="md:col-span-2">
                 <strong>Duração:</strong> {formatarDuracao(detalheCheckin.dataCheckin, detalheCheckin.dataCheckout)}
               </div>
+              <div className="md:col-span-2">
+                <strong>Comentário:</strong> {detalheCheckin.comentario || '-'}
+              </div>
             </div>
-            <div className="border-t border-base-300 px-6 py-4 flex justify-end">
-              <button className="btn btn-ghost" onClick={() => setIsDetalheAberto(false)}>
-                Fechar
-              </button>
-            </div>
+            <CheckinMapa pontos={pontosMapa} />
           </div>
-        </div>
-      )}
+        )}
+      </FormModal>
+
+      <CheckinEditarModal
+        open={isEdicaoAberta}
+        checkin={edicaoCheckin}
+        salvando={salvando}
+        onClose={() => {
+          setIsEdicaoAberta(false);
+        }}
+        onSalvar={handleSalvarEdicao}
+      />
     </AppLayout>
   );
 }

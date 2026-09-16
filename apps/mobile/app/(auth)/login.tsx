@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { AuthService } from '../../src/auth/AuthService';
 import { useAuthStore } from '../../src/store/auth';
+import { SyncService } from '../../src/sync/SyncService';
 
 type Step = 'email' | 'codigo';
 
@@ -38,6 +39,7 @@ export default function LoginScreen() {
     try {
       const response = await AuthService.validarOtp(email.trim().toLowerCase(), codigo);
       setUser(response.usuario);
+      void SyncService.sync();
       if (onboardingCompleted) {
         router.replace('/(app)');
       } else {

@@ -4,6 +4,7 @@ import withPWA from 'next-pwa';
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   output: 'standalone',
+  transpilePackages: ['leaflet'],
 };
 
 const isDev = process.env.NODE_ENV === 'development';

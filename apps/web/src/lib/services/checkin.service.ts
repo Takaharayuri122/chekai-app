@@ -1,4 +1,5 @@
 import { api, Cliente, Unidade } from '../api';
+import { abrirPdfBlobEmNovaAba, type ResultadoAberturaPdf } from '../pdf-abertura';
 
 export interface CheckinRegistro {
   id: string;
@@ -13,6 +14,8 @@ export interface CheckinRegistro {
   latitudeCheckout?: number | null;
   longitudeCheckout?: number | null;
   alerta3hEmitidoEm?: string | null;
+  comentario?: string | null;
+  encerradoAutomaticamente?: boolean;
   usuario?: {
     id: string;
     nome: string;
@@ -33,6 +36,25 @@ export interface AlertaCheckinAberto {
   checkin: CheckinRegistro | null;
 }
 
+export type AgruparHorasCheckin = 'cliente' | 'usuario';
+
+export interface ItemRelatorioHorasCheckin {
+  id: string;
+  nome: string;
+  quantidade: number;
+  minutosFechados: number;
+  minutosAbertos: number;
+  minutosTotal: number;
+}
+
+export interface RelatorioHorasCheckin {
+  agruparPor: AgruparHorasCheckin;
+  dataInicio: string;
+  dataFim: string;
+  totalGeralMinutos: number;
+  itens: ItemRelatorioHorasCheckin[];
+}
+
 interface IniciarCheckinRequest {
   clienteId: string;
   unidadeId: string;
@@ -45,6 +67,12 @@ interface FinalizarCheckinRequest {
   longitude: number;
 }
 
+export interface EditarCheckinRequest {
+  dataCheckin?: string;
+  dataCheckout?: string | null;
+  comentario?: string | null;
+}
+
 interface ListarCheckinsFiltros {
   page?: number;
   limit?: number;
@@ -52,6 +80,14 @@ interface ListarCheckinsFiltros {
   clienteId?: string;
   dataInicio?: string;
   dataFim?: string;
+}
+
+export interface RelatorioHorasFiltros {
+  agruparPor: AgruparHorasCheckin;
+  dataInicio: string;
+  dataFim: string;
+  auditorId?: string;
+  clienteId?: string;
 }
 
 interface ListaPaginadaCheckins {
@@ -69,6 +105,8 @@ interface FiltrosCheckinsResponse {
   clientes: Array<{ id: string; nome: string }>;
 }
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+
 export const checkinService = {
   async iniciar(data: IniciarCheckinRequest): Promise<CheckinRegistro> {
     const response = await api.post('/checkins/iniciar', data);
@@ -76,6 +114,10 @@ export const checkinService = {
   },
   async finalizar(id: string, data: FinalizarCheckinRequest): Promise<CheckinRegistro> {
     const response = await api.post(`/checkins/${id}/finalizar`, data);
+    return response.data.data;
+  },
+  async editar(id: string, data: EditarCheckinRequest): Promise<CheckinRegistro> {
+    const response = await api.patch(`/checkins/${id}`, data);
     return response.data.data;
   },
   async buscarAberto(): Promise<EstadoCheckinAberto> {
@@ -97,5 +139,34 @@ export const checkinService = {
   async buscarFiltros(): Promise<FiltrosCheckinsResponse> {
     const response = await api.get('/checkins/filtros');
     return response.data.data;
+  },
+  async relatorioHoras(filtros: RelatorioHorasFiltros): Promise<RelatorioHorasCheckin> {
+    const response = await api.get('/checkins/relatorio-horas', { params: filtros });
+    return response.data.data;
+  },
+  async baixarPdfRelatorioHoras(filtros: RelatorioHorasFiltros): Promise<ResultadoAberturaPdf> {
+    const token = localStorage.getItem('token');
+    const params = new URLSearchParams({
+      agruparPor: filtros.agruparPor,
+      dataInicio: filtros.dataInicio,
+      dataFim: filtros.dataFim,
+    });
+    if (filtros.auditorId) {
+      params.set('auditorId', filtros.auditorId);
+    }
+    if (filtros.clienteId) {
+      params.set('clienteId', filtros.clienteId);
+    }
+    const response = await fetch(`${API_URL}/checkins/relatorio-horas/pdf?${params.toString()}`, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    if (!response.ok) {
+      throw new Error('Erro ao gerar PDF do relatório de horas');
+    }
+    const blob = await response.blob();
+    return abrirPdfBlobEmNovaAba(blob, 'relatorio-horas-checkin.pdf');
   },
 };

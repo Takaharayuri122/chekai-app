@@ -10,6 +10,7 @@ import { useCheckinStore } from '@/lib/store-checkin';
 import { toastService } from '@/lib/toast';
 import { useGeolocalizacao } from '@/hooks/use-geolocalizacao';
 import { CheckinModal } from './checkin-modal';
+import { emitirAlertaCheckinAberto } from '@/lib/web-notification';
 
 const ROTAS_SEM_CHECKIN: string[] = [
   '/admin/lista-espera',
@@ -67,15 +68,16 @@ export function CheckinFab() {
     });
     if (alerta.possuiAlerta && alerta.checkin && ultimoToastAlertaRef.current !== alerta.checkin.id) {
       ultimoToastAlertaRef.current = alerta.checkin.id;
-      toastService.warning(alerta.mensagem || 'Você possui um checkin aberto há mais de 3 horas.');
+      const mensagem = alerta.mensagem || 'Você possui um checkin aberto há mais de 3 horas.';
+      const canal = await emitirAlertaCheckinAberto(alerta.checkin.id, mensagem);
+      if (canal === 'toast') {
+        toastService.warning(mensagem);
+      }
     }
   }, [setEstadoCheckin, usuario]);
 
   useEffect(() => {
     if (!usuario || !isAuthenticated || !podeUsarCheckin) {
-      return;
-    }
-    if (isRotaSemCheckin(pathname)) {
       return;
     }
     let ativo = true;
@@ -99,11 +101,13 @@ export function CheckinFab() {
       ativo = false;
       window.clearInterval(intervalo);
     };
-  }, [carregarEstado, isAuthenticated, pathname, podeUsarCheckin, setLoading, usuario]);
+  }, [carregarEstado, isAuthenticated, podeUsarCheckin, setLoading, usuario]);
 
-  if (!usuario || !isAuthenticated || !podeUsarCheckin || isRotaSemCheckin(pathname)) {
+  if (!usuario || !isAuthenticated || !podeUsarCheckin) {
     return null;
   }
+
+  const ocultarFab = isRotaSemCheckin(pathname);
 
   const iniciarCheckin = async (payload: {
     clienteId: string;
@@ -146,68 +150,72 @@ export function CheckinFab() {
 
   return (
     <>
-      <div className="fixed bottom-24 right-4 z-50 md:bottom-8 md:right-8">
-        <div className="flex flex-col items-center gap-2">
-          <button
-            className={`btn btn-circle btn-lg shadow-md ${checkinAberto ? 'btn-warning' : 'btn-primary'} relative`}
-            onClick={() => {
-              if (checkinAberto) {
-                setIsCheckoutDialogOpen(true);
-                return;
-              }
-              setModalAberto(true);
-            }}
-            disabled={isLoading}
-            aria-label={checkinAberto ? 'Finalizar checkout' : 'Iniciar checkin'}
-          >
-            {isLoading ? (
-              <Loader2 className="h-5 w-5 animate-spin" />
-            ) : checkinAberto ? (
-              <LogOut className="h-5 w-5" />
-            ) : (
-              <LogIn className="h-5 w-5" />
-            )}
-            {isAtrasado3h && (
-              <span className="absolute -right-1 -top-1 rounded-full bg-error p-1 text-white">
-                <TriangleAlert className="h-3 w-3" />
-              </span>
-            )}
-          </button>
-          <div className="min-w-[124px] rounded-xl bg-base-100 px-3 py-1.5 text-center text-xs font-semibold leading-tight text-base-content shadow-md ring-1 ring-base-300">
-            {checkinAberto ? (
-              <span className="inline-flex items-center justify-center gap-1">
-                <LogOut className="h-3.5 w-3.5" />
-                {isAtrasado3h ? 'Checkout pendente +3h' : 'Checkout'}
-              </span>
-            ) : (
-              <span className="inline-flex items-center justify-center gap-1">
-                <CheckCircle2 className="h-3.5 w-3.5" />
-                CheckIN
-              </span>
-            )}
+      {!ocultarFab && (
+        <>
+          <div className="fixed bottom-24 right-4 z-50 md:bottom-8 md:right-8">
+            <div className="flex flex-col items-center gap-2">
+              <button
+                className={`btn btn-circle btn-lg shadow-md ${checkinAberto ? 'btn-warning' : 'btn-primary'} relative`}
+                onClick={() => {
+                  if (checkinAberto) {
+                    setIsCheckoutDialogOpen(true);
+                    return;
+                  }
+                  setModalAberto(true);
+                }}
+                disabled={isLoading}
+                aria-label={checkinAberto ? 'Finalizar checkout' : 'Iniciar checkin'}
+              >
+                {isLoading ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : checkinAberto ? (
+                  <LogOut className="h-5 w-5" />
+                ) : (
+                  <LogIn className="h-5 w-5" />
+                )}
+                {isAtrasado3h && (
+                  <span className="absolute -right-1 -top-1 rounded-full bg-error p-1 text-white">
+                    <TriangleAlert className="h-3 w-3" />
+                  </span>
+                )}
+              </button>
+              <div className="min-w-[124px] rounded-xl bg-base-100 px-3 py-1.5 text-center text-xs font-semibold leading-tight text-base-content shadow-md ring-1 ring-base-300">
+                {checkinAberto ? (
+                  <span className="inline-flex items-center justify-center gap-1">
+                    <LogOut className="h-3.5 w-3.5" />
+                    {isAtrasado3h ? 'Checkout pendente +3h' : 'Checkout'}
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center justify-center gap-1">
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    CheckIN
+                  </span>
+                )}
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
-      <CheckinModal
-        open={isModalAberto}
-        loading={isLoading}
-        onClose={() => setModalAberto(false)}
-        onConfirm={iniciarCheckin}
-      />
-      <ConfirmDialog
-        open={isCheckoutDialogOpen}
-        onClose={() => setIsCheckoutDialogOpen(false)}
-        onConfirm={async () => {
-          setIsCheckoutDialogOpen(false);
-          await finalizarCheckin();
-        }}
-        title="Confirmar checkout"
-        message="Você realmente deseja realizar o checkout?"
-        confirmLabel="Sim, realizar checkout"
-        cancelLabel="Cancelar"
-        variant="warning"
-        loading={isLoading}
-      />
+          <CheckinModal
+            open={isModalAberto}
+            loading={isLoading}
+            onClose={() => setModalAberto(false)}
+            onConfirm={iniciarCheckin}
+          />
+          <ConfirmDialog
+            open={isCheckoutDialogOpen}
+            onClose={() => setIsCheckoutDialogOpen(false)}
+            onConfirm={async () => {
+              setIsCheckoutDialogOpen(false);
+              await finalizarCheckin();
+            }}
+            title="Confirmar checkout"
+            message="Você realmente deseja realizar o checkout?"
+            confirmLabel="Sim, realizar checkout"
+            cancelLabel="Cancelar"
+            variant="warning"
+            loading={isLoading}
+          />
+        </>
+      )}
     </>
   );
 }

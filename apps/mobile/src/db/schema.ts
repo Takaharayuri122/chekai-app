@@ -1,4 +1,4 @@
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 5;
 
 export const SCHEMA_V1 = `
   CREATE TABLE IF NOT EXISTS usuarios (
@@ -205,4 +205,51 @@ export const SCHEMA_V2 = `
   ALTER TABLE template_itens ADD COLUMN criticidade TEXT;
   ALTER TABLE auditorias ADD COLUMN analise_ia TEXT;
   ALTER TABLE auditorias ADD COLUMN assinatura_nome TEXT;
+`;
+
+export const SCHEMA_V3 = `
+  ALTER TABLE auditorias ADD COLUMN pdf_local_path TEXT;
+  ALTER TABLE auditorias ADD COLUMN resumo_executivo_gerado_em TEXT;
+`;
+
+export const SCHEMA_V4 = `
+  ALTER TABLE relatorios_tecnicos ADD COLUMN pdf_url TEXT;
+  ALTER TABLE relatorios_tecnicos ADD COLUMN pdf_local_path TEXT;
+  CREATE INDEX IF NOT EXISTS idx_relatorios_tecnicos_sync ON relatorios_tecnicos(sync_status);
+  CREATE INDEX IF NOT EXISTS idx_relatorios_tecnicos_status ON relatorios_tecnicos(status);
+  CREATE INDEX IF NOT EXISTS idx_relatorios_tecnicos_cliente ON relatorios_tecnicos(cliente_id);
+  CREATE INDEX IF NOT EXISTS idx_relatorio_fotos_relatorio ON relatorio_fotos(relatorio_id);
+`;
+
+/**
+ * V5 — Check-in. O check-in/checkout é online-only (validação de unidade, gestor e
+ * regra de "apenas 1 aberto" ocorrem no servidor — RN-CKI-001/002/003), portanto a
+ * tabela local serve apenas como cache de leitura do check-in aberto do usuário.
+ * A tabela original (V1) referenciava `usuarios`, que não é populada no app, e cujo
+ * FK (com `foreign_keys = ON`) bloquearia inserções; como a tabela está sem uso, ela
+ * é recriada sem chaves estrangeiras e com colunas de exibição (nomes) e de alerta.
+ */
+export const SCHEMA_V5 = `
+  DROP TABLE IF EXISTS checkins;
+  CREATE TABLE checkins (
+    id TEXT PRIMARY KEY,
+    remote_id TEXT,
+    usuario_id TEXT NOT NULL,
+    cliente_id TEXT NOT NULL,
+    cliente_nome TEXT,
+    unidade_id TEXT NOT NULL,
+    unidade_nome TEXT,
+    status TEXT NOT NULL DEFAULT 'aberto',
+    data_checkin TEXT NOT NULL,
+    data_checkout TEXT,
+    latitude_checkin REAL NOT NULL,
+    longitude_checkin REAL NOT NULL,
+    latitude_checkout REAL,
+    longitude_checkout REAL,
+    alerta_3h_emitido_em TEXT,
+    is_atrasado_3h INTEGER NOT NULL DEFAULT 0,
+    sync_status TEXT NOT NULL DEFAULT 'synced',
+    updated_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_checkins_usuario_status ON checkins(usuario_id, status);
 `;

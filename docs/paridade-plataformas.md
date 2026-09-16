@@ -86,10 +86,14 @@
 
 | Feature | API | Web | Mobile | Observações |
 |---------|-----|-----|--------|-------------|
-| Iniciar check-in | ok | ok | - | Schema existe no mobile mas sem UI |
-| Finalizar checkout | ok | ok | - | |
-| Alerta 3h aberto | ok | ok | - | |
-| Listagem administrativa | ok | ok | n/a | |
+| Iniciar check-in | ok | ok | ok | FAB global + modal (cliente/unidade + GPS nativo); online-only |
+| Finalizar checkout | ok | ok | ok | Confirmação + GPS nativo; online-only |
+| Alerta 3h aberto | ok | ok | ok | Web: Notification API + toast fallback; mobile: badge/card |
+| Checkout automático 12h | ok | ok | ok | API encerra com coords do check-in e comentário padrão |
+| Edição GESTOR/MASTER | ok | ok | n/a | Datas/horas e comentário; web only |
+| Mapa no detalhe | n/a | ok | n/a | Leaflet/OSM; web only |
+| Relatório de horas | ok | ok | n/a | Por cliente ou usuário; PDF/CSV; web only |
+| Listagem administrativa | ok | ok | pendente | GESTOR/MASTER; API pronta em `checkin.api.ts`, falta tela |
 
 ## Planos e Assinaturas
 

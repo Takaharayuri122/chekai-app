@@ -59,36 +59,27 @@ export function ConfirmDialog({
   return (
     <AnimatePresence>
       {open && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          onClick={(e) => {
-            // Não fecha ao clicar fora
-            e.stopPropagation();
-          }}
-        >
-          {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            transition={{ duration: 0.12, ease: 'easeOut' }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
             onClick={(e) => {
-              // Não fecha ao clicar no backdrop
               e.stopPropagation();
             }}
-          />
-
-          {/* Modal */}
-          <motion.div
-            initial={{ scale: 0.95, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.95, opacity: 0 }}
-            onClick={(e) => e.stopPropagation()}
-            className="relative bg-base-100 rounded-xl shadow-2xl border border-base-300 w-full max-w-md"
           >
+            <div
+              className="absolute inset-0 bg-black/60"
+              onClick={(e) => {
+                e.stopPropagation();
+              }}
+            />
+
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="relative bg-base-100 rounded-xl shadow-2xl border border-base-300 w-full max-w-md"
+            >
             {/* Header */}
             <div className={`flex items-center gap-3 p-6 border-b ${styles.border}`}>
               <div className={`p-2 rounded-lg ${styles.bg}`}>
@@ -135,8 +126,8 @@ export function ConfirmDialog({
                 )}
               </button>
             </div>
+            </div>
           </motion.div>
-        </motion.div>
       )}
     </AnimatePresence>
   );

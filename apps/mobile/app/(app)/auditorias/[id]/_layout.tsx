@@ -6,6 +6,7 @@ export default function AuditoriaDetailLayout() {
       <Stack.Screen name="checklist" />
       <Stack.Screen name="item/[itemId]" />
       <Stack.Screen name="resumo" />
+      <Stack.Screen name="relatorio" />
     </Stack>
   );
 }

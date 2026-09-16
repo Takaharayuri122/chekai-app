@@ -10,18 +10,22 @@
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#00B8A9"
+      "backgroundColor": "#FFFFFF"
     },
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.evobit.chekai",
+      "buildNumber": "4",
+      "config": {
+        "usesNonExemptEncryption": false
+      },
       "infoPlist": {
         "NSLocationAlwaysAndWhenInUseUsageDescription": "Para detectar automaticamente quando você chega em uma unidade cliente e registrar o check-in sem precisar abrir o app.",
         "NSLocationAlwaysUsageDescription": "Para detectar automaticamente quando você chega em uma unidade cliente e registrar o check-in sem precisar abrir o app.",
         "NSLocationWhenInUseUsageDescription": "Para registrar sua localização durante auditorias e check-ins.",
         "NSCameraUsageDescription": "Para registrar evidências fotográficas durante as auditorias.",
         "NSPhotoLibraryUsageDescription": "Para acessar fotos da galeria como evidências nas auditorias.",
-        "UIBackgroundModes": ["location", "fetch"]
+        "UIBackgroundModes": ["location"]
       }
     },
     "android": {
@@ -61,6 +65,9 @@
       ]
     ],
     "scheme": "chekai",
+    "extra": {
+      "apiUrl": "https://api.chekai.com.br/api"
+    },
     "experiments": {
       "typedRoutes": true
     }
