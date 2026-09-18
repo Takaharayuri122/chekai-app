@@ -49,7 +49,6 @@ export function CheckinMapa({ pontos, altura = 260 }: CheckinMapaProps) {
       }).setView([primeiro.latitude, primeiro.longitude], 16);
       leaflet.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap',
-        fadeAnimation: false,
       }).addTo(mapa);
 
       const agrupados: PontoCheckinMapa[][] = [];

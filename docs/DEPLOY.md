@@ -32,7 +32,7 @@ O Vercel deixou de ser o alvo de produção do frontend. O projeto antigo na Ver
 | `DATABASE_URL` | Connection string do Supabase PostgreSQL | `postgresql://...` |
 | `JWT_SECRET` | Chave secreta para JWT | string aleatória forte |
 | `JWT_EXPIRES_IN` | Expiração do token | `7d` |
-| `CORS_ORIGIN` | URL canônica do frontend na Railway | `https://<web>.up.railway.app` |
+| `CORS_ORIGIN` | URL canônica do frontend na Railway | `https://meta-appweb-production.up.railway.app` |
 | `FRONTEND_URL` | URL do frontend (e-mails de convite; obrigatória) | mesma do `CORS_ORIGIN` |
 | `SUPABASE_URL` | URL do projeto Supabase | `https://[PROJECT].supabase.co` |
 | `SUPABASE_SERVICE_ROLE_KEY` | Service Role Key do Supabase | `eyJhbGc...` |
@@ -81,7 +81,7 @@ Domínio customizado (`www.chekai.com.br`) é opcional e exige DNS apontando par
 
 ### Frontend
 
-1. Abra a URL `*.up.railway.app` do serviço web
+1. Abra https://meta-appweb-production.up.railway.app
 2. Confirme que a landing carrega
 3. Faça login e verifique as chamadas em DevTools → Network (`https://api.chekai.com.br/api`)
 
