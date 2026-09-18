@@ -23,8 +23,9 @@ async function bootstrap(): Promise<void> {
         return callback(null, true);
       }
       
-      // Permite domínios da Vercel (*.vercel.app)
+      // Permite domínios da Vercel (*.vercel.app) e da Railway (*.up.railway.app)
       const isVercelDomain = /^https:\/\/.*\.vercel\.app$/.test(origin);
+      const isRailwayDomain = /^https:\/\/.*\.up\.railway\.app$/.test(origin);
       
       // Permite IPs de rede local (192.168.x.x, 10.x.x.x, 172.16-31.x.x)
       const isLocalNetwork = /^http:\/\/(192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+)(:\d+)?$/.test(origin);
@@ -32,7 +33,7 @@ async function bootstrap(): Promise<void> {
       // Next dev usa --hostname 0.0.0.0; o browser envia Origin com 0.0.0.0 ou 127.0.0.1
       const isLocalDevHost = /^http:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0)(:\d+)?$/.test(origin);
 
-      if (allowedOrigins.includes(origin) || isVercelDomain || isLocalNetwork || isLocalDevHost) {
+      if (allowedOrigins.includes(origin) || isVercelDomain || isRailwayDomain || isLocalNetwork || isLocalDevHost) {
         return callback(null, true);
       }
       
