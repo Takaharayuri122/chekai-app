@@ -15,8 +15,13 @@ async function bootstrap(): Promise<void> {
       const allowedOrigins = [
         'http://localhost:3031',
         'http://localhost:3001',
-        process.env.CORS_ORIGIN,
-      ].filter(Boolean);
+        'https://chekai.com.br',
+        'https://www.chekai.com.br',
+        ...(process.env.CORS_ORIGIN ?? '')
+          .split(',')
+          .map((origem) => origem.trim())
+          .filter(Boolean),
+      ];
       
       // Permite requisições sem origin (apps mobile, Postman, etc.)
       if (!origin) {

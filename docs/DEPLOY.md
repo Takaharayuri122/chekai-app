@@ -32,8 +32,8 @@ O Vercel deixou de ser o alvo de produção do frontend. O projeto antigo na Ver
 | `DATABASE_URL` | Connection string do Supabase PostgreSQL | `postgresql://...` |
 | `JWT_SECRET` | Chave secreta para JWT | string aleatória forte |
 | `JWT_EXPIRES_IN` | Expiração do token | `7d` |
-| `CORS_ORIGIN` | URL canônica do frontend na Railway | `https://meta-appweb-production.up.railway.app` |
-| `FRONTEND_URL` | URL do frontend (e-mails de convite; obrigatória) | mesma do `CORS_ORIGIN` |
+| `CORS_ORIGIN` | URL canônica do frontend | `https://chekai.com.br` |
+| `FRONTEND_URL` | URL do frontend (e-mails de convite; obrigatória) | `https://chekai.com.br` |
 | `SUPABASE_URL` | URL do projeto Supabase | `https://[PROJECT].supabase.co` |
 | `SUPABASE_SERVICE_ROLE_KEY` | Service Role Key do Supabase | `eyJhbGc...` |
 | `OPENAI_API_KEY` | Chave da API OpenAI | `sk-...` |
@@ -107,13 +107,13 @@ Domínio customizado (`www.chekai.com.br`) é opcional e exige DNS apontando par
 ### Frontend não conecta ao backend
 
 - `NEXT_PUBLIC_API_URL` deve ser `https://api.chekai.com.br/api` e o serviço web precisa ter sido **rebuildado** depois de definir a variável
-- CORS: `CORS_ORIGIN` + allowlist `*.up.railway.app`
+- CORS: `CORS_ORIGIN` + `https://chekai.com.br` / `https://www.chekai.com.br` + `*.up.railway.app`
 - API no ar em `/api/docs`
 
 ### Erro de CORS
 
-- `CORS_ORIGIN` com a URL exata do frontend (https, sem barra no final se a Origin não tiver)
-- A API aceita automaticamente `*.up.railway.app`
+- `CORS_ORIGIN` com a URL exata do frontend (https, sem barra no final). Aceita várias URLs separadas por vírgula
+- A API aceita automaticamente `https://chekai.com.br`, `https://www.chekai.com.br` e `*.up.railway.app`
 
 ## Deploy automático
 
