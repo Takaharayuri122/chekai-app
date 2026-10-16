@@ -122,7 +122,21 @@ export class AuditoriaService {
       .take(params.limit)
       .orderBy('auditoria.criadoEm', 'DESC')
       .getManyAndCount();
-    return createPaginatedResult(items, total, params.page, params.limit);
+    const ids = items.map((a) => a.id);
+    const contagens: Array<{ auditoria_id: string; total: string }> = ids.length
+      ? await this.auditoriaRepository.query(
+          `SELECT ai.auditoria_id, COUNT(f.id) AS total
+           FROM fotos f JOIN auditoria_itens ai ON ai.id = f.auditoria_item_id
+           WHERE ai.auditoria_id = ANY($1::uuid[])
+           GROUP BY ai.auditoria_id`,
+          [ids],
+        )
+      : [];
+    const porAuditoria = new Map(contagens.map((c) => [c.auditoria_id, Number(c.total)]));
+    const comFotos = items.map((a) =>
+      Object.assign(a, { totalFotos: porAuditoria.get(a.id) ?? 0 }),
+    );
+    return createPaginatedResult(comFotos, total, params.page, params.limit);
   }
 
   /**

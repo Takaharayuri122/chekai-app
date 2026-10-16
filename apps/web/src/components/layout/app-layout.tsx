@@ -57,12 +57,16 @@ export function AppLayout({ children }: AppLayoutProps) {
 
   return (
     <div className="min-h-screen bg-base-200">
-      <Navbar />
+      <div className="print:hidden">
+        <Navbar />
+      </div>
       <main className="pb-20 md:pb-8">
         {children}
       </main>
-      <CheckinFab />
-      <TutorialInstalacaoModal />
+      <div className="print:hidden">
+        <CheckinFab />
+        <TutorialInstalacaoModal />
+      </div>
     </div>
   );
 }

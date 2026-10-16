@@ -31,6 +31,7 @@ import { AppLayout, StatCard, EmptyState } from '@/components';
 import { auditoriaService, type Auditoria } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
 import { toastService } from '@/lib/toast';
+import { agendaService, type AgendaItem } from '@/lib/services/agenda.service';
 import { planoAcaoService, type ResumoPlanoAcao } from '@/lib/services/plano-acao.service';
 
 export default function DashboardPage() {
@@ -38,6 +39,11 @@ export default function DashboardPage() {
   const [auditorias, setAuditorias] = useState<Auditoria[]>([]);
   const [loading, setLoading] = useState(true);
   const [resumoPlano, setResumoPlano] = useState<ResumoPlanoAcao | null>(null);
+  const [proximasAgendas, setProximasAgendas] = useState<AgendaItem[]>([]);
+
+  useEffect(() => {
+    agendaService.listar(1, 5, 'agendada').then((r) => setProximasAgendas(r.items)).catch(() => undefined);
+  }, []);
 
   useEffect(() => {
     planoAcaoService.resumo().then(setResumoPlano).catch(() => undefined);
@@ -514,6 +520,32 @@ export default function DashboardPage() {
 
         </>)}
 
+        {proximasAgendas.length > 0 && (
+          <div className="card bg-base-100 shadow-sm border border-base-300">
+            <div className="card-body p-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-semibold uppercase text-primary flex items-center gap-2">
+                  <Calendar className="w-4 h-4" /> Próximas auditorias agendadas
+                </h2>
+                <Link href="/admin/agenda" className="btn btn-ghost btn-xs">Ver agenda</Link>
+              </div>
+              <ul className="divide-y divide-base-200">
+                {proximasAgendas.map((a) => {
+                  const atrasada = a.dataPrevista.slice(0, 10) < new Date().toISOString().slice(0, 10);
+                  return (
+                    <li key={a.id} className="flex items-center justify-between py-2 text-sm gap-3">
+                      <span className="truncate">{a.unidade?.nome} - {a.template?.nome}</span>
+                      <span className={`whitespace-nowrap ${atrasada ? 'text-error font-semibold' : 'text-base-content/60'}`}>
+                        {a.dataPrevista.slice(0, 10).split('-').reverse().join('/')}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          </div>
+        )}
+
         {/* Recent Audits */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
@@ -568,6 +600,7 @@ export default function DashboardPage() {
                       </p>
                       <p className="text-xs text-base-content/50">
                         {formatDateWithTime(getAuditoriaDate(auditoria))}
+                        {auditoria.totalFotos !== undefined && ` · ${auditoria.totalFotos} foto(s)`}
                       </p>
                     </div>
                     <div className="flex flex-col items-end gap-2">

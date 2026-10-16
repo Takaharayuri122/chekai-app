@@ -869,6 +869,7 @@ export interface Auditoria {
   } | null;
   resumoExecutivoGeradoEm?: string | null;
   atualizadoEm?: string;
+  totalFotos?: number;
 }
 
 export interface AuditoriaHistoricoItem {
