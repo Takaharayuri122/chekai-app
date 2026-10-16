@@ -17,7 +17,9 @@ export interface PreparoAuditoriaPdf {
   readonly fotosPorId: Record<string, string>;
 }
 
-const URL_LOGO_CHEKAI_PADRAO = 'https://www.chekai.com.br/images/logo-large.png';
+const LOGO_TRANSPARENTE_DATA_URI =
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+const URL_LOGO_CHEKAI_PADRAO = 'https://chekai.com.br/images/logo-large.png';
 const TIMEOUT_FETCH_MS = 15_000;
 
 /**
@@ -146,8 +148,15 @@ export class PdfPreparacaoService {
     }
     const urlEnv = this.configService.get<string>('CHEKAI_LOGO_URL')?.trim();
     const url = urlEnv || URL_LOGO_CHEKAI_PADRAO;
-    const buf = await this.fetchBuffer(url);
-    const out = await sharp(buf).resize(160, 160, { fit: 'inside' }).png().toBuffer();
+    let out: Buffer;
+    try {
+      const buf = await this.fetchBuffer(url);
+      out = await sharp(buf).resize(160, 160, { fit: 'inside' }).png().toBuffer();
+    } catch (err) {
+      // A logo é decorativa: sem ela o PDF ainda deve ser gerado (e não fica em cache para tentar de novo)
+      this.logger.warn(`Logo ChekAI indisponível (${url}): ${err instanceof Error ? err.message : String(err)}`);
+      return LOGO_TRANSPARENTE_DATA_URI;
+    }
     this.logoChekAiCache = `data:image/png;base64,${out.toString('base64')}`;
     return this.logoChekAiCache;
   }
