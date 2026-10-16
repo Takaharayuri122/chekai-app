@@ -17,6 +17,7 @@ import { EmailModule } from './modules/email/email.module';
 import { ListaEsperaModule } from './modules/lista-espera/lista-espera.module';
 import { RelatorioTecnicoModule } from './modules/relatorio-tecnico/relatorio-tecnico.module';
 import { CheckinModule } from './modules/checkin/checkin.module';
+import { PlanoAcaoModule } from './modules/plano-acao/plano-acao.module';
 
 /**
  * Módulo principal da aplicação.
@@ -70,6 +71,7 @@ import { CheckinModule } from './modules/checkin/checkin.module';
     ListaEsperaModule,
     RelatorioTecnicoModule,
     CheckinModule,
+    PlanoAcaoModule,
   ],
 })
 export class AppModule {}

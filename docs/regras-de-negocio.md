@@ -301,8 +301,23 @@
 
 ---
 
+## 16. Planos de Ação
+
+| ID | Regra |
+|----|-------|
+| RN-PAC-001 | Tarefa de plano de ação possui título, descrição, prazo, responsável (opcional), auditoria de origem (opcional) e status: `pendente`, `em_andamento`, `concluida`, `cancelada` |
+| RN-PAC-002 | Tarefas são isoladas por `gestorId` do tenant; MASTER/GESTOR veem todas as do tenant |
+| RN-PAC-003 | AUDITOR vê apenas tarefas que criou ou pelas quais é responsável |
+| RN-PAC-004 | Responsável deve ser o próprio gestor ou auditor vinculado a ele; auditoria de origem deve pertencer ao tenant |
+| RN-PAC-005 | Concluir uma tarefa registra `concluidaEm`; reabrir limpa o campo |
+| RN-PAC-006 | Tarefa aberta com prazo anterior a hoje é considerada atrasada (resumo do dashboard: atrasadas, próximos 7 dias, futuras, concluídas) |
+| RN-PAC-007 | Apenas MASTER/GESTOR removem tarefas |
+
+---
+
 ## Changelog
 
 | Data | Alteração | Autor |
 |------|-----------|-------|
 | 2026-04-11 | Documento inicial compilado a partir do código-fonte da API, mobile e web | platform-orchestrator |
+| 2026-10-16 | Adicionada seção 16 (Planos de Ação) | Claude |
