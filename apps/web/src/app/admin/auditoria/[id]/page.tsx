@@ -19,6 +19,7 @@ import {
   Image as ImageIcon,
   MessageSquare,
   AlertCircle,
+  MinusCircle,
   Clock,
 } from 'lucide-react';
 import { AppLayout, PageHeader, FormModal } from '@/components';
@@ -951,7 +952,7 @@ export default function AuditoriaPage() {
                       disabled={auditoria.status === 'finalizada'}
                       title={auditoria.status === 'finalizada' ? 'Auditoria finalizada. Reabra para editar.' : ''}
                     >
-                      <AlertTriangle className="w-4 h-4" />
+                      <MinusCircle className="w-4 h-4" />
                       <span className="hidden sm:inline">N/A</span>
                     </button>
                   </div>

@@ -10,7 +10,6 @@ import {
   Plus,
   Trash2,
   ChevronLeft,
-  AlertTriangle,
   GripVertical,
   Edit,
   X,
@@ -1081,7 +1080,7 @@ export default function NovoTemplatePage() {
                 {getItensSemGrupo().length > 0 && (
                   <div className="border border-base-300 rounded-lg">
                     <div className="flex items-center gap-3 p-3 bg-base-200">
-                      <AlertTriangle className="w-5 h-5 text-warning" />
+                      <HelpCircle className="w-5 h-5 text-warning" />
                       <span className="font-medium">Perguntas sem grupo</span>
                       <span className="badge badge-warning">{getItensSemGrupo().length}</span>
                     </div>

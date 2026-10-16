@@ -10,7 +10,6 @@ import {
   Plus,
   Trash2,
   ChevronLeft,
-  AlertTriangle,
   GripVertical,
   Edit,
   X,
@@ -1080,7 +1079,7 @@ export default function EditarTemplatePage() {
               {getItensSemGrupo().length > 0 && (
                 <div className="border border-base-300 rounded-lg">
                   <div className="flex items-center gap-2 sm:gap-3 p-3 bg-base-200">
-                    <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5 text-warning flex-shrink-0" />
+                    <HelpCircle className="w-4 h-4 sm:w-5 sm:h-5 text-warning flex-shrink-0" />
                     <span className="font-medium text-sm sm:text-base">Perguntas sem grupo</span>
                     <span className="badge badge-warning badge-sm sm:badge-md">{getItensSemGrupo().length}</span>
                   </div>

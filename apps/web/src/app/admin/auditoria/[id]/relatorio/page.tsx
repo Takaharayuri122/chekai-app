@@ -8,6 +8,7 @@ import {
   FileText,
   TrendingUp,
   AlertTriangle,
+  MinusCircle,
   CheckCircle2,
   XCircle,
   Clock,
@@ -993,7 +994,7 @@ export default function RelatorioPage() {
                             ) : isNaoConforme ? (
                               <XCircle className="w-4 h-4 sm:w-5 sm:h-5 text-error" />
                             ) : (
-                              <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5 text-warning" />
+                              <MinusCircle className="w-4 h-4 sm:w-5 sm:h-5 text-warning" />
                             )}
                           </div>
                           <div className="flex-1 min-w-0">
