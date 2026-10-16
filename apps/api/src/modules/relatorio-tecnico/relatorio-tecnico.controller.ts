@@ -1,5 +1,6 @@
 import {
   Controller,
+  Logger,
   Get,
   Post,
   Put,
@@ -37,6 +38,7 @@ import { SupabaseService } from '../supabase/supabase.service';
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class RelatorioTecnicoController {
+  private readonly logger = new Logger(RelatorioTecnicoController.name);
   private readonly bucketFotos: string;
 
   constructor(
@@ -201,11 +203,18 @@ export class RelatorioTecnicoController {
   ): Promise<void> {
     const relatorio = await this.relatorioTecnicoService.buscarPorId(id, usuario);
     const pdfBuffer = await this.relatorioTecnicoPdfPuppeteerService.gerarPdf(relatorio);
-    const pdfUrl = await this.relatorioTecnicoPdfPuppeteerService.salvarPdfNoStorage(
-      relatorio.id,
-      pdfBuffer,
-    );
-    await this.relatorioTecnicoService.atualizarPdfUrl(relatorio.id, pdfUrl, usuario);
+    try {
+      const pdfUrl = await this.relatorioTecnicoPdfPuppeteerService.salvarPdfNoStorage(
+        relatorio.id,
+        pdfBuffer,
+      );
+      await this.relatorioTecnicoService.atualizarPdfUrl(relatorio.id, pdfUrl, usuario);
+    } catch (err) {
+      // Falha ao arquivar não deve impedir o usuário de baixar o PDF já gerado
+      this.logger.error(
+        `Falha ao arquivar PDF do relatório técnico ${relatorio.id}: ${err instanceof Error ? err.message : JSON.stringify(err)}`,
+      );
+    }
     const nomeArquivo = `relatorio-tecnico-${relatorio.id}.pdf`;
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="${nomeArquivo}"`);

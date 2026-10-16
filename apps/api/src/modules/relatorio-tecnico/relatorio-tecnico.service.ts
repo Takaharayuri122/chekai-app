@@ -192,9 +192,10 @@ export class RelatorioTecnicoService {
     usuario: UsuarioAutenticado,
   ): Promise<void> {
     const relatorio = await this.buscarPorId(id, usuario);
-    relatorio.pdfUrl = pdfUrl;
-    relatorio.pdfGeradoEm = new Date();
-    await this.relatorioTecnicoRepository.save(relatorio);
+    await this.relatorioTecnicoRepository.update(relatorio.id, {
+      pdfUrl,
+      pdfGeradoEm: new Date(),
+    });
   }
 
   async adicionarFoto(
