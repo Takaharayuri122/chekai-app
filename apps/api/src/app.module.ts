@@ -18,6 +18,7 @@ import { ListaEsperaModule } from './modules/lista-espera/lista-espera.module';
 import { RelatorioTecnicoModule } from './modules/relatorio-tecnico/relatorio-tecnico.module';
 import { CheckinModule } from './modules/checkin/checkin.module';
 import { PlanoAcaoModule } from './modules/plano-acao/plano-acao.module';
+import { AgendaModule } from './modules/agenda/agenda.module';
 
 /**
  * Módulo principal da aplicação.
@@ -72,6 +73,7 @@ import { PlanoAcaoModule } from './modules/plano-acao/plano-acao.module';
     RelatorioTecnicoModule,
     CheckinModule,
     PlanoAcaoModule,
+    AgendaModule,
   ],
 })
 export class AppModule {}

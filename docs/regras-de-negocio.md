@@ -312,6 +312,19 @@
 | RN-PAC-005 | Concluir uma tarefa registra `concluidaEm`; reabrir limpa o campo |
 | RN-PAC-006 | Tarefa aberta com prazo anterior a hoje é considerada atrasada (resumo do dashboard: atrasadas, próximos 7 dias, futuras, concluídas) |
 | RN-PAC-007 | Apenas MASTER/GESTOR removem tarefas |
+| RN-PAC-008 | É possível gerar tarefas a partir dos itens `nao_conforme` de uma auditoria (prazo padrão de 15 dias, sem duplicar títulos já existentes na auditoria) |
+
+---
+
+## 17. Agenda de Auditorias
+
+| ID | Regra |
+|----|-------|
+| RN-AGD-001 | Agendamento vincula unidade, checklist, data prevista, responsável (opcional) e recorrência: `nenhuma`, `semanal`, `quinzenal`, `mensal`; status: `agendada`, `realizada`, `cancelada` |
+| RN-AGD-002 | Agendamentos são isolados por `gestorId`; unidade deve pertencer a cliente do gestor e checklist ao gestor |
+| RN-AGD-003 | AUDITOR vê apenas agendamentos sob sua responsabilidade e pode apenas concluí-los; criar, editar, cancelar e remover são de MASTER/GESTOR |
+| RN-AGD-004 | Agendamento com data anterior a hoje e status `agendada` é exibido como atrasado |
+| RN-AGD-005 | Ao concluir um agendamento recorrente, o próximo é criado automaticamente (mensal respeita o último dia do mês) |
 
 ---
 
@@ -321,3 +334,4 @@
 |------|-----------|-------|
 | 2026-04-11 | Documento inicial compilado a partir do código-fonte da API, mobile e web | platform-orchestrator |
 | 2026-10-16 | Adicionada seção 16 (Planos de Ação) | Claude |
+| 2026-10-16 | Adicionadas seções 17 (Agenda) e RN-PAC-008 | Claude |

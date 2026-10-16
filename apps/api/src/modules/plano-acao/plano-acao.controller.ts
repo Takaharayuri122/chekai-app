@@ -63,6 +63,15 @@ export class PlanoAcaoController {
     return this.service.resumo(usuario);
   }
 
+  @Post('gerar-da-auditoria/:auditoriaId')
+  @ApiOperation({ summary: 'Gera tarefas a partir dos itens não conformes da auditoria' })
+  gerarDaAuditoria(
+    @Param('auditoriaId', ParseUUIDPipe) auditoriaId: string,
+    @CurrentUser() usuario: UsuarioAutenticado,
+  ): Promise<{ criadas: number }> {
+    return this.service.gerarDaAuditoria(auditoriaId, usuario);
+  }
+
   @Patch(':id')
   @ApiOperation({ summary: 'Atualiza tarefa (dados ou status)' })
   atualizar(

@@ -12,6 +12,8 @@ import {
   ChevronRight,
   Calendar,
   Trophy,
+  Star,
+  Printer,
 } from 'lucide-react';
 import {
   Bar,
@@ -92,6 +94,45 @@ export default function DashboardPage() {
       return true;
     });
   }, [auditorias, periodoInicio, periodoFim, filtroTemplate, filtroUnidade]);
+
+  const [aba, setAba] = useState<'classica' | 'checklist'>('classica');
+  const [abaFavorita, setAbaFavorita] = useState<'classica' | 'checklist'>('classica');
+
+  useEffect(() => {
+    try {
+      const salva = localStorage.getItem('dashboard-aba-favorita');
+      if (salva === 'classica' || salva === 'checklist') {
+        setAbaFavorita(salva);
+        setAba(salva);
+      }
+    } catch {
+      // localStorage indisponível
+    }
+  }, []);
+
+  const favoritarAba = (valor: 'classica' | 'checklist') => {
+    setAbaFavorita(valor);
+    try {
+      localStorage.setItem('dashboard-aba-favorita', valor);
+    } catch {
+      // localStorage indisponível
+    }
+  };
+
+  const resumoPorChecklist = useMemo(() => {
+    const mapa = new Map<string, { nome: string; total: number; finalizadas: number; soma: number }>();
+    auditoriasFiltradas.forEach((a) => {
+      const id = a.template?.id || 'x';
+      const atual = mapa.get(id) || { nome: a.template?.nome || 'Sem checklist', total: 0, finalizadas: 0, soma: 0 };
+      atual.total += 1;
+      if (a.status === 'finalizada') {
+        atual.finalizadas += 1;
+        atual.soma += Number(a.pontuacaoTotal || 0);
+      }
+      mapa.set(id, atual);
+    });
+    return Array.from(mapa.values()).sort((x, y) => y.total - x.total);
+  }, [auditoriasFiltradas]);
 
   const auditoriasEmAndamento = auditoriasFiltradas.filter((a) => a.status === 'em_andamento');
   const auditoriasFinalizadas = auditoriasFiltradas.filter((a) => a.status === 'finalizada');
@@ -257,6 +298,28 @@ export default function DashboardPage() {
           />
         </motion.div>
 
+        {/* Abas */}
+        <div className="flex items-center justify-between print:hidden">
+          <div role="tablist" className="tabs tabs-lifted">
+            {([['classica', 'Clássica'], ['checklist', 'Checklist']] as const).map(([valor, label]) => (
+              <a key={valor} role="tab" className={`tab gap-2 ${aba === valor ? 'tab-active font-semibold' : ''}`} onClick={() => setAba(valor)}>
+                {label}
+                <button
+                  type="button"
+                  title={abaFavorita === valor ? 'Aba inicial' : 'Definir como aba inicial'}
+                  aria-label="Definir como aba inicial"
+                  onClick={(e) => { e.stopPropagation(); favoritarAba(valor); }}
+                >
+                  <Star className={`w-4 h-4 ${abaFavorita === valor ? 'fill-warning text-warning' : 'text-base-content/40'}`} />
+                </button>
+              </a>
+            ))}
+          </div>
+          <button className="btn btn-ghost btn-sm btn-square" title="Imprimir" onClick={() => window.print()}>
+            <Printer className="w-4 h-4" />
+          </button>
+        </div>
+
         {/* Filtros */}
         <div className="card bg-base-100 shadow-sm border border-base-300">
           <div className="card-body p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -285,6 +348,31 @@ export default function DashboardPage() {
           </div>
         </div>
 
+        {aba === 'checklist' && (
+          <div className="card bg-base-100 shadow-sm border border-base-300">
+            <div className="card-body p-4">
+              <h2 className="text-sm font-semibold uppercase text-primary">Desempenho por checklist</h2>
+              <div className="overflow-x-auto">
+                <table className="table table-sm">
+                  <thead><tr><th>Checklist</th><th className="text-right">Avaliações</th><th className="text-right">Finalizadas</th><th className="text-right">Média</th></tr></thead>
+                  <tbody>
+                    {resumoPorChecklist.length === 0 && (<tr><td colSpan={4} className="text-base-content/50">Nenhum registro encontrado para os filtros selecionados.</td></tr>)}
+                    {resumoPorChecklist.map((c) => (
+                      <tr key={c.nome}>
+                        <td>{c.nome}</td>
+                        <td className="text-right">{c.total}</td>
+                        <td className="text-right">{c.finalizadas}</td>
+                        <td className="text-right">{c.finalizadas ? `${(c.soma / c.finalizadas).toFixed(1).replace('.', ',')} %` : '-'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {aba === 'classica' && (<>
         {/* Gráficos */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <div className="card bg-base-100 shadow-sm border border-base-300">
@@ -389,6 +477,7 @@ export default function DashboardPage() {
                   </div>
                 ))}
               </div>
+              <Link href="/admin/auditorias" className="btn btn-ghost btn-xs self-end">Ver todos...</Link>
             </div>
           </div>
           <div className="card bg-base-100 shadow-sm border border-base-300">
@@ -422,6 +511,8 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
+
+        </>)}
 
         {/* Recent Audits */}
         <motion.div

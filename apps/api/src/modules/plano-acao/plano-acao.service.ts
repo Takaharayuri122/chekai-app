@@ -1,6 +1,7 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, SelectQueryBuilder } from 'typeorm';
+import { AuditoriaItem } from '../auditoria/entities/auditoria-item.entity';
 import { PerfilUsuario, Usuario } from '../usuario/entities/usuario.entity';
 import { PlanoAcaoTarefa, StatusTarefaPlanoAcao } from './entities/plano-acao-tarefa.entity';
 import {
@@ -32,6 +33,8 @@ export class PlanoAcaoService {
     private readonly repo: Repository<PlanoAcaoTarefa>,
     @InjectRepository(Usuario)
     private readonly usuarioRepo: Repository<Usuario>,
+    @InjectRepository(AuditoriaItem)
+    private readonly itemRepo: Repository<AuditoriaItem>,
   ) {}
 
   private gestorDoTenant(usuario: UsuarioAutenticado): string {
@@ -66,18 +69,56 @@ export class PlanoAcaoService {
     }
   }
 
+  private async validarAuditoria(auditoriaId: string, usuario: UsuarioAutenticado): Promise<void> {
+    const gestorId = this.gestorDoTenant(usuario);
+    const ok: Array<{ id: string }> = await this.repo.query(
+      `SELECT a.id FROM auditorias a JOIN usuarios u ON u.id = a.consultor_id
+       WHERE a.id = $1 AND (u.id = $2 OR u.gestor_id = $2)`,
+      [auditoriaId, gestorId],
+    );
+    if (ok.length === 0) throw new BadRequestException('Auditoria inválida para este gestor.');
+  }
+
+  /** RN-PAC-008: gera uma tarefa por item não conforme, sem duplicar títulos já existentes na auditoria. */
+  async gerarDaAuditoria(
+    auditoriaId: string,
+    usuario: UsuarioAutenticado,
+  ): Promise<{ criadas: number }> {
+    await this.validarAuditoria(auditoriaId, usuario);
+    const itens = await this.itemRepo.find({
+      where: { auditoriaId, resposta: 'nao_conforme' },
+      relations: ['templateItem'],
+    });
+    const existentes = await this.repo.find({ where: { auditoriaId }, select: ['titulo'] });
+    const titulosExistentes = new Set(existentes.map((t) => t.titulo));
+    const prazo = new Date(Date.now() + 15 * 86_400_000).toISOString().slice(0, 10);
+    const novas = itens
+      .map((item) => ({
+        item,
+        titulo: (item.templateItem?.pergunta ?? 'Item não conforme').slice(0, 200),
+      }))
+      .filter(({ titulo }) => !titulosExistentes.has(titulo))
+      .map(({ item, titulo }) =>
+        this.repo.create({
+          gestorId: this.gestorDoTenant(usuario),
+          criadoPorId: usuario.id,
+          auditoriaId,
+          titulo,
+          descricao:
+            item.planoAcaoFinal || item.planoAcaoSugerido || item.descricaoNaoConformidade || null,
+          prazo,
+        }),
+      );
+    if (novas.length > 0) await this.repo.save(novas);
+    return { criadas: novas.length };
+  }
+
   async criar(dto: CriarTarefaPlanoAcaoDto, usuario: UsuarioAutenticado): Promise<PlanoAcaoTarefa> {
     if (dto.responsavelId) {
       await this.validarResponsavel(dto.responsavelId, usuario);
     }
     if (dto.auditoriaId) {
-      const gestorId = this.gestorDoTenant(usuario);
-      const ok: Array<{ id: string }> = await this.repo.query(
-        `SELECT a.id FROM auditorias a JOIN usuarios u ON u.id = a.consultor_id
-         WHERE a.id = $1 AND (u.id = $2 OR u.gestor_id = $2)`,
-        [dto.auditoriaId, gestorId],
-      );
-      if (ok.length === 0) throw new BadRequestException('Auditoria inválida para este gestor.');
+      await this.validarAuditoria(dto.auditoriaId, usuario);
     }
     const tarefa = this.repo.create({
       gestorId: this.gestorDoTenant(usuario),

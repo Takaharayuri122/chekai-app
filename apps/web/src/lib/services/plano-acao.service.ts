@@ -57,6 +57,10 @@ export const planoAcaoService = {
     const response = await api.patch(`/planos-acao/${id}`, dados);
     return response.data.data;
   },
+  async gerarDaAuditoria(auditoriaId: string): Promise<{ criadas: number }> {
+    const response = await api.post(`/planos-acao/gerar-da-auditoria/${auditoriaId}`);
+    return response.data.data;
+  },
   async remover(id: string): Promise<void> {
     await api.delete(`/planos-acao/${id}`);
   },

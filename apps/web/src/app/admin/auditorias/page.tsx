@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import {
@@ -30,6 +30,11 @@ export default function AuditoriasPage() {
   const [loading, setLoading] = useState(true);
   const [filtro, setFiltro] = useState<'todos' | 'em_andamento' | 'finalizada'>('todos');
   const [busca, setBusca] = useState('');
+  const [periodoInicio, setPeriodoInicio] = useState('');
+  const [periodoFim, setPeriodoFim] = useState('');
+  const [filtroTemplate, setFiltroTemplate] = useState('');
+  const [filtroUnidade, setFiltroUnidade] = useState('');
+  const [filtroAvaliador, setFiltroAvaliador] = useState('');
   const [reabrindoId, setReabrindoId] = useState<string | null>(null);
   const [showReabrirConfirm, setShowReabrirConfirm] = useState<string | null>(null);
   const [removendoId, setRemovendoId] = useState<string | null>(null);
@@ -38,8 +43,13 @@ export default function AuditoriasPage() {
 
   const carregarAuditorias = async () => {
     try {
-      const response = await auditoriaService.listar(1, 100);
-      setAuditorias(response.items || []);
+      const todas: Auditoria[] = [];
+      for (let pagina = 1; pagina <= 10; pagina++) {
+        const response = await auditoriaService.listar(pagina, 100);
+        todas.push(...(response.items || []));
+        if ((response.items || []).length < 100) break;
+      }
+      setAuditorias(todas);
     } catch (error) {
       // Erro já é tratado pelo interceptor
     } finally {
@@ -93,7 +103,38 @@ export default function AuditoriasPage() {
     }
   };
 
+  const opcoes = useMemo(() => {
+    const templates = new Map<string, string>();
+    const unidades = new Map<string, string>();
+    const avaliadores = new Map<string, string>();
+    auditorias.forEach((a) => {
+      if (a.template) templates.set(a.template.id, a.template.nome);
+      if (a.unidade) unidades.set(a.unidade.id, a.unidade.nome);
+      if (a.consultor) avaliadores.set(a.consultor.id, a.consultor.nome);
+    });
+    const lista = (m: Map<string, string>) => Array.from(m, ([id, nome]) => ({ id, nome }));
+    return { templates: lista(templates), unidades: lista(unidades), avaliadores: lista(avaliadores) };
+  }, [auditorias]);
+
+  const temFiltroAvancado = Boolean(periodoInicio || periodoFim || filtroTemplate || filtroUnidade || filtroAvaliador);
+
+  const limparFiltros = () => {
+    setBusca('');
+    setFiltro('todos');
+    setPeriodoInicio('');
+    setPeriodoFim('');
+    setFiltroTemplate('');
+    setFiltroUnidade('');
+    setFiltroAvaliador('');
+  };
+
   const auditoriasFiltradas = auditorias.filter((a) => {
+    const t = new Date(a.dataInicio).getTime();
+    if (periodoInicio && t < new Date(`${periodoInicio}T00:00:00`).getTime()) return false;
+    if (periodoFim && t > new Date(`${periodoFim}T23:59:59`).getTime()) return false;
+    if (filtroTemplate && a.template?.id !== filtroTemplate) return false;
+    if (filtroUnidade && a.unidade?.id !== filtroUnidade) return false;
+    if (filtroAvaliador && a.consultor?.id !== filtroAvaliador) return false;
     const matchFiltro = filtro === 'todos' || a.status === filtro;
     const clienteNome = a.unidade?.cliente?.nomeFantasia || a.unidade?.cliente?.razaoSocial || '';
     const matchBusca =
@@ -231,6 +272,29 @@ export default function AuditoriasPage() {
           </div>
         </div>
 
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+          <input type="date" aria-label="Data inicial" className="input input-bordered input-sm" value={periodoInicio} onChange={(e) => setPeriodoInicio(e.target.value)} />
+          <input type="date" aria-label="Data final" className="input input-bordered input-sm" value={periodoFim} onChange={(e) => setPeriodoFim(e.target.value)} />
+          <select aria-label="Checklist" className="select select-bordered select-sm" value={filtroTemplate} onChange={(e) => setFiltroTemplate(e.target.value)}>
+            <option value="">Todos os checklists</option>
+            {opcoes.templates.map((o) => (<option key={o.id} value={o.id}>{o.nome}</option>))}
+          </select>
+          <select aria-label="Unidade" className="select select-bordered select-sm" value={filtroUnidade} onChange={(e) => setFiltroUnidade(e.target.value)}>
+            <option value="">Todas as unidades</option>
+            {opcoes.unidades.map((o) => (<option key={o.id} value={o.id}>{o.nome}</option>))}
+          </select>
+          <select aria-label="Avaliador" className="select select-bordered select-sm" value={filtroAvaliador} onChange={(e) => setFiltroAvaliador(e.target.value)}>
+            <option value="">Todos os avaliadores</option>
+            {opcoes.avaliadores.map((o) => (<option key={o.id} value={o.id}>{o.nome}</option>))}
+          </select>
+        </div>
+        {(temFiltroAvancado || busca || filtro !== 'todos') && (
+          <div className="flex items-center justify-between text-sm text-base-content/60">
+            <span>{auditoriasFiltradas.length} de {auditorias.length} avaliações</span>
+            <button className="btn btn-ghost btn-xs" onClick={limparFiltros}>Limpar filtros</button>
+          </div>
+        )}
+
         {/* List */}
         {loading ? (
           <div className="card bg-base-100 shadow-sm border border-base-300">
@@ -243,7 +307,7 @@ export default function AuditoriasPage() {
             icon={ClipboardCheck}
             title="Nenhuma auditoria encontrada"
             description={
-              busca || filtro !== 'todos'
+              busca || filtro !== 'todos' || temFiltroAvancado
                 ? 'Tente ajustar os filtros de busca.'
                 : 'Inicie sua primeira auditoria.'
             }

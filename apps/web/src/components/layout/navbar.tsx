@@ -24,6 +24,7 @@ import {
   ClipboardPen,
   Clock3,
   ListChecks,
+  CalendarClock,
 } from 'lucide-react';
 import { useAuthStore, PerfilUsuario } from '@/lib/store';
 const allNavItems = [
@@ -33,6 +34,7 @@ const allNavItems = [
   { href: '/admin/templates', label: 'Checklists', icon: FileText, roles: [PerfilUsuario.MASTER, PerfilUsuario.GESTOR] },
   { href: '/admin/auditorias', label: 'Auditorias', icon: ClipboardCheck, roles: [PerfilUsuario.MASTER, PerfilUsuario.GESTOR, PerfilUsuario.AUDITOR] },
   { href: '/admin/relatorios-tecnicos', label: 'Relatórios Técnicos', icon: ClipboardPen, roles: [PerfilUsuario.MASTER, PerfilUsuario.GESTOR, PerfilUsuario.AUDITOR] },
+  { href: '/admin/agenda', label: 'Agenda', icon: CalendarClock, roles: [PerfilUsuario.MASTER, PerfilUsuario.GESTOR, PerfilUsuario.AUDITOR] },
   { href: '/admin/planos-acao', label: 'Planos de Ação', icon: ListChecks, roles: [PerfilUsuario.MASTER, PerfilUsuario.GESTOR, PerfilUsuario.AUDITOR] },
   { href: '/admin/checkins', label: 'Checkins', icon: Clock3, roles: [PerfilUsuario.MASTER, PerfilUsuario.GESTOR] },
   { href: '/admin/usuarios', label: 'Usuários', icon: User, roles: [PerfilUsuario.MASTER, PerfilUsuario.GESTOR] },
