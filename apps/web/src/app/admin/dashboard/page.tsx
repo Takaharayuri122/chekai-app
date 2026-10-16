@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import {
@@ -11,22 +11,46 @@ import {
   Clock,
   ChevronRight,
   Calendar,
+  Trophy,
 } from 'lucide-react';
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip as RTooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
 import { AppLayout, StatCard, EmptyState } from '@/components';
 import { auditoriaService, type Auditoria } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
 import { toastService } from '@/lib/toast';
+import { planoAcaoService, type ResumoPlanoAcao } from '@/lib/services/plano-acao.service';
 
 export default function DashboardPage() {
   const { usuario } = useAuthStore();
   const [auditorias, setAuditorias] = useState<Auditoria[]>([]);
   const [loading, setLoading] = useState(true);
+  const [resumoPlano, setResumoPlano] = useState<ResumoPlanoAcao | null>(null);
+
+  useEffect(() => {
+    planoAcaoService.resumo().then(setResumoPlano).catch(() => undefined);
+  }, []);
 
   useEffect(() => {
     const carregarDados = async () => {
       try {
-        const response = await auditoriaService.listar(1, 100);
-        setAuditorias(response.items || []);
+        const todas: Auditoria[] = [];
+        for (let pagina = 1; pagina <= 10; pagina++) {
+          const response = await auditoriaService.listar(pagina, 100);
+          todas.push(...(response.items || []));
+          if ((response.items || []).length < 100) break;
+        }
+        setAuditorias(todas);
       } catch (error) {
         // Erro já é tratado pelo interceptor
       } finally {
@@ -36,9 +60,95 @@ export default function DashboardPage() {
     carregarDados();
   }, []);
 
-  const auditoriasEmAndamento = auditorias.filter((a) => a.status === 'em_andamento');
-  const auditoriasFinalizadas = auditorias.filter((a) => a.status === 'finalizada');
-  const ultimasAuditorias = auditorias.slice(0, 5);
+  const [periodoInicio, setPeriodoInicio] = useState<string>(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 30);
+    return d.toISOString().slice(0, 10);
+  });
+  const [periodoFim, setPeriodoFim] = useState<string>(() => new Date().toISOString().slice(0, 10));
+  const [filtroTemplate, setFiltroTemplate] = useState<string>('');
+  const [filtroUnidade, setFiltroUnidade] = useState<string>('');
+
+  const templatesOpcoes = useMemo(() => {
+    const mapa = new Map<string, string>();
+    auditorias.forEach((a) => a.template && mapa.set(a.template.id, a.template.nome));
+    return Array.from(mapa, ([id, nome]) => ({ id, nome }));
+  }, [auditorias]);
+
+  const unidadesOpcoes = useMemo(() => {
+    const mapa = new Map<string, string>();
+    auditorias.forEach((a) => a.unidade && mapa.set(a.unidade.id, a.unidade.nome));
+    return Array.from(mapa, ([id, nome]) => ({ id, nome }));
+  }, [auditorias]);
+
+  const auditoriasFiltradas = useMemo(() => {
+    const inicio = new Date(`${periodoInicio}T00:00:00`).getTime();
+    const fim = new Date(`${periodoFim}T23:59:59`).getTime();
+    return auditorias.filter((a) => {
+      const t = new Date(a.dataInicio).getTime();
+      if (t < inicio || t > fim) return false;
+      if (filtroTemplate && a.template?.id !== filtroTemplate) return false;
+      if (filtroUnidade && a.unidade?.id !== filtroUnidade) return false;
+      return true;
+    });
+  }, [auditorias, periodoInicio, periodoFim, filtroTemplate, filtroUnidade]);
+
+  const auditoriasEmAndamento = auditoriasFiltradas.filter((a) => a.status === 'em_andamento');
+  const auditoriasFinalizadas = auditoriasFiltradas.filter((a) => a.status === 'finalizada');
+  const ultimasAuditorias = auditoriasFiltradas.slice(0, 10);
+
+  const mediaAproveitamento = auditoriasFinalizadas.length
+    ? auditoriasFinalizadas.reduce((acc, a) => acc + Number(a.pontuacaoTotal || 0), 0) /
+      auditoriasFinalizadas.length
+    : 0;
+
+  const avaliacoesPorMes = useMemo(() => {
+    const mapa = new Map<string, number>();
+    auditoriasFiltradas.forEach((a) => {
+      const d = new Date(a.dataInicio);
+      const chave = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      mapa.set(chave, (mapa.get(chave) || 0) + 1);
+    });
+    return Array.from(mapa.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([chave, total]) => {
+        const [ano, mes] = chave.split('-');
+        return { mes: `${mes}/${ano.slice(2)}`, total };
+      });
+  }, [auditoriasFiltradas]);
+
+  const rankingAvaliadores = useMemo(() => {
+    const mapa = new Map<string, { nome: string; total: number }>();
+    auditoriasFiltradas.forEach((a) => {
+      const id = a.consultor?.id || 'desconhecido';
+      const atual = mapa.get(id) || { nome: a.consultor?.nome || 'Não especificado', total: 0 };
+      atual.total += 1;
+      mapa.set(id, atual);
+    });
+    return Array.from(mapa.values()).sort((x, y) => y.total - x.total);
+  }, [auditoriasFiltradas]);
+
+  const rankingUnidades = useMemo(() => {
+    const mapa = new Map<string, { nome: string; notas: number[]; ultima: number }>();
+    [...auditoriasFinalizadas]
+      .sort((x, y) => new Date(x.dataInicio).getTime() - new Date(y.dataInicio).getTime())
+      .forEach((a) => {
+        const id = a.unidade?.id || 'x';
+        const atual = mapa.get(id) || { nome: a.unidade?.nome || 'Unidade', notas: [], ultima: 0 };
+        atual.notas.push(Number(a.pontuacaoTotal || 0));
+        atual.ultima = Number(a.pontuacaoTotal || 0);
+        mapa.set(id, atual);
+      });
+    return Array.from(mapa.values())
+      .map((u) => ({ ...u, media: u.notas.reduce((x, y) => x + y, 0) / u.notas.length }))
+      .sort((x, y) => y.media - x.media);
+  }, [auditoriasFinalizadas]);
+
+  const corAproveitamento = (v: number) => (v >= 80 ? '#16a34a' : v >= 60 ? '#f59e0b' : '#dc2626');
+  const gaugeData = [
+    { name: 'valor', value: mediaAproveitamento },
+    { name: 'resto', value: Math.max(0, 100 - mediaAproveitamento) },
+  ];
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -134,22 +244,184 @@ export default function DashboardPage() {
             color="success"
           />
           <StatCard
-            title="Este Mês"
-            value={auditorias.filter((a) => {
-              const date = new Date(a.dataInicio);
-              const now = new Date();
-              return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
-            }).length}
+            title="No Período"
+            value={auditoriasFiltradas.length}
             icon={Calendar}
             color="info"
           />
           <StatCard
             title="Clientes"
-            value={new Set(auditorias.map((a) => a.unidade?.cliente?.id)).size}
+            value={new Set(auditoriasFiltradas.map((a) => a.unidade?.cliente?.id)).size}
             icon={Building2}
             color="secondary"
           />
         </motion.div>
+
+        {/* Filtros */}
+        <div className="card bg-base-100 shadow-sm border border-base-300">
+          <div className="card-body p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <label className="form-control">
+              <span className="label-text text-xs mb-1">De</span>
+              <input type="date" className="input input-bordered input-sm" value={periodoInicio} onChange={(e) => setPeriodoInicio(e.target.value)} />
+            </label>
+            <label className="form-control">
+              <span className="label-text text-xs mb-1">Até</span>
+              <input type="date" className="input input-bordered input-sm" value={periodoFim} onChange={(e) => setPeriodoFim(e.target.value)} />
+            </label>
+            <label className="form-control">
+              <span className="label-text text-xs mb-1">Checklist</span>
+              <select className="select select-bordered select-sm" value={filtroTemplate} onChange={(e) => setFiltroTemplate(e.target.value)}>
+                <option value="">Todos</option>
+                {templatesOpcoes.map((t) => (<option key={t.id} value={t.id}>{t.nome}</option>))}
+              </select>
+            </label>
+            <label className="form-control">
+              <span className="label-text text-xs mb-1">Unidade</span>
+              <select className="select select-bordered select-sm" value={filtroUnidade} onChange={(e) => setFiltroUnidade(e.target.value)}>
+                <option value="">Todas</option>
+                {unidadesOpcoes.map((u) => (<option key={u.id} value={u.id}>{u.nome}</option>))}
+              </select>
+            </label>
+          </div>
+        </div>
+
+        {/* Gráficos */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="card bg-base-100 shadow-sm border border-base-300">
+            <div className="card-body p-4">
+              <h2 className="text-sm font-semibold uppercase text-primary">Número de avaliações por mês</h2>
+              {avaliacoesPorMes.length === 0 ? (
+                <p className="text-sm text-base-content/60 py-10 text-center">Nenhum registro encontrado para os filtros selecionados.</p>
+              ) : (
+                <div className="h-56">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={avaliacoesPorMes}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                      <XAxis dataKey="mes" />
+                      <YAxis allowDecimals={false} />
+                      <RTooltip />
+                      <Bar dataKey="total" name="Avaliações" radius={[4, 4, 0, 0]}>
+                        {avaliacoesPorMes.map((_, i) => (<Cell key={i} fill={i % 2 === 0 ? '#14b8a6' : '#f97316'} />))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="card bg-base-100 shadow-sm border border-base-300">
+            <div className="card-body p-4">
+              <h2 className="text-sm font-semibold uppercase text-primary">% Média de aproveitamento</h2>
+              {auditoriasFinalizadas.length === 0 ? (
+                <p className="text-sm text-base-content/60 py-10 text-center">Nenhuma auditoria finalizada no período.</p>
+              ) : (
+                <div className="h-56 relative">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie data={gaugeData} dataKey="value" startAngle={180} endAngle={0} cx="50%" cy="80%" innerRadius="65%" outerRadius="95%" stroke="none">
+                        <Cell fill={corAproveitamento(mediaAproveitamento)} />
+                        <Cell fill="#e5e7eb" />
+                      </Pie>
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="absolute inset-x-0 bottom-6 text-center text-3xl font-bold">
+                    {mediaAproveitamento.toFixed(2).replace('.', ',')} %
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="card bg-base-100 shadow-sm border border-base-300">
+            <div className="card-body p-4">
+              <h2 className="text-sm font-semibold uppercase text-primary">Plano de ação - tarefas por término</h2>
+              {!resumoPlano || resumoPlano.atrasadas + resumoPlano.proximos7Dias + resumoPlano.futuras + resumoPlano.concluidas === 0 ? (
+                <p className="text-sm text-base-content/60 py-10 text-center">Nenhuma tarefa cadastrada.</p>
+              ) : (
+                <div className="h-56">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={[
+                        { nome: 'Atrasadas', total: resumoPlano.atrasadas, cor: '#dc2626' },
+                        { nome: 'Próx. 7 dias', total: resumoPlano.proximos7Dias, cor: '#f59e0b' },
+                        { nome: 'Futuras', total: resumoPlano.futuras, cor: '#14b8a6' },
+                        { nome: 'Concluídas', total: resumoPlano.concluidas, cor: '#16a34a' },
+                      ]}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                      <XAxis dataKey="nome" />
+                      <YAxis allowDecimals={false} />
+                      <RTooltip />
+                      <Bar dataKey="total" name="Tarefas" radius={[4, 4, 0, 0]}>
+                        {['#dc2626', '#f59e0b', '#14b8a6', '#16a34a'].map((c) => (<Cell key={c} fill={c} />))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+              <Link href="/admin/planos-acao" className="btn btn-ghost btn-xs self-end gap-1">Ver tarefas <ChevronRight className="w-3 h-3" /></Link>
+            </div>
+          </div>
+        </div>
+
+        {/* Rankings */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="card bg-base-100 shadow-sm border border-base-300">
+            <div className="card-body p-4">
+              <h2 className="text-sm font-semibold uppercase text-primary flex items-center gap-2">
+                <Trophy className="w-4 h-4" /> Ranking de avaliadores
+              </h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {[
+                  { titulo: 'Mais ativos', lista: rankingAvaliadores.slice(0, 3) },
+                  { titulo: 'Menos ativos', lista: [...rankingAvaliadores].reverse().slice(0, 3) },
+                ].map((bloco) => (
+                  <div key={bloco.titulo}>
+                    <h3 className="text-sm font-semibold mb-1">{bloco.titulo}</h3>
+                    <table className="table table-xs">
+                      <thead><tr><th>Nome</th><th className="text-right">Quant.</th></tr></thead>
+                      <tbody>
+                        {bloco.lista.length === 0 && (<tr><td colSpan={2} className="text-base-content/50">Sem dados</td></tr>)}
+                        {bloco.lista.map((r, i) => (
+                          <tr key={r.nome}><td>{i + 1} {r.nome}</td><td className="text-right">{r.total}</td></tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+          <div className="card bg-base-100 shadow-sm border border-base-300">
+            <div className="card-body p-4">
+              <h2 className="text-sm font-semibold uppercase text-primary flex items-center gap-2">
+                <Building2 className="w-4 h-4" /> Ranking de unidades
+              </h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {[
+                  { titulo: 'Melhor aproveitamento', lista: rankingUnidades.slice(0, 3) },
+                  { titulo: 'Pior aproveitamento', lista: [...rankingUnidades].reverse().slice(0, 3) },
+                ].map((bloco) => (
+                  <div key={bloco.titulo}>
+                    <h3 className="text-sm font-semibold mb-1">{bloco.titulo}</h3>
+                    <table className="table table-xs">
+                      <thead><tr><th>Unidade</th><th className="text-right">Última</th><th className="text-right">Média</th></tr></thead>
+                      <tbody>
+                        {bloco.lista.length === 0 && (<tr><td colSpan={3} className="text-base-content/50">Sem dados</td></tr>)}
+                        {bloco.lista.map((u, i) => (
+                          <tr key={u.nome}>
+                            <td className="max-w-[8rem] truncate">{i + 1} {u.nome}</td>
+                            <td className="text-right">{u.ultima.toFixed(0)}%</td>
+                            <td className="text-right">{u.media.toFixed(0)}%</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
 
         {/* Recent Audits */}
         <motion.div
@@ -173,11 +445,11 @@ export default function DashboardPage() {
                 <span className="loading loading-spinner loading-lg text-primary"></span>
               </div>
             </div>
-          ) : auditorias.length === 0 ? (
+          ) : auditoriasFiltradas.length === 0 ? (
             <EmptyState
               icon={ClipboardCheck}
-              title="Nenhuma auditoria ainda"
-              description="Inicie sua primeira auditoria para começar a usar o ChekAI."
+              title="Nenhuma auditoria encontrada"
+              description="Ajuste os filtros ou inicie uma nova auditoria."
               actionLabel="Iniciar Auditoria"
               actionHref="/admin/auditoria/nova"
             />
