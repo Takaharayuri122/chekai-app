@@ -240,13 +240,27 @@ export class UsuarioService {
         `Não é possível remover o usuário. Existem ${usuariosVinculados} usuário(s) vinculado(s) a este gestor.`,
       );
     }
-    const clientesVinculados = await this.clienteRepository.count({
-      where: { gestorId: id },
-    });
-    if (clientesVinculados > 0) {
-      await this.clienteRepository.update({ gestorId: id }, { gestorId: null });
+    const relatoriosVinculados: Array<{ total: string }> = await this.usuarioRepository.query(
+      'SELECT COUNT(*) AS total FROM relatorios_tecnicos WHERE consultora_id = $1',
+      [id],
+    );
+    if (Number(relatoriosVinculados[0]?.total) > 0) {
+      throw new BadRequestException(
+        `Não é possível remover o usuário. Existem ${relatoriosVinculados[0].total} relatório(s) técnico(s) vinculado(s) a este usuário.`,
+      );
     }
-    await this.usuarioRepository.remove(usuario);
+
+    // Limpa vínculos que impediriam o DELETE por chave estrangeira
+    await this.usuarioRepository.manager.transaction(async (manager) => {
+      await manager.query('UPDATE clientes SET gestor_id = NULL WHERE gestor_id = $1', [id]);
+      await manager.query('UPDATE checklist_templates SET gestor_id = NULL WHERE gestor_id = $1', [id]);
+      await manager.query('DELETE FROM cliente_auditores WHERE auditor_id = $1', [id]);
+      await manager.query('DELETE FROM unidade_auditores WHERE auditor_id = $1', [id]);
+      await manager.query('DELETE FROM checkins WHERE usuario_id = $1', [id]);
+      await manager.query('DELETE FROM uso_creditos WHERE gestor_id = $1 OR usuario_id = $1', [id]);
+      await manager.query('DELETE FROM assinaturas WHERE gestor_id = $1', [id]);
+      await manager.remove(usuario);
+    });
   }
 
   /**
