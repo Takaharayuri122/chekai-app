@@ -24,9 +24,11 @@ function respostaHttps(corpo: string) {
   const resposta = new EventEmitter() as EventEmitter & {
     statusCode: number;
     headers: Record<string, string>;
+    destroy: (erro: Error) => void;
   };
   resposta.statusCode = 200;
   resposta.headers = { 'content-length': String(Buffer.byteLength(corpo)) };
+  resposta.destroy = (erro) => resposta.emit('error', erro);
   return resposta;
 }
 
@@ -147,5 +149,12 @@ describe('CimdHttp', () => {
 
     const destinos = requestMock.mock.calls.map((chamada) => (chamada[0] as { hostname?: string }).hostname);
     expect(destinos).toEqual(expect.arrayContaining(['8.8.8.8', '172.32.0.1', '::ffff:808:808']));
+  });
+
+  it('interrompe o stream antes de acumular documento maior que 64 KB', async () => {
+    lookupMock.mockResolvedValue([{ address: '1.1.1.1', family: 4 }]);
+    corpoHttps = 'x'.repeat(64 * 1024 + 1);
+
+    await expect(obter('https://cliente.exemplo/oauth/client.json')).resolves.toBeNull();
   });
 });

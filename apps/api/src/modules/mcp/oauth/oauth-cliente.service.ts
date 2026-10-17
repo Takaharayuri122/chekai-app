@@ -8,6 +8,9 @@ import {
 
 @Injectable()
 export class OauthClienteService {
+  private readonly cimdValidadosEm = new Map<string, number>();
+  private readonly ttlCimdMs = 60 * 60 * 1000;
+
   constructor(
     private readonly repositorio: OauthClienteRepositorio,
     private readonly cimd: OauthCimdPorta,
@@ -17,7 +20,22 @@ export class OauthClienteService {
   async resolver(clientId: string): Promise<ClienteOauth | null> {
     if (!clientId) return null;
     const existente = await this.repositorio.buscarPorClientId(clientId);
-    if (existente) return existente;
+    if (existente) {
+      if (existente.origem !== 'cimd') return existente;
+      const validadoEm = this.cimdValidadosEm.get(clientId) ?? existente.atualizadoEm?.getTime();
+      if (!validadoEm || Date.now() - validadoEm < this.ttlCimdMs) return existente;
+      const atualizado = await this.cimd.obter(clientId);
+      if (!atualizado?.redirect_uris?.length) return null;
+      const clienteAtualizado: ClienteOauth = {
+        ...existente,
+        nome: atualizado.client_name ?? null,
+        redirectUris: [...atualizado.redirect_uris],
+        documento: atualizado,
+      };
+      await this.repositorio.salvar(clienteAtualizado);
+      this.cimdValidadosEm.set(clientId, Date.now());
+      return clienteAtualizado;
+    }
     if (!clientId.startsWith('https://')) return null;
 
     const documento = await this.cimd.obter(clientId);
@@ -31,6 +49,7 @@ export class OauthClienteService {
       documento,
     };
     await this.repositorio.salvar(cliente);
+    this.cimdValidadosEm.set(clientId, Date.now());
     return cliente;
   }
 

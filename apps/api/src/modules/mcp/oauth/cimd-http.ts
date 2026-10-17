@@ -176,17 +176,28 @@ export class CimdHttp extends OauthCimdPorta {
     };
     return new Promise((resolve, reject) => {
       let encerrado = false;
+      const limiteAbsoluto = setTimeout(() => pedido.destroy(new Error('timeout')), TIMEOUT_MS);
       const falhar = (erro: Error) => {
         if (encerrado) return;
         encerrado = true;
+        clearTimeout(limiteAbsoluto);
         reject(erro);
       };
       const pedido = requisicaoHttps(opcoes, (res) => {
         const pedacos: Buffer[] = [];
-        res.on('data', (pedaco: Buffer) => pedacos.push(pedaco));
+        let tamanho = 0;
+        res.on('data', (pedaco: Buffer) => {
+          tamanho += pedaco.length;
+          if (tamanho > TAMANHO_MAXIMO_BYTES) {
+            res.destroy(new Error('documento CIMD excede 64 KB'));
+            return;
+          }
+          pedacos.push(pedaco);
+        });
         res.on('end', () => {
           if (encerrado) return;
           encerrado = true;
+          clearTimeout(limiteAbsoluto);
           const bruto = res.headers['content-length'];
           const contentLength = Array.isArray(bruto) ? bruto[0] ?? null : bruto ?? null;
           resolve({

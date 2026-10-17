@@ -23,17 +23,18 @@ export class OauthClienteTypeorm extends OauthClienteRepositorio {
       redirectUris: [...linha.redirectUris],
       origem: linha.origem,
       documento: linha.documento ? { ...linha.documento } : null,
+      atualizadoEm: linha.atualizadoEm,
     };
   }
 
   async salvar(cliente: ClienteOauth): Promise<void> {
-    await this.repositorio.insert({
+    await this.repositorio.upsert({
       id: cliente.id,
       clientId: cliente.clientId,
       nome: cliente.nome,
       redirectUris: [...cliente.redirectUris],
       origem: cliente.origem,
       documento: cliente.documento,
-    });
+    }, ['clientId']);
   }
 }

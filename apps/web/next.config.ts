@@ -5,6 +5,16 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   output: 'standalone',
   transpilePackages: ['leaflet'],
+  async headers() {
+    return [{
+      source: '/oauth/autorizar',
+      headers: [
+        { key: 'X-Frame-Options', value: 'DENY' },
+        { key: 'Content-Security-Policy', value: "frame-ancestors 'none'" },
+        { key: 'Cache-Control', value: 'no-store' },
+      ],
+    }];
+  },
 };
 
 const isDev = process.env.NODE_ENV === 'development';

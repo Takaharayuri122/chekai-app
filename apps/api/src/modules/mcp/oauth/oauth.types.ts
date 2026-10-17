@@ -45,6 +45,7 @@ export interface ClienteOauth {
   redirectUris: string[];
   origem: 'cimd' | 'registro';
   documento: DocumentoCimd | null;
+  atualizadoEm?: Date;
 }
 
 export abstract class OauthClienteRepositorio {
