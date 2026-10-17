@@ -2,24 +2,15 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { motion, AnimatePresence } from 'framer-motion';
 import {
   CheckCircle,
-  XCircle,
-  AlertTriangle,
   Camera,
   Sparkles,
-  ChevronDown,
-  ChevronUp,
   Loader2,
   Save,
-  FileText,
   X,
-  Edit3,
-  Image as ImageIcon,
   MessageSquare,
   AlertCircle,
-  MinusCircle,
   Clock,
 } from 'lucide-react';
 import { AppLayout, PageHeader, FormModal } from '@/components';
@@ -29,10 +20,22 @@ import {
   type Auditoria,
   type AuditoriaItem,
   type AnaliseChecklistResponse,
-  TipoRespostaCustomizada,
 } from '@/lib/api';
 import { toastService } from '@/lib/toast';
-import { renderEmoji } from '@/lib/emoji';
+import { useMediaQuery } from '@/hooks/use-media-query';
+import { Button } from '@/components/ui/shadcn/button';
+import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/shadcn/drawer';
+import { ListaSecoes } from '@/components/auditoria/execucao/lista-secoes';
+import { PainelItem } from '@/components/auditoria/execucao/painel-item';
+import { RespostasItem } from '@/components/auditoria/execucao/respostas-item';
+import { RevisaoFinal } from '@/components/auditoria/execucao/revisao-final';
+import {
+  agruparPorSecao,
+  naoConformidades,
+  pendenciasObrigatorias,
+  progresso as calcularProgresso,
+  vizinhos,
+} from '@/lib/auditoria/execucao';
 
 type RespostaType = 'conforme' | 'nao_conforme' | 'nao_aplicavel' | string;
 
@@ -64,7 +67,6 @@ export default function AuditoriaPage() {
 
   const [auditoria, setAuditoria] = useState<Auditoria | null>(null);
   const [loading, setLoading] = useState(true);
-  const [expandedItem, setExpandedItem] = useState<string | null>(null);
   const [finalizando, setFinalizando] = useState(false);
   const [showFinalModal, setShowFinalModal] = useState(false);
   const [observacoesGerais, setObservacoesGerais] = useState('');
@@ -78,10 +80,10 @@ export default function AuditoriaPage() {
   const [itemModal, setItemModal] = useState<ItemModalState | null>(null);
   const [activeTab, setActiveTab] = useState<'fotos' | 'observacao'>('fotos');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const desktop = useMediaQuery('(min-width: 1024px)');
+  const [selecionadoId, setSelecionadoId] = useState<string | null>(null);
+  const [painelMobileAberto, setPainelMobileAberto] = useState(false);
 
-  // Refs para scroll automático até o último item respondido
-  const itemRefs = useRef<Map<string, HTMLDivElement>>(new Map());
-  const scrollRealizado = useRef(false);
   const prevItemIdRef = useRef<string | null>(null);
 
   const formatarHora = (data: Date) => {
@@ -94,7 +96,6 @@ export default function AuditoriaPage() {
 
   const carregarAuditoria = useCallback(async () => {
     try {
-      scrollRealizado.current = false;
       const data = await auditoriaService.buscarPorId(id);
       setAuditoria(data);
       const customizadas: Record<string, string> = {};
@@ -146,39 +147,12 @@ export default function AuditoriaPage() {
     return () => window.removeEventListener('keydown', handleKeyPress);
   }, [itemModal]);
 
-  // Scroll automático até o último item respondido quando a auditoria carregar
   useEffect(() => {
-    if (!loading && auditoria && auditoria.status === 'em_andamento' && !scrollRealizado.current) {
-      // Encontra o último item respondido (que tem resposta preenchida)
-      const itensComResposta = auditoria.itens
-        .filter((item) => item.resposta && item.resposta !== 'nao_avaliado')
-        .sort((a, b) => {
-          // Ordena por ordem do templateItem
-          const ordemA = a.templateItem?.ordem ?? 0;
-          const ordemB = b.templateItem?.ordem ?? 0;
-          return ordemA - ordemB;
-        });
-
-      if (itensComResposta.length > 0) {
-        const ultimoItem = itensComResposta[itensComResposta.length - 1];
-        
-        // Aguarda um pouco para garantir que o DOM está renderizado
-        setTimeout(() => {
-          const itemRef = itemRefs.current.get(ultimoItem.id);
-          if (itemRef) {
-            itemRef.scrollIntoView({ 
-              behavior: 'smooth', 
-              block: 'center' 
-            });
-            scrollRealizado.current = true;
-          }
-        }, 500);
-      } else {
-        // Se não houver itens respondidos, marca como realizado para não tentar novamente
-        scrollRealizado.current = true;
-      }
-    }
-  }, [loading, auditoria]);
+    if (!auditoria || selecionadoId) return;
+    const sequencia = agruparPorSecao(auditoria.itens).flatMap((s) => s.itens);
+    const primeiroPendente = sequencia.find((i) => !i.resposta || i.resposta === 'nao_avaliado');
+    setSelecionadoId((primeiroPendente ?? sequencia[0])?.id ?? null);
+  }, [auditoria, selecionadoId]);
 
   const handleResposta = async (itemId: string, resposta: RespostaType) => {
     if (!auditoria) return;
@@ -537,12 +511,6 @@ export default function AuditoriaPage() {
   const getOpcaoConfig = (item: AuditoriaItem, resposta: string) => {
     const configs = item.templateItem.opcoesRespostaConfig;
 
-    console.log('🔍 getOpcaoConfig DEBUG:', {
-      resposta,
-      configs,
-      configsLength: configs?.length,
-      templateItemId: item.templateItem.id,
-    });
 
     if (!configs || configs.length === 0) {
       console.log('⚠️ Usando comportamento legado (sem configs)');
@@ -554,14 +522,12 @@ export default function AuditoriaPage() {
     }
 
     const config = configs.find(c => c.valor === resposta);
-    console.log('📌 Config encontrado:', config);
 
     const resultado = config || {
       fotoObrigatoria: false,
       observacaoObrigatoria: false,
     };
 
-    console.log('✅ Retornando config:', resultado);
     return resultado;
   };
 
@@ -676,56 +642,6 @@ export default function AuditoriaPage() {
     }
   };
 
-  const getProgresso = () => {
-    if (!auditoria?.itens.length) return 0;
-    const respondidos = auditoria.itens.filter((i) => i.resposta && i.resposta !== 'nao_avaliado').length;
-    return Math.round((respondidos / auditoria.itens.length) * 100);
-  };
-
-  // Verifica se todas as perguntas obrigatórias foram respondidas
-  const getObrigatoriasStatus = () => {
-    if (!auditoria?.itens.length) return { total: 0, respondidas: 0, completo: false };
-    
-    const obrigatorias = auditoria.itens.filter((i) => i.templateItem?.obrigatorio);
-    const respondidas = obrigatorias.filter((i) => i.resposta && i.resposta !== 'nao_avaliado');
-    
-    return {
-      total: obrigatorias.length,
-      respondidas: respondidas.length,
-      completo: obrigatorias.length === respondidas.length,
-    };
-  };
-
-  const getPontuacaoParaOpcao = (item: AuditoriaItem, opcao: string): number | null | undefined => {
-    const configs = item.templateItem?.opcoesRespostaConfig ?? [];
-    const opcoesOrdenadas = item.templateItem?.usarRespostasPersonalizadas && item.templateItem?.opcoesResposta?.length
-      ? item.templateItem.opcoesResposta
-      : ['conforme', 'nao_conforme', 'nao_aplicavel', 'nao_avaliado'];
-    const config = configs.find((c) => c.valor === opcao);
-    if (typeof config?.pontuacao === 'number') return config.pontuacao;
-    if (config?.pontuacao === null) return null;
-    const idx = opcoesOrdenadas.indexOf(opcao);
-    if (idx < 0) return undefined;
-    const configPrimeira = configs.find((c) => c.valor === opcoesOrdenadas[0]);
-    const base = typeof configPrimeira?.pontuacao === 'number' ? configPrimeira.pontuacao : 1;
-    return base - idx;
-  };
-
-  const getClassePorPontuacao = (pontuacao: number | null | undefined): string => {
-    if (pontuacao == null || (typeof pontuacao !== 'number')) return 'btn-warning';
-    if (pontuacao >= 1) return 'btn-success';
-    if (pontuacao === 0) return 'btn-warning';
-    return 'btn-error';
-  };
-
-  const getRespostaStyle = (item: AuditoriaItem, tipo: RespostaType, isPersonalizada: boolean = false) => {
-    const isSelected = item.resposta === tipo;
-    const base = 'btn btn-sm flex-1 min-w-0';
-    if (!isSelected) return `${base} btn-outline border-base-content/30 text-base-content/70 hover:bg-base-200 hover:border-base-content/50`;
-    const pontuacao = getPontuacaoParaOpcao(item, tipo);
-    return `${base} ${getClassePorPontuacao(pontuacao)}`;
-  };
-
   if (loading) {
     return (
       <AppLayout>
@@ -746,17 +662,52 @@ export default function AuditoriaPage() {
     );
   }
 
-  const progresso = getProgresso();
-  const obrigatoriasStatus = getObrigatoriasStatus();
+  const somenteLeitura = auditoria.status === 'finalizada';
+  const secoes = agruparPorSecao(auditoria.itens);
+  const sequencia = secoes.flatMap((s) => s.itens);
+  const resumo = calcularProgresso(auditoria.itens);
+  const pendentes = pendenciasObrigatorias(auditoria.itens);
+  const selecionado = sequencia.find((i) => i.id === selecionadoId) ?? null;
+  const nav = selecionado ? vizinhos(sequencia, selecionado.id) : null;
+
+  const selecionar = (itemId: string) => {
+    setSelecionadoId(itemId);
+    if (!desktop) setPainelMobileAberto(true);
+  };
+
+  const painel = selecionado && nav && (
+    <PainelItem
+      item={selecionado}
+      numero={nav.posicao}
+      total={sequencia.length}
+      anterior={nav.anterior}
+      proximo={nav.proximo}
+      somenteLeitura={somenteLeitura}
+      onNavegar={setSelecionadoId}
+      onDocumentar={() => openPhotoModal(selecionado)}
+      respostas={
+        <RespostasItem
+          item={selecionado}
+          valorCustomizado={respostasCustomizadas[selecionado.id] ?? selecionado.resposta ?? ''}
+          somenteLeitura={somenteLeitura}
+          onResponder={(valor) => handleResposta(selecionado.id, valor)}
+          onAlterarCustomizado={(valor) => setRespostasCustomizadas((prev) => ({ ...prev, [selecionado.id]: valor }))}
+          onConfirmarCustomizado={(valor) => {
+            if (valor !== (selecionado.resposta || '')) handleRespostaCustomizada(selecionado.id, valor);
+          }}
+        />
+      }
+    />
+  );
 
   return (
     <AppLayout>
       <PageHeader
         title={auditoria.unidade?.nome || 'Auditoria'}
         subtitle={auditoria.template?.nome}
-        backHref="/admin/dashboard"
+        backHref="/admin/auditorias"
         action={
-          <div className="flex items-center gap-2 text-sm text-base-content/70">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
             {salvando ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin text-primary" />
@@ -764,7 +715,7 @@ export default function AuditoriaPage() {
               </>
             ) : ultimaHoraSalva ? (
               <>
-                <Clock className="w-4 h-4 text-success" />
+                <Clock className="w-4 h-4 text-[hsl(160_84%_28%)]" />
                 <span className="hidden sm:inline">Salvo às</span>
                 <span className="font-medium">{formatarHora(ultimaHoraSalva)}</span>
               </>
@@ -773,311 +724,37 @@ export default function AuditoriaPage() {
         }
       />
 
-      {/* Progress */}
-      <div className="px-4 py-3 bg-base-100 border-b border-base-300 sticky top-[137px] md:top-[141px] z-20">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-medium">Progresso</span>
-          <span className="text-sm text-base-content/60">
-            {auditoria.itens.filter((i) => i.resposta && i.resposta !== 'nao_avaliado').length}/{auditoria.itens.length} itens
+      <div className="sticky top-[calc(3.5rem+81px)] z-10 border-b border-border bg-card px-4 py-2 md:top-[calc(3.5rem+85px)] lg:px-8">
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <span>
+            {resumo.respondidos}/{resumo.total} respondidas
           </span>
+          <span className="font-semibold text-foreground">{resumo.percentual}%</span>
         </div>
-        <progress className="progress progress-primary w-full" value={progresso} max="100"></progress>
+        <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted">
+          <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${resumo.percentual}%` }} />
+        </div>
       </div>
 
-      {/* Items */}
-      <div className="px-4 py-4 lg:px-8 space-y-4 pb-36 md:pb-24">
-        {[...auditoria.itens]
-          .sort((a, b) => {
-            const ordemA = a.templateItem?.ordem ?? 0;
-            const ordemB = b.templateItem?.ordem ?? 0;
-            return ordemA - ordemB;
-          })
-          .map((item, index) => (
-          <motion.div
-            key={item.id}
-            ref={(el) => {
-              if (el) {
-                itemRefs.current.set(item.id, el);
-              } else {
-                itemRefs.current.delete(item.id);
-              }
-            }}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.02 }}
-            className={`card bg-base-100 shadow-sm border ${
-              itensObrigatoriosNaoAvaliados.has(item.id)
-                ? 'border-error border-2'
-                : 'border-base-300'
-            }`}
-          >
-            <div className="card-body p-4">
-              {/* Pergunta */}
-              <div className="flex items-start gap-3">
-                <span className="badge badge-ghost badge-sm mt-1">{index + 1}</span>
-                <div className="flex-1">
-                  <p className="font-medium text-base-content">{item.templateItem.pergunta}</p>
-                  {item.templateItem.legislacaoReferencia && (
-                    <p className="text-xs text-info mt-1">📋 {item.templateItem.legislacaoReferencia}</p>
-                  )}
-                </div>
-              </div>
-
-              {/* Campos de resposta */}
-              <div className="mt-3">
-                {item.templateItem.tipoRespostaCustomizada ? (
-                  // Campos customizados
-                  <div className="space-y-2">
-                    {item.templateItem.tipoRespostaCustomizada === TipoRespostaCustomizada.TEXTO && (
-                      <textarea
-                        className="textarea textarea-bordered w-full"
-                        placeholder="Digite sua resposta..."
-                        value={(() => {
-                          const raw = respostasCustomizadas[item.id] ?? item.resposta ?? '';
-                          return raw === 'nao_avaliado' ? '' : raw;
-                        })()}
-                        onChange={(e) => {
-                          setRespostasCustomizadas((prev) => ({ ...prev, [item.id]: e.target.value }));
-                        }}
-                        onBlur={(e) => {
-                          if (e.target.value !== (item.resposta || '')) {
-                            handleRespostaCustomizada(item.id, e.target.value);
-                          }
-                        }}
-                        disabled={auditoria.status === 'finalizada'}
-                        rows={3}
-                      />
-                    )}
-                    {item.templateItem.tipoRespostaCustomizada === TipoRespostaCustomizada.NUMERO && (
-                      <input
-                        type="number"
-                        className="input input-bordered w-full"
-                        placeholder="Digite um número..."
-                        value={(() => {
-                          const raw = respostasCustomizadas[item.id] ?? item.resposta ?? '';
-                          if (raw === '' || raw === 'nao_avaliado') return '';
-                          const n = Number(raw);
-                          return Number.isNaN(n) ? '' : raw;
-                        })()}
-                        onChange={(e) => {
-                          setRespostasCustomizadas((prev) => ({ ...prev, [item.id]: e.target.value }));
-                        }}
-                        onBlur={(e) => {
-                          if (e.target.value !== (item.resposta || '')) {
-                            handleRespostaCustomizada(item.id, e.target.value);
-                          }
-                        }}
-                        disabled={auditoria.status === 'finalizada'}
-                      />
-                    )}
-                    {item.templateItem.tipoRespostaCustomizada === TipoRespostaCustomizada.DATA && (
-                      <input
-                        type="date"
-                        className="input input-bordered w-full"
-                        value={(() => {
-                          const raw = respostasCustomizadas[item.id] ?? item.resposta ?? '';
-                          if (raw === '' || raw === 'nao_avaliado') return '';
-                          return /^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw : '';
-                        })()}
-                        onChange={(e) => handleRespostaCustomizada(item.id, e.target.value)}
-                        disabled={auditoria.status === 'finalizada'}
-                      />
-                    )}
-                    {item.templateItem.tipoRespostaCustomizada === TipoRespostaCustomizada.SELECT && (
-                      <select
-                        className="select select-bordered w-full"
-                        value={(() => {
-                          const raw = respostasCustomizadas[item.id] ?? item.resposta ?? '';
-                          if (raw === '' || raw === 'nao_avaliado') return '';
-                          const opcoes = item.templateItem.opcoesResposta ?? [];
-                          return opcoes.includes(raw) ? raw : '';
-                        })()}
-                        onChange={(e) => handleRespostaCustomizada(item.id, e.target.value)}
-                        disabled={auditoria.status === 'finalizada'}
-                      >
-                        <option value="">Selecione uma opção</option>
-                        {item.templateItem.opcoesResposta?.map((opcao, idx) => (
-                          <option key={idx} value={opcao}>
-                            {renderEmoji(opcao)}
-                          </option>
-                        ))}
-                      </select>
-                    )}
-                  </div>
-                ) : item.templateItem.usarRespostasPersonalizadas && item.templateItem.opcoesResposta && item.templateItem.opcoesResposta.length > 0 ? (
-                  // Opções personalizadas do template (botões)
-                  <div className={`grid gap-2 grid-cols-2 ${
-                    item.templateItem.opcoesResposta.length === 1 ? 'sm:grid-cols-1'
-                    : item.templateItem.opcoesResposta.length === 2 ? 'sm:grid-cols-2'
-                    : item.templateItem.opcoesResposta.length === 3 ? 'sm:grid-cols-3'
-                    : item.templateItem.opcoesResposta.length <= 6 ? 'sm:grid-cols-3 lg:grid-cols-4'
-                    : 'sm:grid-cols-3 lg:grid-cols-4'
-                  }`}>
-                    {item.templateItem.opcoesResposta.map((opcao, idx) => (
-                      <button
-                        key={idx}
-                        className={getRespostaStyle(item, opcao, true)}
-                        onClick={() => handleResposta(item.id, opcao)}
-                        disabled={auditoria.status === 'finalizada'}
-                        title={auditoria.status === 'finalizada' ? 'Auditoria finalizada. Reabra para editar.' : ''}
-                      >
-                        <span className="truncate text-xs sm:text-sm">{renderEmoji(opcao)}</span>
-                      </button>
-                    ))}
-                  </div>
-                ) : (
-                  // Opções padrão
-                  <div className="grid grid-cols-3 gap-2">
-                    <button
-                      className={getRespostaStyle(item, 'conforme')}
-                      onClick={() => handleResposta(item.id, 'conforme')}
-                      disabled={auditoria.status === 'finalizada'}
-                      title={auditoria.status === 'finalizada' ? 'Auditoria finalizada. Reabra para editar.' : ''}
-                    >
-                      <CheckCircle className="w-4 h-4" />
-                      <span className="hidden sm:inline">Conforme</span>
-                    </button>
-                    <button
-                      className={getRespostaStyle(item, 'nao_conforme')}
-                      onClick={() => handleResposta(item.id, 'nao_conforme')}
-                      disabled={auditoria.status === 'finalizada'}
-                      title={auditoria.status === 'finalizada' ? 'Auditoria finalizada. Reabra para editar.' : ''}
-                    >
-                      <XCircle className="w-4 h-4" />
-                      <span className="hidden sm:inline">Não Conf.</span>
-                    </button>
-                    <button
-                      className={getRespostaStyle(item, 'nao_aplicavel')}
-                      onClick={() => handleResposta(item.id, 'nao_aplicavel')}
-                      disabled={auditoria.status === 'finalizada'}
-                      title={auditoria.status === 'finalizada' ? 'Auditoria finalizada. Reabra para editar.' : ''}
-                    >
-                      <MinusCircle className="w-4 h-4" />
-                      <span className="hidden sm:inline">N/A</span>
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* Ações - sempre visíveis para documentar qualquer item */}
-              <div className="mt-3 pt-3 border-t border-base-200">
-                <div className="flex gap-2">
-                  <button
-                    className="btn btn-outline btn-sm gap-1 flex-1 border-primary text-primary hover:bg-primary hover:text-primary-content"
-                    onClick={() => openPhotoModal(item)}
-                    disabled={!auditoria.status}
-                    title={
-                      auditoria.status === 'finalizada'
-                        ? 'Visualizar documentação do item'
-                        : 'Adicionar fotos e observações'
-                    }
-                  >
-                    <Camera className="w-4 h-4" />
-                    {auditoria.status === 'finalizada' ? 'Ver Documentação' : 'Documentar Item'}
-                  </button>
-                </div>
-
-                {/* Indicadores de dados preenchidos */}
-                {(item.descricaoIa || item.complementoDescricao || item.observacao || item.fotos?.length > 0) && (
-                  <div className="flex flex-wrap gap-2 mt-3">
-                    {item.fotos?.length > 0 && (
-                      <span className="badge badge-primary badge-sm gap-1">
-                        <Camera className="w-3 h-3" /> {item.fotos.length} foto(s)
-                      </span>
-                    )}
-                    {item.descricaoIa && (
-                      <span className="badge badge-success badge-sm gap-1">
-                        <Sparkles className="w-3 h-3" /> IA
-                      </span>
-                    )}
-                    {item.complementoDescricao && (
-                      <span className="badge badge-info badge-sm gap-1">
-                        <Edit3 className="w-3 h-3" /> Descrição
-                      </span>
-                    )}
-                    {item.observacao && (
-                      <span className="badge badge-warning badge-sm gap-1">
-                        <MessageSquare className="w-3 h-3" /> Obs.
-                      </span>
-                    )}
-                  </div>
-                )}
-
-                {/* Detalhes expandidos */}
-                {(item.descricaoIa || item.complementoDescricao || item.observacao) && (
-                  <div className="mt-3">
-                    <button
-                      className="flex items-center justify-between w-full text-left text-sm font-medium text-primary"
-                      onClick={() => setExpandedItem(expandedItem === item.id ? null : item.id)}
-                    >
-                      <span className="flex items-center gap-1">
-                        <FileText className="w-4 h-4" />
-                        Ver detalhes
-                      </span>
-                      {expandedItem === item.id ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                    </button>
-
-                    <AnimatePresence>
-                      {expandedItem === item.id && (
-                        <motion.div
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: 'auto', opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          className="overflow-hidden"
-                        >
-                          <div className="mt-3 p-3 bg-base-200 rounded-lg text-sm space-y-3">
-                            {item.descricaoIa && (
-                              <div>
-                                <p className="font-medium text-base-content/70">Descrição da IA:</p>
-                                <p>{item.descricaoIa}</p>
-                              </div>
-                            )}
-                            {item.complementoDescricao && (
-                              <div className="border-l-2 border-info pl-3">
-                                <p className="font-medium text-info">Descrição do Auditor:</p>
-                                <p>{item.complementoDescricao}</p>
-                              </div>
-                            )}
-                            {item.referenciaLegal && (
-                              <div>
-                                <p className="font-medium text-base-content/70">Referência Legal:</p>
-                                <p className="text-info">{item.referenciaLegal}</p>
-                              </div>
-                            )}
-                            {item.observacao && (
-                              <div className="border-l-2 border-warning pl-3">
-                                <p className="font-medium text-warning">Observação:</p>
-                                <p>{item.observacao}</p>
-                              </div>
-                            )}
-                            {item.planoAcaoSugerido && (
-                              <div>
-                                <p className="font-medium text-base-content/70">Plano de Ação:</p>
-                                <ul className="list-disc list-inside text-xs mt-1 space-y-1">
-                                  {item.planoAcaoSugerido.split('\n').map((acao, i) => (
-                                    <li key={i}>{acao}</li>
-                                  ))}
-                                </ul>
-                              </div>
-                            )}
-                            <button
-                              onClick={() => openPhotoModal(item)}
-                              className="btn btn-ghost btn-xs gap-1"
-                            >
-                              <Edit3 className="w-3 h-3" />
-                              Editar
-                            </button>
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                )}
-              </div>
+      <div className={`px-4 py-4 lg:px-8 ${somenteLeitura ? 'pb-8' : 'pb-40 md:pb-28'}`}>
+        <div className="lg:grid lg:grid-cols-[minmax(320px,420px)_1fr] lg:gap-6">
+          <ListaSecoes secoes={secoes} selecionadoId={selecionadoId} destacados={itensObrigatoriosNaoAvaliados} onSelecionar={selecionar} />
+          {desktop && (
+            <div className="sticky top-[calc(3.5rem+130px)] hidden max-h-[calc(100vh-14rem)] rounded-lg border border-border bg-card p-6 shadow-sm lg:block">
+              {painel}
             </div>
-          </motion.div>
-        ))}
+          )}
+        </div>
       </div>
+
+      {!desktop && (
+        <Drawer open={painelMobileAberto && Boolean(selecionado)} onOpenChange={setPainelMobileAberto}>
+          <DrawerContent className="max-h-[92vh] px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+            <DrawerTitle className="sr-only">Pergunta da auditoria</DrawerTitle>
+            <div className="h-[75vh] pt-2">{painel}</div>
+          </DrawerContent>
+        </Drawer>
+      )}
 
       {/* Hidden file input */}
       <input
@@ -1360,126 +1037,41 @@ export default function AuditoriaPage() {
         )}
       </FormModal>
 
-      {/* Botão flutuante Encerrar - apenas para auditorias em andamento */}
-      {auditoria.status === 'em_andamento' && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="fixed bottom-20 md:bottom-6 left-0 right-0 px-4 z-40"
-        >
-          <div className="max-w-3xl mx-auto space-y-2">
-            {!obrigatoriasStatus.completo && obrigatoriasStatus.total > 0 && (
-              <div className="bg-warning/30 text-warning text-center text-sm py-2 px-4 rounded-lg border border-warning/40 font-medium">
-                <AlertCircle className="w-4 h-4 inline-block mr-1" />
-                {obrigatoriasStatus.total - obrigatoriasStatus.respondidas} pergunta(s) obrigatória(s) pendente(s)
-              </div>
-            )}
-            <button
-              onClick={() => {
-                // Se há itens obrigatórios não respondidos, marcar e não abrir o modal
-                if (!obrigatoriasStatus.completo && auditoria) {
-                  const itensNaoAvaliados = auditoria.itens
-                    .filter((item) => 
-                      item.templateItem?.obrigatorio && 
-                      (!item.resposta || item.resposta === 'nao_avaliado')
-                    )
-                    .map((item) => item.id);
-                  setItensObrigatoriosNaoAvaliados(new Set(itensNaoAvaliados));
-                  
-                  // Scroll até o primeiro item não avaliado
-                  if (itensNaoAvaliados.length > 0) {
-                    setTimeout(() => {
-                      const primeiroItemId = itensNaoAvaliados[0];
-                      const itemRef = itemRefs.current.get(primeiroItemId);
-                      if (itemRef) {
-                        itemRef.scrollIntoView({ 
-                          behavior: 'smooth', 
-                          block: 'center' 
-                        });
-                      }
-                    }, 100);
-                  }
-                  
-                  toastService.error('Existem itens obrigatórios não avaliados. Eles foram marcados em vermelho.');
-                  return; // Não abre o modal
-                }
-                
-                // Se todos os itens obrigatórios foram respondidos, abre o modal
-                setItensObrigatoriosNaoAvaliados(new Set());
-                setShowFinalModal(true);
-              }}
-              className={`btn w-full shadow-lg gap-2 ${
-                obrigatoriasStatus.completo 
-                  ? 'btn-primary' 
-                  : 'btn-warning'
-              }`}
-            >
-              <CheckCircle className="w-5 h-5" />
-              Encerrar Auditoria
-            </button>
-          </div>
-        </motion.div>
+      {!somenteLeitura && (
+        <div className="fixed inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-30 px-4 md:bottom-6 md:left-auto md:right-8 md:px-0">
+          <Button
+            className="h-12 w-full shadow-lg md:w-auto md:px-6"
+            variant={pendentes.length ? 'outline' : 'default'}
+            onClick={() => {
+              setItensObrigatoriosNaoAvaliados(new Set(pendentes.map((p) => p.id)));
+              setShowFinalModal(true);
+            }}
+          >
+            <CheckCircle className="h-5 w-5" />
+            Revisar e finalizar
+            {pendentes.length > 0 && <span className="ml-1 rounded-full bg-destructive px-2 text-xs text-white">{pendentes.length}</span>}
+          </Button>
+        </div>
       )}
 
-      <FormModal
+      <RevisaoFinal
         open={showFinalModal}
-        onClose={() => {
-          setShowFinalModal(false);
-          setErroFinalizar('');
-          setItensObrigatoriosNaoAvaliados(new Set());
+        onOpenChange={(aberto) => {
+          setShowFinalModal(aberto);
+          if (!aberto) setErroFinalizar('');
         }}
-        title="Encerrar Auditoria"
-        maxWidth="md"
-        isDirty={Boolean(observacoesGerais)}
-        closeOnBackdrop={false}
-        footer={
-          <>
-            <button
-              className="btn btn-ghost"
-              onClick={() => {
-                setShowFinalModal(false);
-                setErroFinalizar('');
-                setItensObrigatoriosNaoAvaliados(new Set());
-              }}
-            >
-              Cancelar
-            </button>
-            <button className="btn btn-primary" onClick={handleFinalizar} disabled={finalizando}>
-              {finalizando ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Finalizando...
-                </>
-              ) : (
-                'Confirmar'
-              )}
-            </button>
-          </>
-        }
-      >
-        <p className="text-base-content/60 mb-4">
-          Adicione observações gerais sobre a auditoria (opcional).
-        </p>
-        {erroFinalizar && !erroFinalizar.toLowerCase().includes('itens não avaliados') && !erroFinalizar.toLowerCase().includes('obrigat') && (
-          <div className="alert alert-error mb-4">
-            <AlertTriangle className="w-5 h-5" />
-            <span>{erroFinalizar}</span>
-            <button
-              onClick={() => setErroFinalizar('')}
-              className="btn btn-ghost btn-sm btn-circle"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        )}
-        <textarea
-          className="textarea textarea-bordered w-full"
-          placeholder="Observações gerais..."
-          rows={4}
-          value={observacoesGerais}
-          onChange={(e) => setObservacoesGerais(e.target.value)}
-        />
-      </FormModal>
+        pendentes={pendentes}
+        naoConformes={naoConformidades(auditoria.itens)}
+        observacoes={observacoesGerais}
+        onObservacoes={setObservacoesGerais}
+        erro={erroFinalizar}
+        finalizando={finalizando}
+        onIrParaItem={(itemId) => {
+          setShowFinalModal(false);
+          selecionar(itemId);
+        }}
+        onFinalizar={handleFinalizar}
+      />
     </AppLayout>
   );
 }
