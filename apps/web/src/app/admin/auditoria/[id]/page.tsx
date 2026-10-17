@@ -928,7 +928,7 @@ export default function AuditoriaPage() {
                 </div>
 
                 {/* Tab Content */}
-                <div className="bg-card border-x border-b border-border rounded-b-box p-6 min-h-[300px]">
+                <div className="bg-card border-x border-b border-border rounded-b-lg p-6 min-h-[300px]">
                   {/* Tab Fotos - sempre visível; fotoObrigatoria só define se exige pelo menos uma imagem */}
                   {activeTab === 'fotos' && (() => {
                     const opcaoConfigModal = getOpcaoConfig(itemModal.item, itemModal.item.resposta || '');

@@ -40,3 +40,19 @@ describe('espaços em template literal', () => {
     expect(s2).toMatch(/px-4[^`$]* \$\{/);
   });
 });
+
+describe('encontrarClassesDaisy — casos que escapavam', () => {
+  it('variáveis de cor do tema DaisyUI', () => {
+    expect(encontrarClassesDaisy("const cor = 'oklch(var(--s))';")).toContain('var(--s)');
+    expect(encontrarClassesDaisy('fill="hsl(var(--p))"')).toContain('var(--p)');
+    expect(encontrarClassesDaisy("bg: 'hsl(var(--b2))'")).toContain('var(--b2)');
+    expect(encontrarClassesDaisy("cor: 'hsl(var(--primary))'")).toEqual([]);
+  });
+  it('tons numéricos de tokens da marca que não existem', () => {
+    expect(encontrarClassesDaisy('<i className="text-primary-400 bg-primary-600/20" />')).toEqual(['text-primary-400', 'bg-primary-600/20']);
+    expect(encontrarClassesDaisy('<i className="text-slate-500 bg-red-50" />')).toEqual([]);
+  });
+  it('sufixos -box e variantes responsivas de componentes', () => {
+    expect(encontrarClassesDaisy('<i className="rounded-b-box sm:toggle-md" />')).toEqual(['rounded-b-box', 'toggle-md']);
+  });
+});

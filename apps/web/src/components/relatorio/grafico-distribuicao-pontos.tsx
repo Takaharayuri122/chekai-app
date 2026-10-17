@@ -20,10 +20,10 @@ export function GraficoDistribuicaoPontos({
   const pontosNaoObtidos = Math.max(0, pontosPossiveis - pontosRealizados);
   const dados: DadoDistribuicao[] = [];
   if (pontosRealizados > 0) {
-    dados.push({ nome: 'Pontos realizados', valor: pontosRealizados, cor: 'oklch(var(--s))' });
+    dados.push({ nome: 'Pontos realizados', valor: pontosRealizados, cor: 'hsl(var(--success))' });
   }
   if (pontosNaoObtidos > 0) {
-    dados.push({ nome: 'Pontos não obtidos', valor: pontosNaoObtidos, cor: 'oklch(var(--er))' });
+    dados.push({ nome: 'Pontos não obtidos', valor: pontosNaoObtidos, cor: 'hsl(var(--destructive))' });
   }
 
   const total = dados.reduce((acc, d) => acc + d.valor, 0);
@@ -51,13 +51,13 @@ export function GraficoDistribuicaoPontos({
               nameKey="nome"
             >
               {dados.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={entry.cor} stroke="oklch(var(--b1))" strokeWidth={2} />
+                <Cell key={`cell-${index}`} fill={entry.cor} stroke="hsl(var(--card))" strokeWidth={2} />
               ))}
             </Pie>
             <Tooltip
               contentStyle={{
-                backgroundColor: 'oklch(var(--b1))',
-                border: '1px solid oklch(var(--b3))',
+                backgroundColor: 'hsl(var(--card))',
+                border: '1px solid hsl(var(--border))',
                 borderRadius: 'var(--rounded-box, 0.5rem)',
               }}
               formatter={(value) => {

@@ -1289,7 +1289,7 @@ export default function EditarTemplatePage() {
                     <span className="text-sm font-medium text-foreground text-xs sm:text-sm">Pergunta Obrigatória</span>
                     <input
                       type="checkbox"
-                      className="relative shrink-0 cursor-pointer appearance-none rounded-full bg-muted-foreground/30 transition-colors checked:bg-primary before:absolute before:left-0.5 before:top-0.5 before:rounded-full before:bg-white before:shadow before:transition-transform disabled:opacity-50 h-4 w-7 before:h-3 before:w-3 checked:before:translate-x-3 sm:toggle-md"
+                      className="relative shrink-0 cursor-pointer appearance-none rounded-full bg-muted-foreground/30 transition-colors checked:bg-primary before:absolute before:left-0.5 before:top-0.5 before:rounded-full before:bg-white before:shadow before:transition-transform disabled:opacity-50 h-4 w-7 before:h-3 before:w-3 checked:before:translate-x-3 sm:h-5 sm:w-9 sm:before:h-4 sm:before:w-4 sm:checked:before:translate-x-4"
                       checked={itemForm.obrigatorio}
                       onChange={(e) => setItemForm({ ...itemForm, obrigatorio: e.target.checked })}
                     />

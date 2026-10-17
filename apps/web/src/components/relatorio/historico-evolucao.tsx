@@ -124,24 +124,24 @@ export function HistoricoEvolucao({
             />
             <Tooltip
               contentStyle={{
-                backgroundColor: 'oklch(var(--b1))',
-                border: '1px solid oklch(var(--b3))',
+                backgroundColor: 'hsl(var(--card))',
+                border: '1px solid hsl(var(--border))',
                 borderRadius: 'var(--rounded-box, 0.5rem)',
               }}
-              labelStyle={{ color: 'oklch(var(--bc))' }}
+              labelStyle={{ color: 'hsl(var(--foreground))' }}
               formatter={(value) => [`${value != null ? Number(value).toFixed(2) : 0}%`, 'Aproveitamento']}
               labelFormatter={(_, payload) => {
                 const p = payload[0]?.payload;
                 return p ? `${p.data}${p.isAtual ? ' (atual)' : ''}` : '';
               }}
             />
-            <ReferenceLine y={70} stroke="oklch(var(--wa))" strokeDasharray="2 2" />
+            <ReferenceLine y={70} stroke="hsl(var(--warning))" strokeDasharray="2 2" />
             <Line
               type="monotone"
               dataKey="aproveitamento"
-              stroke="oklch(var(--p))"
+              stroke="hsl(var(--primary))"
               strokeWidth={2}
-              dot={{ r: 4, fill: 'oklch(var(--p))' }}
+              dot={{ r: 4, fill: 'hsl(var(--primary))' }}
               activeDot={{ r: 6 }}
             />
           </LineChart>

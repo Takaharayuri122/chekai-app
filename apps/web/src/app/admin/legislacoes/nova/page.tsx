@@ -101,7 +101,7 @@ export default function NovaLegislacaoPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-primary-200 mb-2">
+              <label className="block text-sm font-medium text-primary mb-2">
                 <Hash className="w-4 h-4 inline mr-1" />
                 Número *
               </label>
@@ -110,14 +110,14 @@ export default function NovaLegislacaoPage() {
                 value={formData.numero}
                 onChange={(e) => handleChange('numero', e.target.value)}
                 placeholder="216"
-                className="w-full px-4 py-3 bg-muted border border-primary-500/20 rounded-xl text-foreground placeholder-indigo-300/50 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition-all"
+                className="w-full px-4 py-3 bg-muted border border-primary/20 rounded-xl text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
               />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-primary-200 mb-2">
+              <label className="block text-sm font-medium text-primary mb-2">
                 <Calendar className="w-4 h-4 inline mr-1" />
                 Ano *
               </label>
@@ -127,12 +127,12 @@ export default function NovaLegislacaoPage() {
                 onChange={(e) => handleChange('ano', parseInt(e.target.value, 10))}
                 min={1900}
                 max={2100}
-                className="w-full px-4 py-3 bg-muted border border-primary-500/20 rounded-xl text-foreground placeholder-indigo-300/50 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition-all"
+                className="w-full px-4 py-3 bg-muted border border-primary/20 rounded-xl text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-primary-200 mb-2">
+              <label className="block text-sm font-medium text-primary mb-2">
                 <Building className="w-4 h-4 inline mr-1" />
                 Órgão Emissor
               </label>
@@ -141,7 +141,7 @@ export default function NovaLegislacaoPage() {
                 value={formData.orgaoEmissor || ''}
                 onChange={(e) => handleChange('orgaoEmissor', e.target.value)}
                 placeholder="ANVISA"
-                className="w-full px-4 py-3 bg-muted border border-primary-500/20 rounded-xl text-foreground placeholder-indigo-300/50 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition-all"
+                className="w-full px-4 py-3 bg-muted border border-primary/20 rounded-xl text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
               />
             </div>
           </div>
@@ -152,15 +152,15 @@ export default function NovaLegislacaoPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="bg-card rounded-2xl border border-primary-500/20 p-6 backdrop-blur-sm space-y-4"
+          className="bg-card rounded-2xl border border-primary/20 p-6 backdrop-blur-sm space-y-4"
         >
           <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
-            <FileText className="w-5 h-5 text-primary-400" />
+            <FileText className="w-5 h-5 text-primary" />
             Conteúdo
           </h2>
 
           <div>
-            <label className="block text-sm font-medium text-primary-200 mb-2">
+            <label className="block text-sm font-medium text-primary mb-2">
               Título *
             </label>
             <input
@@ -168,12 +168,12 @@ export default function NovaLegislacaoPage() {
               value={formData.titulo}
               onChange={(e) => handleChange('titulo', e.target.value)}
               placeholder="Regulamento Técnico de Boas Práticas..."
-              className="w-full px-4 py-3 bg-muted border border-primary-500/20 rounded-xl text-foreground placeholder-indigo-300/50 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition-all"
+              className="w-full px-4 py-3 bg-muted border border-primary/20 rounded-xl text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-primary-200 mb-2">
+            <label className="block text-sm font-medium text-primary mb-2">
               Ementa
             </label>
             <textarea
@@ -181,12 +181,12 @@ export default function NovaLegislacaoPage() {
               onChange={(e) => handleChange('ementa', e.target.value)}
               placeholder="Dispõe sobre o Regulamento Técnico de Boas Práticas para Serviços de Alimentação..."
               rows={4}
-              className="w-full px-4 py-3 bg-muted border border-primary-500/20 rounded-xl text-foreground placeholder-indigo-300/50 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition-all resize-none"
+              className="w-full px-4 py-3 bg-muted border border-primary/20 rounded-xl text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all resize-none"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-primary-200 mb-2">
+            <label className="block text-sm font-medium text-primary mb-2">
               <LinkIcon className="w-4 h-4 inline mr-1" />
               Link Oficial
             </label>
@@ -195,7 +195,7 @@ export default function NovaLegislacaoPage() {
               value={formData.linkOficial || ''}
               onChange={(e) => handleChange('linkOficial', e.target.value)}
               placeholder="https://www.gov.br/anvisa/..."
-              className="w-full px-4 py-3 bg-muted border border-primary-500/20 rounded-xl text-foreground placeholder-indigo-300/50 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition-all"
+              className="w-full px-4 py-3 bg-muted border border-primary/20 rounded-xl text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
             />
           </div>
         </motion.div>
@@ -205,9 +205,9 @@ export default function NovaLegislacaoPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="bg-primary-600/10 border border-primary-500/20 rounded-2xl p-4"
+          className="bg-primary/10 border border-primary/20 rounded-2xl p-4"
         >
-          <p className="text-sm text-primary-200/70">
+          <p className="text-sm text-primary/70">
             💡 Após criar a legislação, você poderá adicionar os <strong>chunks</strong> (trechos de texto) 
             que serão usados pelo sistema de IA para gerar recomendações baseadas nas normas.
           </p>
@@ -215,19 +215,19 @@ export default function NovaLegislacaoPage() {
       </form>
 
       {/* Footer Actions */}
-      <div className="fixed bottom-0 left-0 right-0 bg-card backdrop-blur-xl border-t border-primary-500/20 px-6 py-4 z-50">
+      <div className="fixed bottom-0 left-0 right-0 bg-card backdrop-blur-xl border-t border-primary/20 px-6 py-4 z-50">
         <div className="flex gap-3">
           <button
             type="button"
             onClick={() => router.back()}
-            className="flex-1 px-4 py-3 bg-muted text-primary-200 rounded-xl font-medium hover:bg-muted transition-colors"
+            className="flex-1 px-4 py-3 bg-muted text-primary rounded-xl font-medium hover:bg-muted transition-colors"
           >
             Cancelar
           </button>
           <button
             onClick={handleSubmit}
             disabled={isLoading}
-            className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-primary to-primary/80 text-white rounded-xl font-medium shadow-lg shadow-primary-500/25 hover:shadow-primary-500/40 transition-all disabled:opacity-50"
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-primary to-primary/80 text-white rounded-xl font-medium shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all disabled:opacity-50"
           >
             <Save className="w-5 h-5" />
             {isLoading ? 'Salvando...' : 'Criar Legislação'}

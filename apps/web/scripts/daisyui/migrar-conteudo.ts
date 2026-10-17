@@ -102,7 +102,13 @@ export function migrarConteudo(codigo: string): string {
 }
 
 const DISTINTIVAS =
-  /(?<![\w-])(btn(?:-(?:primary|secondary|accent|info|success|warning|error|neutral|ghost|outline|xs|sm|md|lg|square|circle|block|wide|link|disabled|active))?|badge(?:-(?:primary|secondary|accent|info|success|warning|error|neutral|ghost|outline|xs|sm|md|lg))?|card-body|card-title|card-actions|form-control|label-text(?:-alt)?|input-bordered|select-bordered|textarea-bordered|(?:input|select|textarea)-(?:xs|sm|lg|error)|loading-(?:spinner|xs|sm|md|lg|dots)|alert-(?:info|success|warning|error)|tab-active|tabs-(?:bordered|lifted|boxed)|stat-(?:title|value|desc|figure)|step-primary|join-item|modal-box|modal-open|dropdown-content|dropdown-(?:end|top|bottom|left|right)|checkbox-(?:primary|secondary|sm|xs|lg)|toggle-(?:sm|xs|lg|primary|success)|range-(?:sm|xs)|progress-(?:primary|success|warning|error|info)|table-(?:zebra|xs|sm)|rounded-box|(?:bg|text|border|ring|from|to|via|stroke|fill|divide)-(?:base-100|base-200|base-300|base-content|primary-content|secondary|secondary-content|accent|accent-content|neutral|neutral-content|error|error-content|success-content|warning-content|info-content)(?:\/\d+)?)(?![\w-])/g;
+  /(?<![\w-])(btn(?:-(?:primary|secondary|accent|info|success|warning|error|neutral|ghost|outline|xs|sm|md|lg|square|circle|block|wide|link|disabled|active))?|badge(?:-(?:primary|secondary|accent|info|success|warning|error|neutral|ghost|outline|xs|sm|md|lg))?|card-body|card-title|card-actions|form-control|label-text(?:-alt)?|input-bordered|select-bordered|textarea-bordered|(?:input|select|textarea)-(?:xs|sm|lg|error)|loading-(?:spinner|xs|sm|md|lg|dots)|alert-(?:info|success|warning|error)|tab-active|tabs-(?:bordered|lifted|boxed)|stat-(?:title|value|desc|figure)|step-primary|join-item|modal-box|modal-open|dropdown-content|dropdown-(?:end|top|bottom|left|right)|checkbox-(?:primary|secondary|sm|xs|md|lg)|toggle-(?:sm|xs|md|lg|primary|success|secondary)|rounded(?:-[trbl]{1,2})?-box|range-(?:sm|xs)|progress-(?:primary|success|warning|error|info)|table-(?:zebra|xs|sm)|(?:bg|text|border|ring|from|to|via|stroke|fill|divide)-(?:base-100|base-200|base-300|base-content|primary-content|secondary|secondary-content|accent|accent-content|neutral|neutral-content|error|error-content|success-content|warning-content|info-content)(?:\/\d+)?)(?![\w-])/g;
+
+/** Variáveis de cor do tema DaisyUI (ex.: oklch(var(--p))) — deixaram de existir com a remoção do plugin. */
+const VARIAVEIS_TEMA = /(var\(--(?:p|pc|pf|s|sc|sf|a|ac|af|n|nc|nf|b1|b2|b3|bc|in|inc|su|suc|wa|wac|er|erc)\))/g;
+
+/** Tons numéricos de tokens da marca (ex.: text-primary-400), que não geram CSS. */
+const TOM_INEXISTENTE = /(?<![\w-])((?:text|bg|border|ring|from|to|via|fill|stroke|placeholder|outline|divide|shadow)-(?:primary|info|success|warning|destructive|muted|card|sidebar|foreground|border|input)-\d{2,3}(?:\/\d+)?)(?![\w-])/g;
 
 /** Classes DaisyUI em qualquer literal do arquivo (usado pelo teste-guarda). */
 export function encontrarClassesDaisy(codigo: string): string[] {
@@ -110,7 +116,9 @@ export function encontrarClassesDaisy(codigo: string): string[] {
   const literais = codigo.match(/(["'`])(?:(?!\1)[^\\]|\\.)*\1/g) ?? [];
   for (const lit of literais) {
     for (const m of lit.matchAll(DISTINTIVAS)) achados.push(m[1]);
+    for (const m of lit.matchAll(TOM_INEXISTENTE)) achados.push(m[1]);
   }
+  for (const m of codigo.matchAll(VARIAVEIS_TEMA)) achados.push(m[1]);
   for (const m of codigo.matchAll(/className=(["'])([^"']*)\1/g)) {
     for (const t of m[2].split(/\s+/)) {
       const core = t.replace(/^(?:[a-z0-9-]+:)+/, '');

@@ -23,9 +23,9 @@ interface GraficoAproveitamentoGruposProps {
 }
 
 function corPorAproveitamento(aproveitamento: number): string {
-  if (aproveitamento >= 70) return 'oklch(var(--s))';
-  if (aproveitamento >= 60) return 'oklch(var(--wa))';
-  return 'oklch(var(--er))';
+  if (aproveitamento >= 70) return 'hsl(var(--success))';
+  if (aproveitamento >= 60) return 'hsl(var(--warning))';
+  return 'hsl(var(--destructive))';
 }
 
 export function GraficoAproveitamentoGrupos({
@@ -50,9 +50,9 @@ export function GraficoAproveitamentoGrupos({
   ];
 
   const legendaFaixas = [
-    { label: '≥70% (Bom)', cor: 'oklch(var(--s))' },
-    { label: '60–70% (Atenção)', cor: 'oklch(var(--wa))' },
-    { label: '<60% (Crítico)', cor: 'oklch(var(--er))' },
+    { label: '≥70% (Bom)', cor: 'hsl(var(--success))' },
+    { label: '60–70% (Atenção)', cor: 'hsl(var(--warning))' },
+    { label: '<60% (Crítico)', cor: 'hsl(var(--destructive))' },
   ];
 
   return (
@@ -77,11 +77,11 @@ export function GraficoAproveitamentoGrupos({
             />
             <Tooltip
               contentStyle={{
-                backgroundColor: 'oklch(var(--b1))',
-                border: '1px solid oklch(var(--b3))',
+                backgroundColor: 'hsl(var(--card))',
+                border: '1px solid hsl(var(--border))',
                 borderRadius: 'var(--rounded-box, 0.5rem)',
               }}
-              labelStyle={{ color: 'oklch(var(--bc))' }}
+              labelStyle={{ color: 'hsl(var(--foreground))' }}
               formatter={(value) => [`${value != null ? Number(value).toFixed(2) : 0}%`, 'Aproveitamento']}
               labelFormatter={(_, payload) => {
                 const p = payload[0]?.payload;
