@@ -186,6 +186,7 @@ export class AuditoriaService {
         'template',
         'itens',
         'itens.templateItem',
+        'itens.templateItem.grupo',
         'itens.fotos',
       ],
     });
