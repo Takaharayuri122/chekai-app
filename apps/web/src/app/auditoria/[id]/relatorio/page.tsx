@@ -272,11 +272,11 @@ export default function RelatorioPage() {
       case 'medio':
         return 'text-warning';
       case 'alto':
-        return 'text-error';
+        return 'text-destructive';
       case 'critico':
-        return 'text-error';
+        return 'text-destructive';
       default:
-        return 'text-base-content';
+        return 'text-foreground';
     }
   };
 

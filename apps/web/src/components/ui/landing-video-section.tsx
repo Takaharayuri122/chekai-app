@@ -20,7 +20,7 @@ export function LandingVideoSection({
   embedUrl,
   placeholderHint,
   instrucaoEnv,
-  className = 'bg-base-100',
+  className = 'bg-card',
 }: LandingVideoSectionProps) {
   const hasVideo = embedUrl.trim().length > 0;
   return (

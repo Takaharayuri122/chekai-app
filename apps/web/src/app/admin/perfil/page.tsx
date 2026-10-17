@@ -118,7 +118,7 @@ export default function PerfilPage() {
           className="flex flex-col items-center"
         >
           <div className="relative inline-flex [&>div]:flex [&>div]:items-center [&>div]:justify-center mb-4">
-            <div className="bg-primary text-primary-foreground rounded-full w-24 overflow-hidden">
+            <div className="bg-primary text-primary-foreground rounded-full h-24 w-24 overflow-hidden">
               {exibirUsuario?.logoUrl ? (
                 <img
                   src={exibirUsuario.logoUrl}

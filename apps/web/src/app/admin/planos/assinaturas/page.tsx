@@ -175,7 +175,7 @@ export default function AssinaturasPage() {
                       <td>
                         <div className="flex items-center gap-3">
                           <div className="relative inline-flex [&>div]:flex [&>div]:items-center [&>div]:justify-center">
-                            <div className="bg-primary text-primary-foreground rounded-full w-10">
+                            <div className="bg-primary text-primary-foreground rounded-full h-10 w-10">
                               <UserCheck className="w-5 h-5" />
                             </div>
                           </div>

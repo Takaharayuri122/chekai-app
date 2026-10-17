@@ -54,9 +54,9 @@ const tipoAtividadeOpcoes = Object.entries(TIPO_ATIVIDADE_LABELS).map(([value, l
 }));
 
 const STATUS_BADGE_CLASS: Record<StatusTemplate, string> = {
-  [StatusTemplate.RASCUNHO]: 'badge-warning',
-  [StatusTemplate.ATIVO]: 'badge-success',
-  [StatusTemplate.INATIVO]: 'badge-error',
+  [StatusTemplate.RASCUNHO]: '!bg-warning/15 !text-[hsl(32_95%_34%)]',
+  [StatusTemplate.ATIVO]: '!bg-success/12 !text-[hsl(160_84%_28%)]',
+  [StatusTemplate.INATIVO]: '!bg-destructive/12 !text-[hsl(0_72%_45%)]',
 };
 
 export default function TemplatesPage() {
@@ -196,7 +196,7 @@ export default function TemplatesPage() {
       label: 'Excluir',
       icon: Trash2,
       onClick: (t) => setShowDeleteConfirm(t.id),
-      className: 'text-error',
+      className: 'text-destructive',
       isVisivel: () => isGestor() || isMaster(),
     },
   ];

@@ -146,7 +146,7 @@ function MultiSelectAuditores({
     .filter((a) => selecionados.includes(a.id))
     .map((a) => a.nome);
 
-  const inputClass = size === 'sm' ? 'input-sm text-xs' : '';
+  const inputClass = size === 'sm' ? '!h-9 !px-2.5 !text-xs text-xs' : '';
   const labelClass = size === 'sm' ? 'text-xs' : '';
 
   return (
@@ -647,7 +647,7 @@ export default function ClientesPage() {
       label: 'Remover',
       icon: Trash2,
       onClick: (c) => setShowDeleteConfirm(c.id),
-      className: 'text-error',
+      className: 'text-destructive',
       isVisivel: () => isGestor() || isMaster(),
     },
   ];

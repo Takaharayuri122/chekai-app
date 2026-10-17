@@ -180,7 +180,7 @@ export default function PlanosAcaoPage() {
       isVisivel: (t) => t.status === 'pendente' || t.status === 'em_andamento',
     },
     { label: 'Editar', icon: Edit, onClick: abrirEdicao },
-    { label: 'Remover', icon: Trash2, onClick: setRemovendo, className: 'text-error', isVisivel: () => !ehAuditor },
+    { label: 'Remover', icon: Trash2, onClick: setRemovendo, className: 'text-destructive', isVisivel: () => !ehAuditor },
   ];
 
   return (

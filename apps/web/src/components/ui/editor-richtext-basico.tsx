@@ -26,7 +26,7 @@ export function EditorRichTextBasico({
     editorProps: {
       attributes: {
         class:
-          'min-h-[160px] p-3 text-sm bg-base-100 focus:outline-none prose prose-sm max-w-none',
+          'min-h-[160px] p-3 text-sm bg-card focus:outline-none prose prose-sm max-w-none',
       },
     },
     onUpdate: ({ editor: tiptapEditor }) => {

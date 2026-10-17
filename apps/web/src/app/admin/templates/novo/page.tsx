@@ -79,12 +79,12 @@ const RESPOSTAS_PERSONALIZADAS_SUGESTOES = [
  */
 const getCriticidadeBadge = (criticidade: CriticidadeItem) => {
   const colors: Record<CriticidadeItem, string> = {
-    [CriticidadeItem.BAIXA]: 'badge-info',
-    [CriticidadeItem.MEDIA]: 'badge-warning',
-    [CriticidadeItem.ALTA]: 'badge-error',
-    [CriticidadeItem.CRITICA]: 'badge-error badge-outline',
+    [CriticidadeItem.BAIXA]: '!bg-info/12 !text-[hsl(217_80%_45%)]',
+    [CriticidadeItem.MEDIA]: '!bg-warning/15 !text-[hsl(32_95%_34%)]',
+    [CriticidadeItem.ALTA]: '!bg-destructive/12 !text-[hsl(0_72%_45%)]',
+    [CriticidadeItem.CRITICA]: '!border !border-destructive !bg-transparent !text-[hsl(0_72%_45%)]',
   };
-  return colors[criticidade] || 'badge-ghost';
+  return colors[criticidade] || '!bg-muted !text-muted-foreground';
 };
 
 /**

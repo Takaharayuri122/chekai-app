@@ -11,7 +11,6 @@ import {
   Edit,
   Trash2,
   Search,
-  Filter,
   Send,
 } from 'lucide-react';
 import { AppLayout, PageHeader, EmptyState, ConfirmDialog, FormModal } from '@/components';
@@ -40,9 +39,9 @@ const PERFIL_ICONS: Record<PerfilUsuario, typeof User> = {
 };
 
 const STATUS_CONFIG: Record<StatusUsuario, { label: string; className: string }> = {
-  [StatusUsuario.ATIVO]: { label: 'Ativo', className: 'badge-success' },
-  [StatusUsuario.NAO_CONFIRMADO]: { label: 'Não Confirmado', className: 'badge-warning' },
-  [StatusUsuario.INATIVO]: { label: 'Inativo', className: 'badge-error' },
+  [StatusUsuario.ATIVO]: { label: 'Ativo', className: '!bg-success/12 !text-[hsl(160_84%_28%)]' },
+  [StatusUsuario.NAO_CONFIRMADO]: { label: 'Não Confirmado', className: '!bg-warning/15 !text-[hsl(32_95%_34%)]' },
+  [StatusUsuario.INATIVO]: { label: 'Inativo', className: '!bg-destructive/12 !text-[hsl(0_72%_45%)]' },
 };
 
 export default function UsuariosPage() {
@@ -259,35 +258,19 @@ export default function UsuariosPage() {
               onChange={(e) => setBusca(e.target.value)}
             />
           </div>
-          <div className="dropdown dropdown-end sm:dropdown-bottom">
-            <div tabIndex={0} role="button" className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-10 px-4 border border-input bg-card hover:bg-muted">
-              <Filter className="w-4 h-4" />
-              {filtroPerfil !== 'todos' && PERFIL_LABELS[filtroPerfil]}
-            </div>
-            <ul
-              tabIndex={0}
-              className="dropdown-content z-[1] menu p-2 shadow bg-card rounded-lg w-52 border border-border"
-            >
-              <li>
-                <button
-                  className={filtroPerfil === 'todos' ? 'active' : ''}
-                  onClick={() => setFiltroPerfil('todos')}
-                >
-                  Todos os perfis
-                </button>
-              </li>
-              {Object.values(PerfilUsuario).map((perfil) => (
-                <li key={perfil}>
-                  <button
-                    className={filtroPerfil === perfil ? 'active' : ''}
-                    onClick={() => setFiltroPerfil(perfil)}
-                  >
-                    {PERFIL_LABELS[perfil]}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
+          <select
+            aria-label="Perfil"
+            className="h-10 rounded-md border border-input bg-card px-3 text-sm sm:w-48"
+            value={filtroPerfil}
+            onChange={(e) => setFiltroPerfil(e.target.value as PerfilUsuario | 'todos')}
+          >
+            <option value="todos">Todos os perfis</option>
+            {Object.values(PerfilUsuario).map((perfil) => (
+              <option key={perfil} value={perfil}>
+                {PERFIL_LABELS[perfil]}
+              </option>
+            ))}
+          </select>
         </div>
 
         {loading ? (
@@ -331,7 +314,7 @@ export default function UsuariosPage() {
                         <td>
                           <div className="flex items-center gap-3">
                             <div className="relative inline-flex [&>div]:flex [&>div]:items-center [&>div]:justify-center">
-                              <div className="bg-primary text-primary-foreground rounded-full w-10">
+                              <div className="bg-primary text-primary-foreground rounded-full h-10 w-10">
                                 <Icon className="w-5 h-5" />
                               </div>
                             </div>

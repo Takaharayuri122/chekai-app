@@ -48,7 +48,7 @@ export default function LimitesPage() {
   };
 
   const getColorClass = (percentual: number) => {
-    if (percentual >= 90) return 'text-error';
+    if (percentual >= 90) return 'text-destructive';
     if (percentual >= 70) return 'text-warning';
     return 'text-success';
   };
