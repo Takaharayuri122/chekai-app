@@ -919,6 +919,69 @@ describe('UC-01: autorizar cliente MCP com OTP e PKCE', () => {
     });
   });
 
+  it('deve recusar o OTP correto depois de 5 falhas durante a validade', async () => {
+    await comHarness(async (h) => {
+      await h.autorizacao.solicitarOtp({ email: h.usuario.email });
+
+      for (let tentativa = 0; tentativa < 5; tentativa += 1) {
+        await expect(
+          h.autorizacao.validarOtp({ email: h.usuario.email, codigo: '000000' }),
+        ).rejects.toThrow('Código OTP inválido');
+      }
+
+      await expect(
+        h.autorizacao.validarOtp({ email: h.usuario.email, codigo: '482913' }),
+      ).rejects.toThrow('Muitas tentativas. Solicite um novo código.');
+      expect(h.sessoes.itens).toHaveLength(0);
+      expect(h.usuario.otpCode).toBe('482913');
+    });
+  });
+
+  it('deve aceitar o OTP depois de 4 falhas e zerar o limite nesse sucesso', async () => {
+    await comHarness(async (h) => {
+      await h.autorizacao.solicitarOtp({ email: h.usuario.email });
+      for (let tentativa = 0; tentativa < 4; tentativa += 1) {
+        await expect(
+          h.autorizacao.validarOtp({ email: h.usuario.email, codigo: '000000' }),
+        ).rejects.toThrow('Código OTP inválido');
+      }
+
+      await expect(
+        h.autorizacao.validarOtp({ email: h.usuario.email, codigo: '482913' }),
+      ).resolves.toHaveProperty('sessaoConsentimento');
+
+      h.usuario.otpCode = '482913';
+      h.usuario.otpExpiresAt = new Date(AGORA.getTime() + 10 * 60 * 1000);
+      for (let tentativa = 0; tentativa < 4; tentativa += 1) {
+        await expect(
+          h.autorizacao.validarOtp({ email: h.usuario.email, codigo: '000000' }),
+        ).rejects.toThrow('Código OTP inválido');
+      }
+      await expect(
+        h.autorizacao.validarOtp({ email: h.usuario.email, codigo: '482913' }),
+      ).resolves.toHaveProperty('sessaoConsentimento');
+    });
+  });
+
+  it('deve zerar o limite de OTP quando um novo código é solicitado', async () => {
+    await comHarness(async (h) => {
+      await h.autorizacao.solicitarOtp({ email: h.usuario.email });
+      for (let tentativa = 0; tentativa < 5; tentativa += 1) {
+        await expect(
+          h.autorizacao.validarOtp({ email: h.usuario.email, codigo: '000000' }),
+        ).rejects.toThrow('Código OTP inválido');
+      }
+      await expect(
+        h.autorizacao.validarOtp({ email: h.usuario.email, codigo: '482913' }),
+      ).rejects.toThrow('Muitas tentativas. Solicite um novo código.');
+
+      await h.autorizacao.solicitarOtp({ email: h.usuario.email });
+      await expect(
+        h.autorizacao.validarOtp({ email: h.usuario.email, codigo: '482913' }),
+      ).resolves.toHaveProperty('sessaoConsentimento');
+    });
+  });
+
   it('deve resolver o Client ID Metadata Document e registrar cliente só como fallback', async () => {
     await comHarness(async (h) => {
       // Arrange

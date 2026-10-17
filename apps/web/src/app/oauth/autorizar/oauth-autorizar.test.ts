@@ -153,6 +153,7 @@ const MENSAGEM_EMAIL_DESCONHECIDO = 'E-mail não cadastrado';
 const MENSAGEM_OTP_AUSENTE = 'Código OTP não solicitado ou expirado';
 const MENSAGEM_OTP_EXPIRADO = 'Código OTP expirado. Solicite um novo código.';
 const MENSAGEM_OTP_INVALIDO = 'Código OTP inválido';
+const MENSAGEM_OTP_BLOQUEADO = 'Muitas tentativas. Solicite um novo código.';
 const MENSAGEM_CONTA_INATIVA = 'Usuário inativo ou não confirmado';
 const MENSAGEM_SESSAO = 'Sessão de consentimento inválida';
 const MENSAGEM_PEDIDO = 'Pedido OAuth inválido';
@@ -530,6 +531,7 @@ describe('UC-01: Erros de conta, OTP e consentimento', () => {
   it('não cria sessão quando o OTP é inválido, expirado ou a conta deixou de estar ativa', () => {
     const esperado = [
       { status: 401, message: MENSAGEM_OTP_INVALIDO },
+      { status: 401, message: MENSAGEM_OTP_BLOQUEADO },
       { status: 400, message: MENSAGEM_OTP_AUSENTE },
       { status: 400, message: MENSAGEM_OTP_EXPIRADO },
       { status: 401, message: MENSAGEM_CONTA_INATIVA },

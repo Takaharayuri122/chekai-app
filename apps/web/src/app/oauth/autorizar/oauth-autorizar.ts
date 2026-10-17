@@ -57,6 +57,7 @@ const MENSAGENS_SOLICITAR_OTP = new Set([
 
 const MENSAGENS_VALIDAR_OTP = new Set([
   'Código OTP inválido',
+  'Muitas tentativas. Solicite um novo código.',
   'Código OTP não solicitado ou expirado',
   'Código OTP expirado. Solicite um novo código.',
   'Usuário inativo ou não confirmado',

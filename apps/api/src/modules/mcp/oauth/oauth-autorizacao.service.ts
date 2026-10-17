@@ -23,9 +23,12 @@ import {
 
 const OTP_MOCK = '252622';
 const VALIDADE_MS = 10 * 60 * 1000;
+const LIMITE_FALHAS_OTP = 5;
 
 @Injectable()
 export class OauthAutorizacaoService {
+  private readonly falhasOtp = new Map<string, { total: number; expiraEm: number }>();
+
   constructor(
     private readonly config: OauthConfigService,
     private readonly usuarios: UsuarioOtpPorta,
@@ -46,6 +49,7 @@ export class OauthAutorizacaoService {
     if (usuario.status !== StatusUsuario.ATIVO) {
       throw new ForbiddenException('Usuário inativo');
     }
+    this.limparFalhasOtp(usuario.email);
     const codigo = this.segredos.otp();
     const expiraEm = new Date(this.relogio.agora().getTime() + VALIDADE_MS);
     await this.usuarios.atualizarOtp(usuario.id, codigo, expiraEm);
@@ -58,19 +62,27 @@ export class OauthAutorizacaoService {
     if (!usuario || usuario.status !== StatusUsuario.ATIVO) {
       throw new UnauthorizedException('Usuário inativo ou não confirmado');
     }
+    const agora = this.relogio.agora().getTime();
+    if (this.falhasOtpAtuais(usuario.email, agora) >= LIMITE_FALHAS_OTP) {
+      throw new UnauthorizedException('Muitas tentativas. Solicite um novo código.');
+    }
     const ambiente = this.config.resolver();
     const mock = ambiente.aceitaOtpMock && input.codigo === OTP_MOCK;
     if (!mock) {
       if (!usuario.otpCode || !usuario.otpExpiresAt) {
         throw new BadRequestException('Código OTP não solicitado ou expirado');
       }
-      if (usuario.otpExpiresAt.getTime() < this.relogio.agora().getTime()) {
+      if (usuario.otpExpiresAt.getTime() < agora) {
         throw new BadRequestException('Código OTP expirado. Solicite um novo código.');
       }
       if (usuario.otpCode !== input.codigo) {
+        this.registrarFalhaOtp(usuario.email, usuario.otpExpiresAt);
         throw new UnauthorizedException('Código OTP inválido');
       }
+      this.limparFalhasOtp(usuario.email);
       await this.usuarios.limparOtp(usuario.id);
+    } else {
+      this.limparFalhasOtp(usuario.email);
     }
 
     const segredo = this.segredos.opaco();
@@ -149,6 +161,29 @@ export class OauthAutorizacaoService {
       throw new BadRequestException('Cliente ou redirect_uri inválido');
     }
     return cliente;
+  }
+
+  private chaveOtp(email: string): string {
+    return email.trim().toLowerCase();
+  }
+
+  private falhasOtpAtuais(email: string, agora: number): number {
+    const chave = this.chaveOtp(email);
+    const registro = this.falhasOtp.get(chave);
+    if (!registro || registro.expiraEm < agora) {
+      this.falhasOtp.delete(chave);
+      return 0;
+    }
+    return registro.total;
+  }
+
+  private registrarFalhaOtp(email: string, expiraEm: Date): void {
+    const total = this.falhasOtpAtuais(email, this.relogio.agora().getTime()) + 1;
+    this.falhasOtp.set(this.chaveOtp(email), { total, expiraEm: expiraEm.getTime() });
+  }
+
+  private limparFalhasOtp(email: string): void {
+    this.falhasOtp.delete(this.chaveOtp(email));
   }
 
   private aplicarQuery(url: URL, query: QueryAutorizacao): void {

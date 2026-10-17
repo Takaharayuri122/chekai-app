@@ -7,12 +7,30 @@ import {
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
-import { Response } from 'express';
+import { Request, Response } from 'express';
 
 interface ApiResponse<T> {
   data: T;
   timestamp: string;
   success: boolean;
+}
+
+function caminhoSemQuery(valor: string): string {
+  const caminho = valor.split('?')[0];
+  return caminho.startsWith('/') ? caminho : `/${caminho}`;
+}
+
+/** Discovery e token OAuth precisam do JSON na raiz; o envelope `{ data, success }` quebra o protocolo. */
+function respostaOauthSemEnvelope(req: Request | undefined): boolean {
+  const candidatos = [req?.path, req?.originalUrl, req?.url].filter(
+    (valor): valor is string => typeof valor === 'string' && valor.length > 0,
+  );
+  return candidatos.some((valor) => {
+    const caminho = caminhoSemQuery(valor);
+    return caminho === '/oauth'
+      || caminho.startsWith('/oauth/')
+      || caminho.startsWith('/.well-known/oauth-');
+  });
 }
 
 /**
@@ -35,6 +53,10 @@ export class TransformInterceptor<T>
           return data as ApiResponse<T> | T;
         }
         if (data instanceof StreamableFile) {
+          return data;
+        }
+        const req = context.switchToHttp().getRequest<Request>();
+        if (respostaOauthSemEnvelope(req)) {
           return data;
         }
         return {

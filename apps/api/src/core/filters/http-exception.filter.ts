@@ -15,6 +15,7 @@ interface ErrorResponse {
   method: string;
   message: string | string[];
   error?: string;
+  error_description?: string;
 }
 
 /**
@@ -40,9 +41,16 @@ export class HttpExceptionFilter implements ExceptionFilter {
         ? exception.getResponse()
         : { message: 'Erro interno do servidor' };
 
-    const message =
-      typeof exceptionResponse === 'object' && 'message' in exceptionResponse
-        ? (exceptionResponse as { message: string | string[] }).message
+    const corpo = typeof exceptionResponse === 'object' && exceptionResponse
+      ? exceptionResponse as { message?: string | string[]; error?: unknown; error_description?: unknown }
+      : undefined;
+    const erroOauth = typeof corpo?.error === 'string' && typeof corpo.error_description === 'string'
+      ? { error: corpo.error, error_description: corpo.error_description }
+      : undefined;
+    const message = erroOauth
+      ? erroOauth.error_description
+      : corpo && 'message' in corpo && corpo.message !== undefined
+        ? corpo.message
         : 'Erro desconhecido';
 
     const errorResponse: ErrorResponse = {
@@ -51,6 +59,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
       path: request.url,
       method: request.method,
       message,
+      ...(erroOauth ?? {}),
     };
 
     if (status === HttpStatus.INTERNAL_SERVER_ERROR) {

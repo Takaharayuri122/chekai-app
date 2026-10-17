@@ -67,8 +67,8 @@ export class AuditoriaService {
         await this.validacaoLimites.validarLimiteAuditorias(gestorId);
       }
     }
-    if (usuario && usuario.perfil === PerfilUsuario.AUDITOR) {
-      await this.validarVinculoAuditorCliente(dto.unidadeId, usuario.id);
+    if (usuario) {
+      await this.validarUnidadeDoUsuario(dto.unidadeId, usuario);
     }
     const template = await this.checklistService.buscarTemplatePorId(dto.templateId, usuario);
     const auditoria = this.auditoriaRepository.create({
@@ -686,16 +686,24 @@ export class AuditoriaService {
     });
   }
 
-  private async validarVinculoAuditorCliente(unidadeId: string, auditorId: string): Promise<void> {
+  private async validarUnidadeDoUsuario(
+    unidadeId: string,
+    usuario: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
+  ): Promise<void> {
     const unidade = await this.unidadeRepository.findOne({
       where: { id: unidadeId },
       relations: ['cliente', 'cliente.auditores'],
     });
-    if (!unidade || !unidade.cliente) {
+    if (!unidade?.cliente) {
       throw new NotFoundException('Unidade não encontrada');
     }
-    const isVinculado = (unidade.cliente.auditores || []).some((a) => a.id === auditorId);
-    if (!isVinculado) {
+    const tenantDaConta = usuario.perfil === PerfilUsuario.AUDITOR ? usuario.gestorId : usuario.id;
+    if (!tenantDaConta || unidade.cliente.gestorId !== tenantDaConta) {
+      throw new ForbiddenException('Acesso negado a este cliente');
+    }
+    if (usuario.perfil !== PerfilUsuario.AUDITOR) return;
+    const vinculado = (unidade.cliente.auditores || []).some((auditor) => auditor.id === usuario.id);
+    if (!vinculado) {
       throw new ForbiddenException('Você não está vinculado a este cliente');
     }
   }
