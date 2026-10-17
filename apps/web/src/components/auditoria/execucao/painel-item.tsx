@@ -19,8 +19,8 @@ interface PainelItemProps {
 export function PainelItem({ item, numero, total, anterior, proximo, somenteLeitura, respostas, onNavegar, onDocumentar }: PainelItemProps) {
   const t = item.templateItem;
   return (
-    <div className="flex h-full flex-col">
-      <div className="flex-1 space-y-5 overflow-y-auto">
+    <div className="flex h-full min-h-0 flex-1 flex-col">
+      <div className="min-h-0 flex-1 space-y-5 overflow-y-auto">
         <div className="space-y-1">
           <p className="text-xs font-medium text-muted-foreground">
             Pergunta {numero} de {total}

@@ -191,9 +191,9 @@ export default function AuditoriasPage() {
           <>
             <ul className="space-y-2 lg:hidden">
               {visiveis.map((a) => (
-                <li key={a.id}>
-                  <Link href={hrefAuditoria(a)} className="flex items-start gap-3 rounded-lg border border-border bg-card p-4 shadow-sm active:bg-muted">
-                    <div className="min-w-0 flex-1 space-y-1">
+                <li key={a.id} className="relative">
+                  <Link href={hrefAuditoria(a)} className="block rounded-lg border border-border bg-card p-4 pr-14 shadow-sm active:bg-muted">
+                    <div className="min-w-0 space-y-1">
                       <div className="flex items-center gap-2">
                         <p className="truncate font-medium">{a.unidade?.nome}</p>
                         <StatusChip status={a.status} />
@@ -205,8 +205,9 @@ export default function AuditoriasPage() {
                         {dataCurta(a.dataInicio)} · {a.consultor?.nome} · nota {nota(a)}
                       </p>
                     </div>
-                    {menuAcoes(a)}
                   </Link>
+                  {/* Menu fora do link: dentro de <a> o toque navegaria em vez de abrir as ações */}
+                  <div className="absolute right-2 top-2">{menuAcoes(a)}</div>
                 </li>
               ))}
             </ul>

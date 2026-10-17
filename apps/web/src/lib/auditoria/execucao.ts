@@ -90,3 +90,19 @@ export function vizinhos(
   if (idx < 0) return { anterior: null, proximo: null, posicao: 0 };
   return { anterior: sequencia[idx - 1] ?? null, proximo: sequencia[idx + 1] ?? null, posicao: idx + 1 };
 }
+
+/** Só auditoria em andamento aceita finalização (cancelada e finalizada não). */
+export function podeFinalizar(status: string): boolean {
+  return status === 'em_andamento';
+}
+
+/**
+ * Texto/número salvam no blur; se o painel trocar de item ou fechar antes do blur, o valor digitado
+ * fica só no estado local. Indica se há valor local ainda não salvo para o item.
+ */
+export function customizadoPendente(item: AuditoriaItem, valorLocal: string | undefined): boolean {
+  const tipo = item.templateItem?.tipoRespostaCustomizada;
+  if (tipo !== 'texto' && tipo !== 'numero') return false;
+  if (valorLocal === undefined) return false;
+  return valorLocal !== (item.resposta || '');
+}

@@ -35,6 +35,8 @@ import {
   pendenciasObrigatorias,
   progresso as calcularProgresso,
   vizinhos,
+  customizadoPendente,
+  podeFinalizar,
 } from '@/lib/auditoria/execucao';
 
 type RespostaType = 'conforme' | 'nao_conforme' | 'nao_aplicavel' | string;
@@ -83,6 +85,15 @@ export default function AuditoriaPage() {
   const desktop = useMediaQuery('(min-width: 1024px)');
   const [selecionadoId, setSelecionadoId] = useState<string | null>(null);
   const [painelMobileAberto, setPainelMobileAberto] = useState(false);
+  // No celular a folha do item fecha para o modal de documentação poder receber toques; reabre ao fechar o modal
+  const [voltarAoPainel, setVoltarAoPainel] = useState(false);
+
+  useEffect(() => {
+    if (!itemModal && voltarAoPainel) {
+      setVoltarAoPainel(false);
+      setPainelMobileAberto(true);
+    }
+  }, [itemModal, voltarAoPainel]);
 
   const prevItemIdRef = useRef<string | null>(null);
 
@@ -670,9 +681,33 @@ export default function AuditoriaPage() {
   const selecionado = sequencia.find((i) => i.id === selecionadoId) ?? null;
   const nav = selecionado ? vizinhos(sequencia, selecionado.id) : null;
 
-  const selecionar = (itemId: string) => {
+  // Garante que texto/número digitado não se perca ao trocar de item ou fechar o painel antes do blur
+  const salvarCustomizadoPendente = () => {
+    if (selecionado && customizadoPendente(selecionado, respostasCustomizadas[selecionado.id])) {
+      handleRespostaCustomizada(selecionado.id, respostasCustomizadas[selecionado.id]);
+    }
+  };
+
+  const navegar = (itemId: string) => {
+    salvarCustomizadoPendente();
     setSelecionadoId(itemId);
+  };
+
+  const selecionar = (itemId: string) => {
+    navegar(itemId);
     if (!desktop) setPainelMobileAberto(true);
+  };
+
+  const documentar = (item: NonNullable<typeof selecionado>) => {
+    salvarCustomizadoPendente();
+    if (desktop) {
+      openPhotoModal(item);
+      return;
+    }
+    setPainelMobileAberto(false);
+    setVoltarAoPainel(true);
+    // aguarda a folha terminar de fechar e liberar o foco/toques da página antes de abrir o modal
+    window.setTimeout(() => openPhotoModal(item), 350);
   };
 
   const painel = selecionado && nav && (
@@ -683,10 +718,11 @@ export default function AuditoriaPage() {
       anterior={nav.anterior}
       proximo={nav.proximo}
       somenteLeitura={somenteLeitura}
-      onNavegar={setSelecionadoId}
-      onDocumentar={() => openPhotoModal(selecionado)}
+      onNavegar={navegar}
+      onDocumentar={() => documentar(selecionado)}
       respostas={
         <RespostasItem
+          key={selecionado.id}
           item={selecionado}
           valorCustomizado={respostasCustomizadas[selecionado.id] ?? selecionado.resposta ?? ''}
           somenteLeitura={somenteLeitura}
@@ -736,11 +772,11 @@ export default function AuditoriaPage() {
         </div>
       </div>
 
-      <div className={`px-4 py-4 lg:px-8 ${somenteLeitura ? 'pb-8' : 'pb-40 md:pb-28'}`}>
+      <div className={`px-4 py-4 lg:px-8 ${podeFinalizar(auditoria.status) ? 'pb-40 md:pb-28' : 'pb-8'}`}>
         <div className="lg:grid lg:grid-cols-[minmax(320px,420px)_1fr] lg:gap-6">
           <ListaSecoes secoes={secoes} selecionadoId={selecionadoId} destacados={itensObrigatoriosNaoAvaliados} onSelecionar={selecionar} />
           {desktop && (
-            <div className="sticky top-[calc(3.5rem+130px)] hidden max-h-[calc(100vh-14rem)] rounded-lg border border-border bg-card p-6 shadow-sm lg:block">
+            <div className="sticky top-[calc(3.5rem+130px)] hidden h-[calc(100vh-14rem)] flex-col overflow-hidden rounded-lg border border-border bg-card p-6 shadow-sm lg:flex">
               {painel}
             </div>
           )}
@@ -748,7 +784,13 @@ export default function AuditoriaPage() {
       </div>
 
       {!desktop && (
-        <Drawer open={painelMobileAberto && Boolean(selecionado)} onOpenChange={setPainelMobileAberto}>
+        <Drawer
+          open={painelMobileAberto && Boolean(selecionado)}
+          onOpenChange={(aberto) => {
+            if (!aberto) salvarCustomizadoPendente();
+            setPainelMobileAberto(aberto);
+          }}
+        >
           <DrawerContent className="max-h-[92vh] px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
             <DrawerTitle className="sr-only">Pergunta da auditoria</DrawerTitle>
             <div className="h-[75vh] pt-2">{painel}</div>
@@ -1037,12 +1079,13 @@ export default function AuditoriaPage() {
         )}
       </FormModal>
 
-      {!somenteLeitura && (
+      {podeFinalizar(auditoria.status) && (
         <div className="fixed inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-30 px-4 md:bottom-6 md:left-auto md:right-8 md:px-0">
           <Button
             className="h-12 w-full shadow-lg md:w-auto md:px-6"
             variant={pendentes.length ? 'outline' : 'default'}
             onClick={() => {
+              salvarCustomizadoPendente();
               setItensObrigatoriosNaoAvaliados(new Set(pendentes.map((p) => p.id)));
               setShowFinalModal(true);
             }}

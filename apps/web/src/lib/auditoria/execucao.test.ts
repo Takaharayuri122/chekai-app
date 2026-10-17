@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import type { AuditoriaItem } from '@/lib/api';
 import {
   agruparPorSecao,
+  customizadoPendente,
+  podeFinalizar,
   estaRespondido,
   naoConformidades,
   pendenciasObrigatorias,
@@ -132,5 +134,26 @@ describe('vizinhos', () => {
   });
   it('id inexistente', () => {
     expect(vizinhos(sequencia, 'x')).toEqual({ anterior: null, proximo: null, posicao: 0 });
+  });
+});
+
+describe('podeFinalizar', () => {
+  it('só auditoria em andamento pode ser finalizada', () => {
+    expect(podeFinalizar('em_andamento')).toBe(true);
+    expect(podeFinalizar('finalizada')).toBe(false);
+    expect(podeFinalizar('cancelada')).toBe(false);
+  });
+});
+
+describe('customizadoPendente', () => {
+  it('texto ou número digitado e ainda não salvo fica pendente', () => {
+    const it1 = item({ resposta: '10', tipoCustom: 'numero' });
+    expect(customizadoPendente(it1, '12')).toBe(true);
+    expect(customizadoPendente(it1, '10')).toBe(false);
+    expect(customizadoPendente(it1, undefined)).toBe(false);
+  });
+  it('data, seleção e respostas padrão nunca ficam pendentes (salvam ao alterar)', () => {
+    expect(customizadoPendente(item({ resposta: '', tipoCustom: 'data' }), '2026-10-17')).toBe(false);
+    expect(customizadoPendente(item({ resposta: 'conforme' }), 'x')).toBe(false);
   });
 });
