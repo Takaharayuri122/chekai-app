@@ -23,6 +23,14 @@ export class McpRegistryService {
     return [...this.tools.values()].filter((tool) => this.autorizada(tool, principal));
   }
 
+  definicao(nome: string): McpToolDefinition | undefined {
+    return this.tools.get(nome);
+  }
+
+  entradaVazaIsolamento(valor: unknown): boolean {
+    return this.contemCampoIsolamento(valor);
+  }
+
   async executar(
     nome: string,
     input: Record<string, unknown>,
