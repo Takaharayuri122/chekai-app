@@ -24,6 +24,8 @@ import {
   type ColunaTabela,
   type AcaoTabela,
 } from '@/components';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/shadcn/tabs';
+import { AuditoriasDoCliente } from '@/components/clientes/auditorias-do-cliente';
 import { LogoCropperModal } from '@/components/ui/logo-cropper-modal';
 import {
   clienteService,
@@ -652,101 +654,9 @@ export default function ClientesPage() {
     },
   ];
 
-  return (
-    <AppLayout>
-      <PageHeader
-        title="Clientes"
-        subtitle="Gerencie seus clientes e unidades"
-        action={
-          <button className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-10 px-4 bg-primary text-primary-foreground hover:bg-primary/90" onClick={handleNovoCliente}>
-            <Plus className="w-4 h-4" />
-            Novo Cliente
-          </button>
-        }
-      />
-
-      <div className="px-4 py-4 lg:px-8 space-y-4">
-        <CrudFiltros
-          campos={[
-            { key: 'nome', label: 'Nome', tipo: 'text', placeholder: 'Buscar por nome...' },
-            {
-              key: 'tipoAtividade',
-              label: 'Tipo de Atividade',
-              tipo: 'select',
-              opcoes: OPCOES_TIPO_ATIVIDADE,
-            },
-          ]}
-          valoresIniciais={FILTROS_INICIAIS}
-          onPesquisar={handlePesquisar}
-          onLimpar={() => carregarClientes()}
-        />
-
-        <CrudTable
-          colunas={colunas}
-          dados={clientesFiltrados}
-          acoes={acoes}
-          keyExtractor={(c) => c.id}
-          loading={loading}
-          emptyState={{
-            icon: Building2,
-            title: 'Nenhum cliente encontrado',
-            description: 'Ajuste os filtros ou cadastre um novo cliente.',
-            actionLabel: 'Novo Cliente',
-            actionOnClick: handleNovoCliente,
-          }}
-        />
-      </div>
-
-      <FormModal
-        open={showModal}
-        onClose={() => {
-          clearPendingLogo();
-          setShowModal(false);
-          setEditingCliente(null);
-          setClienteForm(clienteFormInicial);
-          setUnidadesPendentes([]);
-        }}
-        title={editingCliente ? 'Editar Cliente' : 'Novo Cliente'}
-        maxWidth="4xl"
-        isDirty={Boolean(clienteForm.razaoSocial || clienteForm.cnpj || clienteForm.telefone || unidadesPendentes.length > 0)}
-        closeOnBackdrop={false}
-        footer={
-          <>
-            <button
-              className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-10 px-4 hover:bg-muted"
-              onClick={() => {
-                clearPendingLogo();
-                setShowModal(false);
-                setEditingCliente(null);
-                setClienteForm(clienteFormInicial);
-                setUnidadesPendentes([]);
-              }}
-            >
-              Cancelar
-            </button>
-            <button
-              className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-10 px-4 bg-primary text-primary-foreground hover:bg-primary/90"
-              onClick={handleSalvarCliente}
-              disabled={
-                saving ||
-                !clienteForm.razaoSocial ||
-                !clienteForm.cnpj ||
-                !clienteForm.telefone ||
-                removerMascaraTelefone(clienteForm.telefone).length < 10 ||
-                (clienteForm.email?.trim() ? !emailValido(clienteForm.email) : false) ||
-                (!editingCliente && unidadesPendentes.length === 0)
-              }
-            >
-              {saving ? (
-                <><Loader2 className="w-4 h-4 animate-spin" /> Salvando...</>
-              ) : (
-                editingCliente ? 'Atualizar' : 'Salvar'
-              )}
-            </button>
-          </>
-        }
-      >
-        <div className="space-y-4">
+  // Blocos do formulário reaproveitados no cadastro (página única) e na edição (abas)
+  const blocoDados = (
+    <>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="flex flex-col">
                   <label className="flex items-center justify-between gap-2 py-1"><span className="text-sm font-medium text-foreground">Razão Social *</span></label>
@@ -822,6 +732,11 @@ export default function ClientesPage() {
                   />
                 </div>
               </div>
+    </>
+  );
+
+  const blocoEquipe = (
+    <>
               {(isGestor() || isMaster()) && (
                 <MultiSelectAuditores
                   auditores={auditores}
@@ -830,6 +745,11 @@ export default function ClientesPage() {
                   label="Auditores Responsáveis"
                 />
               )}
+    </>
+  );
+
+  const blocoLogo = (
+    <>
               <div className="flex flex-col pt-2 border-t border-muted">
                 <label className="flex items-center justify-between gap-2 py-1"><span className="text-sm font-medium text-foreground">Logo do cliente</span></label>
                 <p className="text-sm text-muted-foreground mb-3">
@@ -873,7 +793,11 @@ export default function ClientesPage() {
                   </button>
                 )}
               </div>
+    </>
+  );
 
+  const blocoUnidades = (
+    <>
               {/* Seção de Unidades */}
               <div className="pt-2 border-t border-muted">
                 <div className="flex items-center justify-between mb-3">
@@ -1401,6 +1325,134 @@ export default function ClientesPage() {
                   </>
                 )}
               </div>
+    </>
+  );
+
+  return (
+    <AppLayout>
+      <PageHeader
+        title="Clientes"
+        subtitle="Gerencie seus clientes e unidades"
+        action={
+          <button className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-10 px-4 bg-primary text-primary-foreground hover:bg-primary/90" onClick={handleNovoCliente}>
+            <Plus className="w-4 h-4" />
+            Novo Cliente
+          </button>
+        }
+      />
+
+      <div className="px-4 py-4 lg:px-8 space-y-4">
+        <CrudFiltros
+          campos={[
+            { key: 'nome', label: 'Nome', tipo: 'text', placeholder: 'Buscar por nome...' },
+            {
+              key: 'tipoAtividade',
+              label: 'Tipo de Atividade',
+              tipo: 'select',
+              opcoes: OPCOES_TIPO_ATIVIDADE,
+            },
+          ]}
+          valoresIniciais={FILTROS_INICIAIS}
+          onPesquisar={handlePesquisar}
+          onLimpar={() => carregarClientes()}
+        />
+
+        <CrudTable
+          colunas={colunas}
+          dados={clientesFiltrados}
+          acoes={acoes}
+          keyExtractor={(c) => c.id}
+          loading={loading}
+          emptyState={{
+            icon: Building2,
+            title: 'Nenhum cliente encontrado',
+            description: 'Ajuste os filtros ou cadastre um novo cliente.',
+            actionLabel: 'Novo Cliente',
+            actionOnClick: handleNovoCliente,
+          }}
+        />
+      </div>
+
+      <FormModal
+        open={showModal}
+        onClose={() => {
+          clearPendingLogo();
+          setShowModal(false);
+          setEditingCliente(null);
+          setClienteForm(clienteFormInicial);
+          setUnidadesPendentes([]);
+        }}
+        title={editingCliente ? 'Editar Cliente' : 'Novo Cliente'}
+        maxWidth="3xl"
+        isDirty={Boolean(clienteForm.razaoSocial || clienteForm.cnpj || clienteForm.telefone || unidadesPendentes.length > 0)}
+        closeOnBackdrop={false}
+        footer={
+          <>
+            <button
+              className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-10 px-4 hover:bg-muted"
+              onClick={() => {
+                clearPendingLogo();
+                setShowModal(false);
+                setEditingCliente(null);
+                setClienteForm(clienteFormInicial);
+                setUnidadesPendentes([]);
+              }}
+            >
+              Cancelar
+            </button>
+            <button
+              className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-10 px-4 bg-primary text-primary-foreground hover:bg-primary/90"
+              onClick={handleSalvarCliente}
+              disabled={
+                saving ||
+                !clienteForm.razaoSocial ||
+                !clienteForm.cnpj ||
+                !clienteForm.telefone ||
+                removerMascaraTelefone(clienteForm.telefone).length < 10 ||
+                (clienteForm.email?.trim() ? !emailValido(clienteForm.email) : false) ||
+                (!editingCliente && unidadesPendentes.length === 0)
+              }
+            >
+              {saving ? (
+                <><Loader2 className="w-4 h-4 animate-spin" /> Salvando...</>
+              ) : (
+                editingCliente ? 'Atualizar' : 'Salvar'
+              )}
+            </button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          {editingCliente ? (
+            <Tabs defaultValue="dados">
+              <TabsList className="w-full justify-start overflow-x-auto">
+                <TabsTrigger value="dados">Dados</TabsTrigger>
+                <TabsTrigger value="unidades">Unidades ({editingCliente.unidades?.length || 0})</TabsTrigger>
+                {(isGestor() || isMaster()) && <TabsTrigger value="equipe">Equipe</TabsTrigger>}
+                <TabsTrigger value="auditorias">Auditorias</TabsTrigger>
+              </TabsList>
+              <TabsContent value="dados" className="space-y-4">
+                {blocoDados}
+                {blocoLogo}
+              </TabsContent>
+              <TabsContent value="unidades" className="space-y-4">
+                {blocoUnidades}
+              </TabsContent>
+              <TabsContent value="equipe" className="space-y-4">
+                {blocoEquipe}
+              </TabsContent>
+              <TabsContent value="auditorias">
+                <AuditoriasDoCliente clienteId={editingCliente.id} />
+              </TabsContent>
+            </Tabs>
+          ) : (
+            <>
+              {blocoDados}
+              {blocoEquipe}
+              {blocoLogo}
+              {blocoUnidades}
+            </>
+          )}
         </div>
       </FormModal>
 

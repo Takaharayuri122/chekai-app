@@ -4,7 +4,6 @@ import { useEffect, useState, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  ChevronLeft,
   Save,
   Scale,
   Building,
@@ -21,6 +20,8 @@ import {
   BookOpen,
 } from 'lucide-react';
 import { useAuthStore } from '@/lib/store';
+import { AppLayout, PageHeader } from '@/components';
+import { Button } from '@/components/ui/shadcn/button';
 import {
   legislacaoService,
   Legislacao,
@@ -125,64 +126,46 @@ export default function LegislacaoDetalhesPage() {
 
   if (isLoading) {
     return (
-      <main className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
+      <AppLayout>
+      <div className="flex min-h-[60vh] items-center justify-center">
         <div className="w-10 h-10 border-3 border-primary border-t-transparent rounded-full animate-spin" />
-      </main>
+      </div>
+      </AppLayout>
     );
   }
 
   if (!legislacao) return null;
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      {/* Header */}
-      <header className="bg-slate-800/60 backdrop-blur-xl border-b border-primary/20 px-6 py-4 sticky top-0 z-40">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => router.push('/legislacoes')}
-              className="p-2 hover:bg-slate-700/50 rounded-xl transition-colors"
-            >
-              <ChevronLeft className="w-5 h-5 text-primary" />
-            </button>
-            <div>
-              <h1 className="text-xl font-bold text-white font-display">
-                {TIPO_LEGISLACAO_LABELS[legislacao.tipo]} {legislacao.numero}/{legislacao.ano}
-              </h1>
-              <p className="text-sm text-primary/70 truncate max-w-[200px]">
-                {legislacao.orgaoEmissor || 'Legislação'}
-              </p>
-            </div>
-          </div>
-          {!isEditing ? (
-            <button
-              onClick={() => setIsEditing(true)}
-              className="p-2 bg-primary/20 hover:bg-primary/30 rounded-xl transition-colors"
-            >
-              <Edit3 className="w-5 h-5 text-primary" />
-            </button>
+    <AppLayout>
+      <PageHeader
+        title={`${TIPO_LEGISLACAO_LABELS[legislacao.tipo]} ${legislacao.numero}/${legislacao.ano}`}
+        subtitle={legislacao.orgaoEmissor || 'Legislação'}
+        backHref="/admin/legislacoes"
+        action={
+          !isEditing ? (
+            <Button variant="outline" onClick={() => setIsEditing(true)}>
+              <Edit3 className="h-4 w-4" />
+              Editar
+            </Button>
           ) : (
-            <button
-              onClick={handleSave}
-              disabled={isSaving}
-              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-primary to-primary/80 text-white rounded-xl font-medium"
-            >
-              <Save className="w-4 h-4" />
-              {isSaving ? 'Salvando...' : 'Salvar'}
-            </button>
-          )}
-        </div>
-      </header>
+            <Button onClick={handleSave} disabled={isSaving}>
+              <Save className="h-4 w-4" />
+              {isSaving ? 'Salvando…' : 'Salvar'}
+            </Button>
+          )
+        }
+      />
 
       <div className="px-6 py-6 space-y-6 pb-32">
         {/* Informações da Legislação */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-slate-800/40 rounded-2xl border border-primary-500/20 p-6 backdrop-blur-sm space-y-4"
+          className="bg-card rounded-2xl border border-primary-500/20 p-6 backdrop-blur-sm space-y-4"
         >
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+            <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
               <Scale className="w-5 h-5 text-primary-400" />
               Informações
             </h2>
@@ -209,7 +192,7 @@ export default function LegislacaoDetalhesPage() {
                   <select
                     value={formData.tipo || TipoLegislacao.RDC}
                     onChange={(e) => setFormData({ ...formData, tipo: e.target.value as TipoLegislacao })}
-                    className="w-full px-4 py-3 bg-slate-700/50 border border-primary-500/20 rounded-xl text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition-all"
+                    className="w-full px-4 py-3 bg-muted border border-primary-500/20 rounded-xl text-foreground focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition-all"
                   >
                     {Object.values(TipoLegislacao).map((tipo) => (
                       <option key={tipo} value={tipo}>
@@ -226,7 +209,7 @@ export default function LegislacaoDetalhesPage() {
                     type="text"
                     value={formData.numero || ''}
                     onChange={(e) => setFormData({ ...formData, numero: e.target.value })}
-                    className="w-full px-4 py-3 bg-slate-700/50 border border-primary-500/20 rounded-xl text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition-all"
+                    className="w-full px-4 py-3 bg-muted border border-primary-500/20 rounded-xl text-foreground focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition-all"
                   />
                 </div>
               </div>
@@ -239,7 +222,7 @@ export default function LegislacaoDetalhesPage() {
                     type="number"
                     value={formData.ano || ''}
                     onChange={(e) => setFormData({ ...formData, ano: parseInt(e.target.value, 10) })}
-                    className="w-full px-4 py-3 bg-slate-700/50 border border-primary-500/20 rounded-xl text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition-all"
+                    className="w-full px-4 py-3 bg-muted border border-primary-500/20 rounded-xl text-foreground focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition-all"
                   />
                 </div>
                 <div>
@@ -250,7 +233,7 @@ export default function LegislacaoDetalhesPage() {
                     type="text"
                     value={formData.orgaoEmissor || ''}
                     onChange={(e) => setFormData({ ...formData, orgaoEmissor: e.target.value })}
-                    className="w-full px-4 py-3 bg-slate-700/50 border border-primary-500/20 rounded-xl text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition-all"
+                    className="w-full px-4 py-3 bg-muted border border-primary-500/20 rounded-xl text-foreground focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition-all"
                   />
                 </div>
               </div>
@@ -262,7 +245,7 @@ export default function LegislacaoDetalhesPage() {
                   type="text"
                   value={formData.titulo || ''}
                   onChange={(e) => setFormData({ ...formData, titulo: e.target.value })}
-                  className="w-full px-4 py-3 bg-slate-700/50 border border-primary-500/20 rounded-xl text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition-all"
+                  className="w-full px-4 py-3 bg-muted border border-primary-500/20 rounded-xl text-foreground focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition-all"
                 />
               </div>
               <div>
@@ -273,7 +256,7 @@ export default function LegislacaoDetalhesPage() {
                   value={formData.ementa || ''}
                   onChange={(e) => setFormData({ ...formData, ementa: e.target.value })}
                   rows={3}
-                  className="w-full px-4 py-3 bg-slate-700/50 border border-primary-500/20 rounded-xl text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition-all resize-none"
+                  className="w-full px-4 py-3 bg-muted border border-primary-500/20 rounded-xl text-foreground focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition-all resize-none"
                 />
               </div>
               <div>
@@ -284,14 +267,14 @@ export default function LegislacaoDetalhesPage() {
                   type="url"
                   value={formData.linkOficial || ''}
                   onChange={(e) => setFormData({ ...formData, linkOficial: e.target.value })}
-                  className="w-full px-4 py-3 bg-slate-700/50 border border-primary-500/20 rounded-xl text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition-all"
+                  className="w-full px-4 py-3 bg-muted border border-primary-500/20 rounded-xl text-foreground focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition-all"
                 />
               </div>
             </div>
           ) : (
             <div className="space-y-3">
               <div>
-                <h3 className="text-white font-medium">{legislacao.titulo}</h3>
+                <h3 className="text-foreground font-medium">{legislacao.titulo}</h3>
                 {legislacao.ementa && (
                   <p className="text-primary-200/70 text-sm mt-2">{legislacao.ementa}</p>
                 )}
@@ -324,10 +307,10 @@ export default function LegislacaoDetalhesPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="bg-slate-800/40 rounded-2xl border border-primary-500/20 p-6 backdrop-blur-sm"
+          className="bg-card rounded-2xl border border-primary-500/20 p-6 backdrop-blur-sm"
         >
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+            <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
               <Layers className="w-5 h-5 text-primary-400" />
               Chunks RAG
               <span className="px-2 py-0.5 bg-primary-500/20 text-primary-300 text-xs rounded-lg">
@@ -367,7 +350,7 @@ export default function LegislacaoDetalhesPage() {
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: index * 0.03 }}
-                  className="bg-slate-700/30 rounded-xl p-4 border border-primary-500/10 group"
+                  className="bg-muted/60 rounded-xl p-4 border border-primary-500/10 group"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1">
@@ -423,13 +406,13 @@ export default function LegislacaoDetalhesPage() {
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 100, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-slate-800 rounded-t-3xl rounded-b-xl border border-primary-500/20 p-6 w-full max-w-lg max-h-[85vh] overflow-y-auto"
+              className="bg-card rounded-t-3xl rounded-b-xl border border-primary-500/20 p-6 w-full max-w-lg max-h-[85vh] overflow-y-auto"
             >
               <div className="flex items-center justify-between mb-6">
-                <h3 className="text-lg font-semibold text-white">Adicionar Chunk</h3>
+                <h3 className="text-lg font-semibold text-foreground">Adicionar Chunk</h3>
                 <button
                   onClick={() => setShowChunkModal(false)}
-                  className="p-2 hover:bg-slate-700/50 rounded-lg transition-colors"
+                  className="p-2 hover:bg-muted rounded-lg transition-colors"
                 >
                   <X className="w-5 h-5 text-primary-300" />
                 </button>
@@ -446,7 +429,7 @@ export default function LegislacaoDetalhesPage() {
                       value={novoChunk.artigo || ''}
                       onChange={(e) => setNovoChunk({ ...novoChunk, artigo: e.target.value })}
                       placeholder="Art. 5º"
-                      className="w-full px-3 py-2 bg-slate-700/50 border border-primary-500/20 rounded-lg text-white text-sm placeholder-primary-300/50 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition-all"
+                      className="w-full px-3 py-2 bg-muted border border-primary-500/20 rounded-lg text-foreground text-sm placeholder-primary-300/50 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition-all"
                     />
                   </div>
                   <div>
@@ -458,7 +441,7 @@ export default function LegislacaoDetalhesPage() {
                       value={novoChunk.inciso || ''}
                       onChange={(e) => setNovoChunk({ ...novoChunk, inciso: e.target.value })}
                       placeholder="I"
-                      className="w-full px-3 py-2 bg-slate-700/50 border border-primary-500/20 rounded-lg text-white text-sm placeholder-primary-300/50 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition-all"
+                      className="w-full px-3 py-2 bg-muted border border-primary-500/20 rounded-lg text-foreground text-sm placeholder-primary-300/50 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition-all"
                     />
                   </div>
                   <div>
@@ -470,7 +453,7 @@ export default function LegislacaoDetalhesPage() {
                       value={novoChunk.paragrafo || ''}
                       onChange={(e) => setNovoChunk({ ...novoChunk, paragrafo: e.target.value })}
                       placeholder="§1º"
-                      className="w-full px-3 py-2 bg-slate-700/50 border border-primary-500/20 rounded-lg text-white text-sm placeholder-primary-300/50 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition-all"
+                      className="w-full px-3 py-2 bg-muted border border-primary-500/20 rounded-lg text-foreground text-sm placeholder-primary-300/50 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition-all"
                     />
                   </div>
                 </div>
@@ -484,7 +467,7 @@ export default function LegislacaoDetalhesPage() {
                     onChange={(e) => setNovoChunk({ ...novoChunk, conteudo: e.target.value })}
                     placeholder="Cole aqui o trecho da legislação que será usado para consultas RAG..."
                     rows={6}
-                    className="w-full px-4 py-3 bg-slate-700/50 border border-primary-500/20 rounded-xl text-white placeholder-primary-300/50 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition-all resize-none"
+                    className="w-full px-4 py-3 bg-muted border border-primary-500/20 rounded-xl text-foreground placeholder-primary-300/50 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition-all resize-none"
                   />
                 </div>
 
@@ -498,7 +481,7 @@ export default function LegislacaoDetalhesPage() {
                   <button
                     type="button"
                     onClick={() => setShowChunkModal(false)}
-                    className="flex-1 px-4 py-3 bg-slate-700/50 text-primary-200 rounded-xl font-medium hover:bg-slate-700 transition-colors"
+                    className="flex-1 px-4 py-3 bg-muted text-primary-200 rounded-xl font-medium hover:bg-muted transition-colors"
                   >
                     Cancelar
                   </button>
@@ -516,7 +499,7 @@ export default function LegislacaoDetalhesPage() {
           </motion.div>
         )}
       </AnimatePresence>
-    </main>
+    </AppLayout>
   );
 }
 

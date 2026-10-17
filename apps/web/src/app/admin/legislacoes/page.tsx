@@ -9,7 +9,6 @@ import {
   Plus,
   Search,
   ChevronRight,
-  ChevronLeft,
   MoreVertical,
   Edit,
   Trash2,
@@ -20,6 +19,8 @@ import {
   Layers,
 } from 'lucide-react';
 import { useAuthStore } from '@/lib/store';
+import { AppLayout, PageHeader } from '@/components';
+import { Button } from '@/components/ui/shadcn/button';
 import {
   legislacaoService,
   Legislacao,
@@ -78,33 +79,19 @@ export default function LegislacoesPage() {
   );
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      {/* Header */}
-      <header className="bg-slate-800/60 backdrop-blur-xl border-b border-primary/20 px-6 py-4 sticky top-0 z-40">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => router.push('/admin/dashboard')}
-              className="p-2 hover:bg-slate-700/50 rounded-xl transition-colors"
-            >
-              <ChevronLeft className="w-5 h-5 text-primary" />
-            </button>
-            <div>
-              <h1 className="text-xl font-bold text-white font-display">Legislações</h1>
-              <p className="text-sm text-primary/70">
-                {legislacoes.length} cadastradas • Base RAG
-              </p>
-            </div>
-          </div>
-          <Link
-            href="/admin/legislacoes/nova"
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-primary to-primary/80 text-white rounded-xl font-medium shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all"
-          >
-            <Plus className="w-4 h-4" />
-            Nova
-          </Link>
-        </div>
-      </header>
+    <AppLayout>
+      <PageHeader
+        title="Legislações"
+        subtitle={`${legislacoes.length} cadastradas · base de consulta da IA`}
+        action={
+          <Button asChild>
+            <Link href="/admin/legislacoes/nova">
+              <Plus className="h-4 w-4" />
+              Nova
+            </Link>
+          </Button>
+        }
+      />
 
       <div className="px-4 py-4 lg:px-8 space-y-4">
         {/* Search */}
@@ -119,7 +106,7 @@ export default function LegislacoesPage() {
             placeholder="Buscar por título, número, órgão..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-12 pr-4 py-3 bg-slate-800/50 backdrop-blur-sm border border-primary-500/20 rounded-xl text-white placeholder-indigo-300/50 focus:border-primary-500 focus:ring-2 focus:ring-indigo-500/20 transition-all"
+            className="w-full pl-12 pr-4 py-3 bg-card backdrop-blur-sm border border-primary-500/20 rounded-xl text-foreground placeholder-indigo-300/50 focus:border-primary-500 focus:ring-2 focus:ring-indigo-500/20 transition-all"
           />
         </motion.div>
 
@@ -135,7 +122,7 @@ export default function LegislacoesPage() {
               <Layers className="w-5 h-5 text-primary-400" />
             </div>
             <div>
-              <h3 className="font-medium text-white mb-1">Base de Conhecimento RAG</h3>
+              <h3 className="font-medium text-foreground mb-1">Base de Conhecimento RAG</h3>
               <p className="text-sm text-primary-200/70">
                 As legislações cadastradas aqui alimentam o sistema de IA para gerar 
                 recomendações e textos técnicos baseados nas normas vigentes.
@@ -153,12 +140,12 @@ export default function LegislacoesPage() {
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-slate-800/40 rounded-2xl border border-primary-500/20 p-12 text-center backdrop-blur-sm"
+            className="bg-card rounded-2xl border border-primary-500/20 p-12 text-center backdrop-blur-sm"
           >
             <div className="w-20 h-20 bg-primary-500/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
               <Scale className="w-10 h-10 text-primary-400" />
             </div>
-            <h3 className="text-lg font-semibold text-white mb-2">
+            <h3 className="text-lg font-semibold text-foreground mb-2">
               Nenhuma legislação encontrada
             </h3>
             <p className="text-primary-300/70 mb-6">
@@ -182,7 +169,7 @@ export default function LegislacoesPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.05 }}
-                className="bg-slate-800/40 rounded-2xl border border-primary-500/20 p-5 backdrop-blur-sm hover:border-primary-500/40 transition-all group"
+                className="bg-card rounded-2xl border border-primary-500/20 p-5 backdrop-blur-sm hover:border-primary-500/40 transition-all group"
               >
                 <div className="flex items-start gap-4">
                   <div className="w-12 h-12 bg-gradient-to-br from-primary-500/20 to-primary-500/20 rounded-xl flex items-center justify-center flex-shrink-0">
@@ -191,7 +178,7 @@ export default function LegislacoesPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
-                        <h3 className="font-semibold text-white truncate">
+                        <h3 className="font-semibold text-foreground truncate">
                           {TIPO_LEGISLACAO_LABELS[leg.tipo]} {leg.numero}/{leg.ano}
                         </h3>
                         <p className="text-sm text-primary-200/70 line-clamp-2">
@@ -201,15 +188,15 @@ export default function LegislacoesPage() {
                       <div className="relative">
                         <button
                           onClick={() => setMenuAberto(menuAberto === leg.id ? null : leg.id)}
-                          className="p-2 hover:bg-slate-700/50 rounded-lg transition-colors"
+                          className="p-2 hover:bg-muted rounded-lg transition-colors"
                         >
                           <MoreVertical className="w-4 h-4 text-primary-300" />
                         </button>
                         {menuAberto === leg.id && (
-                          <div className="absolute right-0 top-full mt-1 bg-slate-800 rounded-xl border border-primary-500/20 shadow-xl py-2 min-w-[160px] z-50">
+                          <div className="absolute right-0 top-full mt-1 bg-card rounded-xl border border-primary-500/20 shadow-xl py-2 min-w-[160px] z-50">
                             <Link
                               href={`/admin/legislacoes/${leg.id}`}
-                              className="flex items-center gap-3 px-4 py-2 hover:bg-slate-700/50 text-primary-200"
+                              className="flex items-center gap-3 px-4 py-2 hover:bg-muted text-primary-200"
                             >
                               <Edit className="w-4 h-4" />
                               Editar
@@ -219,7 +206,7 @@ export default function LegislacoesPage() {
                                 href={leg.linkOficial}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="flex items-center gap-3 px-4 py-2 hover:bg-slate-700/50 text-primary-200"
+                                className="flex items-center gap-3 px-4 py-2 hover:bg-muted text-primary-200"
                               >
                                 <ExternalLink className="w-4 h-4" />
                                 Abrir Link
@@ -267,7 +254,7 @@ export default function LegislacoesPage() {
       </div>
 
       {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-slate-800/90 backdrop-blur-xl border-t border-primary-500/20 px-6 py-3 z-50">
+      <nav className="fixed bottom-0 left-0 right-0 bg-card backdrop-blur-xl border-t border-primary-500/20 px-6 py-3 z-50">
         <div className="flex items-center justify-around max-w-md mx-auto">
           <Link
             href="/admin/dashboard"
@@ -299,7 +286,7 @@ export default function LegislacoesPage() {
           </Link>
         </div>
       </nav>
-    </main>
+    </AppLayout>
   );
 }
 
