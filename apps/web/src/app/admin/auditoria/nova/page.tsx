@@ -10,8 +10,15 @@ import {
   Navigation,
   Loader2,
   AlertCircle,
+  Search,
+  ChevronRight,
+  CheckCircle2,
 } from 'lucide-react';
-import { AppLayout, PageHeader } from '@/components';
+import { AppLayout, EmptyState, PageHeader } from '@/components';
+import { Button } from '@/components/ui/shadcn/button';
+import { Input } from '@/components/ui/shadcn/input';
+import { Skeleton } from '@/components/ui/shadcn/skeleton';
+import { contemTexto } from '@/lib/auditoria/listagem';
 import {
   clienteService,
   checklistService,
@@ -37,6 +44,12 @@ export default function NovaAuditoriaPage() {
   const [templateId, setTemplateId] = useState('');
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [locationError, setLocationError] = useState('');
+  const [busca, setBusca] = useState('');
+
+  const irPara = (etapa: number) => {
+    setBusca('');
+    setStep(etapa);
+  };
 
   useEffect(() => {
     const carregarDados = async () => {
@@ -99,286 +112,221 @@ export default function NovaAuditoriaPage() {
   };
 
   const unidadeSelecionada = clienteSelecionado?.unidades.find((u) => u.id === unidadeId);
+  const templateSelecionado = templates.find((t) => t.id === templateId);
+  const OPCAO = 'flex min-h-[64px] w-full items-center gap-4 rounded-lg border bg-card p-4 text-left shadow-sm transition-colors hover:border-primary/40 active:bg-muted';
+
+  const campoBusca = (
+    <div className="relative mb-3">
+      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+      <Input className="h-11 pl-9" placeholder="Buscar…" value={busca} onChange={(e) => setBusca(e.target.value)} />
+    </div>
+  );
+
+  const icone = (Icone: typeof Building2) => (
+    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+      <Icone className="h-5 w-5" />
+    </span>
+  );
 
   return (
     <AppLayout>
-      <PageHeader
-        title="Nova Auditoria"
-        subtitle="Configure uma nova auditoria"
-        backHref="/admin/dashboard"
-      />
+      <PageHeader title="Nova auditoria" subtitle="Escolha onde e com qual checklist" backHref="/admin/auditorias" />
 
-      <div className="px-4 py-4 lg:px-8 space-y-4">
-        {/* Steps */}
-        <ul className="steps steps-horizontal w-full mb-8">
-          <li className={`step ${step >= 1 ? 'step-primary' : ''}`}>Cliente</li>
-          <li className={`step ${step >= 2 ? 'step-primary' : ''}`}>Unidade</li>
-          <li className={`step ${step >= 3 ? 'step-primary' : ''}`}>Checklist</li>
-          <li className={`step ${step >= 4 ? 'step-primary' : ''}`}>Confirmar</li>
-        </ul>
+      <div className="mx-auto max-w-2xl space-y-4 px-4 py-4 lg:px-8">
+        <ol className="mb-6 flex items-center gap-2" aria-label="Etapas">
+          {['Cliente', 'Unidade', 'Checklist', 'Confirmar'].map((rotulo, i) => {
+            const n = i + 1;
+            return (
+              <li key={rotulo} className="flex flex-1 flex-col gap-1">
+                <span className={`h-1.5 rounded-full ${step >= n ? 'bg-primary' : 'bg-muted'}`} />
+                <span className={`text-xs ${step === n ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}>{rotulo}</span>
+              </li>
+            );
+          })}
+        </ol>
 
         {loading ? (
-          <div className="card bg-base-100 shadow-sm border border-base-300">
-            <div className="card-body items-center py-12">
-              <span className="loading loading-spinner loading-lg text-primary"></span>
-            </div>
+          <div className="space-y-2">
+            {Array.from({ length: 4 }).map((_, i) => (<Skeleton key={i} className="h-16 w-full" />))}
           </div>
         ) : (
           <>
             {error && (
-              <div className="alert alert-error mb-4">
-                <AlertCircle className="w-5 h-5" />
-                <span>{error}</span>
-              </div>
+              <p className="flex items-center gap-2 rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+                <AlertCircle className="h-4 w-4" />
+                {error}
+              </p>
             )}
 
-            {/* Step 1: Cliente */}
             {step === 1 && (
-              <motion.div
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-              >
-                <h2 className="text-lg font-semibold mb-4">Selecione o cliente</h2>
-                <div className="space-y-3">
+              <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
+                <h2 className="mb-3 font-display text-lg font-semibold">Selecione o cliente</h2>
+                {campoBusca}
+                <div className="space-y-2">
                   {clientes.length === 0 ? (
-                    <div className="card bg-base-100 shadow-sm border border-base-300">
-                      <div className="card-body items-center text-center py-8">
-                        <Building2 className="w-12 h-12 text-base-content/30 mb-2" />
-                        <p className="text-base-content/60">Nenhum cliente cadastrado</p>
-                      </div>
-                    </div>
+                    <EmptyState icon={Building2} title="Nenhum cliente cadastrado" description="Cadastre um cliente para iniciar auditorias." />
                   ) : (
-                    clientes.map((cliente) => (
-                      <button
-                        key={cliente.id}
-                        onClick={() => {
-                          setClienteSelecionado(cliente);
-                          setStep(2);
-                        }}
-                        className={`card bg-base-100 shadow-sm border w-full text-left hover:border-primary transition-colors ${
-                          clienteSelecionado?.id === cliente.id
-                            ? 'border-primary'
-                            : 'border-base-300'
-                        }`}
-                      >
-                        <div className="card-body p-4 flex-row items-center gap-4">
-                          <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center">
-                            <Building2 className="w-6 h-6 text-primary" />
-                          </div>
-                          <div className="flex-1">
-                            <p className="font-medium">{cliente.nomeFantasia || cliente.razaoSocial}</p>
-                            <p className="text-sm text-base-content/60">
-                              {cliente.unidades?.length || 0} unidade(s)
-                            </p>
-                          </div>
-                        </div>
-                      </button>
-                    ))
+                    clientes
+                      .filter((c) => contemTexto(c.nomeFantasia || c.razaoSocial, busca))
+                      .map((cliente) => (
+                        <button
+                          key={cliente.id}
+                          type="button"
+                          onClick={() => {
+                            setClienteSelecionado(cliente);
+                            irPara(2);
+                          }}
+                          className={`${OPCAO} ${clienteSelecionado?.id === cliente.id ? 'border-primary' : 'border-border'}`}
+                        >
+                          {icone(Building2)}
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate font-medium">{cliente.nomeFantasia || cliente.razaoSocial}</span>
+                            <span className="text-sm text-muted-foreground">{cliente.unidades?.length || 0} unidade(s)</span>
+                          </span>
+                          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                        </button>
+                      ))
                   )}
                 </div>
               </motion.div>
             )}
 
-            {/* Step 2: Unidade */}
             {step === 2 && clienteSelecionado && (
-              <motion.div
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-              >
-                <h2 className="text-lg font-semibold mb-4">
-                  Selecione a unidade de {clienteSelecionado.nomeFantasia || clienteSelecionado.razaoSocial}
+              <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
+                <h2 className="mb-3 font-display text-lg font-semibold">
+                  Unidade de {clienteSelecionado.nomeFantasia || clienteSelecionado.razaoSocial}
                 </h2>
-                <div className="space-y-3">
+                {campoBusca}
+                <div className="space-y-2">
                   {clienteSelecionado.unidades.length === 0 ? (
-                    <div className="card bg-base-100 shadow-sm border border-base-300">
-                      <div className="card-body items-center text-center py-8">
-                        <MapPin className="w-12 h-12 text-base-content/30 mb-2" />
-                        <p className="text-base-content/60">Nenhuma unidade cadastrada</p>
-                      </div>
-                    </div>
+                    <EmptyState icon={MapPin} title="Nenhuma unidade cadastrada" description="Cadastre uma unidade para este cliente." />
                   ) : (
-                    clienteSelecionado.unidades.map((unidade) => (
-                      <button
-                        key={unidade.id}
-                        onClick={() => {
-                          setUnidadeId(unidade.id);
-                          setStep(3);
-                        }}
-                        className={`card bg-base-100 shadow-sm border w-full text-left hover:border-primary transition-colors ${
-                          unidadeId === unidade.id ? 'border-primary' : 'border-base-300'
-                        }`}
-                      >
-                        <div className="card-body p-4 flex-row items-center gap-4">
-                          <div className="w-12 h-12 bg-secondary/10 rounded-xl flex items-center justify-center">
-                            <MapPin className="w-6 h-6 text-secondary" />
-                          </div>
-                          <div className="flex-1">
-                            <p className="font-medium">{unidade.nome}</p>
-                            <p className="text-sm text-base-content/60">
+                    clienteSelecionado.unidades
+                      .filter((u) => contemTexto(u.nome, busca))
+                      .map((unidade) => (
+                        <button
+                          key={unidade.id}
+                          type="button"
+                          onClick={() => {
+                            setUnidadeId(unidade.id);
+                            irPara(3);
+                          }}
+                          className={`${OPCAO} ${unidadeId === unidade.id ? 'border-primary' : 'border-border'}`}
+                        >
+                          {icone(MapPin)}
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate font-medium">{unidade.nome}</span>
+                            <span className="text-sm text-muted-foreground">
                               {unidade.cidade}, {unidade.estado}
-                            </p>
-                          </div>
-                        </div>
-                      </button>
-                    ))
+                            </span>
+                          </span>
+                          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                        </button>
+                      ))
                   )}
                 </div>
-                <button
-                  onClick={() => setStep(1)}
-                  className="btn btn-ghost mt-4"
-                >
+                <Button variant="ghost" className="mt-4 h-11" onClick={() => irPara(1)}>
                   Voltar
-                </button>
+                </Button>
               </motion.div>
             )}
 
-            {/* Step 3: Checklist */}
             {step === 3 && (
-              <motion.div
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-              >
-                <h2 className="text-lg font-semibold mb-4">Selecione o Checklist</h2>
-                <div className="space-y-3">
+              <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
+                <h2 className="mb-3 font-display text-lg font-semibold">Selecione o checklist</h2>
+                {campoBusca}
+                <div className="space-y-2">
                   {templates.length === 0 ? (
-                    <div className="card bg-base-100 shadow-sm border border-base-300">
-                      <div className="card-body items-center text-center py-8">
-                        <ClipboardList className="w-12 h-12 text-base-content/30 mb-2" />
-                        <p className="text-base-content/60">Nenhum Checklist disponível</p>
-                      </div>
-                    </div>
+                    <EmptyState icon={ClipboardList} title="Nenhum checklist disponível" description="Ative um checklist para usá-lo em auditorias." />
                   ) : (
-                    templates.map((template) => (
-                      <button
-                        key={template.id}
-                        onClick={() => {
-                          setTemplateId(template.id);
-                          setStep(4);
-                        }}
-                        className={`card bg-base-100 shadow-sm border w-full text-left hover:border-primary transition-colors ${
-                          templateId === template.id ? 'border-primary' : 'border-base-300'
-                        }`}
-                      >
-                        <div className="card-body p-4">
-                          <div className="flex items-start gap-4">
-                            <div className="w-12 h-12 bg-accent/10 rounded-xl flex items-center justify-center flex-shrink-0">
-                              <ClipboardList className="w-6 h-6 text-accent" />
-                            </div>
-                            <div className="flex-1">
-                              <p className="font-medium">{template.nome}</p>
-                              <p className="text-sm text-base-content/60 line-clamp-2">
-                                {template.descricao}
-                              </p>
-                              <span className="badge badge-ghost badge-sm mt-2">
-                                {template.tipoAtividade}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      </button>
-                    ))
+                    templates
+                      .filter((t) => contemTexto(t.nome, busca))
+                      .map((template) => (
+                        <button
+                          key={template.id}
+                          type="button"
+                          onClick={() => {
+                            setTemplateId(template.id);
+                            irPara(4);
+                          }}
+                          className={`${OPCAO} ${templateId === template.id ? 'border-primary' : 'border-border'}`}
+                        >
+                          {icone(ClipboardList)}
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate font-medium">{template.nome}</span>
+                            {template.descricao && <span className="line-clamp-2 text-sm text-muted-foreground">{template.descricao}</span>}
+                          </span>
+                          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                        </button>
+                      ))
                   )}
                 </div>
-                <button
-                  onClick={() => setStep(2)}
-                  className="btn btn-ghost mt-4"
-                >
+                <Button variant="ghost" className="mt-4 h-11" onClick={() => irPara(2)}>
                   Voltar
-                </button>
+                </Button>
               </motion.div>
             )}
 
-            {/* Step 4: Confirmação */}
             {step === 4 && (
-              <motion.div
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-              >
-                <h2 className="text-lg font-semibold mb-4">Confirme os dados</h2>
+              <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-4">
+                <h2 className="font-display text-lg font-semibold">Confirme os dados</h2>
 
-                <div className="card bg-base-100 shadow-sm border border-base-300 mb-4">
-                  <div className="card-body p-4 space-y-4">
-                    <div className="flex items-center gap-3">
-                      <Building2 className="w-5 h-5 text-primary" />
-                      <div>
-                        <p className="text-sm text-base-content/60">Cliente</p>
-                        <p className="font-medium">{clienteSelecionado?.nomeFantasia || clienteSelecionado?.razaoSocial}</p>
+                <dl className="divide-y divide-border rounded-lg border border-border bg-card shadow-sm">
+                  {[
+                    { icone: Building2, rotulo: 'Cliente', valor: clienteSelecionado?.nomeFantasia || clienteSelecionado?.razaoSocial, etapa: 1 },
+                    { icone: MapPin, rotulo: 'Unidade', valor: `${unidadeSelecionada?.nome ?? ''} - ${unidadeSelecionada?.cidade ?? ''}`, etapa: 2 },
+                    { icone: ClipboardList, rotulo: 'Checklist', valor: templateSelecionado?.nome, etapa: 3 },
+                  ].map(({ icone: Icone, rotulo, valor, etapa }) => (
+                    <div key={rotulo} className="flex items-center gap-3 p-4">
+                      <Icone className="h-5 w-5 text-primary" />
+                      <div className="min-w-0 flex-1">
+                        <dt className="text-xs text-muted-foreground">{rotulo}</dt>
+                        <dd className="truncate font-medium">{valor}</dd>
                       </div>
+                      <Button variant="ghost" size="sm" onClick={() => irPara(etapa)}>
+                        Alterar
+                      </Button>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <MapPin className="w-5 h-5 text-secondary" />
-                      <div>
-                        <p className="text-sm text-base-content/60">Unidade</p>
-                        <p className="font-medium">
-                          {unidadeSelecionada?.nome} - {unidadeSelecionada?.cidade}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <ClipboardList className="w-5 h-5 text-accent" />
-                      <div>
-                        <p className="text-sm text-base-content/60">Checklist</p>
-                        <p className="font-medium">
-                          {templates.find((t) => t.id === templateId)?.nome}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                  ))}
+                </dl>
 
-                {/* Localização */}
-                <div className="card bg-base-100 shadow-sm border border-base-300 mb-6">
-                  <div className="card-body p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <Navigation className="w-5 h-5 text-info" />
-                        <div>
-                          <p className="text-sm text-base-content/60">Localização GPS</p>
-                          {location ? (
-                            <p className="font-medium text-success">
-                              ✓ Capturada
-                            </p>
-                          ) : (
-                            <p className="font-medium text-base-content/40">
-                              Não capturada
-                            </p>
-                          )}
-                        </div>
+                <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <Navigation className="h-5 w-5 text-info" />
+                      <div>
+                        <p className="text-xs text-muted-foreground">Localização</p>
+                        {location ? (
+                          <p className="flex items-center gap-1 font-medium text-[hsl(160_84%_28%)]">
+                            <CheckCircle2 className="h-4 w-4" />
+                            Capturada
+                          </p>
+                        ) : (
+                          <p className="font-medium text-muted-foreground">Não capturada</p>
+                        )}
                       </div>
-                      <button
-                        onClick={obterLocalizacao}
-                        className="btn btn-ghost btn-sm"
-                      >
-                        {location ? 'Atualizar' : 'Capturar'}
-                      </button>
                     </div>
-                    {locationError && (
-                      <p className="text-xs text-error mt-2">{locationError}</p>
-                    )}
+                    <Button variant="outline" size="sm" className="h-10" onClick={obterLocalizacao}>
+                      {location ? 'Atualizar' : 'Capturar'}
+                    </Button>
                   </div>
+                  {locationError && <p className="mt-2 text-xs text-destructive">{locationError}</p>}
                 </div>
 
                 <div className="flex gap-3">
-                  <button
-                    onClick={() => setStep(3)}
-                    className="btn btn-ghost flex-1"
-                  >
+                  <Button variant="ghost" className="h-12 flex-1" onClick={() => irPara(3)}>
                     Voltar
-                  </button>
-                  <button
-                    onClick={handleIniciarAuditoria}
-                    className="btn btn-primary flex-1"
-                    disabled={submitting}
-                  >
+                  </Button>
+                  <Button className="h-12 flex-1" onClick={handleIniciarAuditoria} disabled={submitting}>
                     {submitting ? (
                       <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        Iniciando...
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Iniciando…
                       </>
                     ) : (
-                      'Iniciar Auditoria'
+                      'Iniciar auditoria'
                     )}
-                  </button>
+                  </Button>
                 </div>
               </motion.div>
             )}
