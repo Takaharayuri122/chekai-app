@@ -40,8 +40,8 @@ export interface SalvarAgenda {
 }
 
 export const agendaService = {
-  async listar(page = 1, limit = 20, status?: StatusAgenda, responsavelId?: string) {
-    const response = await api.get('/agenda', { params: { page, limit, status, responsavelId } });
+  async listar(page = 1, limit = 20, status?: StatusAgenda, responsavelId?: string, periodo?: { de: string; ate: string }) {
+    const response = await api.get('/agenda', { params: { page, limit, status, responsavelId, de: periodo?.de, ate: periodo?.ate } });
     return response.data.data as { items: AgendaItem[]; total: number };
   },
   async criar(dados: SalvarAgenda): Promise<AgendaItem> {

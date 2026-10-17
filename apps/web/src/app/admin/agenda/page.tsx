@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { CalendarClock, CheckCircle2, Edit, Loader2, Play, Plus, Trash2, XCircle } from 'lucide-react';
+import { CalendarClock, CalendarDays, CheckCircle2, Edit, List, Loader2, Play, Plus, Trash2, XCircle } from 'lucide-react';
 import {
   AppLayout,
   ConfirmDialog,
@@ -21,6 +21,9 @@ import { Input } from '@/components/ui/shadcn/input';
 import { Textarea } from '@/components/ui/shadcn/textarea';
 import { toastService } from '@/lib/toast';
 import { dataLocalISO, formatarDataBr } from '@/lib/datas';
+import { intervaloGrade } from '@/lib/agenda/calendario';
+import { CalendarioAgenda } from '@/components/agenda/calendario-agenda';
+import { ResponsiveDialog } from '@/components/ui/responsive-dialog';
 import {
   agendaService,
   RECORRENCIA_LABELS,
@@ -48,6 +51,45 @@ export default function AgendaPage() {
   const [form, setForm] = useState(FORM_INICIAL);
   const [salvando, setSalvando] = useState(false);
   const [removendo, setRemovendo] = useState<AgendaItem | null>(null);
+  const [visao, setVisao] = useState<'calendario' | 'lista'>('calendario');
+  const [mesAtual, setMesAtual] = useState(() => ({ ano: new Date().getFullYear(), mes: new Date().getMonth() }));
+  const [itensMes, setItensMes] = useState<AgendaItem[]>([]);
+  const [carregandoMes, setCarregandoMes] = useState(true);
+  const [detalhe, setDetalhe] = useState<AgendaItem | null>(null);
+
+  useEffect(() => {
+    try {
+      const salva = localStorage.getItem('chekai:agenda-visao');
+      if (salva === 'lista' || salva === 'calendario') setVisao(salva);
+    } catch {
+      // preferência indisponível
+    }
+  }, []);
+
+  const trocarVisao = (v: 'calendario' | 'lista') => {
+    setVisao(v);
+    try {
+      localStorage.setItem('chekai:agenda-visao', v);
+    } catch {
+      // preferência não persistida
+    }
+  };
+
+  const carregarMes = useCallback(async (ano: number, mes: number) => {
+    setCarregandoMes(true);
+    try {
+      const r = await agendaService.listar(1, 500, undefined, undefined, intervaloGrade(ano, mes));
+      setItensMes(r.items);
+    } catch {
+      // erro tratado pelo interceptor
+    } finally {
+      setCarregandoMes(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void carregarMes(mesAtual.ano, mesAtual.mes);
+  }, [carregarMes, mesAtual]);
 
   const carregar = useCallback(async (f: typeof FILTROS_INICIAIS, limit: number) => {
     setLoading(true);
@@ -80,11 +122,11 @@ export default function AgendaPage() {
     void carregarOpcoes();
   }, [ehAuditor]);
 
-  const recarregar = () => carregar(FILTROS_INICIAIS, 20);
+  const recarregar = () => Promise.all([carregar(FILTROS_INICIAIS, 20), carregarMes(mesAtual.ano, mesAtual.mes)]);
 
-  const abrirNovo = () => {
+  const abrirNovo = (dataPrevista = '') => {
     setEditando(null);
-    setForm(FORM_INICIAL);
+    setForm({ ...FORM_INICIAL, dataPrevista });
     setModalAberto(true);
   };
 
@@ -147,7 +189,7 @@ export default function AgendaPage() {
   };
 
   const colunas: ColunaTabela<AgendaItem>[] = [
-    { label: 'Data', render: (a) => <span className={atrasada(a) ? 'text-error font-semibold' : ''}>{formatarDataBr(a.dataPrevista)}</span> },
+    { label: 'Data', render: (a) => <span className={atrasada(a) ? 'font-semibold text-destructive' : ''}>{formatarDataBr(a.dataPrevista)}</span> },
     { label: 'Unidade', render: (a) => <span className="font-medium">{a.unidade?.nome ?? '-'}</span> },
     { label: 'Checklist', render: (a) => a.template?.nome ?? '-' },
     { label: 'Responsável', render: (a) => a.responsavel?.nome ?? '-', mobileOculta: true },
@@ -161,7 +203,7 @@ export default function AgendaPage() {
     { label: 'Marcar como realizada', icon: CheckCircle2, onClick: (a) => void executar(() => agendaService.concluir(a.id), 'Agendamento concluído.'), isVisivel: (a) => pendente(a) },
     { label: 'Editar', icon: Edit, onClick: abrirEdicao, isVisivel: (a) => pendente(a) && !ehAuditor },
     { label: 'Cancelar', icon: XCircle, onClick: (a) => void executar(() => agendaService.atualizar(a.id, { status: 'cancelada' }), 'Agendamento cancelado.'), isVisivel: (a) => pendente(a) && !ehAuditor },
-    { label: 'Remover', icon: Trash2, onClick: setRemovendo, className: 'text-error', isVisivel: () => !ehAuditor },
+    { label: 'Remover', icon: Trash2, onClick: setRemovendo, className: 'text-destructive', isVisivel: () => !ehAuditor },
   ];
 
   return (
@@ -170,12 +212,46 @@ export default function AgendaPage() {
         title="Agenda"
         subtitle="Programe auditorias por unidade, com recorrência"
         action={!ehAuditor ? (
-          <Button onClick={abrirNovo}>
+          <Button onClick={() => abrirNovo()}>
             <Plus className="h-4 w-4" /> Agendar
           </Button>
         ) : undefined}
       />
       <div className="px-4 py-4 lg:px-8 space-y-4">
+        <div className="inline-flex rounded-md border border-border bg-card p-1" role="tablist" aria-label="Visualização">
+          {([
+            ['calendario', 'Calendário', CalendarDays],
+            ['lista', 'Lista', List],
+          ] as const).map(([valor, rotulo, Icone]) => (
+            <button
+              key={valor}
+              type="button"
+              role="tab"
+              aria-selected={visao === valor}
+              onClick={() => trocarVisao(valor)}
+              className={`flex h-9 items-center gap-2 rounded px-3 text-sm font-medium ${visao === valor ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+            >
+              <Icone className="h-4 w-4" />
+              {rotulo}
+            </button>
+          ))}
+        </div>
+
+        {visao === 'calendario' && (
+          <CalendarioAgenda
+            ano={mesAtual.ano}
+            mes={mesAtual.mes}
+            itens={itensMes}
+            carregando={carregandoMes}
+            podeAgendar={!ehAuditor}
+            onMudarMes={(ano, mes) => setMesAtual({ ano, mes })}
+            onSelecionarItem={setDetalhe}
+            onAgendarNoDia={(iso) => abrirNovo(iso)}
+          />
+        )}
+
+        {visao === 'lista' && (
+        <>
         <CrudFiltros
           campos={[
             { key: 'status', label: 'Status', tipo: 'select', opcoes: Object.entries(STATUS_AGENDA_LABELS).map(([value, label]) => ({ value, label })) },
@@ -195,9 +271,11 @@ export default function AgendaPage() {
             icon: CalendarClock,
             title: 'Nenhum agendamento encontrado',
             description: 'Agende auditorias para não perder os prazos de visita.',
-            ...(!ehAuditor ? { actionLabel: 'Agendar', actionOnClick: abrirNovo } : {}),
+            ...(!ehAuditor ? { actionLabel: 'Agendar', actionOnClick: () => abrirNovo() } : {}),
           }}
         />
+        </>
+        )}
         <p className="text-xs text-base-content/50">
           Ao concluir um agendamento recorrente, o próximo é criado automaticamente. Para realizar a visita, use <Link href="/admin/auditoria/nova" className="link">Nova Auditoria</Link>.
         </p>
@@ -256,6 +334,57 @@ export default function AgendaPage() {
           </label>
         </div>
       </FormModal>
+
+      <ResponsiveDialog
+        open={detalhe !== null}
+        onOpenChange={(aberto) => !aberto && setDetalhe(null)}
+        title={detalhe?.unidade?.nome ?? 'Agendamento'}
+        description={detalhe ? `${formatarDataBr(detalhe.dataPrevista)} · ${detalhe.template?.nome ?? ''}` : undefined}
+      >
+        {detalhe && (
+          <div className="space-y-4">
+            <dl className="grid grid-cols-2 gap-3 text-sm">
+              <div>
+                <dt className="text-xs text-muted-foreground">Status</dt>
+                <dd className="mt-1"><StatusChip status={atrasada(detalhe) ? 'atrasada' : detalhe.status} label={atrasada(detalhe) ? 'Atrasada' : STATUS_AGENDA_LABELS[detalhe.status]} /></dd>
+              </div>
+              <div>
+                <dt className="text-xs text-muted-foreground">Repete</dt>
+                <dd className="mt-1">{RECORRENCIA_LABELS[detalhe.recorrencia]}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-muted-foreground">Responsável</dt>
+                <dd className="mt-1">{detalhe.responsavel?.nome ?? '—'}</dd>
+              </div>
+              {detalhe.observacao && (
+                <div className="col-span-2">
+                  <dt className="text-xs text-muted-foreground">Observação</dt>
+                  <dd className="mt-1">{detalhe.observacao}</dd>
+                </div>
+              )}
+            </dl>
+            <div className="flex flex-col gap-2">
+              {acoes
+                .filter((acao) => !acao.isVisivel || acao.isVisivel(detalhe))
+                .map((acao) => (
+                  <Button
+                    key={acao.label}
+                    variant="outline"
+                    className={`h-11 justify-start ${acao.label === 'Remover' ? 'text-destructive' : ''}`}
+                    onClick={() => {
+                      const item = detalhe;
+                      setDetalhe(null);
+                      acao.onClick(item);
+                    }}
+                  >
+                    <acao.icon className="h-4 w-4" />
+                    {acao.label}
+                  </Button>
+                ))}
+            </div>
+          </div>
+        )}
+      </ResponsiveDialog>
 
       <ConfirmDialog
         open={removendo !== null}
