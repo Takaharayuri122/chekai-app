@@ -55,23 +55,23 @@ export function PdfAberturaBloqueadaModal({
       closeOnBackdrop
       footer={(
         <div className="flex flex-wrap justify-end gap-2">
-          <button type="button" className="btn btn-ghost btn-sm" onClick={finalizarFechar}>
+          <button type="button" className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 hover:bg-muted" onClick={finalizarFechar}>
             Fechar
           </button>
-          <button type="button" className="btn btn-primary btn-sm gap-2" onClick={handleBaixar}>
+          <button type="button" className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 bg-primary text-primary-foreground hover:bg-primary/90" onClick={handleBaixar}>
             <Download className="h-4 w-4" />
             Baixar PDF
           </button>
         </div>
       )}
     >
-      <div className="space-y-3 text-sm text-base-content/90">
+      <div className="space-y-3 text-sm text-foreground/90">
         <p>
           O navegador pode ter bloqueado a nova aba com o relatório — isso é comum na primeira vez ou
           quando os pop-ups estão desativados para este site.
         </p>
-        <p className="font-medium text-base-content">Como permitir a abertura automática</p>
-        <ul className="list-inside list-disc space-y-1 text-base-content/80">
+        <p className="font-medium text-foreground">Como permitir a abertura automática</p>
+        <ul className="list-inside list-disc space-y-1 text-foreground/80">
           <li>
             Procure o ícone de bloqueio ou de janela na barra de endereços e escolha permitir pop-ups
             para este site.

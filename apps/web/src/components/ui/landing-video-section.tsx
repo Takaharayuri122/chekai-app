@@ -31,7 +31,7 @@ export function LandingVideoSection({
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="text-3xl md:text-4xl lg:text-5xl font-bold text-base-content mb-4 font-display"
+            className="text-3xl md:text-4xl lg:text-5xl font-bold text-foreground mb-4 font-display"
           >
             {titulo}
           </motion.h2>
@@ -40,7 +40,7 @@ export function LandingVideoSection({
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ delay: 0.1 }}
-            className="text-lg text-base-content/70 max-w-2xl mx-auto"
+            className="text-lg text-muted-foreground max-w-2xl mx-auto"
           >
             {subtitulo}
           </motion.p>
@@ -51,7 +51,7 @@ export function LandingVideoSection({
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true }}
           transition={{ delay: 0.2 }}
-          className="relative rounded-2xl overflow-hidden shadow-2xl border border-base-300 bg-base-200"
+          className="relative rounded-2xl overflow-hidden shadow-2xl border border-border bg-muted"
         >
           {hasVideo ? (
             <div className="relative aspect-video w-full">
@@ -64,13 +64,13 @@ export function LandingVideoSection({
               />
             </div>
           ) : (
-            <div className="aspect-video bg-gradient-to-br from-primary/10 to-secondary/10 flex items-center justify-center">
+            <div className="aspect-video bg-gradient-to-br from-primary/10 to-info/10 flex items-center justify-center">
               <div className="text-center px-4">
                 <div className="w-24 h-24 bg-primary/20 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Play className="w-12 h-12 text-primary" />
                 </div>
-                <p className="text-base-content/60">{placeholderHint}</p>
-                <p className="text-sm text-base-content/40 mt-2">{instrucaoEnv}</p>
+                <p className="text-muted-foreground">{placeholderHint}</p>
+                <p className="text-sm text-muted-foreground/70 mt-2">{instrucaoEnv}</p>
               </div>
             </div>
           )}

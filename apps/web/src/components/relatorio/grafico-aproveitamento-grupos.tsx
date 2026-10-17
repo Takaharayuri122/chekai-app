@@ -63,17 +63,17 @@ export function GraficoAproveitamentoGrupos({
             data={dados}
             margin={{ top: 16, right: 16, left: 0, bottom: 8 }}
           >
-            <CartesianGrid strokeDasharray="3 3" className="stroke-base-300" />
+            <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
             <XAxis
               dataKey="indice"
               tick={{ fontSize: 12 }}
-              className="text-base-content/70"
+              className="text-muted-foreground"
             />
             <YAxis
               domain={[0, 100]}
               tick={{ fontSize: 12 }}
               tickFormatter={(v) => `${v}%`}
-              className="text-base-content/70"
+              className="text-muted-foreground"
             />
             <Tooltip
               contentStyle={{
@@ -96,8 +96,8 @@ export function GraficoAproveitamentoGrupos({
           </BarChart>
         </ResponsiveContainer>
       </div>
-      <div className="flex flex-wrap justify-center gap-4 mt-3 pt-3 border-t border-base-300">
-        <span className="text-xs font-medium text-base-content/70">Legenda (faixa de aproveitamento):</span>
+      <div className="flex flex-wrap justify-center gap-4 mt-3 pt-3 border-t border-border">
+        <span className="text-xs font-medium text-muted-foreground">Legenda (faixa de aproveitamento):</span>
         {legendaFaixas.map((item) => (
           <div key={item.label} className="flex items-center gap-2">
             <span
@@ -105,7 +105,7 @@ export function GraficoAproveitamentoGrupos({
               style={{ backgroundColor: item.cor }}
               aria-hidden
             />
-            <span className="text-xs text-base-content/80">{item.label}</span>
+            <span className="text-xs text-foreground/80">{item.label}</span>
           </div>
         ))}
       </div>

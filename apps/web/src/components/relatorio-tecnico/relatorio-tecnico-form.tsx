@@ -147,12 +147,12 @@ export function RelatorioTecnicoForm({
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <div className="form-control">
-          <label className="label py-0">
-            <span className="label-text font-medium">Cliente</span>
+        <div className="flex flex-col">
+          <label className="flex items-center justify-between gap-2 py-1 py-0">
+            <span className="text-sm font-medium text-foreground">Cliente</span>
           </label>
           <select
-            className="select select-bordered"
+            className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-10 px-3"
             value={valor.clienteId}
             disabled={somenteLeitura || loadingClientes}
             onChange={(event) => {
@@ -168,12 +168,12 @@ export function RelatorioTecnicoForm({
             ))}
           </select>
         </div>
-        <div className="form-control">
-          <label className="label py-0">
-            <span className="label-text font-medium">Unidade (opcional)</span>
+        <div className="flex flex-col">
+          <label className="flex items-center justify-between gap-2 py-1 py-0">
+            <span className="text-sm font-medium text-foreground">Unidade (opcional)</span>
           </label>
           <select
-            className="select select-bordered"
+            className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-10 px-3"
             value={valor.unidadeId || ''}
             disabled={somenteLeitura || !valor.clienteId}
             onChange={(event) => atualizarCampo('unidadeId', event.target.value)}
@@ -188,13 +188,13 @@ export function RelatorioTecnicoForm({
         </div>
       </div>
 
-      <div className="form-control">
-        <label className="label py-0">
-          <span className="label-text font-medium">Identificação</span>
+      <div className="flex flex-col">
+        <label className="flex items-center justify-between gap-2 py-1 py-0">
+          <span className="text-sm font-medium text-foreground">Identificação</span>
         </label>
         <input
           type="text"
-          className="input input-bordered"
+          className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-10 px-3"
           placeholder="Ex.: setorial/estrutural"
           value={valor.identificacao}
           disabled={somenteLeitura}
@@ -204,8 +204,8 @@ export function RelatorioTecnicoForm({
 
       <EditorRichTextBasico label="Descrição da ocorrência" value={valor.descricaoOcorrenciaHtml} onChange={(html) => atualizarCampo('descricaoOcorrenciaHtml', html)} required />
 
-      <div className="card bg-base-100 border border-base-300">
-        <div className="card-body p-4">
+      <div className="relative flex flex-col rounded-lg border border-border bg-card">
+        <div className="flex flex-1 flex-col gap-2 p-4">
           <h3 className="font-semibold">Evidências fotográficas</h3>
           <input
             ref={fileInputRef}
@@ -271,7 +271,7 @@ export function RelatorioTecnicoForm({
               const isRemovendo = removendoFotoId === foto.id;
               const srcMiniatura = foto.previewLocal ?? foto.url;
               return (
-                <div key={foto.id} className="relative aspect-square rounded-lg overflow-hidden border border-base-300">
+                <div key={foto.id} className="relative aspect-square rounded-lg overflow-hidden border border-border">
                   <img
                     src={srcMiniatura}
                     alt="Evidência"
@@ -284,7 +284,7 @@ export function RelatorioTecnicoForm({
                   ) : !somenteLeitura && relatorioId ? (
                     <button
                       type="button"
-                      className="btn btn-circle btn-xs btn-error absolute top-1 right-1"
+                      className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-7 w-7 px-0 rounded-full bg-destructive text-destructive-foreground hover:bg-destructive/90 absolute top-1 right-1"
                       onClick={async () => {
                         setRemovendoFotoId(foto.id);
                         try {
@@ -327,7 +327,7 @@ export function RelatorioTecnicoForm({
               );
             })}
             {fotosPendentes.map((foto) => (
-              <div key={foto.localId} className="relative aspect-square rounded-lg overflow-hidden border border-base-300">
+              <div key={foto.localId} className="relative aspect-square rounded-lg overflow-hidden border border-border">
                 <img src={foto.preview} alt="Evidência em envio" className="w-full h-full object-cover grayscale blur-sm opacity-70" />
                 <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
                   <div className="flex flex-col items-center gap-1 text-white">
@@ -342,17 +342,17 @@ export function RelatorioTecnicoForm({
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className={`w-full mt-3 h-20 border-2 border-dashed border-base-300 rounded-lg flex flex-col items-center justify-center gap-2 hover:border-primary hover:bg-primary/5 transition-colors ${!relatorioId || enviandoFoto ? 'opacity-60 pointer-events-none' : ''}`}
+              className={`w-full mt-3 h-20 border-2 border-dashed border-border rounded-lg flex flex-col items-center justify-center gap-2 hover:border-primary hover:bg-primary/5 transition-colors ${!relatorioId || enviandoFoto ? 'opacity-60 pointer-events-none' : ''}`}
               disabled={!relatorioId || enviandoFoto}
             >
-              <Camera className="w-6 h-6 text-base-content/40" />
-              <span className="text-sm text-base-content/60">
+              <Camera className="w-6 h-6 text-muted-foreground/70" />
+              <span className="text-sm text-muted-foreground">
                 Clique para adicionar fotos (até {MAX_FOTOS} • máx. 5MB cada)
               </span>
             </button>
           ) : null}
           {(valor.fotos?.length || 0) === 0 && fotosPendentes.length === 0 ? (
-            <p className="text-sm text-base-content/60 mt-2">Nenhuma evidência adicionada.</p>
+            <p className="text-sm text-muted-foreground mt-2">Nenhuma evidência adicionada.</p>
           ) : null}
         </div>
       </div>
@@ -364,13 +364,13 @@ export function RelatorioTecnicoForm({
         required
       />
 
-      <div className="card bg-base-100 border border-base-300">
-        <div className="card-body p-4">
+      <div className="relative flex flex-col rounded-lg border border-border bg-card">
+        <div className="flex flex-1 flex-col gap-2 p-4">
           <h3 className="font-semibold">Ações executadas na visita</h3>
-          <div className="join w-full mt-3">
+          <div className="inline-flex items-stretch [&>*]:rounded-none [&>*:first-child]:rounded-l-md [&>*:last-child]:rounded-r-md w-full mt-3">
             <input
               type="text"
-              className="input input-bordered join-item w-full"
+              className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-10 px-3 w-full"
               value={novaAcao}
               disabled={somenteLeitura}
               placeholder="Adicionar ação executada"
@@ -378,7 +378,7 @@ export function RelatorioTecnicoForm({
             />
             <button
               type="button"
-              className="btn btn-primary join-item"
+              className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-10 px-4 bg-primary text-primary-foreground hover:bg-primary/90"
               onClick={adicionarAcao}
               disabled={somenteLeitura}
             >
@@ -387,11 +387,11 @@ export function RelatorioTecnicoForm({
           </div>
           <div className="space-y-2 mt-3">
             {valor.acoesExecutadas.map((acao, index) => (
-              <div key={`${acao}-${index}`} className="flex items-center justify-between rounded-lg border border-base-300 p-2 text-sm">
+              <div key={`${acao}-${index}`} className="flex items-center justify-between rounded-lg border border-border p-2 text-sm">
                 <span>{acao}</span>
                 <button
                   type="button"
-                  className="btn btn-ghost btn-xs text-error"
+                  className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-7 px-2 text-xs hover:bg-muted text-destructive"
                   onClick={() => removerAcao(index)}
                   disabled={somenteLeitura}
                 >
@@ -417,14 +417,14 @@ export function RelatorioTecnicoForm({
         required
       />
 
-      <div className="form-control">
-        <label className="label py-0">
-          <span className="label-text font-medium">Apoio analítico ChekAi</span>
+      <div className="flex flex-col">
+        <label className="flex items-center justify-between gap-2 py-1 py-0">
+          <span className="text-sm font-medium text-foreground">Apoio analítico ChekAi</span>
         </label>
         <div className="flex justify-end mb-2">
           <button
             type="button"
-            className={`btn btn-sm btn-primary gap-2 ${!relatorioId || somenteLeitura ? 'btn-disabled' : ''}`}
+            className={`inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 bg-primary text-primary-foreground hover:bg-primary/90 ${!relatorioId || somenteLeitura ? 'pointer-events-none opacity-50' : ''}`}
             disabled={!relatorioId || somenteLeitura || gerandoApoioAnalitico}
             onClick={async () => {
               if (!relatorioId) {
@@ -471,7 +471,7 @@ export function RelatorioTecnicoForm({
         {blocosApoioAnalitico.length > 0 ? (
           <div className="space-y-3">
             {blocosApoioAnalitico.map((bloco, index) => (
-              <div key={`${bloco.titulo}-${index}`} className="alert alert-info">
+              <div key={`${bloco.titulo}-${index}`} className="flex w-full items-start gap-3 rounded-md border p-4 text-sm border-info/30 bg-info/10">
                 <div className="flex-1 space-y-1">
                   {bloco.titulo ? <p className="font-semibold">{bloco.titulo}</p> : null}
                   {bloco.linhas.map((linha, linhaIndex) => (
@@ -485,7 +485,7 @@ export function RelatorioTecnicoForm({
           </div>
         ) : (
           <textarea
-            className="textarea textarea-bordered min-h-[120px]"
+            className="min-h-[80px] px-3 py-2 rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 min-h-[120px]"
             value={valor.apoioAnaliticoChekAi || ''}
             readOnly
             disabled

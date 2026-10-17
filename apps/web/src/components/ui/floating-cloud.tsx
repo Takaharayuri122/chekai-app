@@ -107,7 +107,7 @@ export function FloatingCloud() {
               <Icon className={`${iconSizeClasses[item.size]} text-primary`} />
             </motion.div>
             <motion.span
-              className={`${sizeClasses[item.size].split(' ')[2]} text-base-content/60 font-medium whitespace-nowrap hidden lg:block drop-shadow-sm`}
+              className={`${sizeClasses[item.size].split(' ')[2]} text-muted-foreground font-medium whitespace-nowrap hidden lg:block drop-shadow-sm`}
               animate={{
                 opacity: [0.5, 0.8, 0.5],
               }}

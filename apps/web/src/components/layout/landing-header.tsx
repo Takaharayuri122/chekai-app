@@ -11,7 +11,7 @@ interface LandingHeaderProps {
 
 export function LandingHeader({ onAbrirListaEspera }: LandingHeaderProps) {
   return (
-    <header className="sticky top-0 z-40 w-full bg-base-100/80 backdrop-blur-md border-b border-base-300">
+    <header className="sticky top-0 z-40 w-full bg-card/80 backdrop-blur-md border-b border-border">
       <div className="px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between h-16 md:h-20">
@@ -41,14 +41,14 @@ export function LandingHeader({ onAbrirListaEspera }: LandingHeaderProps) {
             >
               <Link
                 href="/login"
-                className="btn btn-ghost btn-sm text-base-content hover:text-primary hidden sm:inline-flex"
+                className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 hover:bg-muted text-foreground hover:text-primary hidden sm:inline-flex"
               >
                 Entrar
               </Link>
               <button
                 type="button"
                 onClick={onAbrirListaEspera}
-                className="btn btn-primary btn-sm gap-1.5 sm:gap-2 text-xs sm:text-sm"
+                className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 bg-primary text-primary-foreground hover:bg-primary/90 gap-1.5 sm:gap-2 text-xs sm:text-sm"
               >
                 <span className="hidden sm:inline">Conhecer agora</span>
                 <span className="sm:hidden">Conhecer</span>

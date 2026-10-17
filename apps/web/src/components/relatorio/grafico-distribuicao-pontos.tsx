@@ -29,7 +29,7 @@ export function GraficoDistribuicaoPontos({
   const total = dados.reduce((acc, d) => acc + d.valor, 0);
   if (total === 0) {
     return (
-      <div className="w-full h-[240px] flex items-center justify-center text-base-content/50 text-sm">
+      <div className="w-full h-[240px] flex items-center justify-center text-muted-foreground text-sm">
         Nenhum dado para exibir
       </div>
     );
@@ -73,12 +73,12 @@ export function GraficoDistribuicaoPontos({
               wrapperStyle={{ fontSize: 13, paddingTop: 8 }}
               iconType="circle"
               iconSize={10}
-              formatter={(value) => <span className="text-base-content/90 font-medium">{value}</span>}
+              formatter={(value) => <span className="text-foreground/90 font-medium">{value}</span>}
             />
           </PieChart>
         </ResponsiveContainer>
       </div>
-      <p className="text-xs text-base-content/60 mt-1 text-center">
+      <p className="text-xs text-muted-foreground mt-1 text-center">
         Legenda: quantidade de pontos e percentual em relação ao total possível.
       </p>
     </div>

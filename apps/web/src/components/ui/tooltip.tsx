@@ -19,7 +19,7 @@ interface TooltipProps {
  * 
  * @example
  * <Tooltip content="Explicação do item">
- *   <span className="badge">Item</span>
+ *   <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full font-semibold px-2.5 py-0.5 text-xs bg-muted text-foreground">Item</span>
  * </Tooltip>
  */
 export function Tooltip({ content, children, position = 'top', className = '' }: TooltipProps) {
