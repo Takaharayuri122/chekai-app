@@ -42,6 +42,13 @@ import { OauthRefreshTypeorm } from './oauth/repositorios/oauth-refresh.typeorm'
 import { OauthSessaoTypeorm } from './oauth/repositorios/oauth-sessao.typeorm';
 import { SegredoCripto } from './oauth/segredo.cripto';
 import { UsuarioOtpAdaptador } from './oauth/usuario-otp.adaptador';
+import { McpConfirmationService } from './core/mcp-confirmation.service';
+import { McpPrincipalService } from './core/mcp-principal.service';
+import {
+  MCP_TOOL_DEFINITIONS,
+  McpRegistryService,
+} from './core/mcp-registry.service';
+import { McpServerService } from './core/mcp-server.service';
 
 /**
  * Canal MCP: servidor de autorização OAuth 2.1 e recurso protegido `/mcp`.
@@ -78,6 +85,11 @@ import { UsuarioOtpAdaptador } from './oauth/usuario-otp.adaptador';
     OauthClienteService,
     OauthAutorizacaoService,
     OauthTokenService,
+    McpConfirmationService,
+    McpPrincipalService,
+    McpRegistryService,
+    McpServerService,
+    { provide: MCP_TOOL_DEFINITIONS, useValue: [] },
     { provide: UsuarioOtpPorta, useClass: UsuarioOtpAdaptador },
     { provide: EmailOtpPorta, useExisting: EmailService },
     { provide: RelogioPorta, useClass: RelogioSistema },
