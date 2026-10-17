@@ -83,4 +83,14 @@ export class ListarAgendaDto {
   @IsUUID()
   @IsOptional()
   responsavelId?: string;
+
+  @ApiPropertyOptional({ description: 'Data prevista inicial (yyyy-mm-dd)' })
+  @IsDateString()
+  @IsOptional()
+  de?: string;
+
+  @ApiPropertyOptional({ description: 'Data prevista final (yyyy-mm-dd)' })
+  @IsDateString()
+  @IsOptional()
+  ate?: string;
 }

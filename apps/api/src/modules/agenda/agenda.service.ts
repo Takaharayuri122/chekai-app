@@ -110,6 +110,8 @@ export class AgendaService {
     const qb = this.escopo(usuario);
     if (filtros.status) qb.andWhere('a.status = :status', { status: filtros.status });
     if (filtros.responsavelId) qb.andWhere('a.responsavelId = :resp', { resp: filtros.responsavelId });
+    if (filtros.de) qb.andWhere('a.dataPrevista >= :de', { de: filtros.de.slice(0, 10) });
+    if (filtros.ate) qb.andWhere('a.dataPrevista <= :ate', { ate: filtros.ate.slice(0, 10) });
     const [items, total] = await qb
       .orderBy('a.dataPrevista', 'ASC')
       .skip((filtros.page - 1) * filtros.limit)
