@@ -30,3 +30,13 @@ describe('encontrarClassesDaisy', () => {
     expect(encontrarClassesDaisy('<div className="bg-card text-foreground" />')).toEqual([]);
   });
 });
+
+describe('espaços em template literal', () => {
+  it('mantém o espaço entre classes e interpolações', () => {
+    const s = migrarConteudo('<div className={`tooltip ${pos} card p-2`} />');
+    expect(s).toContain('tooltip ${pos} ');
+    expect(s).not.toMatch(/\S\$\{pos\}/);
+    const s2 = migrarConteudo('<div className={`btn ${a ? "btn-primary" : ""}`} />');
+    expect(s2).toMatch(/px-4[^`$]* \$\{/);
+  });
+});

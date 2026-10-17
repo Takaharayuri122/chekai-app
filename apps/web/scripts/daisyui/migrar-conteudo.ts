@@ -17,7 +17,7 @@ function converterLiterais(trecho: string): string {
       saida += '`';
       while (j < trecho.length && trecho[j] !== '`') {
         if (trecho[j] === '$' && trecho[j + 1] === '{') {
-          saida += converterClasses(estatico);
+          saida += converterClassesPreservandoBordas(estatico);
           estatico = '';
           let prof = 1;
           let k = j + 2;
