@@ -9,9 +9,10 @@ import { planoAcaoService, type TarefaPlanoAcao } from '@/lib/services/plano-aca
 import { useAuthStore } from '@/lib/store';
 import { Button } from '@/components/ui/shadcn/button';
 import { Skeleton } from '@/components/ui/shadcn/skeleton';
+import { dataLocalISO, formatarDataBr } from '@/lib/datas';
 
-const hoje = () => new Date().toISOString().slice(0, 10);
-const dataBr = (d: string) => d.slice(0, 10).split('-').reverse().join('/');
+const hoje = () => dataLocalISO();
+const dataBr = formatarDataBr;
 
 function Bloco({ titulo, icone: Icone, href, children }: { titulo: string; icone: typeof ClipboardCheck; href: string; children: React.ReactNode }) {
   return (

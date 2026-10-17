@@ -15,6 +15,7 @@ import {
 import { auditoriaService, usuarioService, type Auditoria, type Usuario } from '@/lib/api';
 import { useAuthStore, PerfilUsuario } from '@/lib/store';
 import { toastService } from '@/lib/toast';
+import { dataLocalISO, formatarDataBr } from '@/lib/datas';
 import {
   planoAcaoService,
   STATUS_TAREFA_LABELS,
@@ -32,13 +33,8 @@ const BADGE_STATUS: Record<StatusTarefaPlanoAcao, string> = {
   cancelada: 'badge-ghost',
 };
 
-function formatarPrazo(prazo: string): string {
-  const [ano, mes, dia] = prazo.slice(0, 10).split('-');
-  return `${dia}/${mes}/${ano}`;
-}
-
 function estaAtrasada(t: TarefaPlanoAcao): boolean {
-  return (t.status === 'pendente' || t.status === 'em_andamento') && t.prazo.slice(0, 10) < new Date().toISOString().slice(0, 10);
+  return (t.status === 'pendente' || t.status === 'em_andamento') && t.prazo.slice(0, 10) < dataLocalISO();
 }
 
 export default function PlanosAcaoPage() {
@@ -170,7 +166,7 @@ export default function PlanosAcaoPage() {
     {
       label: 'Prazo',
       render: (t) => (
-        <span className={estaAtrasada(t) ? 'text-error font-semibold' : ''}>{formatarPrazo(t.prazo)}</span>
+        <span className={estaAtrasada(t) ? 'text-error font-semibold' : ''}>{formatarDataBr(t.prazo)}</span>
       ),
     },
     {

@@ -16,6 +16,7 @@ import {
 import { checklistService, unidadeService, usuarioService, type ChecklistTemplate, type Unidade, type Usuario } from '@/lib/api';
 import { useAuthStore, PerfilUsuario } from '@/lib/store';
 import { toastService } from '@/lib/toast';
+import { dataLocalISO, formatarDataBr } from '@/lib/datas';
 import {
   agendaService,
   RECORRENCIA_LABELS,
@@ -29,8 +30,7 @@ const FILTROS_INICIAIS = { status: 'agendada', responsavelId: '' };
 const FORM_INICIAL = { unidadeId: '', templateId: '', responsavelId: '', dataPrevista: '', recorrencia: 'nenhuma' as RecorrenciaAgenda, observacao: '' };
 const BADGE: Record<StatusAgenda, string> = { agendada: 'badge-info', realizada: 'badge-success', cancelada: 'badge-ghost' };
 
-const formatarData = (d: string) => d.slice(0, 10).split('-').reverse().join('/');
-const atrasada = (a: AgendaItem) => a.status === 'agendada' && a.dataPrevista.slice(0, 10) < new Date().toISOString().slice(0, 10);
+const atrasada = (a: AgendaItem) => a.status === 'agendada' && a.dataPrevista.slice(0, 10) < dataLocalISO();
 
 export default function AgendaPage() {
   const { usuario } = useAuthStore();
@@ -144,7 +144,7 @@ export default function AgendaPage() {
   };
 
   const colunas: ColunaTabela<AgendaItem>[] = [
-    { label: 'Data', render: (a) => <span className={atrasada(a) ? 'text-error font-semibold' : ''}>{formatarData(a.dataPrevista)}</span> },
+    { label: 'Data', render: (a) => <span className={atrasada(a) ? 'text-error font-semibold' : ''}>{formatarDataBr(a.dataPrevista)}</span> },
     { label: 'Unidade', render: (a) => <span className="font-medium">{a.unidade?.nome ?? '-'}</span> },
     { label: 'Checklist', render: (a) => a.template?.nome ?? '-' },
     { label: 'Responsável', render: (a) => a.responsavel?.nome ?? '-', mobileOculta: true },
