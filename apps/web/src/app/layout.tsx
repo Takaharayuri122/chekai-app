@@ -57,7 +57,7 @@ export default function RootLayout({
   const gaId = process.env.NEXT_PUBLIC_GA_ID;
 
   return (
-    <html lang="pt-BR" data-theme="light">
+    <html lang="pt-BR">
       <body suppressHydrationWarning className={`${inter.variable} ${montserrat.variable} font-sans antialiased bg-background text-foreground min-h-screen`}>
         <ServiceWorkerCleanup />
         {children}

@@ -14,7 +14,7 @@ function arquivos(dir: string): string[] {
 }
 
 describe('sem DaisyUI', () => {
-  it.fails('nenhum arquivo em src/ usa classes DaisyUI', () => {
+  it('nenhum arquivo em src/ usa classes DaisyUI', () => {
     const ocorrencias = arquivos(RAIZ)
       .map((arq) => ({ arq: path.relative(RAIZ, arq), classes: encontrarClassesDaisy(readFileSync(arq, 'utf8')) }))
       .filter((o) => o.classes.length > 0);
