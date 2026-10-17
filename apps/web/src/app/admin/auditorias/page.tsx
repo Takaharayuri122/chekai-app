@@ -2,525 +2,291 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
+import { useRouter } from 'next/navigation';
+import { ClipboardCheck, MoreHorizontal, Plus, RotateCcw, Search, SlidersHorizontal, Trash2 } from 'lucide-react';
+import { AppLayout, ConfirmDialog, EmptyState, PageHeader, ResponsiveDialog, StatusChip } from '@/components';
+import { Button } from '@/components/ui/shadcn/button';
+import { Input } from '@/components/ui/shadcn/input';
+import { Skeleton } from '@/components/ui/shadcn/skeleton';
 import {
-  ClipboardCheck,
-  Search,
-  Filter,
-  ChevronRight,
-  Calendar,
-  RotateCcw,
-  Loader2,
-  Trash2,
-  Building2,
-  FileText,
-  MapPin,
-  Clock,
-  CheckCircle2,
-  AlertCircle,
-} from 'lucide-react';
-import { AppLayout, PageHeader, EmptyState, ConfirmDialog } from '@/components';
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/shadcn/dropdown-menu';
 import { auditoriaService, type Auditoria } from '@/lib/api';
 import { toastService } from '@/lib/toast';
 import { useAuthStore, PerfilUsuario } from '@/lib/store';
+import { FILTROS_AUDITORIA_VAZIOS, contarFiltrosAtivos, filtrarAuditorias, type FiltrosAuditoria } from '@/lib/auditoria/listagem';
+
+const POR_PAGINA = 20;
+const SELECT = 'h-10 w-full rounded-md border border-input bg-card px-3 text-sm';
+
+const hrefAuditoria = (a: Auditoria) => (a.status === 'finalizada' ? `/admin/auditoria/${a.id}/relatorio` : `/admin/auditoria/${a.id}`);
+const nomeCliente = (a: Auditoria) => a.unidade?.cliente?.nomeFantasia || a.unidade?.cliente?.razaoSocial || '';
+const dataCurta = (d: string) => new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
+const nota = (a: Auditoria) => (a.status === 'finalizada' && a.pontuacaoTotal !== undefined ? `${Number(a.pontuacaoTotal).toFixed(0)}%` : '—');
 
 export default function AuditoriasPage() {
+  const router = useRouter();
   const { usuario } = useAuthStore();
+  const podeRemover = usuario?.perfil === PerfilUsuario.MASTER || usuario?.perfil === PerfilUsuario.GESTOR;
   const [auditorias, setAuditorias] = useState<Auditoria[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filtro, setFiltro] = useState<'todos' | 'em_andamento' | 'finalizada'>('todos');
-  const [busca, setBusca] = useState('');
-  const [periodoInicio, setPeriodoInicio] = useState('');
-  const [periodoFim, setPeriodoFim] = useState('');
-  const [filtroTemplate, setFiltroTemplate] = useState('');
-  const [filtroUnidade, setFiltroUnidade] = useState('');
-  const [filtroAvaliador, setFiltroAvaliador] = useState('');
-  const [reabrindoId, setReabrindoId] = useState<string | null>(null);
-  const [showReabrirConfirm, setShowReabrirConfirm] = useState<string | null>(null);
-  const [removendoId, setRemovendoId] = useState<string | null>(null);
-  const [showRemoverConfirm, setShowRemoverConfirm] = useState<string | null>(null);
-  const podeRemover = usuario?.perfil === PerfilUsuario.MASTER || usuario?.perfil === PerfilUsuario.GESTOR;
+  const [filtros, setFiltros] = useState<FiltrosAuditoria>(FILTROS_AUDITORIA_VAZIOS);
+  const [filtrosAbertos, setFiltrosAbertos] = useState(false);
+  const [limite, setLimite] = useState(POR_PAGINA);
+  const [reabrirId, setReabrirId] = useState<string | null>(null);
+  const [removerId, setRemoverId] = useState<string | null>(null);
+  const [processando, setProcessando] = useState(false);
 
-  const carregarAuditorias = async () => {
+  const carregar = async () => {
     try {
       const todas: Auditoria[] = [];
       for (let pagina = 1; pagina <= 10; pagina++) {
-        const response = await auditoriaService.listar(pagina, 100);
-        todas.push(...(response.items || []));
-        if ((response.items || []).length < 100) break;
+        const r = await auditoriaService.listar(pagina, 100);
+        todas.push(...(r.items || []));
+        if ((r.items || []).length < 100) break;
       }
       setAuditorias(todas);
-    } catch (error) {
-      // Erro já é tratado pelo interceptor
+    } catch {
+      // erro tratado pelo interceptor
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    carregarAuditorias();
+    void carregar();
   }, []);
 
-  const handleReabrirClick = (id: string, e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setShowReabrirConfirm(id);
-  };
-
-  const handleReabrirConfirm = async () => {
-    if (!showReabrirConfirm) return;
-    try {
-      setReabrindoId(showReabrirConfirm);
-      await auditoriaService.reabrir(showReabrirConfirm);
-      toastService.success('Auditoria reaberta com sucesso!');
-      await carregarAuditorias();
-      setShowReabrirConfirm(null);
-    } catch (error) {
-      // Erro já é tratado pelo interceptor
-    } finally {
-      setReabrindoId(null);
-    }
-  };
-
-  const handleRemoverClick = (id: string, e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setShowRemoverConfirm(id);
-  };
-
-  const handleRemoverConfirm = async () => {
-    if (!showRemoverConfirm) return;
-    try {
-      setRemovendoId(showRemoverConfirm);
-      await auditoriaService.remover(showRemoverConfirm);
-      toastService.success('Auditoria removida com sucesso!');
-      await carregarAuditorias();
-      setShowRemoverConfirm(null);
-    } catch (error) {
-      // Erro já é tratado pelo interceptor
-    } finally {
-      setRemovendoId(null);
-    }
-  };
-
   const opcoes = useMemo(() => {
-    const templates = new Map<string, string>();
-    const unidades = new Map<string, string>();
-    const avaliadores = new Map<string, string>();
+    const m = { templates: new Map<string, string>(), unidades: new Map<string, string>(), avaliadores: new Map<string, string>() };
     auditorias.forEach((a) => {
-      if (a.template) templates.set(a.template.id, a.template.nome);
-      if (a.unidade) unidades.set(a.unidade.id, a.unidade.nome);
-      if (a.consultor) avaliadores.set(a.consultor.id, a.consultor.nome);
+      if (a.template) m.templates.set(a.template.id, a.template.nome);
+      if (a.unidade) m.unidades.set(a.unidade.id, a.unidade.nome);
+      if (a.consultor) m.avaliadores.set(a.consultor.id, a.consultor.nome);
     });
-    const lista = (m: Map<string, string>) => Array.from(m, ([id, nome]) => ({ id, nome }));
-    return { templates: lista(templates), unidades: lista(unidades), avaliadores: lista(avaliadores) };
+    const lista = (x: Map<string, string>) => Array.from(x, ([id, nome]) => ({ id, nome }));
+    return { templates: lista(m.templates), unidades: lista(m.unidades), avaliadores: lista(m.avaliadores) };
   }, [auditorias]);
 
-  const temFiltroAvancado = Boolean(periodoInicio || periodoFim || filtroTemplate || filtroUnidade || filtroAvaliador);
-
-  const limparFiltros = () => {
-    setBusca('');
-    setFiltro('todos');
-    setPeriodoInicio('');
-    setPeriodoFim('');
-    setFiltroTemplate('');
-    setFiltroUnidade('');
-    setFiltroAvaliador('');
+  const filtradas = useMemo(() => filtrarAuditorias(auditorias, filtros), [auditorias, filtros]);
+  const visiveis = filtradas.slice(0, limite);
+  const ativos = contarFiltrosAtivos(filtros);
+  const set = <K extends keyof FiltrosAuditoria>(k: K, v: FiltrosAuditoria[K]) => {
+    setFiltros((f) => ({ ...f, [k]: v }));
+    setLimite(POR_PAGINA);
   };
 
-  const auditoriasFiltradas = auditorias.filter((a) => {
-    const t = new Date(a.dataInicio).getTime();
-    if (periodoInicio && t < new Date(`${periodoInicio}T00:00:00`).getTime()) return false;
-    if (periodoFim && t > new Date(`${periodoFim}T23:59:59`).getTime()) return false;
-    if (filtroTemplate && a.template?.id !== filtroTemplate) return false;
-    if (filtroUnidade && a.unidade?.id !== filtroUnidade) return false;
-    if (filtroAvaliador && a.consultor?.id !== filtroAvaliador) return false;
-    const matchFiltro = filtro === 'todos' || a.status === filtro;
-    const clienteNome = a.unidade?.cliente?.nomeFantasia || a.unidade?.cliente?.razaoSocial || '';
-    const matchBusca =
-      !busca ||
-      a.unidade?.nome?.toLowerCase().includes(busca.toLowerCase()) ||
-      clienteNome.toLowerCase().includes(busca.toLowerCase());
-    return matchFiltro && matchBusca;
-  });
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'em_andamento':
-        return {
-          text: 'Em andamento',
-          bgColor: 'bg-warning',
-          borderColor: 'border-warning',
-        };
-      case 'finalizada':
-        return {
-          text: 'Finalizada',
-          bgColor: 'bg-success',
-          borderColor: 'border-success',
-        };
-      case 'cancelada':
-        return {
-          text: 'Cancelada',
-          bgColor: 'bg-error',
-          borderColor: 'border-error',
-        };
-      default:
-        return {
-          text: status,
-          bgColor: 'bg-base-300',
-          borderColor: 'border-base-300',
-        };
+  const executar = async (acao: () => Promise<unknown>, msg: string, fechar: () => void) => {
+    setProcessando(true);
+    try {
+      await acao();
+      toastService.success(msg);
+      fechar();
+      await carregar();
+    } catch {
+      // erro tratado pelo interceptor
+    } finally {
+      setProcessando(false);
     }
   };
 
-  const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString('pt-BR', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-    });
-  };
+  const camposFiltro = (
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6">
+      <select aria-label="Status" className={SELECT} value={filtros.status} onChange={(e) => set('status', e.target.value as FiltrosAuditoria['status'])}>
+        <option value="todos">Todos os status</option>
+        <option value="em_andamento">Em andamento</option>
+        <option value="finalizada">Finalizadas</option>
+      </select>
+      <Input type="date" aria-label="Data inicial" value={filtros.de} onChange={(e) => set('de', e.target.value)} />
+      <Input type="date" aria-label="Data final" value={filtros.ate} onChange={(e) => set('ate', e.target.value)} />
+      <select aria-label="Checklist" className={SELECT} value={filtros.templateId} onChange={(e) => set('templateId', e.target.value)}>
+        <option value="">Todos os checklists</option>
+        {opcoes.templates.map((o) => (<option key={o.id} value={o.id}>{o.nome}</option>))}
+      </select>
+      <select aria-label="Unidade" className={SELECT} value={filtros.unidadeId} onChange={(e) => set('unidadeId', e.target.value)}>
+        <option value="">Todas as unidades</option>
+        {opcoes.unidades.map((o) => (<option key={o.id} value={o.id}>{o.nome}</option>))}
+      </select>
+      <select aria-label="Avaliador" className={SELECT} value={filtros.avaliadorId} onChange={(e) => set('avaliadorId', e.target.value)}>
+        <option value="">Todos os avaliadores</option>
+        {opcoes.avaliadores.map((o) => (<option key={o.id} value={o.id}>{o.nome}</option>))}
+      </select>
+    </div>
+  );
 
-  const formatDateTime = (date: string) => {
-    return new Date(date).toLocaleString('pt-BR', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
-
-  const getProgressoTexto = (auditoria: Auditoria) => {
-    if (!auditoria.itens || auditoria.itens.length === 0) return '0%';
-    const respondidos = auditoria.itens.filter((i) => i.resposta && i.resposta !== 'nao_avaliado').length;
-    const total = auditoria.itens.length;
-    const percentual = Math.round((respondidos / total) * 100);
-    return `${percentual}% (${respondidos}/${total})`;
-  };
-
-  const getDiasEmAndamento = (dataInicio: string): number => {
-    const inicio = new Date(dataInicio);
-    const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0);
-    inicio.setHours(0, 0, 0, 0);
-    const diffTime = hoje.getTime() - inicio.getTime();
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays;
-  };
+  const menuAcoes = (a: Auditoria) =>
+    (a.status === 'finalizada' || podeRemover) && (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon" className="h-10 w-10" aria-label="Ações" onClick={(e) => e.stopPropagation()}>
+            <MoreHorizontal className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+          {a.status === 'finalizada' && (
+            <DropdownMenuItem onClick={() => setReabrirId(a.id)}>
+              <RotateCcw className="h-4 w-4" />
+              Reabrir
+            </DropdownMenuItem>
+          )}
+          {podeRemover && (
+            <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setRemoverId(a.id)}>
+              <Trash2 className="h-4 w-4" />
+              Remover
+            </DropdownMenuItem>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
 
   return (
     <AppLayout>
-      <PageHeader 
-        title="Auditorias" 
-        subtitle="Gerencie e acompanhe todas as suas auditorias"
+      <PageHeader
+        title="Auditorias"
+        subtitle={loading ? 'Carregando…' : `${filtradas.length} de ${auditorias.length} avaliações`}
         action={
-          <Link href="/admin/auditoria/nova" className="btn btn-primary btn-sm gap-2">
-            <ClipboardCheck className="w-4 h-4" />
-            Nova Auditoria
-          </Link>
+          <Button asChild className="hidden md:inline-flex">
+            <Link href="/admin/auditoria/nova">
+              <Plus className="h-4 w-4" />
+              Nova auditoria
+            </Link>
+          </Button>
         }
       />
 
-      <div className="px-4 py-4 lg:px-8 space-y-4">
-        {/* Search and Filter */}
-        <div className="flex flex-col sm:flex-row gap-3">
+      <div className="space-y-4 px-4 py-4 lg:px-8">
+        <div className="flex gap-2">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-base-content/40" />
-            <input
-              type="text"
-              placeholder="Buscar por cliente ou unidade..."
-              className="input input-bordered w-full pl-10 text-sm"
-              value={busca}
-              onChange={(e) => setBusca(e.target.value)}
-            />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input className="h-11 pl-9" placeholder="Buscar por cliente, unidade ou checklist" value={filtros.busca} onChange={(e) => set('busca', e.target.value)} />
           </div>
-          <div className="dropdown dropdown-end w-full sm:w-auto">
-            <div tabIndex={0} role="button" className="btn btn-outline btn-sm gap-2 w-full sm:w-auto">
-              <Filter className="w-4 h-4" />
-              <span>Filtrar</span>
-            </div>
-            <ul
-              tabIndex={0}
-              className="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52 border border-base-300"
-            >
-              <li>
-                <button
-                  className={filtro === 'todos' ? 'active' : ''}
-                  onClick={() => setFiltro('todos')}
-                >
-                  Todos
-                </button>
-              </li>
-              <li>
-                <button
-                  className={filtro === 'em_andamento' ? 'active' : ''}
-                  onClick={() => setFiltro('em_andamento')}
-                >
-                  Em andamento
-                </button>
-              </li>
-              <li>
-                <button
-                  className={filtro === 'finalizada' ? 'active' : ''}
-                  onClick={() => setFiltro('finalizada')}
-                >
-                  Finalizadas
-                </button>
-              </li>
-            </ul>
-          </div>
+          <Button variant="outline" className="h-11 lg:hidden" onClick={() => setFiltrosAbertos(true)}>
+            <SlidersHorizontal className="h-4 w-4" />
+            Filtros{ativos > 0 && ` (${ativos})`}
+          </Button>
         </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-          <input type="date" aria-label="Data inicial" className="input input-bordered input-sm" value={periodoInicio} onChange={(e) => setPeriodoInicio(e.target.value)} />
-          <input type="date" aria-label="Data final" className="input input-bordered input-sm" value={periodoFim} onChange={(e) => setPeriodoFim(e.target.value)} />
-          <select aria-label="Checklist" className="select select-bordered select-sm" value={filtroTemplate} onChange={(e) => setFiltroTemplate(e.target.value)}>
-            <option value="">Todos os checklists</option>
-            {opcoes.templates.map((o) => (<option key={o.id} value={o.id}>{o.nome}</option>))}
-          </select>
-          <select aria-label="Unidade" className="select select-bordered select-sm" value={filtroUnidade} onChange={(e) => setFiltroUnidade(e.target.value)}>
-            <option value="">Todas as unidades</option>
-            {opcoes.unidades.map((o) => (<option key={o.id} value={o.id}>{o.nome}</option>))}
-          </select>
-          <select aria-label="Avaliador" className="select select-bordered select-sm" value={filtroAvaliador} onChange={(e) => setFiltroAvaliador(e.target.value)}>
-            <option value="">Todos os avaliadores</option>
-            {opcoes.avaliadores.map((o) => (<option key={o.id} value={o.id}>{o.nome}</option>))}
-          </select>
-        </div>
-        {(temFiltroAvancado || busca || filtro !== 'todos') && (
-          <div className="flex items-center justify-between text-sm text-base-content/60">
-            <span>{auditoriasFiltradas.length} de {auditorias.length} avaliações</span>
-            <button className="btn btn-ghost btn-xs" onClick={limparFiltros}>Limpar filtros</button>
-          </div>
+        <div className="hidden lg:block">{camposFiltro}</div>
+        {ativos > 0 && (
+          <button type="button" className="text-sm font-medium text-primary" onClick={() => setFiltros({ ...FILTROS_AUDITORIA_VAZIOS, busca: filtros.busca })}>
+            Limpar filtros
+          </button>
         )}
 
-        {/* List */}
         {loading ? (
-          <div className="card bg-base-100 shadow-sm border border-base-300">
-            <div className="card-body items-center py-12">
-              <span className="loading loading-spinner loading-lg text-primary"></span>
-            </div>
+          <div className="space-y-2">
+            {Array.from({ length: 6 }).map((_, i) => (<Skeleton key={i} className="h-16 w-full" />))}
           </div>
-        ) : auditoriasFiltradas.length === 0 ? (
+        ) : filtradas.length === 0 ? (
           <EmptyState
             icon={ClipboardCheck}
             title="Nenhuma auditoria encontrada"
-            description={
-              busca || filtro !== 'todos' || temFiltroAvancado
-                ? 'Tente ajustar os filtros de busca.'
-                : 'Inicie sua primeira auditoria.'
-            }
-            actionLabel={!busca && filtro === 'todos' ? 'Nova Auditoria' : undefined}
+            description={ativos || filtros.busca ? 'Ajuste a busca ou os filtros.' : 'Inicie sua primeira auditoria.'}
+            actionLabel={ativos || filtros.busca ? undefined : 'Nova auditoria'}
             actionHref="/admin/auditoria/nova"
           />
         ) : (
-          <div className="space-y-3">
-            {auditoriasFiltradas.map((auditoria, index) => (
-              <motion.div
-                key={auditoria.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.03 }}
-              >
-                <div className={`card bg-base-100 shadow-sm border-2 ${getStatusBadge(auditoria.status).borderColor} hover:shadow-md transition-all relative overflow-hidden`}>
-                  {/* Badge no canto superior direito */}
-                  <div className={`absolute top-3 right-3 ${getStatusBadge(auditoria.status).bgColor} text-white px-3 py-1 text-xs font-semibold shadow-lg z-10 whitespace-nowrap rounded min-w-[110px] text-center`}>
-                    {getStatusBadge(auditoria.status).text}
-                  </div>
-                  <Link
-                    href={
-                      auditoria.status === 'finalizada'
-                        ? `/admin/auditoria/${auditoria.id}/relatorio`
-                        : `/admin/auditoria/${auditoria.id}`
-                    }
-                    className="card-body p-4 sm:p-5 cursor-pointer"
-                  >
-                    <div className="flex flex-col lg:flex-row gap-4">
-                      {/* Coluna Esquerda - Informações Principais */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start gap-3 mb-3">
-                          <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                            <ClipboardCheck className="w-5 h-5 text-primary" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <h3 className="font-semibold text-base text-base-content truncate mb-1">
-                              {auditoria.unidade?.nome || 'Unidade não informada'}
-                            </h3>
-                            <p className="text-sm text-base-content/60 truncate flex items-center gap-1">
-                              <Building2 className="w-3.5 h-3.5 flex-shrink-0" />
-                              {auditoria.unidade?.cliente?.nomeFantasia || auditoria.unidade?.cliente?.razaoSocial || 'Cliente não informado'}
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* Grid de Informações */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm mb-3">
-                          <div className="flex items-center gap-2 text-base-content/70">
-                            <Calendar className="w-4 h-4 text-base-content/40 flex-shrink-0" />
-                            <span className="font-medium w-[60px] flex-shrink-0">Início:</span>
-                            <span>{formatDate(auditoria.dataInicio)}</span>
-                          </div>
-                          {auditoria.status === 'em_andamento' && (
-                            <div className="flex items-center gap-2 text-base-content/70">
-                              <Clock className="w-4 h-4 text-warning flex-shrink-0" />
-                              <span className="font-medium w-[120px] flex-shrink-0">Em andamento:</span>
-                              <span className="font-semibold text-warning">
-                                {getDiasEmAndamento(auditoria.dataInicio)} {getDiasEmAndamento(auditoria.dataInicio) === 1 ? 'dia' : 'dias'}
-                              </span>
-                            </div>
-                          )}
-                          {auditoria.dataFim && (
-                            <div className="flex items-center gap-2 text-base-content/70">
-                              <CheckCircle2 className="w-4 h-4 text-success flex-shrink-0" />
-                              <span className="font-medium w-[120px] flex-shrink-0">Finalizada:</span>
-                              <span>{formatDate(auditoria.dataFim)}</span>
-                            </div>
-                          )}
-                          {auditoria.template?.nome && (
-                            <div className="flex items-center gap-2 text-base-content/70 sm:col-span-2">
-                              <FileText className="w-4 h-4 text-base-content/40 flex-shrink-0" />
-                              <span className="font-medium min-w-[80px]">Checklist:</span>
-                              <span className="truncate">{auditoria.template.nome}</span>
-                            </div>
-                          )}
-                          {auditoria.unidade?.endereco && (
-                            <div className="flex items-center gap-2 text-base-content/70 sm:col-span-2">
-                              <MapPin className="w-4 h-4 text-base-content/40 flex-shrink-0" />
-                              <span className="font-medium min-w-[50px]">Local:</span>
-                              <span className="truncate">{auditoria.unidade.endereco}</span>
-                            </div>
-                          )}
-                          {auditoria.itens && auditoria.itens.length > 0 && (
-                            <div className="flex items-center gap-2 text-base-content/70 sm:col-span-2">
-                              <ClipboardCheck className="w-4 h-4 text-base-content/40 flex-shrink-0" />
-                              <span className="font-medium min-w-[80px]">Progresso:</span>
-                              <span>{getProgressoTexto(auditoria)}</span>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Pontuação Final (apenas para finalizadas) */}
-                        {auditoria.status === 'finalizada' && auditoria.pontuacaoTotal !== undefined && (
-                          <div className="flex items-center gap-3 pt-3 border-t border-base-200">
-                            <div
-                              className={`radial-progress flex-shrink-0 ${
-                                Number(auditoria.pontuacaoTotal) >= 80
-                                  ? 'text-success'
-                                  : Number(auditoria.pontuacaoTotal) >= 60
-                                  ? 'text-warning'
-                                  : 'text-error'
-                              }`}
-                              style={{
-                                '--value': Number(auditoria.pontuacaoTotal),
-                                '--size': '3rem',
-                                '--thickness': '4px',
-                              } as React.CSSProperties}
-                              role="progressbar"
-                            >
-                              <span className="text-xs font-bold">
-                                {Number(auditoria.pontuacaoTotal).toFixed(0)}%
-                              </span>
-                            </div>
-                            <div>
-                              <p className="text-xs font-medium text-base-content/60">Pontuação Final</p>
-                              <p className={`text-sm font-semibold ${
-                                Number(auditoria.pontuacaoTotal) >= 80
-                                  ? 'text-success'
-                                  : Number(auditoria.pontuacaoTotal) >= 60
-                                  ? 'text-warning'
-                                  : 'text-error'
-                              }`}>
-                                {Number(auditoria.pontuacaoTotal) >= 80
-                                  ? 'Excelente'
-                                  : Number(auditoria.pontuacaoTotal) >= 60
-                                  ? 'Bom'
-                                  : 'Atenção'}
-                              </p>
-                            </div>
-                          </div>
-                        )}
+          <>
+            <ul className="space-y-2 lg:hidden">
+              {visiveis.map((a) => (
+                <li key={a.id}>
+                  <Link href={hrefAuditoria(a)} className="flex items-start gap-3 rounded-lg border border-border bg-card p-4 shadow-sm active:bg-muted">
+                    <div className="min-w-0 flex-1 space-y-1">
+                      <div className="flex items-center gap-2">
+                        <p className="truncate font-medium">{a.unidade?.nome}</p>
+                        <StatusChip status={a.status} />
                       </div>
-
-                      {/* Coluna Direita - Ações */}
-                      <div 
-                        className="flex flex-row lg:flex-col items-center justify-end lg:items-start gap-2 pt-3 lg:pt-8 border-t lg:border-t-0 lg:border-l border-base-200 lg:pl-4 lg:min-w-[140px]"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        {auditoria.status === 'finalizada' && (
-                          <button
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              handleReabrirClick(auditoria.id, e);
-                            }}
-                            disabled={reabrindoId === auditoria.id}
-                            className="btn btn-primary btn-sm gap-2 w-[110px]"
-                            title="Reabrir auditoria"
-                          >
-                            {reabrindoId === auditoria.id ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : (
-                              <RotateCcw className="w-4 h-4" />
-                            )}
-                            <span>Reabrir</span>
-                          </button>
-                        )}
-                        {podeRemover && (
-                          <button
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              handleRemoverClick(auditoria.id, e);
-                            }}
-                            disabled={removendoId === auditoria.id}
-                            className="btn btn-error btn-sm gap-2 w-[110px]"
-                            title="Remover auditoria"
-                          >
-                            {removendoId === auditoria.id ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : (
-                              <Trash2 className="w-4 h-4" />
-                            )}
-                            <span>Remover</span>
-                          </button>
-                        )}
-                      </div>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {nomeCliente(a)} · {a.template?.nome}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {dataCurta(a.dataInicio)} · {a.consultor?.nome} · nota {nota(a)}
+                      </p>
                     </div>
+                    {menuAcoes(a)}
                   </Link>
-                </div>
-              </motion.div>
-            ))}
-          </div>
+                </li>
+              ))}
+            </ul>
+
+            <div className="hidden overflow-hidden rounded-lg border border-border bg-card shadow-sm lg:block">
+              <table className="w-full text-sm">
+                <thead className="border-b border-border bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
+                  <tr>
+                    <th className="px-4 py-3 font-medium">Data</th>
+                    <th className="px-4 py-3 font-medium">Unidade</th>
+                    <th className="px-4 py-3 font-medium">Checklist</th>
+                    <th className="px-4 py-3 font-medium">Avaliador</th>
+                    <th className="px-4 py-3 font-medium">Status</th>
+                    <th className="px-4 py-3 text-right font-medium">Nota</th>
+                    <th className="w-12 px-2 py-3" />
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {visiveis.map((a) => (
+                    <tr key={a.id} className="h-12 cursor-pointer hover:bg-muted/50" onClick={() => router.push(hrefAuditoria(a))}>
+                      <td className="px-4">{dataCurta(a.dataInicio)}</td>
+                      <td className="px-4">
+                        <p className="font-medium">{a.unidade?.nome}</p>
+                        <p className="text-xs text-muted-foreground">{nomeCliente(a)}</p>
+                      </td>
+                      <td className="px-4">{a.template?.nome}</td>
+                      <td className="px-4">{a.consultor?.nome}</td>
+                      <td className="px-4"><StatusChip status={a.status} /></td>
+                      <td className="px-4 text-right font-semibold">{nota(a)}</td>
+                      <td className="px-2" onClick={(e) => e.stopPropagation()}>{menuAcoes(a)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {filtradas.length > limite && (
+              <div className="flex justify-center">
+                <Button variant="outline" onClick={() => setLimite((l) => l + POR_PAGINA)}>
+                  Carregar mais
+                </Button>
+              </div>
+            )}
+          </>
         )}
       </div>
 
-      {/* Modal de Confirmação de Reabertura */}
-      <ConfirmDialog
-        open={showReabrirConfirm !== null}
-        onClose={() => setShowReabrirConfirm(null)}
-        onConfirm={handleReabrirConfirm}
-        title="Reabrir Auditoria"
-        message="Tem certeza que deseja reabrir esta auditoria? Você poderá fazer alterações e finalizá-la novamente."
-        confirmLabel="Reabrir"
-        cancelLabel="Cancelar"
-        variant="warning"
-        loading={reabrindoId !== null}
-      />
+      <ResponsiveDialog
+        open={filtrosAbertos}
+        onOpenChange={setFiltrosAbertos}
+        title="Filtros"
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setFiltros({ ...FILTROS_AUDITORIA_VAZIOS, busca: filtros.busca })}>Limpar</Button>
+            <Button onClick={() => setFiltrosAbertos(false)}>Ver {filtradas.length} resultado(s)</Button>
+          </>
+        }
+      >
+        {camposFiltro}
+      </ResponsiveDialog>
 
-      {/* Modal de Confirmação de Remoção */}
       <ConfirmDialog
-        open={showRemoverConfirm !== null}
-        onClose={() => setShowRemoverConfirm(null)}
-        onConfirm={handleRemoverConfirm}
-        title="Remover Auditoria"
-        message="Tem certeza que deseja remover esta auditoria? Esta ação não pode ser desfeita e todos os dados relacionados serão excluídos permanentemente."
+        open={reabrirId !== null}
+        onClose={() => setReabrirId(null)}
+        onConfirm={() => executar(() => auditoriaService.reabrir(reabrirId!), 'Auditoria reaberta.', () => setReabrirId(null))}
+        title="Reabrir auditoria"
+        message="A auditoria volta para em andamento e poderá ser editada. Deseja continuar?"
+        confirmLabel="Reabrir"
+        variant="warning"
+        loading={processando}
+      />
+      <ConfirmDialog
+        open={removerId !== null}
+        onClose={() => setRemoverId(null)}
+        onConfirm={() => executar(() => auditoriaService.remover(removerId!), 'Auditoria removida.', () => setRemoverId(null))}
+        title="Remover auditoria"
+        message="Esta ação não pode ser desfeita. Deseja remover a auditoria?"
         confirmLabel="Remover"
-        cancelLabel="Cancelar"
-        variant="danger"
-        loading={removendoId !== null}
+        loading={processando}
       />
     </AppLayout>
   );
 }
-
