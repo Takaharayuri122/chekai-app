@@ -29,12 +29,13 @@ import {
 } from 'recharts';
 import { AppLayout, StatCard, EmptyState } from '@/components';
 import { auditoriaService, type Auditoria } from '@/lib/api';
-import { useAuthStore } from '@/lib/store';
+import { useAuthStore, PerfilUsuario } from '@/lib/store';
+import { InicioAuditor } from '@/components/inicio/inicio-auditor';
 import { toastService } from '@/lib/toast';
 import { agendaService, type AgendaItem } from '@/lib/services/agenda.service';
 import { planoAcaoService, type ResumoPlanoAcao } from '@/lib/services/plano-acao.service';
 
-export default function DashboardPage() {
+function DashboardGestor() {
   const { usuario } = useAuthStore();
   const [auditorias, setAuditorias] = useState<Auditoria[]>([]);
   const [loading, setLoading] = useState(true);
@@ -674,4 +675,16 @@ export default function DashboardPage() {
       </div>
     </AppLayout>
   );
+}
+
+export default function DashboardPage() {
+  const { usuario } = useAuthStore();
+  if (usuario?.perfil === PerfilUsuario.AUDITOR) {
+    return (
+      <AppLayout>
+        <InicioAuditor />
+      </AppLayout>
+    );
+  }
+  return <DashboardGestor />;
 }
