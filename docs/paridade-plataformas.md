@@ -8,6 +8,7 @@
 - **API**: endpoint disponível no backend NestJS
 - **Web**: funcionalidade disponível no frontend Next.js
 - **Mobile**: funcionalidade disponível no app Expo (offline-first)
+- **MCP**: canal online de tools para clientes de IA. Não usa SQLite nem fila offline e não altera os contratos HTTP de web e mobile. Nesta matriz, `-` no MCP significa ainda sem implementação; o contrato da primeira onda está na seção Canal MCP
 
 ---
 
@@ -21,6 +22,7 @@
 | Convite de auditor | ok | ok | n/a | Gestor convida pelo web; auditor aceita pelo link |
 | Aceite de convite | ok | ok | - | Link direciona para web |
 | Logout | n/a | ok | ok | |
+| OAuth do canal MCP (OTP + PKCE) | - | - | n/a | Consentimento no web (`/oauth/autorizar`). Mobile não autentica nem opera o canal. Contrato: RN-AUTH-010, RN-MCP-001 a RN-MCP-003 |
 
 ## Usuários
 
@@ -128,6 +130,26 @@
 | Push (local → servidor) | n/a | n/a | ok | Auditorias com itens e fotos |
 | Fila de sync offline | n/a | n/a | ok | SQLite sync_queue |
 | Conflict resolution | n/a | n/a | parcial | sync_status != 'pending' protege dados locais |
+| Canal MCP | n/a | n/a | n/a | Online apenas. Sem SQLite, pull, push ou `sync_queue` (RN-MCP-009) |
+
+---
+
+## Canal MCP (online)
+
+Canal adicional, não uma terceira cópia offline do produto. Cada chamada roda na hora contra os services já usados por web e mobile, com o usuário do access token OAuth. Sem rede não há uso degradado. As colunas Web e Mobile das seções anteriores permanecem a fonte dos contratos desses clientes.
+
+| Capacidade | MCP | Offline | Observações |
+|------------|-----|---------|-------------|
+| Discovery, autorização OTP+PKCE, refresh e revogação | - | n/a | RN-AUTH-010, RN-MCP-001 a RN-MCP-003, RN-MCP-011. Tela de consentimento só no web |
+| Contexto da sessão (`chekai_me`) | - | n/a | Scope `chekai:contexto` |
+| Ler clientes e unidades | - | n/a | AUDITOR só vínculos (RN-CLI-006). Sem criar, editar ou remover nesta onda |
+| Ler checklists | - | n/a | AUDITOR só ativos do gestor (RN-CHK-003). Sem editor, ativação, duplicação ou importação nesta onda |
+| Auditorias: listar, obter, iniciar, responder, finalizar em duas etapas | - | n/a | RN-AUD-001 a RN-AUD-010 e RN-MCP-007. Sem reabrir, remover, fotos, PDF ou resumo por IA |
+| Agenda: listar e concluir | - | n/a | AUDITOR não cria, edita, cancela nem remove (RN-AGD-003); essas ações não são tools |
+| Plano de ação: listar, criar, atualizar, concluir, reabrir | - | n/a | Isolamento do service (RN-PAC-002, RN-PAC-003). Sem remover e sem gerar tarefas por IA |
+| Relatório técnico: listar, obter, iniciar, atualizar, finalizar em duas etapas | - | n/a | RN-REL-001 a RN-REL-004 e RN-REL-007. Sem fotos, PDF ou apoio analítico |
+| Equipe, convites, planos, assinaturas, lista de espera, créditos, auditoria de tokens, legislação/RAG, cadastro público, login legado, IA genérica | excluído | n/a | Fora permanente (RN-MCP-008), não é backlog do canal |
+| CRUD de clientes/checklists, fotos, PDF, check-in, IA de domínio | fora desta onda | n/a | Só entram com regra nova. Check-in e IA exigem confirmação em duas etapas (RN-MCP-007) |
 
 ---
 
@@ -136,3 +158,4 @@
 | Data | Alteração |
 |------|-----------|
 | 2026-04-11 | Matriz inicial compilada a partir do código web, mobile e API |
+| 2026-10-17 | Canal MCP registrado como online, sem offline e sem mudança de contrato web/mobile. Primeira onda e exclusões permanentes apontam para RN-AUTH-010 e RN-MCP-* |

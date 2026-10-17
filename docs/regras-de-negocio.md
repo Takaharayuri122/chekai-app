@@ -47,6 +47,7 @@
 | RN-AUTH-007 | Usuário que não está ATIVO é rejeitado no `JwtStrategy` |
 | RN-AUTH-008 | Login legado com senha existe mas está deprecated; prioridade é OTP |
 | RN-AUTH-009 | `FRONTEND_URL` deve existir em todos os ambientes; sem fallback — falhar claro se ausente |
+| RN-AUTH-010 | O canal MCP autentica somente por OAuth 2.1 Authorization Code com PKCE S256, reutilizando o OTP de e-mail (RN-AUTH-001, RN-AUTH-002, RN-AUTH-003, RN-AUTH-004, RN-AUTH-007). Access token de 1 hora; refresh token rotativo e revogável. O JWT de sessão web/mobile não autentica o MCP, e o access token OAuth não autentica web nem mobile. O token OAuth traz `iss`, `sub`, `aud`, `resource`, `scope`, `perfil` e `jti`. `perfil`, `gestorId` e `tenantId` são relidos do banco a cada sessão ou token; o claim não é a fonte desses vínculos |
 
 ---
 
@@ -328,6 +329,26 @@
 
 ---
 
+## 18. Canal MCP
+
+Canal online para clientes de IA. Não altera contratos web/mobile e não participa da sincronização offline (RN-SYN-*).
+
+| ID | Regra |
+|----|-------|
+| RN-MCP-001 | Discovery e binding do MCP: requisição ao endpoint MCP sem access token válido responde 401 com `WWW-Authenticate` e `resource_metadata` (RFC 9728). O metadata do authorization server fica em `/.well-known/oauth-authorization-server` (RFC 8414). O parâmetro `resource` é obrigatório e a audience do token é o endpoint MCP. Client ID Metadata Documents são o registro preferido; `POST /oauth/register` existe apenas como fallback de compatibilidade. Discovery, OAuth (`/oauth/authorize`, `/oauth/otp/solicitar`, `/oauth/otp/validar`, `/oauth/token`, `/oauth/revoke`, `/oauth/register`) e o endpoint MCP ficam fora do prefixo `/api` |
+| RN-MCP-002 | O authorization code é de uso único e fica vinculado a `code_challenge` S256, `redirect_uri` exata, `resource` e cliente. Persistem somente hashes de authorization code, access token e refresh token, com expiração, revogação e auditoria mínima (usuário, cliente, scopes, instante). São recusados: `redirect_uri` divergente, PKCE ausente ou `code_verifier` inválido, `resource` ou audience divergente, e reuso de código |
+| RN-MCP-003 | O refresh token é rotativo por família: cada uso válido emite um refresh novo e invalida o anterior. Reapresentar um refresh já rotacionado revoga a família inteira. A revogação explícita invalida a concessão (refresh pendentes e access tokens da família). Access expirado, concessão revogada ou conta que deixou de estar ativa são recusados. O refresh também relê perfil e status no banco |
+| RN-MCP-004 | Deny-by-default: o registry MCP só contém tools da allowlist da onda vigente. Não há proxy genérico da API nem do Swagger. Tool ausente da allowlist não aparece em `tools/list` e `tools/call` não executa handler |
+| RN-MCP-005 | Autorização é a interseção de perfil e scope, relida no banco. `tools/list` devolve só o que perfil e scopes concedidos autorizam; `tools/call` repete a checagem. Scope insuficiente responde `insufficient_scope`. Scope desconhecido ou não operacional é recusado na autorização e não é concedido por omissão. A tela de consentimento mostra somente scopes operacionais solicitados. Scopes da primeira onda: `chekai:contexto`, `chekai:clientes:ler`, `chekai:checklists:ler`, `chekai:auditorias:ler`, `chekai:auditorias:escrever`, `chekai:auditorias:finalizar`, `chekai:agenda:ler`, `chekai:agenda:concluir`, `chekai:tarefas:ler`, `chekai:tarefas:escrever`, `chekai:relatorios:ler`, `chekai:relatorios:escrever`, `chekai:relatorios:finalizar` |
+| RN-MCP-006 | O handler chama o service de domínio existente e passa o usuário autenticado resolvido pelo servidor. O modelo não envia `gestorId`, `tenantId` nem `consultorId`; esses campos no input são rejeitados antes do service. GESTOR e MASTER operam o próprio domínio (o service usa o id autenticado). AUDITOR acessa apenas vínculos e recursos próprios (RN-ISO-001 a RN-ISO-004, RN-CLI-006, RN-CHK-003, RN-PAC-002, RN-PAC-003, RN-AGD-002, RN-AGD-003, RN-REL-002). A resposta é resumo paginado com IDs estáveis, sem entidade crua, segredo, token, dado de outro tenant ou URL que contorne o isolamento |
+| RN-MCP-007 | Ação sensível exige confirmação em duas etapas no próprio protocolo, sem elicitation do cliente: a preparação devolve o resumo do efeito e um token de confirmação de uso único, validade máxima de 10 minutos, amarrado ao usuário, ao recurso e à ação; a execução só conclui com esse token válido. A tentativa de execução consome o token mesmo quando o service recusa a validação de negócio. Na primeira onda isso vale para finalizar auditoria e finalizar relatório técnico. Exclusão, checkout e IA só podem entrar em onda futura já com esta confirmação |
+| RN-MCP-008 | Ficam permanentemente fora do canal MCP, para qualquer perfil e qualquer scope: equipe e convites, planos e assinaturas, lista de espera, configuração de créditos, auditoria global de tokens, legislação, chunks e RAG cru, cadastro público, login legado e endpoints genéricos de IA. Essas capacidades não são registradas, não aparecem em `tools/list` e não executam |
+| RN-MCP-009 | O MCP é canal exclusivamente online (Streamable HTTP). Não há SQLite, fila offline nem sincronização; RN-SYN-* não se aplicam. Sem rede não há modo degradado. Contratos HTTP de web e mobile permanecem os mesmos |
+| RN-MCP-010 | Primeira onda, até regra posterior: `chekai_me` (`chekai:contexto`); leitura `chekai_listar_clientes`, `chekai_obter_cliente`, `chekai_listar_unidades`; leitura `chekai_listar_checklists`, `chekai_obter_checklist`; auditorias `chekai_listar_auditorias`, `chekai_obter_auditoria`, `chekai_iniciar_auditoria`, `chekai_responder_item`, `chekai_preparar_finalizacao`, `chekai_finalizar_auditoria`; agenda `chekai_listar_agenda`, `chekai_concluir_agendamento`; plano de ação `chekai_listar_tarefas`, `chekai_criar_tarefa`, `chekai_atualizar_tarefa`, `chekai_concluir_tarefa`, `chekai_reabrir_tarefa`; relatórios `chekai_listar_relatorios`, `chekai_obter_relatorio`, `chekai_iniciar_relatorio`, `chekai_atualizar_relatorio`, `chekai_preparar_finalizacao_relatorio`, `chekai_finalizar_relatorio`. Perfis MASTER, GESTOR e AUDITOR podem receber essas tools; o recorte de dados segue os services. AUDITOR não cria, edita, cancela nem remove agendamento (RN-AGD-003), e essas operações não são tools. CRUD de clientes, unidades e checklists, fotos, PDF, check-in e IA não fazem parte desta onda |
+| RN-MCP-011 | Em produção, a API não inicia se faltarem `MCP_PUBLIC_URL`, `OAUTH_ISSUER`, `OAUTH_ACCESS_TOKEN_TTL`, `OAUTH_REFRESH_TOKEN_TTL` ou a chave de assinatura OAuth distinta da chave do JWT web/mobile |
+
+---
+
 ## Changelog
 
 | Data | Alteração | Autor |
@@ -335,3 +356,4 @@
 | 2026-04-11 | Documento inicial compilado a partir do código-fonte da API, mobile e web | platform-orchestrator |
 | 2026-10-16 | Adicionada seção 16 (Planos de Ação) | Claude |
 | 2026-10-16 | Adicionadas seções 17 (Agenda) e RN-PAC-008 | Claude |
+| 2026-10-17 | RN-AUTH-010 e seção 18 (RN-MCP-001 a RN-MCP-011): OAuth 2.1 do canal MCP, deny-by-default, perfil+scope, isolamento sem ids do modelo, confirmação em duas etapas e exclusão permanente de capacidades administrativas | sdd-use-case-generator |
