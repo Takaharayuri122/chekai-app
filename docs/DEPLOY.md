@@ -30,10 +30,15 @@ O Vercel deixou de ser o alvo de produção do frontend. O projeto antigo na Ver
 | `NODE_ENV` | Ambiente de execução | `production` |
 | `PORT` | Porta (Railway define automaticamente) | `8080` |
 | `DATABASE_URL` | Connection string do Supabase PostgreSQL | `postgresql://...` |
-| `JWT_SECRET` | Chave secreta para JWT | string aleatória forte |
-| `JWT_EXPIRES_IN` | Expiração do token | `7d` |
+| `JWT_SECRET` | Chave secreta do JWT web/mobile. Não assina o access token do MCP | string aleatória forte |
+| `JWT_EXPIRES_IN` | Expiração do token web/mobile | `7d` |
 | `CORS_ORIGIN` | URL canônica do frontend | `https://chekai.com.br` |
-| `FRONTEND_URL` | URL do frontend (e-mails de convite; obrigatória) | `https://chekai.com.br` |
+| `FRONTEND_URL` | URL do frontend, sem barra final (e-mails e tela `${FRONTEND_URL}/oauth/autorizar`) | `https://chekai.com.br` |
+| `MCP_PUBLIC_URL` | Origem pública da API, sem barra final. O MCP é `${MCP_PUBLIC_URL}/mcp` | `https://api.chekai.com.br` |
+| `OAUTH_ISSUER` | Claim `iss` e authorization server do metadata. No serviço único, o mesmo valor de `MCP_PUBLIC_URL` | `https://api.chekai.com.br` |
+| `OAUTH_ACCESS_TOKEN_TTL` | Vida do access token OAuth, em segundos | `3600` |
+| `OAUTH_REFRESH_TOKEN_TTL` | Vida do refresh token OAuth, em segundos | `1209600` |
+| `OAUTH_JWT_SECRET` | Chave HS256 só do MCP. Obrigatória em produção e diferente de `JWT_SECRET` | string aleatória forte, outra |
 | `SUPABASE_URL` | URL do projeto Supabase | `https://[PROJECT].supabase.co` |
 | `SUPABASE_SERVICE_ROLE_KEY` | Service Role Key do Supabase | `eyJhbGc...` |
 | `OPENAI_API_KEY` | Chave da API OpenAI | `sk-...` |
@@ -41,6 +46,8 @@ O Vercel deixou de ser o alvo de produção do frontend. O projeto antigo na Ver
 | `DEEPSEEK_BASE_URL` | URL base da API DeepSeek | `https://api.deepseek.com` |
 
 A API também libera automaticamente origens `*.up.railway.app` e `*.vercel.app`, além de hosts locais de desenvolvimento.
+
+Com `NODE_ENV=production`, a ausência de `MCP_PUBLIC_URL`, `OAUTH_ISSUER`, dos dois TTLs ou de `OAUTH_JWT_SECRET`, ou a igualdade dessa chave com `JWT_SECRET`, impede a API de iniciar (`Configuração OAuth inválida`). O canal, o SQL e o rollback estão em `docs/mcp/`. O procedimento de homologação e produção não foi executado por esta documentação: não houve alteração de variável na Railway nem SQL aplicado.
 
 ### Frontend (`@meta-app/web`)
 
@@ -96,11 +103,16 @@ Domínio customizado (`www.chekai.com.br`) é opcional e exige DNS apontando par
 - Criar cliente / auditoria
 - Upload de fotos e fluxos com IA
 
+### Canal MCP
+
+Quando o código deste canal estiver publicado, a checagem é a do `docs/mcp/runbook.md`: well-known em `/.well-known/oauth-protected-resource` e `/.well-known/oauth-authorization-server`, e `POST /mcp` anônimo em 401 com `resource_metadata`. Isso é passo de quem tem acesso ao ambiente. Não faz parte do estado atual deste guia.
+
 ## Troubleshooting
 
 ### Backend não inicia
 
 - Variáveis obrigatórias (incluindo `FRONTEND_URL`)
+- Em produção, também `MCP_PUBLIC_URL`, `OAUTH_ISSUER`, `OAUTH_ACCESS_TOKEN_TTL`, `OAUTH_REFRESH_TOKEN_TTL` e `OAUTH_JWT_SECRET` diferente de `JWT_SECRET`
 - `DATABASE_URL` e pool do Supabase
 - Logs do deploy da API
 
