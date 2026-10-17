@@ -19,14 +19,14 @@ export function AuditoriasDoCliente({ clienteId }: { clienteId: string }) {
       const todas: Auditoria[] = [];
       try {
         for (let pagina = 1; pagina <= 10; pagina++) {
-          const r = await auditoriaService.listar(pagina, 100);
+          const r = await auditoriaService.listar(pagina, 100, clienteId);
           todas.push(...(r.items || []));
           if ((r.items || []).length < 100) break;
         }
       } catch {
         // erro tratado pelo interceptor
       }
-      if (ativo) setAuditorias(todas.filter((a) => a.unidade?.cliente?.id === clienteId));
+      if (ativo) setAuditorias(todas);
     };
     void carregar();
     return () => {

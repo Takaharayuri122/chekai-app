@@ -904,8 +904,8 @@ export interface AnaliseChecklistResponse {
 }
 
 export const auditoriaService = {
-  async listar(page = 1, limit = 100): Promise<{ items: Auditoria[] }> {
-    const response = await api.get('/auditorias', { params: { page, limit } });
+  async listar(page = 1, limit = 100, clienteId?: string): Promise<{ items: Auditoria[] }> {
+    const response = await api.get('/auditorias', { params: { page, limit, clienteId } });
     return response.data.data;
   },
 

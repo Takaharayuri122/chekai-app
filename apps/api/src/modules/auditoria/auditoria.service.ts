@@ -100,6 +100,7 @@ export class AuditoriaService {
   async listarAuditorias(
     params: PaginationParams,
     usuarioAutenticado: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
+    clienteId?: string,
   ): Promise<PaginatedResult<Auditoria>> {
     const queryBuilder = this.auditoriaRepository.createQueryBuilder('auditoria')
       .leftJoinAndSelect('auditoria.unidade', 'unidade')
@@ -117,6 +118,8 @@ export class AuditoriaService {
         consultorId: usuarioAutenticado.id,
       });
     }
+    // Filtro opcional aplicado depois do isolamento: nunca amplia o que o usuário pode ver
+    if (clienteId) queryBuilder.andWhere('cliente.id = :clienteId', { clienteId });
     const [items, total] = await queryBuilder
       .skip((params.page - 1) * params.limit)
       .take(params.limit)

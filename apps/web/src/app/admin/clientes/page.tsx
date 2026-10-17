@@ -1441,7 +1441,7 @@ export default function ClientesPage() {
               <TabsContent value="equipe" className="space-y-4">
                 {blocoEquipe}
               </TabsContent>
-              <TabsContent value="auditorias">
+              <TabsContent value="auditorias" forceMount className="data-[state=inactive]:hidden">
                 <AuditoriasDoCliente clienteId={editingCliente.id} />
               </TabsContent>
             </Tabs>
