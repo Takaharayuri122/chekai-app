@@ -58,7 +58,7 @@ export default function RootLayout({
 
   return (
     <html lang="pt-BR" data-theme="light">
-      <body suppressHydrationWarning className={`${inter.variable} ${montserrat.variable} font-sans antialiased bg-base-200 min-h-screen`}>
+      <body suppressHydrationWarning className={`${inter.variable} ${montserrat.variable} font-sans antialiased bg-background text-foreground min-h-screen`}>
         <ServiceWorkerCleanup />
         {children}
         <ClientToaster />
