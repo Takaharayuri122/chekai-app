@@ -10,6 +10,7 @@ import {
   getItensConta,
   getItensMais,
   isRotaAtiva,
+  itensBuscaAuditorias,
 } from './navegacao';
 
 const labels = (perfil: PerfilUsuario) =>
@@ -108,5 +109,27 @@ describe('getHrefAtivo', () => {
     expect(getHrefAtivo('/admin/planos', itens)).toBe('/admin/planos');
     expect(getHrefAtivo('/admin/auditoria/abc', itens)).toBe('/admin/auditorias');
     expect(getHrefAtivo('/admin/inexistente', itens)).toBeNull();
+  });
+});
+
+describe('itensBuscaAuditorias', () => {
+  it('monta título, detalhe, link e termos de busca', () => {
+    const [r] = itensBuscaAuditorias([
+      {
+        id: 'a1',
+        status: 'finalizada',
+        dataInicio: '2026-10-07T12:00:00Z',
+        unidade: { nome: 'Loja Centro', cliente: { nomeFantasia: 'Padaria São João' } },
+        template: { nome: 'Boas Práticas' },
+      } as never,
+    ]);
+    expect(r.href).toBe('/admin/auditoria/a1/relatorio');
+    expect(r.titulo).toBe('Loja Centro');
+    expect(r.detalhe).toContain('Boas Práticas');
+    expect(filtroBusca(r.termos, 'sao joao')).toBe(1);
+  });
+  it('em andamento aponta para a execução', () => {
+    const [r] = itensBuscaAuditorias([{ id: 'a2', status: 'em_andamento', dataInicio: '2026-10-07T12:00:00Z', unidade: { nome: 'X' } } as never]);
+    expect(r.href).toBe('/admin/auditoria/a2');
   });
 });

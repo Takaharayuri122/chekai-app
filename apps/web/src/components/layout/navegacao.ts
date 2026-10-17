@@ -20,6 +20,7 @@ import {
   Users,
 } from 'lucide-react';
 import { PerfilUsuario } from '@/lib/store';
+import type { Auditoria } from '@/lib/api';
 
 export interface ItemNavegacao {
   href: string;
@@ -143,4 +144,27 @@ export function filtroBusca(valor: string, termo: string): number {
 export function filtrarItensBusca(itens: ItemNavegacao[], termo: string): ItemNavegacao[] {
   if (!normalizar(termo)) return itens;
   return itens.filter((i) => filtroBusca(i.label, termo) === 1);
+}
+
+
+export interface ResultadoBusca {
+  id: string;
+  titulo: string;
+  detalhe: string;
+  href: string;
+  termos: string;
+}
+
+export function itensBuscaAuditorias(lista: Auditoria[]): ResultadoBusca[] {
+  return lista.map((a) => {
+    const cliente = a.unidade?.cliente?.nomeFantasia || a.unidade?.cliente?.razaoSocial || '';
+    const data = new Date(a.dataInicio).toLocaleDateString('pt-BR');
+    return {
+      id: a.id,
+      titulo: a.unidade?.nome ?? 'Auditoria',
+      detalhe: [cliente, a.template?.nome, data].filter(Boolean).join(' · '),
+      href: a.status === 'finalizada' ? `/admin/auditoria/${a.id}/relatorio` : `/admin/auditoria/${a.id}`,
+      termos: [a.unidade?.nome, cliente, a.template?.nome, data].filter(Boolean).join(' '),
+    };
+  });
 }

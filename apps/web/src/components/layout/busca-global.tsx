@@ -1,7 +1,9 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus } from 'lucide-react';
+import { ClipboardCheck, Plus } from 'lucide-react';
+import { auditoriaService } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
 import {
   CommandDialog,
@@ -11,11 +13,29 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/shadcn/command';
-import { HREF_NOVA_AUDITORIA, filtroBusca, getGruposNavegacao, getItensConta } from './navegacao';
+import {
+  HREF_NOVA_AUDITORIA,
+  filtroBusca,
+  getGruposNavegacao,
+  getItensConta,
+  itensBuscaAuditorias,
+  type ResultadoBusca,
+} from './navegacao';
 
 export function BuscaGlobal({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const router = useRouter();
   const { usuario } = useAuthStore();
+  const [auditorias, setAuditorias] = useState<ResultadoBusca[] | null>(null);
+
+  // Carrega as auditorias só na primeira abertura da busca
+  useEffect(() => {
+    if (!open || auditorias !== null) return;
+    auditoriaService
+      .listar(1, 100)
+      .then((r) => setAuditorias(itensBuscaAuditorias(r.items || [])))
+      .catch(() => setAuditorias([]));
+  }, [open, auditorias]);
+
   if (!usuario) return null;
 
   const ir = (href: string) => {
@@ -25,7 +45,7 @@ export function BuscaGlobal({ open, onOpenChange }: { open: boolean; onOpenChang
 
   return (
     <CommandDialog open={open} onOpenChange={onOpenChange} filter={filtroBusca}>
-      <CommandInput placeholder="Buscar telas e atalhos…" />
+      <CommandInput placeholder="Buscar telas, unidades ou clientes…" />
       <CommandList>
         <CommandEmpty>Nada encontrado.</CommandEmpty>
         <CommandGroup heading="Atalhos">
@@ -52,6 +72,19 @@ export function BuscaGlobal({ open, onOpenChange }: { open: boolean; onOpenChang
             </CommandItem>
           ))}
         </CommandGroup>
+        {auditorias && auditorias.length > 0 && (
+          <CommandGroup heading="Auditorias">
+            {auditorias.map((r) => (
+              <CommandItem key={r.id} value={`${r.termos} ${r.id}`} onSelect={() => ir(r.href)}>
+                <ClipboardCheck className="h-4 w-4" />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate">{r.titulo}</span>
+                  <span className="block truncate text-xs text-muted-foreground">{r.detalhe}</span>
+                </span>
+              </CommandItem>
+            ))}
+          </CommandGroup>
+        )}
       </CommandList>
     </CommandDialog>
   );

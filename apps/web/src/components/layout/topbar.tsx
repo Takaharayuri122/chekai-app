@@ -20,7 +20,7 @@ export function Topbar({ onAbrirBusca }: { onAbrirBusca: () => void }) {
         className="hidden h-9 w-full max-w-sm items-center gap-2 rounded-md border border-input bg-background px-3 text-sm text-muted-foreground transition-colors hover:border-primary/40 md:flex"
       >
         <Search className="h-4 w-4" />
-        <span className="flex-1 text-left">Buscar telas e atalhos…</span>
+        <span className="flex-1 text-left">Buscar telas, unidades ou clientes…</span>
         <kbd className="rounded border border-border bg-card px-1.5 text-[11px] font-medium">⌘K</kbd>
       </button>
 
