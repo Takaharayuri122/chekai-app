@@ -6,6 +6,7 @@ import Link from 'next/link';
 import {
   AppLayout,
   EmptyState,
+  StatusChip,
   FormModal,
   PageHeader,
   CrudFiltros,
@@ -14,6 +15,7 @@ import {
   type AcaoTabela,
 } from '@/components';
 import { PerfilUsuario } from '@/lib/api';
+import { Button } from '@/components/ui/shadcn/button';
 import { useAuthStore } from '@/lib/store';
 import { toastService } from '@/lib/toast';
 import { checkinService, CheckinRegistro, EditarCheckinRequest } from '@/lib/services/checkin.service';
@@ -124,12 +126,8 @@ const colunas: ColunaTabela<CheckinRegistro>[] = [
     label: 'Status',
     render: (c) => (
       <span className="flex flex-col items-start gap-1">
-        <span className={`badge badge-sm ${c.status === 'aberto' ? 'badge-warning' : 'badge-success'}`}>
-          {c.status === 'aberto' ? 'Aberto' : 'Fechado'}
-        </span>
-        {c.encerradoAutomaticamente ? (
-          <span className="badge badge-sm badge-ghost">Auto</span>
-        ) : null}
+        <StatusChip status={c.status === 'aberto' ? 'em_andamento' : 'concluida'} label={c.status === 'aberto' ? 'Aberto' : 'Fechado'} />
+        {c.encerradoAutomaticamente ? <StatusChip status="neutro" label="Automático" /> : null}
       </span>
     ),
   },
@@ -286,10 +284,12 @@ export default function CheckinsPage() {
         title="Checkins"
         subtitle="Visualize checkins realizados com filtros por auditor, período e cliente"
         action={(
-          <Link href="/admin/checkins/relatorio" className="btn btn-primary btn-sm gap-2">
-            <BarChart3 className="w-4 h-4" />
-            Relatório de horas
-          </Link>
+          <Button asChild>
+            <Link href="/admin/checkins/relatorio">
+              <BarChart3 className="h-4 w-4" />
+              Relatório de horas
+            </Link>
+          </Button>
         )}
       />
 
@@ -330,9 +330,9 @@ export default function CheckinsPage() {
         title="Detalhes do Checkin"
         maxWidth="3xl"
         footer={(
-          <button className="btn btn-ghost" onClick={() => setIsDetalheAberto(false)}>
+          <Button variant="ghost" onClick={() => setIsDetalheAberto(false)}>
             Fechar
-          </button>
+          </Button>
         )}
       >
         {detalheCheckin && (

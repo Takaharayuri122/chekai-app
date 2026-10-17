@@ -1,10 +1,11 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { CheckCircle2, Edit, ListChecks, Plus, Trash2 } from 'lucide-react';
+import { CheckCircle2, Edit, ListChecks, Loader2, Plus, Trash2 } from 'lucide-react';
 import {
   AppLayout,
   ConfirmDialog,
+  StatusChip,
   CrudFiltros,
   CrudTable,
   FormModal,
@@ -14,6 +15,9 @@ import {
 } from '@/components';
 import { auditoriaService, usuarioService, type Auditoria, type Usuario } from '@/lib/api';
 import { useAuthStore, PerfilUsuario } from '@/lib/store';
+import { Button } from '@/components/ui/shadcn/button';
+import { Input } from '@/components/ui/shadcn/input';
+import { Textarea } from '@/components/ui/shadcn/textarea';
 import { toastService } from '@/lib/toast';
 import { dataLocalISO, formatarDataBr } from '@/lib/datas';
 import {
@@ -25,13 +29,6 @@ import {
 
 const FILTROS_INICIAIS = { status: '', responsavelId: '' };
 const FORM_INICIAL = { titulo: '', descricao: '', responsavelId: '', auditoriaId: '', prazo: '' };
-
-const BADGE_STATUS: Record<StatusTarefaPlanoAcao, string> = {
-  pendente: 'badge-warning',
-  em_andamento: 'badge-info',
-  concluida: 'badge-success',
-  cancelada: 'badge-ghost',
-};
 
 function estaAtrasada(t: TarefaPlanoAcao): boolean {
   return (t.status === 'pendente' || t.status === 'em_andamento') && t.prazo.slice(0, 10) < dataLocalISO();
@@ -171,7 +168,7 @@ export default function PlanosAcaoPage() {
     },
     {
       label: 'Status',
-      render: (t) => <span className={`badge badge-sm ${BADGE_STATUS[t.status]}`}>{STATUS_TAREFA_LABELS[t.status]}</span>,
+      render: (t) => <StatusChip status={estaAtrasada(t) ? 'atrasada' : t.status} label={estaAtrasada(t) ? 'Atrasada' : STATUS_TAREFA_LABELS[t.status]} />,
     },
   ];
 
@@ -192,9 +189,9 @@ export default function PlanosAcaoPage() {
         title="Planos de Ação"
         subtitle="Acompanhe tarefas corretivas com responsável e prazo"
         action={
-          <button className="btn btn-primary btn-sm gap-2" onClick={abrirNovo}>
-            <Plus className="w-4 h-4" /> Nova tarefa
-          </button>
+          <Button onClick={abrirNovo}>
+            <Plus className="h-4 w-4" /> Nova tarefa
+          </Button>
         }
       />
       <div className="px-4 py-4 lg:px-8 space-y-4">
@@ -245,39 +242,39 @@ export default function PlanosAcaoPage() {
         isDirty={form.titulo !== (editando?.titulo ?? '')}
         footer={
           <>
-            <button className="btn btn-ghost" onClick={() => setModalAberto(false)}>Cancelar</button>
-            <button className="btn btn-primary" onClick={salvar} disabled={salvando}>
-              {salvando ? <span className="loading loading-spinner loading-sm" /> : 'Salvar'}
-            </button>
+            <Button variant="ghost" onClick={() => setModalAberto(false)}>Cancelar</Button>
+            <Button onClick={salvar} disabled={salvando}>
+              {salvando ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Salvar'}
+            </Button>
           </>
         }
       >
         <div className="space-y-3">
-          <label className="form-control">
-            <span className="label-text mb-1">Título *</span>
-            <input className="input input-bordered" maxLength={200} value={form.titulo} onChange={(e) => setForm({ ...form, titulo: e.target.value })} />
+          <label className="flex flex-col gap-1.5">
+            <span className="text-sm font-medium">Título *</span>
+            <Input maxLength={200} value={form.titulo} onChange={(e) => setForm({ ...form, titulo: e.target.value })} />
           </label>
-          <label className="form-control">
-            <span className="label-text mb-1">Descrição</span>
-            <textarea className="textarea textarea-bordered" rows={3} value={form.descricao} onChange={(e) => setForm({ ...form, descricao: e.target.value })} />
+          <label className="flex flex-col gap-1.5">
+            <span className="text-sm font-medium">Descrição</span>
+            <Textarea rows={3} value={form.descricao} onChange={(e) => setForm({ ...form, descricao: e.target.value })} />
           </label>
-          <label className="form-control">
-            <span className="label-text mb-1">Prazo *</span>
-            <input type="date" className="input input-bordered" value={form.prazo} onChange={(e) => setForm({ ...form, prazo: e.target.value })} />
+          <label className="flex flex-col gap-1.5">
+            <span className="text-sm font-medium">Prazo *</span>
+            <Input type="date" value={form.prazo} onChange={(e) => setForm({ ...form, prazo: e.target.value })} />
           </label>
           {!ehAuditor && (
-            <label className="form-control">
-              <span className="label-text mb-1">Responsável</span>
-              <select className="select select-bordered" value={form.responsavelId} onChange={(e) => setForm({ ...form, responsavelId: e.target.value })}>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-sm font-medium">Responsável</span>
+              <select className="h-10 w-full rounded-md border border-input bg-card px-3 text-sm" value={form.responsavelId} onChange={(e) => setForm({ ...form, responsavelId: e.target.value })}>
                 <option value="">Sem responsável</option>
                 {responsaveis.map((u) => (<option key={u.id} value={u.id}>{u.nome}</option>))}
               </select>
             </label>
           )}
           {!editando && (
-            <label className="form-control">
-              <span className="label-text mb-1">Auditoria de origem</span>
-              <select className="select select-bordered" value={form.auditoriaId} onChange={(e) => setForm({ ...form, auditoriaId: e.target.value })}>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-sm font-medium">Auditoria de origem</span>
+              <select className="h-10 w-full rounded-md border border-input bg-card px-3 text-sm" value={form.auditoriaId} onChange={(e) => setForm({ ...form, auditoriaId: e.target.value })}>
                 <option value="">Nenhuma</option>
                 {auditorias.map((a) => (
                   <option key={a.id} value={a.id}>

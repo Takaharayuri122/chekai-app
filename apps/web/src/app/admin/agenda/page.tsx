@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { CalendarClock, CheckCircle2, Edit, Play, Plus, Trash2, XCircle } from 'lucide-react';
+import { CalendarClock, CheckCircle2, Edit, Loader2, Play, Plus, Trash2, XCircle } from 'lucide-react';
 import {
   AppLayout,
   ConfirmDialog,
+  StatusChip,
   CrudFiltros,
   CrudTable,
   FormModal,
@@ -15,6 +16,9 @@ import {
 } from '@/components';
 import { checklistService, unidadeService, usuarioService, type ChecklistTemplate, type Unidade, type Usuario } from '@/lib/api';
 import { useAuthStore, PerfilUsuario } from '@/lib/store';
+import { Button } from '@/components/ui/shadcn/button';
+import { Input } from '@/components/ui/shadcn/input';
+import { Textarea } from '@/components/ui/shadcn/textarea';
 import { toastService } from '@/lib/toast';
 import { dataLocalISO, formatarDataBr } from '@/lib/datas';
 import {
@@ -28,7 +32,6 @@ import {
 
 const FILTROS_INICIAIS = { status: 'agendada', responsavelId: '' };
 const FORM_INICIAL = { unidadeId: '', templateId: '', responsavelId: '', dataPrevista: '', recorrencia: 'nenhuma' as RecorrenciaAgenda, observacao: '' };
-const BADGE: Record<StatusAgenda, string> = { agendada: 'badge-info', realizada: 'badge-success', cancelada: 'badge-ghost' };
 
 const atrasada = (a: AgendaItem) => a.status === 'agendada' && a.dataPrevista.slice(0, 10) < dataLocalISO();
 
@@ -149,7 +152,7 @@ export default function AgendaPage() {
     { label: 'Checklist', render: (a) => a.template?.nome ?? '-' },
     { label: 'Responsável', render: (a) => a.responsavel?.nome ?? '-', mobileOculta: true },
     { label: 'Repete', render: (a) => RECORRENCIA_LABELS[a.recorrencia], mobileOculta: true },
-    { label: 'Status', render: (a) => <span className={`badge badge-sm ${BADGE[a.status]}`}>{STATUS_AGENDA_LABELS[a.status]}</span> },
+    { label: 'Status', render: (a) => <StatusChip status={atrasada(a) ? 'atrasada' : a.status} label={atrasada(a) ? 'Atrasada' : STATUS_AGENDA_LABELS[a.status]} /> },
   ];
 
   const pendente = (a: AgendaItem) => a.status === 'agendada';
@@ -167,9 +170,9 @@ export default function AgendaPage() {
         title="Agenda"
         subtitle="Programe auditorias por unidade, com recorrência"
         action={!ehAuditor ? (
-          <button className="btn btn-primary btn-sm gap-2" onClick={abrirNovo}>
-            <Plus className="w-4 h-4" /> Agendar
-          </button>
+          <Button onClick={abrirNovo}>
+            <Plus className="h-4 w-4" /> Agendar
+          </Button>
         ) : undefined}
       />
       <div className="px-4 py-4 lg:px-8 space-y-4">
@@ -208,48 +211,48 @@ export default function AgendaPage() {
         isDirty={form.dataPrevista !== (editando?.dataPrevista.slice(0, 10) ?? '')}
         footer={
           <>
-            <button className="btn btn-ghost" onClick={() => setModalAberto(false)}>Cancelar</button>
-            <button className="btn btn-primary" onClick={salvar} disabled={salvando}>
-              {salvando ? <span className="loading loading-spinner loading-sm" /> : 'Salvar'}
-            </button>
+            <Button variant="ghost" onClick={() => setModalAberto(false)}>Cancelar</Button>
+            <Button onClick={salvar} disabled={salvando}>
+              {salvando ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Salvar'}
+            </Button>
           </>
         }
       >
         <div className="space-y-3">
-          <label className="form-control">
-            <span className="label-text mb-1">Unidade *</span>
-            <select className="select select-bordered" disabled={!!editando} value={form.unidadeId} onChange={(e) => setForm({ ...form, unidadeId: e.target.value })}>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-sm font-medium">Unidade *</span>
+            <select className="h-10 w-full rounded-md border border-input bg-card px-3 text-sm" disabled={!!editando} value={form.unidadeId} onChange={(e) => setForm({ ...form, unidadeId: e.target.value })}>
               <option value="">Selecione</option>
               {unidades.map((u) => (<option key={u.id} value={u.id}>{u.nome}</option>))}
             </select>
           </label>
-          <label className="form-control">
-            <span className="label-text mb-1">Checklist *</span>
-            <select className="select select-bordered" disabled={!!editando} value={form.templateId} onChange={(e) => setForm({ ...form, templateId: e.target.value })}>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-sm font-medium">Checklist *</span>
+            <select className="h-10 w-full rounded-md border border-input bg-card px-3 text-sm" disabled={!!editando} value={form.templateId} onChange={(e) => setForm({ ...form, templateId: e.target.value })}>
               <option value="">Selecione</option>
               {templates.map((t) => (<option key={t.id} value={t.id}>{t.nome}</option>))}
             </select>
           </label>
-          <label className="form-control">
-            <span className="label-text mb-1">Data *</span>
-            <input type="date" className="input input-bordered" value={form.dataPrevista} onChange={(e) => setForm({ ...form, dataPrevista: e.target.value })} />
+          <label className="flex flex-col gap-1.5">
+            <span className="text-sm font-medium">Data *</span>
+            <Input type="date" value={form.dataPrevista} onChange={(e) => setForm({ ...form, dataPrevista: e.target.value })} />
           </label>
-          <label className="form-control">
-            <span className="label-text mb-1">Repetição</span>
-            <select className="select select-bordered" value={form.recorrencia} onChange={(e) => setForm({ ...form, recorrencia: e.target.value as RecorrenciaAgenda })}>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-sm font-medium">Repetição</span>
+            <select className="h-10 w-full rounded-md border border-input bg-card px-3 text-sm" value={form.recorrencia} onChange={(e) => setForm({ ...form, recorrencia: e.target.value as RecorrenciaAgenda })}>
               {Object.entries(RECORRENCIA_LABELS).map(([v, l]) => (<option key={v} value={v}>{l}</option>))}
             </select>
           </label>
-          <label className="form-control">
-            <span className="label-text mb-1">Responsável</span>
-            <select className="select select-bordered" value={form.responsavelId} onChange={(e) => setForm({ ...form, responsavelId: e.target.value })}>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-sm font-medium">Responsável</span>
+            <select className="h-10 w-full rounded-md border border-input bg-card px-3 text-sm" value={form.responsavelId} onChange={(e) => setForm({ ...form, responsavelId: e.target.value })}>
               <option value="">Sem responsável</option>
               {responsaveis.map((u) => (<option key={u.id} value={u.id}>{u.nome}</option>))}
             </select>
           </label>
-          <label className="form-control">
-            <span className="label-text mb-1">Observação</span>
-            <textarea className="textarea textarea-bordered" rows={2} value={form.observacao} onChange={(e) => setForm({ ...form, observacao: e.target.value })} />
+          <label className="flex flex-col gap-1.5">
+            <span className="text-sm font-medium">Observação</span>
+            <Textarea rows={2} value={form.observacao} onChange={(e) => setForm({ ...form, observacao: e.target.value })} />
           </label>
         </div>
       </FormModal>
