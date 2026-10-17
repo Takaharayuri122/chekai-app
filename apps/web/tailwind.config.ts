@@ -50,6 +50,9 @@ const config: Config = {
           border: 'hsl(var(--sidebar-border) / <alpha-value>)',
         },
       },
+      opacity: {
+        12: '0.12',
+      },
       borderRadius: {
         lg: 'var(--radius)',
         md: 'calc(var(--radius) - 2px)',

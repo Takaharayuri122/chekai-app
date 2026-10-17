@@ -1,5 +1,5 @@
-import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
+import { ArrowLeft } from 'lucide-react';
 
 interface PageHeaderProps {
   title: string;
@@ -10,22 +10,23 @@ interface PageHeaderProps {
 
 export function PageHeader({ title, subtitle, backHref, action }: PageHeaderProps) {
   return (
-    <div className="bg-base-100 border-b border-base-300 px-4 py-4 lg:px-8 sticky top-[64px] md:top-16 z-30">
-      <div className="flex items-center gap-4">
+    <div className="sticky top-14 z-20 border-b border-border bg-background/95 px-4 py-4 backdrop-blur lg:px-8">
+      <div className="flex items-center gap-3">
         {backHref && (
-          <Link href={backHref} className="btn btn-ghost btn-sm btn-circle">
-            <ArrowLeft className="w-5 h-5" />
+          <Link
+            href={backHref}
+            aria-label="Voltar"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground md:h-9 md:w-9"
+          >
+            <ArrowLeft className="h-5 w-5" />
           </Link>
         )}
-        <div className="flex-1 min-w-0">
-          <h1 className="text-xl font-bold text-base-content truncate font-display">{title}</h1>
-          {subtitle && (
-            <p className="text-sm text-base-content/60 truncate">{subtitle}</p>
-          )}
+        <div className="min-w-0 flex-1">
+          <h1 className="truncate font-display text-xl font-semibold tracking-tight md:text-2xl">{title}</h1>
+          {subtitle && <p className="truncate text-sm text-muted-foreground">{subtitle}</p>}
         </div>
-        {action && <div>{action}</div>}
+        {action && <div className="flex shrink-0 items-center gap-2">{action}</div>}
       </div>
     </div>
   );
 }
-
