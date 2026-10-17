@@ -30,7 +30,7 @@ export function Tooltip({ content, children, position = 'top', className = '' }:
         <TooltipTrigger asChild>
           <span className={`inline-flex ${className}`}>{children}</span>
         </TooltipTrigger>
-        <TooltipContent side={position}>{content}</TooltipContent>
+        <TooltipContent side={position} className="z-[80] max-w-xs text-center">{content}</TooltipContent>
       </TooltipRaiz>
     </TooltipProvider>
   );

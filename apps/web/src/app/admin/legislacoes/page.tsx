@@ -12,9 +12,6 @@ import {
   MoreVertical,
   Edit,
   Trash2,
-  FileText,
-  Building2,
-  ClipboardCheck,
   ExternalLink,
   Layers,
 } from 'lucide-react';
@@ -253,39 +250,6 @@ export default function LegislacoesPage() {
         )}
       </div>
 
-      {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-card backdrop-blur-xl border-t border-primary/20 px-6 py-3 z-50">
-        <div className="flex items-center justify-around max-w-md mx-auto">
-          <Link
-            href="/admin/dashboard"
-            className="flex flex-col items-center gap-1 text-primary/60 hover:text-primary transition-colors"
-          >
-            <ClipboardCheck className="w-6 h-6" />
-            <span className="text-xs">Início</span>
-          </Link>
-          <Link
-            href="/admin/clientes"
-            className="flex flex-col items-center gap-1 text-primary/60 hover:text-primary transition-colors"
-          >
-            <Building2 className="w-6 h-6" />
-            <span className="text-xs">Clientes</span>
-          </Link>
-          <Link
-            href="/admin/legislacoes"
-            className="flex flex-col items-center gap-1 text-primary"
-          >
-            <Scale className="w-6 h-6" />
-            <span className="text-xs font-medium">Legislações</span>
-          </Link>
-          <Link
-            href="/admin/templates"
-            className="flex flex-col items-center gap-1 text-primary/60 hover:text-primary transition-colors"
-          >
-            <FileText className="w-6 h-6" />
-            <span className="text-xs">Templates</span>
-          </Link>
-        </div>
-      </nav>
     </AppLayout>
   );
 }

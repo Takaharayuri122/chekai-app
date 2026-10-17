@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '@/lib/store';
 import { AppLayout, PageHeader } from '@/components';
+import { Button } from '@/components/ui/shadcn/button';
 import {
   legislacaoService,
   TipoLegislacao,
@@ -70,7 +71,7 @@ export default function NovaLegislacaoPage() {
     <AppLayout>
       <PageHeader title="Nova legislação" subtitle="Adicionar à base de consulta da IA" backHref="/admin/legislacoes" />
 
-      <form onSubmit={handleSubmit} className="px-4 py-4 lg:px-8 space-y-4 pb-32">
+      <form onSubmit={handleSubmit} className="px-4 py-4 lg:px-8 space-y-4 pb-6">
         {/* Tipo e Número */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -214,25 +215,15 @@ export default function NovaLegislacaoPage() {
         </motion.div>
       </form>
 
-      {/* Footer Actions */}
-      <div className="fixed bottom-0 left-0 right-0 bg-card backdrop-blur-xl border-t border-primary/20 px-6 py-4 z-50">
-        <div className="flex gap-3">
-          <button
-            type="button"
-            onClick={() => router.back()}
-            className="flex-1 px-4 py-3 bg-muted text-primary rounded-xl font-medium hover:bg-muted transition-colors"
-          >
-            Cancelar
-          </button>
-          <button
-            onClick={handleSubmit}
-            disabled={isLoading}
-            className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-primary to-primary/80 text-white rounded-xl font-medium shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all disabled:opacity-50"
-          >
-            <Save className="w-5 h-5" />
-            {isLoading ? 'Salvando...' : 'Criar Legislação'}
-          </button>
-        </div>
+      {/* Ações fixas no fim da área de conteúdo, acima da barra inferior no celular */}
+      <div className="sticky bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-20 flex gap-3 border-t border-border bg-card/95 px-4 py-3 backdrop-blur md:bottom-0 lg:px-8">
+        <Button type="button" variant="ghost" className="h-11 flex-1" onClick={() => router.back()}>
+          Cancelar
+        </Button>
+        <Button className="h-11 flex-1" onClick={handleSubmit} disabled={isLoading}>
+          <Save className="h-4 w-4" />
+          {isLoading ? 'Salvando…' : 'Criar legislação'}
+        </Button>
       </div>
     </AppLayout>
   );
