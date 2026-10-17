@@ -289,8 +289,8 @@ function HomePageContent() {
 
   if (_hasHydrated && isAuthenticated) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-base-200">
-        <span className="loading loading-spinner loading-lg text-primary"></span>
+      <div className="min-h-screen flex items-center justify-center bg-muted">
+        <span className="inline-block shrink-0 animate-spin rounded-full border-2 border-current border-r-transparent h-8 w-8 text-primary"></span>
       </div>
     );
   }
@@ -302,10 +302,10 @@ function HomePageContent() {
         open={modalListaEsperaAberto}
         onClose={() => setModalListaEsperaAberto(false)}
       />
-      <main className="min-h-screen bg-gradient-to-b from-base-100 to-base-200 overflow-hidden">
+      <main className="min-h-screen bg-gradient-to-b from-card to-muted overflow-hidden">
         {/* Hero Section */}
       <section className="relative px-4 pt-8 pb-16 lg:px-8 lg:pt-12 lg:pb-32 min-h-[90vh] flex items-center overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-secondary/5" />
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-info/5" />
         <FloatingCloud />
         <div className="max-w-7xl mx-auto relative z-10 w-full">
           <div className="text-center">
@@ -323,7 +323,7 @@ function HomePageContent() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
               style={{ opacity: heroOpacity, y: heroY }}
-              className="text-4xl md:text-5xl lg:text-7xl font-bold text-base-content mb-6 font-display leading-tight"
+              className="text-4xl md:text-5xl lg:text-7xl font-bold text-foreground mb-6 font-display leading-tight"
             >
               <span className="text-primary">ChekAI</span> — Auditorias, relatórios e checklists em{' '}
               <br />
@@ -334,7 +334,7 @@ function HomePageContent() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="text-lg md:text-xl text-base-content/70 max-w-3xl mx-auto mb-4"
+              className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto mb-4"
             >
               Organize visitas, registre achados com fotos, gere relatórios técnicos e PDFs —
               no computador ou no celular, com ou sem internet.
@@ -357,14 +357,14 @@ function HomePageContent() {
               <button
                 type="button"
                 onClick={() => setModalListaEsperaAberto(true)}
-                className="btn btn-primary btn-lg gap-2 text-lg px-8 hover:scale-105 transition-transform"
+                className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-11 px-6 text-base bg-primary text-primary-foreground hover:bg-primary/90 text-lg px-8 hover:scale-105 transition-transform"
               >
                 Conhecer agora
                 <ArrowRight className="w-5 h-5" />
               </button>
               <Link
                 href="/login"
-                className="btn btn-outline btn-lg text-lg px-8 hover:scale-105 transition-transform"
+                className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-11 px-6 text-base border border-input bg-card hover:bg-muted text-lg px-8 hover:scale-105 transition-transform"
               >
                 Entrar
               </Link>
@@ -383,12 +383,12 @@ function HomePageContent() {
                   initial={{ opacity: 0, scale: 0.8 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: 0.5 + index * 0.1 }}
-                  className="card bg-base-100/80 backdrop-blur-sm border border-base-300 shadow-sm"
+                  className="relative flex flex-col rounded-lg border border-border bg-card bg-card/80 backdrop-blur-sm shadow-sm"
                 >
-                  <div className="card-body p-4 text-center">
+                  <div className="flex flex-1 flex-col gap-2 p-4 text-center">
                     <stat.icon className="w-8 h-8 text-primary mx-auto mb-2" />
                     <div className="text-2xl font-bold text-primary">{stat.value}</div>
-                    <div className="text-xs text-base-content/60">{stat.label}</div>
+                    <div className="text-xs text-muted-foreground">{stat.label}</div>
                   </div>
                 </motion.div>
               ))}
@@ -404,7 +404,7 @@ function HomePageContent() {
         embedUrl={process.env.NEXT_PUBLIC_LANDING_VIDEO_URL_DEMO ?? ''}
         placeholderHint="Vídeo em breve: demonstração geral do sistema."
         instrucaoEnv="Defina NEXT_PUBLIC_LANDING_VIDEO_URL_DEMO com a URL de incorporação (embed) do YouTube, Vimeo ou similar."
-        className="bg-base-100"
+        className="bg-card"
       />
       <LandingVideoSection
         sectionId="demo-checklist-ia"
@@ -413,7 +413,7 @@ function HomePageContent() {
         embedUrl={process.env.NEXT_PUBLIC_LANDING_VIDEO_URL_CHECKLIST_IA ?? ''}
         placeholderHint="Vídeo em breve: criação de checklist com IA."
         instrucaoEnv="Defina NEXT_PUBLIC_LANDING_VIDEO_URL_CHECKLIST_IA com a URL de incorporação (embed)."
-        className="bg-base-200"
+        className="bg-muted"
       />
       <LandingVideoSection
         sectionId="demo-app-campo"
@@ -422,10 +422,10 @@ function HomePageContent() {
         embedUrl={process.env.NEXT_PUBLIC_LANDING_VIDEO_URL_APP_CAMPO ?? ''}
         placeholderHint="Vídeo em breve: auditoria no app e sincronização."
         instrucaoEnv="Defina NEXT_PUBLIC_LANDING_VIDEO_URL_APP_CAMPO com a URL de incorporação (embed)."
-        className="bg-base-100"
+        className="bg-card"
       />
 
-      <section id="ecossistema" className="px-4 py-16 lg:px-8 bg-base-200 border-y border-base-300">
+      <section id="ecossistema" className="px-4 py-16 lg:px-8 bg-muted border-y border-border">
         <div className="max-w-7xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -433,10 +433,10 @@ function HomePageContent() {
             viewport={{ once: true }}
             className="text-center mb-12"
           >
-            <h2 className="text-3xl md:text-4xl font-bold text-base-content mb-3 font-display">
+            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-3 font-display">
               Como o sistema funciona
             </h2>
-            <p className="text-lg text-base-content/70 max-w-3xl mx-auto">
+            <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
               Painel web para gestão, aplicativo mobile para campo e uma base de dados compartilhada
               com controle de acesso por perfil.
             </p>
@@ -449,14 +449,14 @@ function HomePageContent() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: index * 0.08 }}
-                className="card bg-base-100 border border-base-300 shadow-sm"
+                className="relative flex flex-col rounded-lg border border-border bg-card shadow-sm"
               >
-                <div className="card-body">
+                <div className="flex flex-1 flex-col gap-2 p-6">
                   <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mb-3">
                     <pilar.icon className="w-6 h-6 text-primary" />
                   </div>
-                  <h3 className="card-title text-lg">{pilar.titulo}</h3>
-                  <p className="text-sm text-base-content/65 leading-relaxed">{pilar.texto}</p>
+                  <h3 className="flex items-center gap-2 font-display text-lg font-semibold">{pilar.titulo}</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{pilar.texto}</p>
                 </div>
               </motion.div>
             ))}
@@ -465,14 +465,14 @@ function HomePageContent() {
       </section>
 
       {/* Features Section */}
-      <section id="features" className="px-4 py-20 lg:px-8 bg-base-200">
+      <section id="features" className="px-4 py-20 lg:px-8 bg-muted">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <motion.h2
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              className="text-3xl md:text-4xl lg:text-5xl font-bold text-base-content mb-4 font-display"
+              className="text-3xl md:text-4xl lg:text-5xl font-bold text-foreground mb-4 font-display"
             >
               Funcionalidades
             </motion.h2>
@@ -481,7 +481,7 @@ function HomePageContent() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: 0.1 }}
-              className="text-lg text-base-content/70 max-w-3xl mx-auto"
+              className="text-lg text-muted-foreground max-w-3xl mx-auto"
             >
               Checklists, auditorias, relatórios técnicos, análise de fotos com IA,
               geração de PDF, gestão de equipe e funcionamento offline.
@@ -496,14 +496,14 @@ function HomePageContent() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: index * 0.1 }}
-                className="card bg-base-100 border border-base-300 shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1"
+                className="relative flex flex-col rounded-lg border border-border bg-card shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1"
               >
-                <div className="card-body">
+                <div className="flex flex-1 flex-col gap-2 p-6">
                   <div className="w-14 h-14 bg-primary/10 rounded-xl flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
                     <feature.icon className="w-7 h-7 text-primary" />
                   </div>
-                  <h3 className="card-title text-lg mb-2">{feature.title}</h3>
-                  <p className="text-sm text-base-content/60 leading-relaxed">{feature.description}</p>
+                  <h3 className="flex items-center gap-2 font-display text-lg font-semibold mb-2">{feature.title}</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{feature.description}</p>
                 </div>
               </motion.div>
             ))}
@@ -512,7 +512,7 @@ function HomePageContent() {
       </section>
 
       {/* Benefits Section */}
-      <section className="px-4 py-20 lg:px-8 bg-gradient-to-br from-primary to-secondary">
+      <section className="px-4 py-20 lg:px-8 bg-gradient-to-br from-primary to-info">
         <div className="max-w-6xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -547,7 +547,7 @@ function HomePageContent() {
       </section>
 
       {/* Testimonials Section */}
-      <section className="px-4 py-20 lg:px-8 bg-base-100">
+      <section className="px-4 py-20 lg:px-8 bg-card">
         <div className="max-w-7xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -555,10 +555,10 @@ function HomePageContent() {
             viewport={{ once: true }}
             className="text-center mb-16"
           >
-            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-base-content mb-4 font-display">
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-foreground mb-4 font-display">
               O que nossos clientes dizem
             </h2>
-            <p className="text-lg text-base-content/70 max-w-2xl mx-auto">
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
               Feedback de profissionais que usam o ChekAI na rotina
             </p>
           </motion.div>
@@ -571,18 +571,18 @@ function HomePageContent() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: index * 0.1 }}
-                className="card bg-base-100 border border-base-300 shadow-sm hover:shadow-lg transition-shadow"
+                className="relative flex flex-col rounded-lg border border-border bg-card shadow-sm hover:shadow-lg transition-shadow"
               >
-                <div className="card-body">
+                <div className="flex flex-1 flex-col gap-2 p-6">
                   <div className="flex gap-1 mb-4">
                     {[...Array(testimonial.rating)].map((_, i) => (
                       <Star key={i} className="w-5 h-5 fill-warning text-warning" />
                     ))}
                   </div>
-                  <p className="text-base-content/80 mb-4 italic">"{testimonial.content}"</p>
+                  <p className="text-foreground/80 mb-4 italic">"{testimonial.content}"</p>
                   <div>
-                    <div className="font-semibold text-base-content">{testimonial.name}</div>
-                    <div className="text-sm text-base-content/60">{testimonial.role}</div>
+                    <div className="font-semibold text-foreground">{testimonial.name}</div>
+                    <div className="text-sm text-muted-foreground">{testimonial.role}</div>
                   </div>
                 </div>
               </motion.div>
@@ -592,7 +592,7 @@ function HomePageContent() {
       </section>
 
       {/* Image Showcase Section */}
-      <section className="px-4 py-20 lg:px-8 bg-base-200">
+      <section className="px-4 py-20 lg:px-8 bg-muted">
         <div className="max-w-7xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -600,10 +600,10 @@ function HomePageContent() {
             viewport={{ once: true }}
             className="text-center mb-16"
           >
-            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-base-content mb-4 font-display">
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-foreground mb-4 font-display">
               Interface web e mobile
             </h2>
-            <p className="text-lg text-base-content/70 max-w-2xl mx-auto">
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
               Painel administrativo no computador e telas otimizadas para uso em campo no celular
             </p>
           </motion.div>
@@ -613,13 +613,13 @@ function HomePageContent() {
               initial={{ opacity: 0, x: -20 }}
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
-              className="rounded-2xl overflow-hidden shadow-xl border border-base-300 bg-base-100"
+              className="rounded-2xl overflow-hidden shadow-xl border border-border bg-card"
             >
-              <div className="aspect-video bg-gradient-to-br from-primary/10 to-secondary/10 flex items-center justify-center">
+              <div className="aspect-video bg-gradient-to-br from-primary/10 to-info/10 flex items-center justify-center">
                 <div className="text-center">
                   <FileCheck className="w-16 h-16 text-primary/40 mx-auto mb-4" />
-                  <p className="text-base-content/60">Checklists, normas e cadastros no painel web</p>
-                  <p className="text-sm text-base-content/40 mt-2">Imagem sugerida: tela do painel 1200×800px</p>
+                  <p className="text-muted-foreground">Checklists, normas e cadastros no painel web</p>
+                  <p className="text-sm text-muted-foreground/70 mt-2">Imagem sugerida: tela do painel 1200×800px</p>
                 </div>
               </div>
             </motion.div>
@@ -628,13 +628,13 @@ function HomePageContent() {
               initial={{ opacity: 0, x: 20 }}
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
-              className="rounded-2xl overflow-hidden shadow-xl border border-base-300 bg-base-100"
+              className="rounded-2xl overflow-hidden shadow-xl border border-border bg-card"
             >
-              <div className="aspect-video bg-gradient-to-br from-secondary/10 to-primary/10 flex items-center justify-center">
+              <div className="aspect-video bg-gradient-to-br from-info/10 to-primary/10 flex items-center justify-center">
                 <div className="text-center">
-                  <BarChart3 className="w-16 h-16 text-secondary/40 mx-auto mb-4" />
-                  <p className="text-base-content/60">Relatórios, PDFs e indicadores para o cliente</p>
-                  <p className="text-sm text-base-content/40 mt-2">Imagem sugerida: relatório ou dashboard 1200×800px</p>
+                  <BarChart3 className="w-16 h-16 text-info/40 mx-auto mb-4" />
+                  <p className="text-muted-foreground">Relatórios, PDFs e indicadores para o cliente</p>
+                  <p className="text-sm text-muted-foreground/70 mt-2">Imagem sugerida: relatório ou dashboard 1200×800px</p>
                 </div>
               </div>
             </motion.div>
@@ -643,7 +643,7 @@ function HomePageContent() {
       </section>
 
       {/* FAQ Section */}
-      <section id="faq" className="px-4 py-20 lg:px-8 bg-base-100">
+      <section id="faq" className="px-4 py-20 lg:px-8 bg-card">
         <div className="max-w-4xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -651,10 +651,10 @@ function HomePageContent() {
             viewport={{ once: true }}
             className="text-center mb-16"
           >
-            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-base-content mb-4 font-display">
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-foreground mb-4 font-display">
               Perguntas Frequentes
             </h2>
-            <p className="text-lg text-base-content/70">
+            <p className="text-lg text-muted-foreground">
               Tire suas dúvidas sobre o ChekAI
             </p>
           </motion.div>
@@ -667,19 +667,19 @@ function HomePageContent() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: index * 0.1 }}
-                className="card bg-base-100 border border-base-300 shadow-sm"
+                className="relative flex flex-col rounded-lg border border-border bg-card shadow-sm"
               >
                 <div
-                  className="card-body p-6 cursor-pointer"
+                  className="flex flex-1 flex-col gap-2 p-6 cursor-pointer"
                   onClick={() => setOpenFaq(openFaq === index ? null : index)}
                 >
                   <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-semibold text-base-content flex items-center gap-2">
+                    <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
                       <HelpCircle className="w-5 h-5 text-primary" />
                       {faq.question}
                     </h3>
                     <ChevronDown
-                      className={`w-5 h-5 text-base-content/60 transition-transform ${
+                      className={`w-5 h-5 text-muted-foreground transition-transform ${
                         openFaq === index ? 'rotate-180' : ''
                       }`}
                     />
@@ -689,7 +689,7 @@ function HomePageContent() {
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
                       exit={{ opacity: 0, height: 0 }}
-                      className="text-base-content/70 mt-4 pt-4 border-t border-base-300"
+                      className="text-muted-foreground mt-4 pt-4 border-t border-border"
                     >
                       {faq.answer}
                     </motion.p>
@@ -702,7 +702,7 @@ function HomePageContent() {
       </section>
 
       {/* CTA Section */}
-      <section className="px-4 py-20 lg:px-8 bg-gradient-to-br from-primary to-secondary">
+      <section className="px-4 py-20 lg:px-8 bg-gradient-to-br from-primary to-info">
         <div className="max-w-4xl mx-auto text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -719,14 +719,14 @@ function HomePageContent() {
               <button
                 type="button"
                 onClick={() => setModalListaEsperaAberto(true)}
-                className="btn btn-lg bg-white text-primary hover:bg-base-200 text-lg px-8 gap-2 hover:scale-105 transition-transform"
+                className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-11 px-6 text-base bg-muted text-foreground hover:bg-muted/80 bg-white text-primary hover:bg-muted text-lg px-8 hover:scale-105 transition-transform"
               >
                 Conhecer agora
                 <ArrowRight className="w-5 h-5" />
               </button>
               <Link
                 href="/login"
-                className="btn btn-lg btn-outline border-white text-white hover:bg-white/10 text-lg px-8 hover:scale-105 transition-transform"
+                className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-11 px-6 text-base border border-input bg-card hover:bg-muted border-white text-white hover:bg-white/10 text-lg px-8 hover:scale-105 transition-transform"
               >
                 Entrar
               </Link>
@@ -736,7 +736,7 @@ function HomePageContent() {
       </section>
 
       {/* Footer */}
-      <footer className="px-4 py-12 lg:px-8 bg-base-100 border-t border-base-300">
+      <footer className="px-4 py-12 lg:px-8 bg-card border-t border-border">
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 mb-8">
             <div className="lg:col-span-1">
@@ -749,7 +749,7 @@ function HomePageContent() {
                   className="h-auto w-full max-w-[200px]"
                 />
               </div>
-              <p className="text-sm text-base-content/60 text-center md:text-left">
+              <p className="text-sm text-muted-foreground text-center md:text-left">
                 Sistema para consultoria em segurança de alimentos com inteligência artificial, legislação integrada
                 e aplicativo mobile.
               </p>
@@ -760,7 +760,7 @@ function HomePageContent() {
 
             <div>
               <h4 className="font-semibold mb-4">Produto</h4>
-              <ul className="space-y-2 text-sm text-base-content/60">
+              <ul className="space-y-2 text-sm text-muted-foreground">
                 <li>
                   <Link href="#ecossistema" className="hover:text-primary transition-colors">
                     Visão geral
@@ -796,7 +796,7 @@ function HomePageContent() {
 
             <div>
               <h4 className="font-semibold mb-4">Recursos</h4>
-              <ul className="space-y-2 text-sm text-base-content/60">
+              <ul className="space-y-2 text-sm text-muted-foreground">
                 <li>
                   <Link href="/login" className="hover:text-primary transition-colors">
                     Entrar
@@ -816,7 +816,7 @@ function HomePageContent() {
 
             <div>
               <h4 className="font-semibold mb-4">Empresa</h4>
-              <ul className="space-y-2 text-sm text-base-content/60">
+              <ul className="space-y-2 text-sm text-muted-foreground">
                 <li>Meta Consultoria</li>
                 <li>
                   <a
@@ -835,7 +835,7 @@ function HomePageContent() {
 
             <div>
               <h4 className="font-semibold mb-4">Jurídico</h4>
-              <ul className="space-y-2 text-sm text-base-content/60">
+              <ul className="space-y-2 text-sm text-muted-foreground">
                 <li>
                   <Link href="/politica-privacidade" className="hover:text-primary transition-colors">
                     Política de Privacidade
@@ -860,7 +860,7 @@ function HomePageContent() {
             </div>
           </div>
 
-          <div className="border-t border-base-300 pt-8 text-center text-sm text-base-content/60">
+          <div className="border-t border-border pt-8 text-center text-sm text-muted-foreground">
             <p>Desenvolvido com ❤️ pela equipe Meta Consultoria</p>
           </div>
         </div>
@@ -875,8 +875,8 @@ export default function HomePage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen flex items-center justify-center bg-base-200">
-          <span className="loading loading-spinner loading-lg text-primary" />
+        <div className="min-h-screen flex items-center justify-center bg-muted">
+          <span className="inline-block shrink-0 animate-spin rounded-full border-2 border-current border-r-transparent h-8 w-8 text-primary" />
         </div>
       }
     >
