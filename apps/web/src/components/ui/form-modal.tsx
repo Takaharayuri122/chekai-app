@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import { ConfirmDialog } from './confirm-dialog';
@@ -50,6 +51,11 @@ export function FormModal({
 }: FormModalProps) {
   const [isConfirmacaoAberta, setIsConfirmacaoAberta] = useState(false);
   const [hasInteracted, setHasInteracted] = useState(false);
+  const [montado, setMontado] = useState(false);
+
+  useEffect(() => {
+    setMontado(true);
+  }, []);
 
   const isEfetivamenteSujo = isDirty && hasInteracted;
 
@@ -92,59 +98,60 @@ export function FormModal({
 
   return (
     <>
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            key="form-modal"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={TRANSICAO_MODAL}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="form-modal-titulo"
-          >
-            <div
-              className="absolute inset-0 bg-black/60"
-              onClick={handleBackdropClick}
-            />
-
-            <div
-              onClick={(e) => e.stopPropagation()}
-              className={`relative flex flex-col bg-base-100 rounded-xl shadow-2xl border border-base-300 w-full ${MAX_WIDTH_MAP[maxWidth]} max-h-[90vh] overflow-hidden`}
-            >
-              <div className="flex items-center justify-between gap-3 px-6 py-4 border-b border-base-300 shrink-0">
-                <h3 id="form-modal-titulo" className="text-lg font-bold text-base-content truncate">
-                  {title}
-                </h3>
-                <button
-                  type="button"
-                  onClick={solicitarFechamento}
-                  className="flex items-center justify-center w-10 h-10 rounded-full bg-base-200 hover:bg-error/10 hover:text-error text-base-content/70 transition-colors shrink-0"
-                  aria-label="Fechar"
-                >
-                  <X className="w-5 h-5" strokeWidth={2.5} />
-                </button>
-              </div>
-
-              <div
-                className="flex-1 overflow-y-auto overflow-x-hidden px-6 py-5"
-                onChangeCapture={() => setHasInteracted(true)}
-                onInputCapture={() => setHasInteracted(true)}
+      {montado &&
+        createPortal(
+          <AnimatePresence>
+            {open && (
+              <motion.div
+                key="form-modal"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={TRANSICAO_MODAL}
+                className="fixed inset-0 z-[60] flex items-end justify-center sm:items-center sm:p-4"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="form-modal-titulo"
               >
-                {children}
-              </div>
+                <div className="absolute inset-0 bg-foreground/50" onClick={handleBackdropClick} />
 
-              {footer && (
-                <div className="flex gap-3 px-6 py-4 border-t border-base-300 justify-end shrink-0">
-                  {footer}
+                <div
+                  onClick={(e) => e.stopPropagation()}
+                  className={`relative flex w-full ${MAX_WIDTH_MAP[maxWidth]} max-h-[92vh] flex-col overflow-hidden rounded-t-2xl border border-border bg-card shadow-lg sm:max-h-[90vh] sm:rounded-lg`}
+                >
+                  <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border px-4 py-3 sm:px-6 sm:py-4">
+                    <h3 id="form-modal-titulo" className="truncate font-display text-lg font-semibold">
+                      {title}
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={solicitarFechamento}
+                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:h-9 sm:w-9"
+                      aria-label="Fechar"
+                    >
+                      <X className="h-5 w-5" />
+                    </button>
+                  </div>
+
+                  <div
+                    className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 sm:px-6 sm:py-5"
+                    onChangeCapture={() => setHasInteracted(true)}
+                    onInputCapture={() => setHasInteracted(true)}
+                  >
+                    {children}
+                  </div>
+
+                  {footer && (
+                    <div className="flex shrink-0 justify-end gap-3 border-t border-border px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6 sm:py-4">
+                      {footer}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>,
+          document.body,
         )}
-      </AnimatePresence>
 
       <ConfirmDialog
         open={isConfirmacaoAberta}

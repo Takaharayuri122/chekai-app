@@ -2,7 +2,8 @@
 
 import { ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Loader2, MoreVertical, type LucideIcon } from 'lucide-react';
+import { MoreVertical, type LucideIcon } from 'lucide-react';
+import { Skeleton } from '@/components/ui/shadcn/skeleton';
 import { EmptyState } from './empty-state';
 
 export interface ColunaTabela<T> {
@@ -90,10 +91,8 @@ export function CrudTable<T>({
 
   if (loading) {
     return (
-      <div className="card bg-base-100 shadow-sm border border-base-300">
-        <div className="flex justify-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
-        </div>
+      <div className="space-y-2 rounded-lg border border-border bg-card p-4 shadow-sm">
+        {Array.from({ length: 5 }).map((_, i) => (<Skeleton key={i} className="h-10 w-full" />))}
       </div>
     );
   }
@@ -113,7 +112,7 @@ export function CrudTable<T>({
     return (
       <>
         <button
-          className="btn btn-ghost btn-xs btn-circle"
+          className="flex h-10 w-10 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
           onClick={(e) => abrirMenu(id, e)}
           aria-label="Ações"
         >
@@ -123,8 +122,7 @@ export function CrudTable<T>({
           <div
             ref={menuRef}
             onMouseDown={(e) => e.stopPropagation()}
-            className="fixed z-[100] flex flex-col bg-base-100 border border-base-300
-              rounded-lg shadow-md min-w-[140px] py-1"
+            className="fixed z-[100] flex min-w-[160px] flex-col rounded-md border border-border bg-popover py-1 shadow-lg"
             style={{ top: menuPos.top, right: menuPos.right }}
           >
             {acoesVisiveis.map((acao, aIdx) => {
@@ -132,9 +130,7 @@ export function CrudTable<T>({
               return (
                 <button
                   key={aIdx}
-                  className={`flex items-center gap-2 px-3 py-2 text-sm
-                    hover:bg-base-200/50 transition-colors w-full text-left
-                    ${acao.className || 'text-base-content'}`}
+                  className={`flex min-h-[40px] w-full items-center gap-2 px-3 text-left text-sm transition-colors hover:bg-muted ${acao.className || 'text-foreground'}`}
                   onClick={() => { acao.onClick(item); fecharMenu(); }}
                 >
                   <Icon className="w-4 h-4 shrink-0" />
@@ -150,37 +146,37 @@ export function CrudTable<T>({
   };
 
   return (
-    <div className={`card bg-base-100 shadow-sm border border-base-300 overflow-hidden ${className}`}>
+    <div className={`overflow-hidden rounded-lg border border-border bg-card shadow-sm ${className}`}>
       {/* Desktop: tabela */}
       <div className="hidden lg:block overflow-x-auto">
-        <table className="table">
+        <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-base-200">
+            <tr className="border-b border-border bg-muted/50">
               {colunas.map((col, idx) => (
                 <th
                   key={idx}
-                  className={`text-xs font-medium uppercase tracking-wide text-base-content/50 ${col.className || ''}`}
+                  className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground ${col.className || ''}`}
                 >
                   {col.label}
                 </th>
               ))}
               {hasAcoes && (
-                <th className="text-xs font-medium uppercase tracking-wide text-base-content/50 text-right w-16" />
+                <th className="w-16 px-2 py-3" />
               )}
             </tr>
           </thead>
-          <tbody className="divide-y divide-base-200">
+          <tbody className="divide-y divide-border">
             {dados.map((item) => {
               const id = keyExtractor(item);
               return (
-                <tr key={id} className="hover:bg-base-200/30 transition-colors">
+                <tr key={id} className="h-12 transition-colors hover:bg-muted/40">
                   {colunas.map((col, idx) => (
-                    <td key={idx} className={col.className}>
+                    <td key={idx} className={`px-4 ${col.className ?? ''}`}>
                       {col.render(item)}
                     </td>
                   ))}
                   {hasAcoes && (
-                    <td className="text-right">
+                    <td className="px-2 text-right">
                       {renderMenuDropdown(item, id)}
                     </td>
                   )}
@@ -192,7 +188,7 @@ export function CrudTable<T>({
       </div>
 
       {/* Mobile: cards */}
-      <div className="lg:hidden divide-y divide-base-200">
+      <div className="divide-y divide-border lg:hidden">
         {dados.map((item) => {
           const id = keyExtractor(item);
           return (
@@ -211,7 +207,7 @@ export function CrudTable<T>({
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 pt-1">
                   {colunasSecundarias.map((col, idx) => (
                     <div key={idx} className="flex items-center gap-1.5 text-sm">
-                      <span className="text-xs text-base-content/40">{col.label}:</span>
+                      <span className="text-xs text-muted-foreground">{col.label}:</span>
                       {col.render(item)}
                     </div>
                   ))}
