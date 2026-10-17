@@ -207,7 +207,7 @@ export default function RelatorioHorasCheckinPage() {
           <div className="flex gap-2">
             <button
               type="button"
-              className="btn btn-ghost btn-sm gap-2"
+              className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 hover:bg-muted"
               onClick={() => relatorio && exportarCsv(relatorio)}
               disabled={!relatorio}
             >
@@ -216,7 +216,7 @@ export default function RelatorioHorasCheckinPage() {
             </button>
             <button
               type="button"
-              className="btn btn-primary btn-sm gap-2"
+              className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 bg-primary text-primary-foreground hover:bg-primary/90"
               onClick={() => { void handlePdf(); }}
               disabled={!relatorio}
             >
@@ -255,9 +255,9 @@ export default function RelatorioHorasCheckinPage() {
 
         {relatorio ? (
           <>
-            <div className="card bg-base-100 border border-base-300 shadow-sm">
-              <div className="card-body py-4">
-                <p className="text-sm text-base-content/70">
+            <div className="relative flex flex-col rounded-lg border border-border bg-card shadow-sm">
+              <div className="flex flex-1 flex-col gap-2 py-4">
+                <p className="text-sm text-muted-foreground">
                   Período {relatorio.dataInicio} a {relatorio.dataFim}
                 </p>
                 <p className="text-2xl font-bold font-display">

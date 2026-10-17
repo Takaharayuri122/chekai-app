@@ -146,7 +146,7 @@ export default function PlanosPage() {
         subtitle="Gerencie os planos disponíveis no sistema"
         action={
           <button
-            className="btn btn-primary gap-2"
+            className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-10 px-4 bg-primary text-primary-foreground hover:bg-primary/90"
             onClick={() => setShowModal(true)}
           >
             <Plus className="w-4 h-4" />
@@ -158,11 +158,11 @@ export default function PlanosPage() {
       <div className="px-4 py-4 lg:px-8 space-y-4">
         {/* Busca */}
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-base-content/40" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/70" />
           <input
             type="text"
             placeholder="Buscar planos..."
-            className="input input-bordered w-full pl-10"
+            className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-10 px-3 w-full pl-10"
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
           />
@@ -170,8 +170,8 @@ export default function PlanosPage() {
 
         {/* Cards de Planos */}
         {loading ? (
-          <div className="card bg-base-100 shadow-sm border border-base-300">
-            <div className="card-body items-center py-12">
+          <div className="relative flex flex-col rounded-lg border border-border bg-card shadow-sm">
+            <div className="flex flex-1 flex-col gap-2 items-center py-12">
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
             </div>
           </div>
@@ -192,19 +192,19 @@ export default function PlanosPage() {
             {planosFiltrados.map((plano) => (
               <div
                 key={plano.id}
-                className="card bg-base-100 shadow-sm border border-base-300"
+                className="relative flex flex-col rounded-lg border border-border bg-card shadow-sm"
               >
-                <div className="card-body">
+                <div className="flex flex-1 flex-col gap-2 p-6">
                   <div className="flex items-start justify-between mb-2">
-                    <h3 className="card-title text-lg">{plano.nome}</h3>
+                    <h3 className="flex items-center gap-2 font-display text-lg font-semibold">{plano.nome}</h3>
                     {plano.ativo ? (
-                      <span className="badge badge-success badge-sm">Ativo</span>
+                      <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full font-semibold px-2 py-0.5 text-[11px] bg-success/12 text-[hsl(160_84%_28%)]">Ativo</span>
                     ) : (
-                      <span className="badge badge-error badge-sm">Inativo</span>
+                      <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full font-semibold px-2 py-0.5 text-[11px] bg-destructive/12 text-[hsl(0_72%_45%)]">Inativo</span>
                     )}
                   </div>
                   {plano.descricao && (
-                    <p className="text-sm text-base-content/60 mb-4">
+                    <p className="text-sm text-muted-foreground mb-4">
                       {plano.descricao}
                     </p>
                   )}
@@ -226,16 +226,16 @@ export default function PlanosPage() {
                       <span>{plano.limiteCreditos.toLocaleString('pt-BR')} créditos</span>
                     </div>
                   </div>
-                  <div className="card-actions justify-end">
+                  <div className="flex flex-wrap items-start justify-end gap-2">
                     <button
-                      className="btn btn-ghost btn-sm gap-1"
+                      className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 hover:bg-muted gap-1"
                       onClick={() => handleEditarPlano(plano)}
                     >
                       <Edit className="w-4 h-4" />
                       Editar
                     </button>
                     <button
-                      className="btn btn-ghost btn-sm gap-1 text-error"
+                      className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 hover:bg-muted gap-1 text-destructive"
                       onClick={() => handleRemoverPlano(plano.id)}
                     >
                       <Trash2 className="w-4 h-4" />
@@ -258,13 +258,13 @@ export default function PlanosPage() {
         footer={
           <>
             <button
-              className="btn btn-ghost"
+              className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-10 px-4 hover:bg-muted"
               onClick={handleFecharModal}
             >
               Cancelar
             </button>
             <button
-              className="btn btn-primary"
+              className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-10 px-4 bg-primary text-primary-foreground hover:bg-primary/90"
               onClick={handleCriarPlano}
               disabled={saving || !planoForm.nome}
             >
@@ -280,25 +280,25 @@ export default function PlanosPage() {
         }
       >
         <div className="space-y-4">
-          <div className="form-control">
-            <label className="label">
-              <span className="label-text">Nome *</span>
+          <div className="flex flex-col">
+            <label className="flex items-center justify-between gap-2 py-1">
+              <span className="text-sm font-medium text-foreground">Nome *</span>
             </label>
             <input
               type="text"
-              className="input input-bordered"
+              className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-10 px-3"
               value={planoForm.nome}
               onChange={(e) =>
                 setPlanoForm({ ...planoForm, nome: e.target.value })
               }
             />
           </div>
-          <div className="form-control">
-            <label className="label">
-              <span className="label-text">Descrição</span>
+          <div className="flex flex-col">
+            <label className="flex items-center justify-between gap-2 py-1">
+              <span className="text-sm font-medium text-foreground">Descrição</span>
             </label>
             <textarea
-              className="textarea textarea-bordered"
+              className="min-h-[80px] px-3 py-2 rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60"
               value={planoForm.descricao}
               onChange={(e) =>
                 setPlanoForm({ ...planoForm, descricao: e.target.value })
@@ -307,13 +307,13 @@ export default function PlanosPage() {
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text">Limite de Usuários *</span>
+            <div className="flex flex-col">
+              <label className="flex items-center justify-between gap-2 py-1">
+                <span className="text-sm font-medium text-foreground">Limite de Usuários *</span>
               </label>
               <input
                 type="number"
-                className="input input-bordered"
+                className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-10 px-3"
                 min="0"
                 value={planoForm.limiteUsuarios}
                 onChange={(e) =>
@@ -324,13 +324,13 @@ export default function PlanosPage() {
                 }
               />
             </div>
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text">Limite de Auditorias *</span>
+            <div className="flex flex-col">
+              <label className="flex items-center justify-between gap-2 py-1">
+                <span className="text-sm font-medium text-foreground">Limite de Auditorias *</span>
               </label>
               <input
                 type="number"
-                className="input input-bordered"
+                className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-10 px-3"
                 min="0"
                 value={planoForm.limiteAuditorias}
                 onChange={(e) =>
@@ -341,13 +341,13 @@ export default function PlanosPage() {
                 }
               />
             </div>
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text">Limite de Clientes *</span>
+            <div className="flex flex-col">
+              <label className="flex items-center justify-between gap-2 py-1">
+                <span className="text-sm font-medium text-foreground">Limite de Clientes *</span>
               </label>
               <input
                 type="number"
-                className="input input-bordered"
+                className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-10 px-3"
                 min="0"
                 value={planoForm.limiteClientes}
                 onChange={(e) =>
@@ -358,13 +358,13 @@ export default function PlanosPage() {
                 }
               />
             </div>
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text">Limite de Créditos *</span>
+            <div className="flex flex-col">
+              <label className="flex items-center justify-between gap-2 py-1">
+                <span className="text-sm font-medium text-foreground">Limite de Créditos *</span>
               </label>
               <input
                 type="number"
-                className="input input-bordered"
+                className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-10 px-3"
                 min="0"
                 value={planoForm.limiteCreditos}
                 onChange={(e) =>
@@ -376,12 +376,12 @@ export default function PlanosPage() {
               />
             </div>
           </div>
-          <div className="form-control">
-            <label className="label cursor-pointer">
-              <span className="label-text">Plano Ativo</span>
+          <div className="flex flex-col">
+            <label className="flex items-center justify-between gap-2 py-1 cursor-pointer">
+              <span className="text-sm font-medium text-foreground">Plano Ativo</span>
               <input
                 type="checkbox"
-                className="toggle toggle-primary"
+                className="relative shrink-0 cursor-pointer appearance-none rounded-full bg-muted-foreground/30 transition-colors checked:bg-primary before:absolute before:left-0.5 before:top-0.5 before:rounded-full before:bg-white before:shadow before:transition-transform disabled:opacity-50 h-5 w-9 before:h-4 before:w-4 checked:before:translate-x-4"
                 checked={planoForm.ativo}
                 onChange={(e) =>
                   setPlanoForm({ ...planoForm, ativo: e.target.checked })

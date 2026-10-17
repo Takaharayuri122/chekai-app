@@ -276,8 +276,8 @@ export default function AgendaPage() {
         />
         </>
         )}
-        <p className="text-xs text-base-content/50">
-          Ao concluir um agendamento recorrente, o próximo é criado automaticamente. Para realizar a visita, use <Link href="/admin/auditoria/nova" className="link">Nova Auditoria</Link>.
+        <p className="text-xs text-muted-foreground">
+          Ao concluir um agendamento recorrente, o próximo é criado automaticamente. Para realizar a visita, use <Link href="/admin/auditoria/nova" className="cursor-pointer underline underline-offset-2">Nova Auditoria</Link>.
         </p>
       </div>
 

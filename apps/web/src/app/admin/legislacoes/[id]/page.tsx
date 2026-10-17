@@ -379,7 +379,7 @@ export default function LegislacaoDetalhesPage() {
                             </span>
                           )}
                           {chunk.inciso && (
-                            <span className="px-2 py-0.5 bg-secondary/20 text-secondary text-xs rounded">
+                            <span className="px-2 py-0.5 bg-info/20 text-info text-xs rounded">
                               {chunk.inciso}
                             </span>
                           )}

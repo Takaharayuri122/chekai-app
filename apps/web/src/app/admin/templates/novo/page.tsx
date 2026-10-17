@@ -120,32 +120,32 @@ function SortableItem({ item, index, onEdit, onRemove, onDuplicate, isDuplicatin
     <div
       ref={setNodeRef}
       style={style}
-      className={`flex items-start gap-2 sm:gap-3 p-2 sm:p-3 bg-base-100 rounded-lg border group hover:border-primary/30 transition-all cursor-pointer ${
-        isHighlighted ? 'border-info shadow-lg shadow-info/20 ring-2 ring-info/30' : 'border-base-200'
+      className={`flex items-start gap-2 sm:gap-3 p-2 sm:p-3 bg-card rounded-lg border group hover:border-primary/30 transition-all cursor-pointer ${
+        isHighlighted ? 'border-info shadow-lg shadow-info/20 ring-2 ring-info/30' : 'border-muted'
       }`}
       onClick={() => onEdit(item)}
     >
       <div
         {...attributes}
         {...listeners}
-        className="cursor-grab active:cursor-grabbing text-base-content/40 hover:text-base-content/60 transition-colors flex-shrink-0 flex items-center justify-center w-6 h-6"
+        className="cursor-grab active:cursor-grabbing text-muted-foreground/70 hover:text-muted-foreground transition-colors flex-shrink-0 flex items-center justify-center w-6 h-6"
         onClick={(e) => e.stopPropagation()}
       >
         <GripVertical className="w-5 h-5" />
       </div>
-      <span className="text-xs sm:text-sm font-bold text-base-content/40 min-w-[20px] sm:min-w-[24px] flex-shrink-0">{index + 1}.</span>
+      <span className="text-xs sm:text-sm font-bold text-muted-foreground/70 min-w-[20px] sm:min-w-[24px] flex-shrink-0">{index + 1}.</span>
       <div className="flex-1 min-w-0">
         <p className="text-xs sm:text-sm leading-relaxed break-words">{item.pergunta}</p>
         <div className="flex flex-wrap items-center gap-1.5 mt-1.5 sm:mt-1">
-          <span className="badge badge-ghost badge-sm px-2 py-1">{CATEGORIA_ITEM_LABELS[item.categoria]}</span>
-          <span className={`badge badge-sm px-2 py-1 ${getCriticidadeBadge(item.criticidade)}`}>
+          <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full font-semibold px-2 py-0.5 text-[11px] bg-muted text-muted-foreground py-1">{CATEGORIA_ITEM_LABELS[item.categoria]}</span>
+          <span className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full font-semibold px-2 py-0.5 text-[11px] bg-muted text-foreground py-1 ${getCriticidadeBadge(item.criticidade)}`}>
             {CRITICIDADE_LABELS[item.criticidade]}
           </span>
           {item.legislacaoReferencia && (
-            <span className="text-xs text-base-content/50 truncate max-w-[120px] sm:max-w-none">{item.legislacaoReferencia}</span>
+            <span className="text-xs text-muted-foreground truncate max-w-[120px] sm:max-w-none">{item.legislacaoReferencia}</span>
           )}
           {item.usarRespostasPersonalizadas && (
-            <span className="badge badge-secondary badge-sm gap-1 px-2 py-1">
+            <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full font-semibold px-2 py-0.5 text-[11px] bg-info/12 text-[hsl(217_80%_45%)] py-1">
               <Settings className="w-2.5 h-2.5 sm:w-3 sm:h-3" />Pers.
             </span>
           )}
@@ -158,7 +158,7 @@ function SortableItem({ item, index, onEdit, onRemove, onDuplicate, isDuplicatin
               e.stopPropagation();
               if (!isDuplicating) onDuplicate(item.id);
             }}
-            className="btn btn-ghost btn-square btn-xs text-info"
+            className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-7 w-7 px-0 hover:bg-muted text-info"
             disabled={isDuplicating}
           >
             {isDuplicating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Copy className="w-4 h-4" />}
@@ -170,7 +170,7 @@ function SortableItem({ item, index, onEdit, onRemove, onDuplicate, isDuplicatin
               e.stopPropagation();
               onEdit(item);
             }}
-            className="btn btn-ghost btn-square btn-xs"
+            className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-7 w-7 px-0 hover:bg-muted"
           >
             <Edit className="w-4 h-4" />
           </button>
@@ -181,7 +181,7 @@ function SortableItem({ item, index, onEdit, onRemove, onDuplicate, isDuplicatin
               e.stopPropagation();
               onRemove(item.id);
             }}
-            className="btn btn-ghost btn-square btn-xs text-error"
+            className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-7 w-7 px-0 hover:bg-muted text-destructive"
           >
             <Trash2 className="w-4 h-4" />
           </button>
@@ -826,22 +826,22 @@ export default function NovoTemplatePage() {
   return (
     <AppLayout>
       {/* Header */}
-      <div className="bg-base-100 border-b border-base-300 px-4 lg:px-8 py-4 sticky top-14 z-30">
+      <div className="bg-card border-b border-border px-4 lg:px-8 py-4 sticky top-14 z-30">
         <div className="flex items-center gap-3 max-w-4xl mx-auto">
-          <Link href="/admin/templates" className="btn btn-ghost btn-sm btn-circle">
+          <Link href="/admin/templates" className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 w-9 px-0 rounded-full hover:bg-muted">
             <ChevronLeft className="w-5 h-5" />
           </Link>
           <div className="flex-1">
             <div className="flex items-center gap-2">
-              <h1 className="text-lg font-bold text-base-content">Novo Checklist</h1>
-              <span className="badge badge-sm badge-warning">Rascunho</span>
+              <h1 className="text-lg font-bold text-foreground">Novo Checklist</h1>
+              <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full font-semibold px-2 py-0.5 text-[11px] bg-warning/15 text-[hsl(32_95%_34%)]">Rascunho</span>
             </div>
-            <p className="text-sm text-base-content/60">
+            <p className="text-sm text-muted-foreground">
               {templateCreated ? 'Adicione grupos e perguntas ao checklist' : 'Crie um novo checklist'}
             </p>
           </div>
           {templateCreated && (
-            <button onClick={handleSalvar} disabled={saving} className="btn btn-primary btn-sm gap-1">
+            <button onClick={handleSalvar} disabled={saving} className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 bg-primary text-primary-foreground hover:bg-primary/90 gap-1">
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
               Salvar
             </button>
@@ -854,25 +854,25 @@ export default function NovoTemplatePage() {
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="card bg-base-100 shadow-sm border border-base-300"
+          className="relative flex flex-col rounded-lg border border-border bg-card shadow-sm"
         >
-          <div className="card-body">
-            <h2 className="card-title text-base">Informações do Checklist</h2>
+          <div className="flex flex-1 flex-col gap-2 p-6">
+            <h2 className="flex items-center gap-2 font-display text-lg font-semibold text-base">Informações do Checklist</h2>
             <div className="space-y-4 mt-2">
-              <div className="form-control">
-                <label className="label"><span className="label-text">Nome *</span></label>
+              <div className="flex flex-col">
+                <label className="flex items-center justify-between gap-2 py-1"><span className="text-sm font-medium text-foreground">Nome *</span></label>
                 <input
                   type="text"
-                  className="input input-bordered"
+                  className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-10 px-3"
                   value={formData.nome}
                   onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
                   disabled={templateCreated}
                 />
               </div>
-              <div className="form-control">
-                <label className="label"><span className="label-text">Descrição</span></label>
+              <div className="flex flex-col">
+                <label className="flex items-center justify-between gap-2 py-1"><span className="text-sm font-medium text-foreground">Descrição</span></label>
                 <textarea
-                  className="textarea textarea-bordered"
+                  className="min-h-[80px] px-3 py-2 rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60"
                   rows={2}
                   value={formData.descricao}
                   onChange={(e) => setFormData({ ...formData, descricao: e.target.value })}
@@ -880,10 +880,10 @@ export default function NovoTemplatePage() {
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <div className="form-control">
-                  <label className="label"><span className="label-text">Tipo de Atividade</span></label>
+                <div className="flex flex-col">
+                  <label className="flex items-center justify-between gap-2 py-1"><span className="text-sm font-medium text-foreground">Tipo de Atividade</span></label>
                   <select
-                    className="select select-bordered"
+                    className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-10 px-3"
                     value={formData.tipoAtividade}
                     onChange={(e) => setFormData({ ...formData, tipoAtividade: e.target.value as TipoAtividade })}
                     disabled={templateCreated}
@@ -893,11 +893,11 @@ export default function NovoTemplatePage() {
                     ))}
                   </select>
                 </div>
-                <div className="form-control">
-                  <label className="label"><span className="label-text">Versão</span></label>
+                <div className="flex flex-col">
+                  <label className="flex items-center justify-between gap-2 py-1"><span className="text-sm font-medium text-foreground">Versão</span></label>
                   <input
                     type="text"
-                    className="input input-bordered"
+                    className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-10 px-3"
                     value={formData.versao}
                     onChange={(e) => setFormData({ ...formData, versao: e.target.value })}
                     disabled={templateCreated}
@@ -909,7 +909,7 @@ export default function NovoTemplatePage() {
                   <button
                     onClick={handleCriarTemplate}
                     disabled={saving || !formData.nome.trim()}
-                    className="btn btn-primary gap-2"
+                    className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-10 px-4 bg-primary text-primary-foreground hover:bg-primary/90"
                   >
                     {saving ? (
                       <>
@@ -935,19 +935,19 @@ export default function NovoTemplatePage() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="card bg-base-100 shadow-sm border border-base-300"
+            className="relative flex flex-col rounded-lg border border-border bg-card shadow-sm"
           >
-            <div className="card-body">
+            <div className="flex flex-1 flex-col gap-2 p-6">
               <div className="flex items-center justify-between">
-                <h2 className="card-title text-base">
+                <h2 className="flex items-center gap-2 font-display text-lg font-semibold text-base">
                   Grupos e Perguntas ({template?.grupos?.length || 0} grupos, {template?.itens?.filter(i => i.ativo !== false).length || 0} perguntas)
                 </h2>
                 <div className="flex gap-2">
-                  <button onClick={handleAbrirModalNovoGrupo} className="btn btn-secondary btn-sm gap-1">
+                  <button onClick={handleAbrirModalNovoGrupo} className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 bg-info text-white hover:bg-info/90 gap-1">
                     <FolderOpen className="w-4 h-4" />
                     Novo Grupo
                   </button>
-                  <button onClick={() => handleAbrirModalNovoItem()} className="btn btn-primary btn-sm gap-1">
+                  <button onClick={() => handleAbrirModalNovoItem()} className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 bg-primary text-primary-foreground hover:bg-primary/90 gap-1">
                     <Plus className="w-4 h-4" />
                     Nova Pergunta
                   </button>
@@ -963,26 +963,26 @@ export default function NovoTemplatePage() {
                     className={`border rounded-lg transition-all duration-500 ${
                       highlightedGrupoId === grupo.id
                         ? 'border-info shadow-lg shadow-info/20 ring-2 ring-info/30'
-                        : 'border-base-300'
+                        : 'border-border'
                     }`}
                   >
                     {/* Header do Grupo */}
                     <div
-                      className="flex items-center gap-3 p-3 bg-base-200 rounded-t-lg cursor-pointer hover:bg-base-300 transition-colors"
+                      className="flex items-center gap-3 p-3 bg-muted rounded-t-lg cursor-pointer hover:bg-border transition-colors"
                       onClick={() => toggleGrupoExpanded(grupo.id)}
                     >
-                      <GripVertical className="w-4 h-4 text-base-content/40" />
-                      <FolderOpen className="w-5 h-5 text-secondary" />
+                      <GripVertical className="w-4 h-4 text-muted-foreground/70" />
+                      <FolderOpen className="w-5 h-5 text-info" />
                       <div className="flex-1">
                         <p className="font-medium">{grupo.nome}</p>
-                        {grupo.descricao && <p className="text-sm text-base-content/60">{grupo.descricao}</p>}
+                        {grupo.descricao && <p className="text-sm text-muted-foreground">{grupo.descricao}</p>}
                       </div>
-                      <span className="badge badge-ghost">{getItensPorGrupo(grupo.id).length} perguntas</span>
+                      <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full font-semibold px-2.5 py-0.5 text-xs bg-muted text-muted-foreground">{getItensPorGrupo(grupo.id).length} perguntas</span>
                       <div className="flex items-center gap-0.5">
                         <Tooltip content="Duplicar grupo">
                           <button
                             onClick={(e) => { e.stopPropagation(); if (!duplicatingGrupoId) handleDuplicarGrupo(grupo.id); }}
-                            className="btn btn-ghost btn-square btn-xs text-info"
+                            className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-7 w-7 px-0 hover:bg-muted text-info"
                             disabled={duplicatingGrupoId === grupo.id}
                           >
                             {duplicatingGrupoId === grupo.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Copy className="w-4 h-4" />}
@@ -991,7 +991,7 @@ export default function NovoTemplatePage() {
                         <Tooltip content="Editar grupo">
                           <button
                             onClick={(e) => { e.stopPropagation(); handleAbrirModalEditarGrupo(grupo); }}
-                            className="btn btn-ghost btn-square btn-xs"
+                            className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-7 w-7 px-0 hover:bg-muted"
                           >
                             <Edit className="w-4 h-4" />
                           </button>
@@ -999,15 +999,15 @@ export default function NovoTemplatePage() {
                         <Tooltip content="Remover grupo">
                           <button
                             onClick={(e) => { e.stopPropagation(); setConfirmRemoverGrupo(grupo.id); }}
-                            className="btn btn-ghost btn-square btn-xs text-error"
+                            className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-7 w-7 px-0 hover:bg-muted text-destructive"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
                         </Tooltip>
                         {expandedGrupos.has(grupo.id) ? (
-                          <ChevronUp className="w-4 h-4 sm:w-5 sm:h-5 text-base-content/40" />
+                          <ChevronUp className="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground/70" />
                         ) : (
-                          <ChevronDown className="w-4 h-4 sm:w-5 sm:h-5 text-base-content/40" />
+                          <ChevronDown className="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground/70" />
                         )}
                       </div>
                     </div>
@@ -1032,8 +1032,8 @@ export default function NovoTemplatePage() {
                                   return (
                                     <div key={secao || 'sem-secao'}>
                                       {secao && (
-                                        <div className="flex items-center gap-2 py-2 mb-2 border-b border-base-200">
-                                          <span className="text-sm font-medium text-secondary">{secao}</span>
+                                        <div className="flex items-center gap-2 py-2 mb-2 border-b border-muted">
+                                          <span className="text-sm font-medium text-info">{secao}</span>
                                         </div>
                                       )}
                                       {itensOrdenados.map((item) => {
@@ -1053,7 +1053,7 @@ export default function NovoTemplatePage() {
                                         );
                                       })}
                                       {itens.length === 0 && (
-                                        <p className="text-sm text-base-content/50 py-2">Nenhuma pergunta nesta seção</p>
+                                        <p className="text-sm text-muted-foreground py-2">Nenhuma pergunta nesta seção</p>
                                       )}
                                     </div>
                                   );
@@ -1063,11 +1063,11 @@ export default function NovoTemplatePage() {
                           })()}
                         </DndContext>
                         {getItensPorGrupo(grupo.id).length === 0 && (
-                          <p className="text-sm text-base-content/50 py-4 text-center">Nenhuma pergunta neste grupo</p>
+                          <p className="text-sm text-muted-foreground py-4 text-center">Nenhuma pergunta neste grupo</p>
                         )}
                         <button
                           onClick={() => handleAbrirModalNovoItem(grupo.id)}
-                          className="btn btn-ghost btn-sm w-full mt-2 border-dashed border-base-300"
+                          className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 hover:bg-muted w-full mt-2 border-dashed border-border"
                         >
                           <Plus className="w-4 h-4" /> Adicionar pergunta
                         </button>
@@ -1078,11 +1078,11 @@ export default function NovoTemplatePage() {
 
                 {/* Itens sem grupo */}
                 {getItensSemGrupo().length > 0 && (
-                  <div className="border border-base-300 rounded-lg">
-                    <div className="flex items-center gap-3 p-3 bg-base-200">
+                  <div className="border border-border rounded-lg">
+                    <div className="flex items-center gap-3 p-3 bg-muted">
                       <HelpCircle className="w-5 h-5 text-warning" />
                       <span className="font-medium">Perguntas sem grupo</span>
-                      <span className="badge badge-warning">{getItensSemGrupo().length}</span>
+                      <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full font-semibold px-2.5 py-0.5 text-xs bg-warning/15 text-[hsl(32_95%_34%)]">{getItensSemGrupo().length}</span>
                     </div>
                     <div className="p-3 space-y-2">
                       <DndContext
@@ -1120,10 +1120,10 @@ export default function NovoTemplatePage() {
                 {/* Estado vazio */}
                 {(!template?.grupos || template.grupos.length === 0) && getItensSemGrupo().length === 0 && (
                   <div className="text-center py-12">
-                    <FolderOpen className="w-16 h-16 text-base-content/20 mx-auto mb-4" />
-                    <p className="text-base-content/60 font-medium">Nenhum grupo ou pergunta cadastrada</p>
-                    <p className="text-sm text-base-content/40 mt-1">Comece criando um grupo para organizar suas perguntas</p>
-                    <button onClick={handleAbrirModalNovoGrupo} className="btn btn-primary mt-4">
+                    <FolderOpen className="w-16 h-16 text-muted-foreground/40 mx-auto mb-4" />
+                    <p className="text-muted-foreground font-medium">Nenhum grupo ou pergunta cadastrada</p>
+                    <p className="text-sm text-muted-foreground/70 mt-1">Comece criando um grupo para organizar suas perguntas</p>
+                    <button onClick={handleAbrirModalNovoGrupo} className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-10 px-4 bg-primary text-primary-foreground hover:bg-primary/90 mt-4">
                       <FolderOpen className="w-4 h-4" /> Criar Primeiro Grupo
                     </button>
                   </div>
@@ -1143,28 +1143,28 @@ export default function NovoTemplatePage() {
         closeOnBackdrop={false}
         footer={
           <>
-            <button className="btn btn-ghost" onClick={() => { setShowGrupoModal(false); resetGrupoForm(); }}>Cancelar</button>
-            <button className="btn btn-primary" onClick={handleSalvarGrupo} disabled={saving || !grupoForm.nome}>
+            <button className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-10 px-4 hover:bg-muted" onClick={() => { setShowGrupoModal(false); resetGrupoForm(); }}>Cancelar</button>
+            <button className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-10 px-4 bg-primary text-primary-foreground hover:bg-primary/90" onClick={handleSalvarGrupo} disabled={saving || !grupoForm.nome}>
               {saving ? <><Loader2 className="w-4 h-4 animate-spin" />Salvando...</> : 'Salvar'}
             </button>
           </>
         }
       >
         <div className="space-y-4">
-          <div className="form-control">
-            <label className="label"><span className="label-text">Nome do Grupo *</span></label>
+          <div className="flex flex-col">
+            <label className="flex items-center justify-between gap-2 py-1"><span className="text-sm font-medium text-foreground">Nome do Grupo *</span></label>
             <input
               type="text"
               placeholder="Ex: ESTRUTURA"
-              className="input input-bordered"
+              className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-10 px-3"
               value={grupoForm.nome}
               onChange={(e) => setGrupoForm({ ...grupoForm, nome: e.target.value })}
             />
           </div>
-          <div className="form-control">
-            <label className="label"><span className="label-text">Descrição</span></label>
+          <div className="flex flex-col">
+            <label className="flex items-center justify-between gap-2 py-1"><span className="text-sm font-medium text-foreground">Descrição</span></label>
             <textarea
-              className="textarea textarea-bordered"
+              className="min-h-[80px] px-3 py-2 rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60"
               rows={2}
               placeholder="Descrição opcional do grupo"
               value={grupoForm.descricao}
@@ -1183,8 +1183,8 @@ export default function NovoTemplatePage() {
         closeOnBackdrop={false}
         footer={
           <>
-            <button className="btn btn-ghost btn-sm sm:btn-md w-full sm:w-auto" onClick={() => { setShowItemModal(false); resetItemForm(); }}>Cancelar</button>
-            <button className="btn btn-primary btn-sm sm:btn-md w-full sm:w-auto" onClick={handleSalvarItem} disabled={saving || !itemForm.pergunta}>
+            <button className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 hover:bg-muted sm:!h-10 sm:!px-4 w-full sm:w-auto" onClick={() => { setShowItemModal(false); resetItemForm(); }}>Cancelar</button>
+            <button className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 bg-primary text-primary-foreground hover:bg-primary/90 sm:!h-10 sm:!px-4 w-full sm:w-auto" onClick={handleSalvarItem} disabled={saving || !itemForm.pergunta}>
               {saving ? <><Loader2 className="w-4 h-4 animate-spin" />Salvando...</> : editingItem ? 'Salvar Alterações' : 'Adicionar'}
             </button>
           </>
@@ -1193,10 +1193,10 @@ export default function NovoTemplatePage() {
         <div className="space-y-4">
               {/* Grupo e Seção */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="form-control">
-                  <label className="label py-1"><span className="label-text text-xs sm:text-sm">Grupo</span></label>
+                <div className="flex flex-col">
+                  <label className="flex items-center justify-between gap-2 py-1"><span className="text-sm font-medium text-foreground text-xs sm:text-sm">Grupo</span></label>
                   <select
-                    className="select select-bordered select-sm sm:select-md"
+                    className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs sm:!h-10 sm:!px-3"
                     value={itemForm.grupoId || ''}
                     onChange={(e) => setItemForm({ ...itemForm, grupoId: e.target.value || undefined })}
                   >
@@ -1206,12 +1206,12 @@ export default function NovoTemplatePage() {
                     ))}
                   </select>
                 </div>
-                <div className="form-control">
-                  <label className="label py-1"><span className="label-text text-xs sm:text-sm">Seção (opcional)</span></label>
+                <div className="flex flex-col">
+                  <label className="flex items-center justify-between gap-2 py-1"><span className="text-sm font-medium text-foreground text-xs sm:text-sm">Seção (opcional)</span></label>
                   <input
                     type="text"
                     placeholder="Ex: ÁREA DE LAVAGEM"
-                    className="input input-bordered input-sm sm:input-md"
+                    className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs sm:!h-10 sm:!px-3"
                     value={itemForm.secao}
                     onChange={(e) => setItemForm({ ...itemForm, secao: e.target.value })}
                   />
@@ -1219,11 +1219,11 @@ export default function NovoTemplatePage() {
               </div>
 
               {/* Pergunta */}
-              <div className="form-control">
-                <label className="label py-1"><span className="label-text text-xs sm:text-sm">Pergunta *</span></label>
+              <div className="flex flex-col">
+                <label className="flex items-center justify-between gap-2 py-1"><span className="text-sm font-medium text-foreground text-xs sm:text-sm">Pergunta *</span></label>
                 <textarea
                   placeholder="Ex: As paredes, piso e teto estão em boas condições?"
-                  className="textarea textarea-bordered text-sm"
+                  className="min-h-[80px] px-3 py-2 rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60"
                   rows={2}
                   value={itemForm.pergunta}
                   onChange={(e) => setItemForm({ ...itemForm, pergunta: e.target.value })}
@@ -1232,10 +1232,10 @@ export default function NovoTemplatePage() {
 
               {/* Categoria, Criticidade, Peso e Obrigatório */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
-                <div className="form-control">
-                  <label className="label py-1"><span className="label-text text-xs sm:text-sm">Categoria</span></label>
+                <div className="flex flex-col">
+                  <label className="flex items-center justify-between gap-2 py-1"><span className="text-sm font-medium text-foreground text-xs sm:text-sm">Categoria</span></label>
                   <select
-                    className="select select-bordered select-sm sm:select-md"
+                    className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs sm:!h-10 sm:!px-3"
                     value={itemForm.categoria}
                     onChange={(e) => setItemForm({ ...itemForm, categoria: e.target.value as CategoriaItem })}
                   >
@@ -1244,17 +1244,17 @@ export default function NovoTemplatePage() {
                     ))}
                   </select>
                 </div>
-                <div className="form-control">
-                  <label className="label py-1">
-                    <span className="label-text text-xs sm:text-sm flex items-center gap-1">
+                <div className="flex flex-col">
+                  <label className="flex items-center justify-between gap-2 py-1">
+                    <span className="text-sm font-medium text-foreground text-xs sm:text-sm flex items-center gap-1">
                       Criticidade
                       <Tooltip content="Define o grau de impacto desta pergunta na avaliação. Perguntas com criticidade alta ou crítica têm maior relevância no resultado final e podem gerar alertas automáticos de não conformidade.">
-                        <HelpCircle className="w-3.5 h-3.5 text-base-content/40 cursor-help" />
+                        <HelpCircle className="w-3.5 h-3.5 text-muted-foreground/70 cursor-help" />
                       </Tooltip>
                     </span>
                   </label>
                   <select
-                    className="select select-bordered select-sm sm:select-md"
+                    className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs sm:!h-10 sm:!px-3"
                     value={itemForm.criticidade}
                     onChange={(e) => setItemForm({ ...itemForm, criticidade: e.target.value as CriticidadeItem })}
                   >
@@ -1264,12 +1264,12 @@ export default function NovoTemplatePage() {
                   </select>
                 </div>
                 {itemForm.tipoRespostaCustomizada !== TipoRespostaCustomizada.TEXTO && (
-                  <div className="form-control">
-                    <label className="label py-1">
-                      <span className="label-text text-xs sm:text-sm flex items-center gap-1">
+                  <div className="flex flex-col">
+                    <label className="flex items-center justify-between gap-2 py-1">
+                      <span className="text-sm font-medium text-foreground text-xs sm:text-sm flex items-center gap-1">
                         Peso
                         <Tooltip content="Multiplicador aplicado à pontuação desta pergunta. Um peso maior aumenta a influência desta pergunta no cálculo da nota final da auditoria. Ex: peso 2 dobra o valor da pontuação obtida.">
-                          <HelpCircle className="w-3.5 h-3.5 text-base-content/40 cursor-help" />
+                          <HelpCircle className="w-3.5 h-3.5 text-muted-foreground/70 cursor-help" />
                         </Tooltip>
                       </span>
                     </label>
@@ -1277,7 +1277,7 @@ export default function NovoTemplatePage() {
                       type="number"
                       min="-10"
                       max="10"
-                      className="input input-bordered input-sm sm:input-md"
+                      className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs sm:!h-10 sm:!px-3"
                       value={itemForm.peso}
                       onChange={(e) => {
                         const v = e.target.value === '' ? 1 : parseInt(e.target.value, 10);
@@ -1286,12 +1286,12 @@ export default function NovoTemplatePage() {
                     />
                   </div>
                 )}
-                <div className="form-control justify-end">
-                  <label className="label cursor-pointer py-1 gap-2">
-                    <span className="label-text text-xs sm:text-sm">Pergunta Obrigatória</span>
+                <div className="flex flex-col justify-end">
+                  <label className="flex items-center justify-between gap-2 py-1 cursor-pointer">
+                    <span className="text-sm font-medium text-foreground text-xs sm:text-sm">Pergunta Obrigatória</span>
                     <input
                       type="checkbox"
-                      className="toggle toggle-primary toggle-sm sm:toggle-md"
+                      className="relative shrink-0 cursor-pointer appearance-none rounded-full bg-muted-foreground/30 transition-colors checked:bg-primary before:absolute before:left-0.5 before:top-0.5 before:rounded-full before:bg-white before:shadow before:transition-transform disabled:opacity-50 h-4 w-7 before:h-3 before:w-3 checked:before:translate-x-3 sm:toggle-md"
                       checked={itemForm.obrigatorio}
                       onChange={(e) => setItemForm({ ...itemForm, obrigatorio: e.target.checked })}
                     />
@@ -1301,51 +1301,51 @@ export default function NovoTemplatePage() {
 
               {/* Legislação */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
-                <div className="form-control">
-                  <label className="label py-1">
-                    <span className="label-text text-xs sm:text-sm flex items-center gap-1">
+                <div className="flex flex-col">
+                  <label className="flex items-center justify-between gap-2 py-1">
+                    <span className="text-sm font-medium text-foreground text-xs sm:text-sm flex items-center gap-1">
                       Legislação
                       <Tooltip content="Norma ou legislação de referência que fundamenta esta pergunta. Será exibida ao auditor durante a avaliação como base legal para a verificação. Ex: RDC 216/2004, NR-12, ISO 9001.">
-                        <HelpCircle className="w-3.5 h-3.5 text-base-content/40 cursor-help" />
+                        <HelpCircle className="w-3.5 h-3.5 text-muted-foreground/70 cursor-help" />
                       </Tooltip>
                     </span>
                   </label>
                   <input
                     type="text"
                     placeholder="Ex: RDC 216/2004"
-                    className="input input-bordered input-sm sm:input-md"
+                    className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs sm:!h-10 sm:!px-3"
                     value={itemForm.legislacaoReferencia}
                     onChange={(e) => setItemForm({ ...itemForm, legislacaoReferencia: e.target.value })}
                   />
                 </div>
-                <div className="form-control">
-                  <label className="label py-1">
-                    <span className="label-text text-xs sm:text-sm flex items-center gap-1">
+                <div className="flex flex-col">
+                  <label className="flex items-center justify-between gap-2 py-1">
+                    <span className="text-sm font-medium text-foreground text-xs sm:text-sm flex items-center gap-1">
                       Artigo/Inciso
                       <Tooltip content="Artigo, parágrafo ou inciso específico da legislação informada. Permite ao auditor consultar o trecho exato da norma durante a auditoria. Ex: Art. 4.1.3, § 2º, Inciso IV.">
-                        <HelpCircle className="w-3.5 h-3.5 text-base-content/40 cursor-help" />
+                        <HelpCircle className="w-3.5 h-3.5 text-muted-foreground/70 cursor-help" />
                       </Tooltip>
                     </span>
                   </label>
                   <input
                     type="text"
                     placeholder="Ex: Art. 4.1.3"
-                    className="input input-bordered input-sm sm:input-md"
+                    className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs sm:!h-10 sm:!px-3"
                     value={itemForm.artigo}
                     onChange={(e) => setItemForm({ ...itemForm, artigo: e.target.value })}
                   />
                 </div>
               </div>
 
-              <div className="divider my-2 text-xs sm:text-sm">Opções de Resposta</div>
+              <div className="my-4 flex items-center gap-4 text-xs text-muted-foreground before:h-px before:flex-1 before:bg-border after:h-px after:flex-1 after:bg-border my-2 sm:text-sm">Opções de Resposta</div>
 
               {/* Tipo de Resposta Customizada */}
-              <div className="form-control">
-                <label className="label py-1">
-                  <span className="label-text text-xs sm:text-sm font-medium">Tipo de Resposta</span>
+              <div className="flex flex-col">
+                <label className="flex items-center justify-between gap-2 py-1">
+                  <span className="text-sm font-medium text-foreground text-xs sm:text-sm">Tipo de Resposta</span>
                 </label>
                 <select
-                  className="select select-bordered select-sm sm:select-md"
+                  className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs sm:!h-10 sm:!px-3"
                   value={itemForm.tipoRespostaCustomizada || ''}
                   onChange={(e) => {
                     const valor = e.target.value ? (e.target.value as TipoRespostaCustomizada) : undefined;
@@ -1363,8 +1363,8 @@ export default function NovoTemplatePage() {
                   <option value={TipoRespostaCustomizada.DATA}>{TIPO_RESPOSTA_LABELS[TipoRespostaCustomizada.DATA]}</option>
                   <option value={TipoRespostaCustomizada.SELECT}>{TIPO_RESPOSTA_LABELS[TipoRespostaCustomizada.SELECT]}</option>
                 </select>
-                <label className="label py-0.5">
-                  <span className="label-text-alt text-base-content/60 text-xs">
+                <label className="flex items-center justify-between gap-2 py-1 py-0.5">
+                  <span className="text-xs text-muted-foreground">
                     {itemForm.tipoRespostaCustomizada === TipoRespostaCustomizada.SELECT && 'Configure as opções abaixo'}
                     {itemForm.tipoRespostaCustomizada === TipoRespostaCustomizada.TEXTO && 'Campo de texto livre (não pontua)'}
                     {itemForm.tipoRespostaCustomizada === TipoRespostaCustomizada.NUMERO && 'Campo numérico'}
@@ -1376,11 +1376,11 @@ export default function NovoTemplatePage() {
 
               {/* Toggle Respostas Personalizadas */}
               {!itemForm.tipoRespostaCustomizada && (
-                <div className="form-control bg-base-200 rounded-lg p-3">
-                  <label className="label cursor-pointer justify-start gap-3 py-0">
+                <div className="flex flex-col bg-muted rounded-lg p-3">
+                  <label className="flex items-center justify-between gap-2 py-1 cursor-pointer justify-start gap-3 py-0">
                     <input
                       type="checkbox"
-                      className="toggle toggle-secondary toggle-sm"
+                      className="relative shrink-0 cursor-pointer appearance-none rounded-full bg-muted-foreground/30 transition-colors checked:bg-primary before:absolute before:left-0.5 before:top-0.5 before:rounded-full before:bg-white before:shadow before:transition-transform disabled:opacity-50 h-4 w-7 before:h-3 before:w-3 checked:before:translate-x-3"
                       checked={itemForm.usarRespostasPersonalizadas}
                       onChange={(e) => {
                         const checked = e.target.checked;
@@ -1400,8 +1400,8 @@ export default function NovoTemplatePage() {
                       }}
                     />
                     <div>
-                      <span className="label-text text-xs sm:text-sm font-medium">Respostas personalizadas</span>
-                      <p className="text-xs text-base-content/60 mt-0.5 hidden sm:block">Padrão: Conforme, Não Conforme, Não Aplicável, Não Avaliado</p>
+                      <span className="text-sm font-medium text-foreground text-xs sm:text-sm">Respostas personalizadas</span>
+                      <p className="text-xs text-muted-foreground mt-0.5 hidden sm:block">Padrão: Conforme, Não Conforme, Não Aplicável, Não Avaliado</p>
                     </div>
                   </label>
                 </div>
@@ -1409,21 +1409,21 @@ export default function NovoTemplatePage() {
 
               {/* Respostas Personalizadas */}
               {itemForm.usarRespostasPersonalizadas && (
-                <div className="space-y-3 bg-base-200/50 rounded-lg p-3 sm:p-4">
-                  <label className="label py-0"><span className="label-text text-xs sm:text-sm font-medium">Opções de Resposta</span></label>
+                <div className="space-y-3 bg-muted/50 rounded-lg p-3 sm:p-4">
+                  <label className="flex items-center justify-between gap-2 py-1 py-0"><span className="text-sm font-medium text-foreground text-xs sm:text-sm">Opções de Resposta</span></label>
                   {itemForm.opcoesResposta && itemForm.opcoesResposta.length > 0 && (
                     <div className="space-y-2">
                       {itemForm.opcoesResposta.length > 1 && (
                         <div className="flex items-center justify-end gap-2">
                           <Tooltip content="Foto obrigatória em todas">
                             <label className={`flex items-center gap-1.5 rounded-lg px-2 py-1 cursor-pointer transition-colors text-xs ${
-                              (itemForm.opcoesRespostaConfig || []).every((c) => c.fotoObrigatoria) ? 'bg-primary/10 ring-1 ring-primary/30' : 'bg-base-200'
+                              (itemForm.opcoesRespostaConfig || []).every((c) => c.fotoObrigatoria) ? 'bg-primary/10 ring-1 ring-primary/30' : 'bg-muted'
                             }`}>
-                              <Camera className={`w-3 h-3 flex-shrink-0 ${(itemForm.opcoesRespostaConfig || []).every((c) => c.fotoObrigatoria) ? 'text-primary' : 'text-base-content/40'}`} />
+                              <Camera className={`w-3 h-3 flex-shrink-0 ${(itemForm.opcoesRespostaConfig || []).every((c) => c.fotoObrigatoria) ? 'text-primary' : 'text-muted-foreground/70'}`} />
                               <span className="hidden sm:inline">Todas</span>
                               <input
                                 type="checkbox"
-                                className="checkbox checkbox-xs checkbox-primary"
+                                className="h-3 w-3 shrink-0 cursor-pointer rounded border-input accent-[hsl(175_100%_36%)]"
                                 checked={(itemForm.opcoesRespostaConfig || []).length > 0 && (itemForm.opcoesRespostaConfig || []).every((c) => c.fotoObrigatoria)}
                                 onChange={(e) => handleToggleTodasOpcoes('fotoObrigatoria', e.target.checked)}
                               />
@@ -1431,13 +1431,13 @@ export default function NovoTemplatePage() {
                           </Tooltip>
                           <Tooltip content="Observação obrigatória em todas">
                             <label className={`flex items-center gap-1.5 rounded-lg px-2 py-1 cursor-pointer transition-colors text-xs ${
-                              (itemForm.opcoesRespostaConfig || []).every((c) => c.observacaoObrigatoria) ? 'bg-secondary/10 ring-1 ring-secondary/30' : 'bg-base-200'
+                              (itemForm.opcoesRespostaConfig || []).every((c) => c.observacaoObrigatoria) ? 'bg-info/10 ring-1 ring-info/30' : 'bg-muted'
                             }`}>
-                              <MessageSquare className={`w-3 h-3 flex-shrink-0 ${(itemForm.opcoesRespostaConfig || []).every((c) => c.observacaoObrigatoria) ? 'text-secondary' : 'text-base-content/40'}`} />
+                              <MessageSquare className={`w-3 h-3 flex-shrink-0 ${(itemForm.opcoesRespostaConfig || []).every((c) => c.observacaoObrigatoria) ? 'text-info' : 'text-muted-foreground/70'}`} />
                               <span className="hidden sm:inline">Todas</span>
                               <input
                                 type="checkbox"
-                                className="checkbox checkbox-xs checkbox-secondary"
+                                className="h-3 w-3 shrink-0 cursor-pointer rounded border-input accent-[hsl(175_100%_36%)]"
                                 checked={(itemForm.opcoesRespostaConfig || []).length > 0 && (itemForm.opcoesRespostaConfig || []).every((c) => c.observacaoObrigatoria)}
                                 onChange={(e) => handleToggleTodasOpcoes('observacaoObrigatoria', e.target.checked)}
                               />
@@ -1457,33 +1457,33 @@ export default function NovoTemplatePage() {
                             ? config.pontuacao
                             : (idxPontuavel > 0 && configPrimeira?.pontuacao != null ? configPrimeira.pontuacao - idxPontuavel : ''));
                         return (
-                          <div key={idx} className="bg-base-100 rounded-lg p-2.5 sm:p-3">
+                          <div key={idx} className="bg-card rounded-lg p-2.5 sm:p-3">
                             <div className="flex items-center justify-between mb-2">
-                              <span className="badge badge-primary badge-outline font-semibold text-xs sm:text-sm">{opcao}</span>
+                              <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full font-semibold px-2.5 py-0.5 text-xs bg-primary/12 text-primary border border-border bg-transparent sm:text-sm">{opcao}</span>
                               <div className="flex items-center gap-0.5">
                                 <button
                                   onClick={() => handleDuplicarResposta(opcao)}
-                                  className="btn btn-ghost btn-xs btn-circle"
+                                  className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-7 w-7 px-0 rounded-full hover:bg-muted"
                                   title="Duplicar resposta"
                                 >
                                   <Copy className="w-3 h-3" />
                                 </button>
                                 <button
                                   onClick={() => handleRemoverOpcaoResposta(opcao)}
-                                  className="btn btn-ghost btn-xs btn-circle text-error"
+                                  className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-7 w-7 px-0 rounded-full hover:bg-muted text-destructive"
                                 >
                                   <X className="w-3 h-3" />
                                 </button>
                               </div>
                             </div>
                             <div className="grid grid-cols-3 gap-2">
-                              <div className="flex items-center gap-1.5 bg-base-200 rounded-lg px-2 py-1.5" title="Pontuação">
+                              <div className="flex items-center gap-1.5 bg-muted rounded-lg px-2 py-1.5" title="Pontuação">
                                 <Star className="w-3.5 h-3.5 text-warning flex-shrink-0" />
                                 <input
                                   type="number"
                                   min={-10}
                                   max={10}
-                                  className="input input-ghost input-xs w-full p-0 text-center font-medium"
+                                  className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-7 px-2 text-xs border-transparent bg-transparent w-full p-0 text-center font-medium"
                                   placeholder="—"
                                   value={pontuacaoExibida}
                                   onChange={(e) => {
@@ -1492,22 +1492,22 @@ export default function NovoTemplatePage() {
                                   }}
                                 />
                               </div>
-                              <label className={`flex items-center gap-1.5 rounded-lg px-2 py-1.5 cursor-pointer transition-colors ${config?.fotoObrigatoria ? 'bg-primary/10 ring-1 ring-primary/30' : 'bg-base-200'}`} title="Foto obrigatória">
-                                <Camera className={`w-3.5 h-3.5 flex-shrink-0 ${config?.fotoObrigatoria ? 'text-primary' : 'text-base-content/40'}`} />
+                              <label className={`flex items-center gap-1.5 rounded-lg px-2 py-1.5 cursor-pointer transition-colors ${config?.fotoObrigatoria ? 'bg-primary/10 ring-1 ring-primary/30' : 'bg-muted'}`} title="Foto obrigatória">
+                                <Camera className={`w-3.5 h-3.5 flex-shrink-0 ${config?.fotoObrigatoria ? 'text-primary' : 'text-muted-foreground/70'}`} />
                                 <span className="text-xs truncate hidden sm:inline">Foto</span>
                                 <input
                                   type="checkbox"
-                                  className="checkbox checkbox-xs checkbox-primary ml-auto"
+                                  className="h-3 w-3 shrink-0 cursor-pointer rounded border-input accent-[hsl(175_100%_36%)] ml-auto"
                                   checked={config?.fotoObrigatoria || false}
                                   onChange={(e) => handleAtualizarOpcaoConfig(opcao, 'fotoObrigatoria', e.target.checked)}
                                 />
                               </label>
-                              <label className={`flex items-center gap-1.5 rounded-lg px-2 py-1.5 cursor-pointer transition-colors ${config?.observacaoObrigatoria ? 'bg-secondary/10 ring-1 ring-secondary/30' : 'bg-base-200'}`} title="Observação obrigatória">
-                                <MessageSquare className={`w-3.5 h-3.5 flex-shrink-0 ${config?.observacaoObrigatoria ? 'text-secondary' : 'text-base-content/40'}`} />
+                              <label className={`flex items-center gap-1.5 rounded-lg px-2 py-1.5 cursor-pointer transition-colors ${config?.observacaoObrigatoria ? 'bg-info/10 ring-1 ring-info/30' : 'bg-muted'}`} title="Observação obrigatória">
+                                <MessageSquare className={`w-3.5 h-3.5 flex-shrink-0 ${config?.observacaoObrigatoria ? 'text-info' : 'text-muted-foreground/70'}`} />
                                 <span className="text-xs truncate hidden sm:inline">Obs.</span>
                                 <input
                                   type="checkbox"
-                                  className="checkbox checkbox-xs checkbox-secondary ml-auto"
+                                  className="h-3 w-3 shrink-0 cursor-pointer rounded border-input accent-[hsl(175_100%_36%)] ml-auto"
                                   checked={config?.observacaoObrigatoria || false}
                                   onChange={(e) => handleAtualizarOpcaoConfig(opcao, 'observacaoObrigatoria', e.target.checked)}
                                 />
@@ -1522,20 +1522,20 @@ export default function NovoTemplatePage() {
                     <input
                       type="text"
                       placeholder="Nova opção de resposta"
-                      className="input input-bordered input-sm flex-1"
+                      className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs flex-1"
                       value={novaOpcaoResposta}
                       onChange={(e) => setNovaOpcaoResposta(e.target.value)}
                       onKeyPress={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAdicionarOpcaoResposta(); }}}
                     />
-                    <button type="button" onClick={handleAdicionarOpcaoResposta} className="btn btn-secondary btn-sm" disabled={!novaOpcaoResposta.trim()}>
+                    <button type="button" onClick={handleAdicionarOpcaoResposta} className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 bg-info text-white hover:bg-info/90" disabled={!novaOpcaoResposta.trim()}>
                       <Plus className="w-4 h-4" />
                     </button>
                   </div>
                   <div>
-                    <span className="text-xs text-base-content/60">Sugestões:</span>
+                    <span className="text-xs text-muted-foreground">Sugestões:</span>
                     <div className="flex flex-wrap gap-1.5 mt-1.5">
                       {RESPOSTAS_PERSONALIZADAS_SUGESTOES.filter((s) => !itemForm.opcoesResposta?.includes(s)).map((sugestao) => (
-                        <button key={sugestao} type="button" onClick={() => handleAdicionarSugestao(sugestao)} className="badge badge-outline badge-sm sm:badge-md text-base-content font-bold hover:badge-primary hover:!text-white cursor-pointer transition-colors px-2 sm:px-3 py-1">
+                        <button key={sugestao} type="button" onClick={() => handleAdicionarSugestao(sugestao)} className="inline-flex items-center gap-1 whitespace-nowrap rounded-full font-semibold px-2 py-0.5 text-[11px] border border-border bg-transparent sm:!px-2.5 sm:!py-0.5 sm:!text-xs text-foreground font-bold hover:!bg-primary/12 hover:!text-primary hover:!text-white cursor-pointer transition-colors sm:px-3 py-1">
                           + {sugestao}
                         </button>
                       ))}
@@ -1546,19 +1546,19 @@ export default function NovoTemplatePage() {
 
               {/* Respostas Padrão */}
               {!itemForm.usarRespostasPersonalizadas && (
-                <div className="bg-base-200/50 rounded-lg p-3 sm:p-4">
+                <div className="bg-muted/50 rounded-lg p-3 sm:p-4">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-base-content/60 font-medium">Configuração das respostas padrão:</span>
+                    <span className="text-xs text-muted-foreground font-medium">Configuração das respostas padrão:</span>
                     <div className="flex items-center gap-2">
                       <Tooltip content="Foto obrigatória em todas">
                         <label className={`flex items-center gap-1.5 rounded-lg px-2 py-1 cursor-pointer transition-colors text-xs ${
-                          RESPOSTAS_PADRAO.every((r) => (itemForm.opcoesRespostaConfig || []).find((c) => c.valor === r.valor)?.fotoObrigatoria) ? 'bg-primary/10 ring-1 ring-primary/30' : 'bg-base-200'
+                          RESPOSTAS_PADRAO.every((r) => (itemForm.opcoesRespostaConfig || []).find((c) => c.valor === r.valor)?.fotoObrigatoria) ? 'bg-primary/10 ring-1 ring-primary/30' : 'bg-muted'
                         }`}>
-                          <Camera className={`w-3 h-3 flex-shrink-0 ${RESPOSTAS_PADRAO.every((r) => (itemForm.opcoesRespostaConfig || []).find((c) => c.valor === r.valor)?.fotoObrigatoria) ? 'text-primary' : 'text-base-content/40'}`} />
+                          <Camera className={`w-3 h-3 flex-shrink-0 ${RESPOSTAS_PADRAO.every((r) => (itemForm.opcoesRespostaConfig || []).find((c) => c.valor === r.valor)?.fotoObrigatoria) ? 'text-primary' : 'text-muted-foreground/70'}`} />
                           <span className="hidden sm:inline">Todas</span>
                           <input
                             type="checkbox"
-                            className="checkbox checkbox-xs checkbox-primary"
+                            className="h-3 w-3 shrink-0 cursor-pointer rounded border-input accent-[hsl(175_100%_36%)]"
                             checked={RESPOSTAS_PADRAO.every((r) => (itemForm.opcoesRespostaConfig || []).find((c) => c.valor === r.valor)?.fotoObrigatoria)}
                             onChange={(e) => handleToggleTodasOpcoes('fotoObrigatoria', e.target.checked)}
                           />
@@ -1566,13 +1566,13 @@ export default function NovoTemplatePage() {
                       </Tooltip>
                       <Tooltip content="Observação obrigatória em todas">
                         <label className={`flex items-center gap-1.5 rounded-lg px-2 py-1 cursor-pointer transition-colors text-xs ${
-                          RESPOSTAS_PADRAO.every((r) => (itemForm.opcoesRespostaConfig || []).find((c) => c.valor === r.valor)?.observacaoObrigatoria) ? 'bg-secondary/10 ring-1 ring-secondary/30' : 'bg-base-200'
+                          RESPOSTAS_PADRAO.every((r) => (itemForm.opcoesRespostaConfig || []).find((c) => c.valor === r.valor)?.observacaoObrigatoria) ? 'bg-info/10 ring-1 ring-info/30' : 'bg-muted'
                         }`}>
-                          <MessageSquare className={`w-3 h-3 flex-shrink-0 ${RESPOSTAS_PADRAO.every((r) => (itemForm.opcoesRespostaConfig || []).find((c) => c.valor === r.valor)?.observacaoObrigatoria) ? 'text-secondary' : 'text-base-content/40'}`} />
+                          <MessageSquare className={`w-3 h-3 flex-shrink-0 ${RESPOSTAS_PADRAO.every((r) => (itemForm.opcoesRespostaConfig || []).find((c) => c.valor === r.valor)?.observacaoObrigatoria) ? 'text-info' : 'text-muted-foreground/70'}`} />
                           <span className="hidden sm:inline">Todas</span>
                           <input
                             type="checkbox"
-                            className="checkbox checkbox-xs checkbox-secondary"
+                            className="h-3 w-3 shrink-0 cursor-pointer rounded border-input accent-[hsl(175_100%_36%)]"
                             checked={RESPOSTAS_PADRAO.every((r) => (itemForm.opcoesRespostaConfig || []).find((c) => c.valor === r.valor)?.observacaoObrigatoria)}
                             onChange={(e) => handleToggleTodasOpcoes('observacaoObrigatoria', e.target.checked)}
                           />
@@ -1593,18 +1593,18 @@ export default function NovoTemplatePage() {
                           ? config.pontuacao
                           : (idxPontuavel > 0 && configPrimeira?.pontuacao != null ? configPrimeira.pontuacao - idxPontuavel : ''));
                       return (
-                        <div key={resp.valor} className="bg-base-100 rounded-lg p-2.5 sm:p-3">
+                        <div key={resp.valor} className="bg-card rounded-lg p-2.5 sm:p-3">
                           <div className="flex items-center justify-between mb-2 sm:mb-0 sm:float-left sm:mr-3">
-                            <span className="badge badge-ghost text-xs sm:text-sm">{resp.label}</span>
+                            <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full font-semibold px-2.5 py-0.5 text-xs bg-muted text-muted-foreground sm:text-sm">{resp.label}</span>
                           </div>
                           <div className="grid grid-cols-3 gap-2 sm:flex sm:items-center sm:justify-end sm:gap-3">
-                            <div className="flex items-center gap-1.5 bg-base-200 rounded-lg px-2 py-1.5" title="Pontuação">
+                            <div className="flex items-center gap-1.5 bg-muted rounded-lg px-2 py-1.5" title="Pontuação">
                               <Star className="w-3.5 h-3.5 text-warning flex-shrink-0" />
                               <input
                                 type="number"
                                 min={-10}
                                 max={10}
-                                className="input input-ghost input-xs w-full sm:w-16 p-0 text-center font-medium"
+                                className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-7 px-2 text-xs border-transparent bg-transparent w-full sm:w-16 p-0 text-center font-medium"
                                 placeholder="—"
                                 value={pontuacaoExibida}
                                 onChange={(e) => {
@@ -1613,22 +1613,22 @@ export default function NovoTemplatePage() {
                                 }}
                               />
                             </div>
-                            <label className={`flex items-center gap-1.5 rounded-lg px-2 py-1.5 cursor-pointer transition-colors ${config?.fotoObrigatoria ? 'bg-primary/10 ring-1 ring-primary/30' : 'bg-base-200'}`} title="Foto obrigatória">
-                              <Camera className={`w-3.5 h-3.5 flex-shrink-0 ${config?.fotoObrigatoria ? 'text-primary' : 'text-base-content/40'}`} />
+                            <label className={`flex items-center gap-1.5 rounded-lg px-2 py-1.5 cursor-pointer transition-colors ${config?.fotoObrigatoria ? 'bg-primary/10 ring-1 ring-primary/30' : 'bg-muted'}`} title="Foto obrigatória">
+                              <Camera className={`w-3.5 h-3.5 flex-shrink-0 ${config?.fotoObrigatoria ? 'text-primary' : 'text-muted-foreground/70'}`} />
                               <span className="text-xs truncate hidden sm:inline">Foto</span>
                               <input
                                 type="checkbox"
-                                className="checkbox checkbox-xs checkbox-primary ml-auto"
+                                className="h-3 w-3 shrink-0 cursor-pointer rounded border-input accent-[hsl(175_100%_36%)] ml-auto"
                                 checked={config?.fotoObrigatoria || false}
                                 onChange={(e) => handleAtualizarOpcaoConfig(resp.valor, 'fotoObrigatoria', e.target.checked)}
                               />
                             </label>
-                            <label className={`flex items-center gap-1.5 rounded-lg px-2 py-1.5 cursor-pointer transition-colors ${config?.observacaoObrigatoria ? 'bg-secondary/10 ring-1 ring-secondary/30' : 'bg-base-200'}`} title="Observação obrigatória">
-                              <MessageSquare className={`w-3.5 h-3.5 flex-shrink-0 ${config?.observacaoObrigatoria ? 'text-secondary' : 'text-base-content/40'}`} />
+                            <label className={`flex items-center gap-1.5 rounded-lg px-2 py-1.5 cursor-pointer transition-colors ${config?.observacaoObrigatoria ? 'bg-info/10 ring-1 ring-info/30' : 'bg-muted'}`} title="Observação obrigatória">
+                              <MessageSquare className={`w-3.5 h-3.5 flex-shrink-0 ${config?.observacaoObrigatoria ? 'text-info' : 'text-muted-foreground/70'}`} />
                               <span className="text-xs truncate hidden sm:inline">Obs.</span>
                               <input
                                 type="checkbox"
-                                className="checkbox checkbox-xs checkbox-secondary ml-auto"
+                                className="h-3 w-3 shrink-0 cursor-pointer rounded border-input accent-[hsl(175_100%_36%)] ml-auto"
                                 checked={config?.observacaoObrigatoria || false}
                                 onChange={(e) => handleAtualizarOpcaoConfig(resp.valor, 'observacaoObrigatoria', e.target.checked)}
                               />

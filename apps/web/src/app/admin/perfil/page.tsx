@@ -117,8 +117,8 @@ export default function PerfilPage() {
           animate={{ opacity: 1, y: 0 }}
           className="flex flex-col items-center"
         >
-          <div className="avatar placeholder mb-4">
-            <div className="bg-primary text-primary-content rounded-full w-24 overflow-hidden">
+          <div className="relative inline-flex [&>div]:flex [&>div]:items-center [&>div]:justify-center mb-4">
+            <div className="bg-primary text-primary-foreground rounded-full w-24 overflow-hidden">
               {exibirUsuario?.logoUrl ? (
                 <img
                   src={exibirUsuario.logoUrl}
@@ -130,8 +130,8 @@ export default function PerfilPage() {
               )}
             </div>
           </div>
-          <h2 className="text-xl font-bold text-base-content">{exibirUsuario?.nome}</h2>
-          <p className="text-sm text-base-content/60">{exibirUsuario?.email}</p>
+          <h2 className="text-xl font-bold text-foreground">{exibirUsuario?.nome}</h2>
+          <p className="text-sm text-muted-foreground">{exibirUsuario?.email}</p>
         </motion.div>
 
         {isGestor() && (
@@ -139,14 +139,14 @@ export default function PerfilPage() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.05 }}
-            className="card bg-base-100 shadow-sm border border-base-300"
+            className="relative flex flex-col rounded-lg border border-border bg-card shadow-sm"
           >
-            <div className="card-body">
+            <div className="flex flex-1 flex-col gap-2 p-6">
               <h3 className="font-semibold flex items-center gap-2">
                 <ImagePlus className="w-5 h-5 text-primary" />
                 Logo da consultoria
               </h3>
-              <p className="text-sm text-base-content/60 mb-3">
+              <p className="text-sm text-muted-foreground mb-3">
                 A logo aparece no cabeçalho dos relatórios em formato quadrado. Ao enviar, você poderá recortar e posicionar.
               </p>
               <input
@@ -158,7 +158,7 @@ export default function PerfilPage() {
               />
               {exibirUsuario?.logoUrl ? (
                 <div className="flex flex-col items-start gap-3">
-                  <div className="w-40 h-40 rounded-lg border border-base-300 overflow-hidden bg-base-200 flex-shrink-0">
+                  <div className="w-40 h-40 rounded-lg border border-border overflow-hidden bg-muted flex-shrink-0">
                     <img
                       src={exibirUsuario.logoUrl}
                       alt="Logo da consultoria"
@@ -168,7 +168,7 @@ export default function PerfilPage() {
                   <div className="flex flex-wrap gap-2">
                     <button
                       type="button"
-                      className="btn btn-outline btn-sm gap-2"
+                      className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 border border-input bg-card hover:bg-muted"
                       onClick={() => fileInputRef.current?.click()}
                       disabled={uploadingLogo || removingLogo}
                     >
@@ -181,7 +181,7 @@ export default function PerfilPage() {
                     </button>
                     <button
                       type="button"
-                      className="btn btn-ghost btn-sm gap-2 text-error hover:bg-error/10"
+                      className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 hover:bg-muted text-destructive hover:bg-destructive/10"
                       onClick={handleRemoverLogo}
                       disabled={uploadingLogo || removingLogo}
                     >
@@ -199,14 +199,14 @@ export default function PerfilPage() {
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={uploadingLogo || removingLogo}
-                  className="w-full h-24 border-2 border-dashed border-base-300 rounded-lg flex flex-col items-center justify-center gap-2 hover:border-primary hover:bg-primary/5 transition-colors disabled:opacity-50"
+                  className="w-full h-24 border-2 border-dashed border-border rounded-lg flex flex-col items-center justify-center gap-2 hover:border-primary hover:bg-primary/5 transition-colors disabled:opacity-50"
                 >
                   {uploadingLogo ? (
                     <Loader2 className="w-8 h-8 animate-spin text-primary" />
                   ) : (
-                    <ImagePlus className="w-8 h-8 text-base-content/40" />
+                    <ImagePlus className="w-8 h-8 text-muted-foreground/70" />
                   )}
-                  <span className="text-sm text-base-content/60">
+                  <span className="text-sm text-muted-foreground">
                     Clique para adicionar imagem da logo
                   </span>
                 </button>
@@ -228,48 +228,48 @@ export default function PerfilPage() {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="card bg-base-100 shadow-sm border border-base-300"
+          className="relative flex flex-col rounded-lg border border-border bg-card shadow-sm"
         >
-          <div className="card-body space-y-4">
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text font-medium">Nome</span>
+          <div className="flex flex-1 flex-col gap-2 p-6 space-y-4">
+            <div className="flex flex-col">
+              <label className="flex items-center justify-between gap-2 py-1">
+                <span className="text-sm font-medium text-foreground">Nome</span>
               </label>
               <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-base-content/40" />
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground/70" />
                 <input
                   type="text"
-                  className="input input-bordered w-full pl-10"
+                  className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-10 px-3 w-full pl-10"
                   value={form.nome}
                   onChange={(e) => setForm({ ...form, nome: e.target.value })}
                 />
               </div>
             </div>
 
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text font-medium">E-mail</span>
+            <div className="flex flex-col">
+              <label className="flex items-center justify-between gap-2 py-1">
+                <span className="text-sm font-medium text-foreground">E-mail</span>
               </label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-base-content/40" />
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground/70" />
                 <input
                   type="email"
-                  className="input input-bordered w-full pl-10"
+                  className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-10 px-3 w-full pl-10"
                   value={form.email}
                   onChange={(e) => setForm({ ...form, email: e.target.value })}
                 />
               </div>
             </div>
 
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text font-medium">Telefone</span>
+            <div className="flex flex-col">
+              <label className="flex items-center justify-between gap-2 py-1">
+                <span className="text-sm font-medium text-foreground">Telefone</span>
               </label>
               <div className="relative">
-                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-base-content/40" />
+                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground/70" />
                 <input
                   type="tel"
-                  className="input input-bordered w-full pl-10"
+                  className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-10 px-3 w-full pl-10"
                   value={form.telefone}
                   onChange={(e) => setForm({ ...form, telefone: e.target.value })}
                 />
@@ -277,7 +277,7 @@ export default function PerfilPage() {
             </div>
 
             <button
-              className="btn btn-primary w-full mt-4"
+              className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-10 px-4 bg-primary text-primary-foreground hover:bg-primary/90 w-full mt-4"
               onClick={handleSave}
               disabled={saving}
             >
@@ -301,15 +301,15 @@ export default function PerfilPage() {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="card bg-base-100 shadow-sm border border-base-300"
+          className="relative flex flex-col rounded-lg border border-border bg-card shadow-sm"
         >
-          <div className="card-body">
+          <div className="flex flex-1 flex-col gap-2 p-6">
             <h3 className="font-semibold flex items-center gap-2">
               <Shield className="w-5 h-5 text-primary" />
               Segurança
             </h3>
-            <div className="divider my-2"></div>
-            <button className="btn btn-ghost justify-start">
+            <div className="my-4 flex items-center gap-4 text-xs text-muted-foreground before:h-px before:flex-1 before:bg-border after:h-px after:flex-1 after:bg-border my-2"></div>
+            <button className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-10 px-4 hover:bg-muted justify-start">
               Alterar senha
             </button>
           </div>
@@ -322,7 +322,7 @@ export default function PerfilPage() {
           transition={{ delay: 0.3 }}
         >
           <button
-            className="btn btn-error btn-outline w-full gap-2"
+            className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-10 px-4 border border-destructive bg-transparent text-destructive hover:bg-destructive hover:text-white w-full"
             onClick={handleLogout}
           >
             <LogOut className="w-4 h-4" />

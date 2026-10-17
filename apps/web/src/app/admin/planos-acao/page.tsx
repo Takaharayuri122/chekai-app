@@ -163,7 +163,7 @@ export default function PlanosAcaoPage() {
     {
       label: 'Prazo',
       render: (t) => (
-        <span className={estaAtrasada(t) ? 'text-error font-semibold' : ''}>{formatarDataBr(t.prazo)}</span>
+        <span className={estaAtrasada(t) ? 'text-destructive font-semibold' : ''}>{formatarDataBr(t.prazo)}</span>
       ),
     },
     {

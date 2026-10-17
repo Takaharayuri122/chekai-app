@@ -135,14 +135,14 @@ export default function ImportarChecklistPage() {
   return (
     <AppLayout>
       {/* Header */}
-      <div className="bg-base-100 border-b border-base-300 px-4 lg:px-8 py-4 sticky top-14 z-30">
+      <div className="bg-card border-b border-border px-4 lg:px-8 py-4 sticky top-14 z-30">
         <div className="flex items-center gap-3 max-w-3xl mx-auto">
-          <Link href="/admin/templates" className="btn btn-ghost btn-sm btn-circle">
+          <Link href="/admin/templates" className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 w-9 px-0 rounded-full hover:bg-muted">
             <ChevronLeft className="w-5 h-5" />
           </Link>
           <div className="flex-1">
-            <h1 className="text-lg font-bold text-base-content">Importar Checklist</h1>
-            <p className="text-sm text-base-content/60">Importe checklists a partir de arquivos CSV ou XLSX</p>
+            <h1 className="text-lg font-bold text-foreground">Importar Checklist</h1>
+            <p className="text-sm text-muted-foreground">Importe checklists a partir de arquivos CSV ou XLSX</p>
           </div>
         </div>
       </div>
@@ -150,22 +150,22 @@ export default function ImportarChecklistPage() {
       <div className="px-4 py-4 lg:px-8 space-y-4">
         {/* Steps Indicator */}
         <div className="mb-8">
-          <ul className="steps steps-horizontal w-full">
-            <li className={`step ${step !== 'upload' ? 'step-primary' : 'step-primary'}`}>Upload</li>
-            <li className={`step ${step === 'preview' || step === 'config' || step === 'result' ? 'step-primary' : ''}`}>
+          <ul className="flex w-full gap-2 steps-horizontal">
+            <li className={`flex-1 text-center text-xs text-muted-foreground ${step !== 'upload' ? '!font-semibold !text-primary' : '!font-semibold !text-primary'}`}>Upload</li>
+            <li className={`flex-1 text-center text-xs text-muted-foreground ${step === 'preview' || step === 'config' || step === 'result' ? '!font-semibold !text-primary' : ''}`}>
               Preview
             </li>
-            <li className={`step ${step === 'config' || step === 'result' ? 'step-primary' : ''}`}>Configurar</li>
-            <li className={`step ${step === 'result' ? 'step-primary' : ''}`}>Concluído</li>
+            <li className={`flex-1 text-center text-xs text-muted-foreground ${step === 'config' || step === 'result' ? '!font-semibold !text-primary' : ''}`}>Configurar</li>
+            <li className={`flex-1 text-center text-xs text-muted-foreground ${step === 'result' ? '!font-semibold !text-primary' : ''}`}>Concluído</li>
           </ul>
         </div>
 
         {/* Erro */}
         {erro && (
-          <div className="alert alert-error mb-6">
+          <div className="flex w-full items-start gap-3 rounded-md border p-4 text-sm border-destructive/30 bg-destructive/10 text-destructive mb-6">
             <AlertTriangle className="w-5 h-5" />
             <span>{erro}</span>
-            <button onClick={() => setErro('')} className="btn btn-ghost btn-sm btn-circle">
+            <button onClick={() => setErro('')} className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 w-9 px-0 rounded-full hover:bg-muted">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -179,14 +179,14 @@ export default function ImportarChecklistPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="card bg-base-100 shadow-sm border border-base-300"
+              className="relative flex flex-col rounded-lg border border-border bg-card shadow-sm"
             >
-              <div className="card-body items-center text-center py-12">
+              <div className="flex flex-1 flex-col gap-2 items-center text-center py-12">
                 <div
                   className={`w-full max-w-md p-8 border-2 border-dashed rounded-xl transition-all cursor-pointer ${
                     dragOver
                       ? 'border-primary bg-primary/5'
-                      : 'border-base-300 hover:border-primary/50 hover:bg-base-200/50'
+                      : 'border-border hover:border-primary/50 hover:bg-muted/50'
                   }`}
                   onDrop={handleDrop}
                   onDragOver={handleDragOver}
@@ -196,7 +196,7 @@ export default function ImportarChecklistPage() {
                   {loading ? (
                     <div className="flex flex-col items-center gap-4">
                       <Loader2 className="w-12 h-12 text-primary animate-spin" />
-                      <p className="text-base-content/60">Processando arquivo...</p>
+                      <p className="text-muted-foreground">Processando arquivo...</p>
                     </div>
                   ) : (
                     <>
@@ -206,10 +206,10 @@ export default function ImportarChecklistPage() {
                       <h3 className="text-lg font-semibold mb-2">
                         Arraste o arquivo CSV ou XLSX aqui
                       </h3>
-                      <p className="text-base-content/60 text-sm mb-4">
+                      <p className="text-muted-foreground text-sm mb-4">
                         ou clique para selecionar
                       </p>
-                      <div className="badge badge-ghost">Formato: CSV ou XLSX</div>
+                      <div className="inline-flex items-center gap-1 whitespace-nowrap rounded-full font-semibold px-2.5 py-0.5 text-xs bg-muted text-muted-foreground">Formato: CSV ou XLSX</div>
                     </>
                   )}
                 </div>
@@ -224,18 +224,18 @@ export default function ImportarChecklistPage() {
                   }}
                 />
 
-                <div className="divider max-w-md mx-auto justify-center text-center">Formato do arquivo</div>
-                <ol className="text-left text-sm text-base-content/70 max-w-md space-y-2">
+                <div className="my-4 flex items-center gap-4 text-xs text-muted-foreground before:h-px before:flex-1 before:bg-border after:h-px after:flex-1 after:bg-border max-w-md mx-auto justify-center text-center">Formato do arquivo</div>
+                <ol className="text-left text-sm text-muted-foreground max-w-md space-y-2">
                   <li className="flex gap-2">
-                    <span className="badge badge-sm badge-ghost">1</span>
+                    <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full font-semibold px-2 py-0.5 text-[11px] bg-muted text-muted-foreground">1</span>
                     O arquivo deve conter colunas para grupo, seção e pergunta
                   </li>
                   <li className="flex gap-2">
-                    <span className="badge badge-sm badge-ghost">2</span>
+                    <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full font-semibold px-2 py-0.5 text-[11px] bg-muted text-muted-foreground">2</span>
                     Formatos suportados: CSV (separado por vírgulas) ou XLSX (Excel)
                   </li>
                   <li className="flex gap-2">
-                    <span className="badge badge-sm badge-ghost">3</span>
+                    <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full font-semibold px-2 py-0.5 text-[11px] bg-muted text-muted-foreground">3</span>
                     Faça o upload do arquivo acima para iniciar a importação
                   </li>
                 </ol>
@@ -253,52 +253,52 @@ export default function ImportarChecklistPage() {
               className="space-y-6"
             >
               {/* Info Card */}
-              <div className="card bg-base-100 shadow-sm border border-base-300">
-                <div className="card-body">
-                  <h2 className="card-title text-base flex items-center gap-2">
+              <div className="relative flex flex-col rounded-lg border border-border bg-card shadow-sm">
+                <div className="flex flex-1 flex-col gap-2 p-6">
+                  <h2 className="flex items-center gap-2 font-display text-lg font-semibold text-base">
                     <FileSpreadsheet className="w-5 h-5 text-primary" />
                     Arquivo Detectado
                   </h2>
                   <div className="grid grid-cols-2 gap-4 mt-4">
                     <div>
-                      <p className="text-sm text-base-content/60">Nome Original</p>
+                      <p className="text-sm text-muted-foreground">Nome Original</p>
                       <p className="font-medium">{preview.nomeOriginal}</p>
                     </div>
                     <div>
-                      <p className="text-sm text-base-content/60">Data de Exportação</p>
+                      <p className="text-sm text-muted-foreground">Data de Exportação</p>
                       <p className="font-medium">{preview.dataExportacao || 'Não informada'}</p>
                     </div>
                   </div>
                   <div className="flex gap-4 mt-4">
-                    <div className="stat bg-base-200 rounded-lg p-4">
-                      <div className="stat-value text-2xl text-primary">{preview.totalGrupos}</div>
-                      <div className="stat-desc">Grupos</div>
+                    <div className="flex flex-col gap-1 p-4 bg-muted rounded-lg">
+                      <div className="font-display text-3xl font-semibold text-2xl text-primary">{preview.totalGrupos}</div>
+                      <div className="text-xs text-muted-foreground">Grupos</div>
                     </div>
-                    <div className="stat bg-base-200 rounded-lg p-4">
-                      <div className="stat-value text-2xl text-secondary">{preview.totalPerguntas}</div>
-                      <div className="stat-desc">Perguntas</div>
+                    <div className="flex flex-col gap-1 p-4 bg-muted rounded-lg">
+                      <div className="font-display text-3xl font-semibold text-2xl text-info">{preview.totalPerguntas}</div>
+                      <div className="text-xs text-muted-foreground">Perguntas</div>
                     </div>
                   </div>
                 </div>
               </div>
 
               {/* Grupos Preview */}
-              <div className="card bg-base-100 shadow-sm border border-base-300">
-                <div className="card-body">
-                  <h2 className="card-title text-base">Grupos Detectados</h2>
+              <div className="relative flex flex-col rounded-lg border border-border bg-card shadow-sm">
+                <div className="flex flex-1 flex-col gap-2 p-6">
+                  <h2 className="flex items-center gap-2 font-display text-lg font-semibold text-base">Grupos Detectados</h2>
                   <div className="space-y-3 mt-4 max-h-80 overflow-y-auto">
                     {preview.grupos.map((grupo, idx) => (
-                      <div key={idx} className="flex items-start gap-3 p-3 bg-base-200 rounded-lg">
-                        <FolderOpen className="w-5 h-5 text-secondary mt-0.5 flex-shrink-0" />
+                      <div key={idx} className="flex items-start gap-3 p-3 bg-muted rounded-lg">
+                        <FolderOpen className="w-5 h-5 text-info mt-0.5 flex-shrink-0" />
                         <div className="flex-1 min-w-0">
                           <p className="font-medium truncate">{grupo.nome}</p>
                           {grupo.secoes.length > 0 && (
-                            <p className="text-xs text-base-content/60 mt-1">
+                            <p className="text-xs text-muted-foreground mt-1">
                               Seções: {grupo.secoes.join(', ')}
                             </p>
                           )}
                         </div>
-                        <span className="badge badge-ghost">{grupo.perguntas} perguntas</span>
+                        <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full font-semibold px-2.5 py-0.5 text-xs bg-muted text-muted-foreground">{grupo.perguntas} perguntas</span>
                       </div>
                     ))}
                   </div>
@@ -307,10 +307,10 @@ export default function ImportarChecklistPage() {
 
               {/* Actions */}
               <div className="flex gap-3 justify-end">
-                <button onClick={handleNovaImportacao} className="btn btn-ghost">
+                <button onClick={handleNovaImportacao} className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-10 px-4 hover:bg-muted">
                   Cancelar
                 </button>
-                <button onClick={() => setStep('config')} className="btn btn-primary gap-2">
+                <button onClick={() => setStep('config')} className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-10 px-4 bg-primary text-primary-foreground hover:bg-primary/90">
                   Continuar
                   <ArrowRight className="w-4 h-4" />
                 </button>
@@ -325,29 +325,29 @@ export default function ImportarChecklistPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="card bg-base-100 shadow-sm border border-base-300"
+              className="relative flex flex-col rounded-lg border border-border bg-card shadow-sm"
             >
-              <div className="card-body">
-                <h2 className="card-title text-base">Configurar Importação</h2>
+              <div className="flex flex-1 flex-col gap-2 p-6">
+                <h2 className="flex items-center gap-2 font-display text-lg font-semibold text-base">Configurar Importação</h2>
                 <div className="space-y-4 mt-4">
-                  <div className="form-control">
-                    <label className="label">
-                      <span className="label-text">Nome do Checklist *</span>
+                  <div className="flex flex-col">
+                    <label className="flex items-center justify-between gap-2 py-1">
+                      <span className="text-sm font-medium text-foreground">Nome do Checklist *</span>
                     </label>
                     <input
                       type="text"
-                      className="input input-bordered"
+                      className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-10 px-3"
                       value={formData.nomeTemplate}
                       onChange={(e) => setFormData({ ...formData, nomeTemplate: e.target.value })}
                     />
                   </div>
 
-                  <div className="form-control">
-                    <label className="label">
-                      <span className="label-text">Descrição</span>
+                  <div className="flex flex-col">
+                    <label className="flex items-center justify-between gap-2 py-1">
+                      <span className="text-sm font-medium text-foreground">Descrição</span>
                     </label>
                     <textarea
-                      className="textarea textarea-bordered"
+                      className="min-h-[80px] px-3 py-2 rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60"
                       rows={2}
                       placeholder="Descrição opcional do checklist"
                       value={formData.descricao}
@@ -356,12 +356,12 @@ export default function ImportarChecklistPage() {
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="form-control">
-                      <label className="label">
-                        <span className="label-text">Tipo de Atividade</span>
+                    <div className="flex flex-col">
+                      <label className="flex items-center justify-between gap-2 py-1">
+                        <span className="text-sm font-medium text-foreground">Tipo de Atividade</span>
                       </label>
                       <select
-                        className="select select-bordered"
+                        className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-10 px-3"
                         value={formData.tipoAtividade}
                         onChange={(e) =>
                           setFormData({ ...formData, tipoAtividade: e.target.value as TipoAtividade })
@@ -375,13 +375,13 @@ export default function ImportarChecklistPage() {
                       </select>
                     </div>
 
-                    <div className="form-control">
-                      <label className="label">
-                        <span className="label-text">Versão</span>
+                    <div className="flex flex-col">
+                      <label className="flex items-center justify-between gap-2 py-1">
+                        <span className="text-sm font-medium text-foreground">Versão</span>
                       </label>
                       <input
                         type="text"
-                        className="input input-bordered"
+                        className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-10 px-3"
                         value={formData.versao}
                         onChange={(e) => setFormData({ ...formData, versao: e.target.value })}
                       />
@@ -389,25 +389,25 @@ export default function ImportarChecklistPage() {
                   </div>
 
                   {/* Summary */}
-                  <div className="alert mt-6">
+                  <div className="flex w-full items-start gap-3 rounded-md border p-4 text-sm border-border bg-muted mt-6">
                     <Check className="w-5 h-5" />
                     <div>
                       <p className="font-medium">Pronto para importar</p>
-                      <p className="text-sm text-base-content/70">
+                      <p className="text-sm text-muted-foreground">
                         Serão criados {preview?.totalGrupos} grupos e {preview?.totalPerguntas} perguntas no checklist.
                       </p>
                     </div>
                   </div>
                 </div>
 
-                <div className="card-actions justify-end mt-6">
-                  <button onClick={() => setStep('preview')} className="btn btn-ghost">
+                <div className="flex flex-wrap items-start justify-end gap-2 mt-6">
+                  <button onClick={() => setStep('preview')} className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-10 px-4 hover:bg-muted">
                     Voltar
                   </button>
                   <button
                     onClick={handleImportar}
                     disabled={loading || !formData.nomeTemplate.trim()}
-                    className="btn btn-primary gap-2"
+                    className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-10 px-4 bg-primary text-primary-foreground hover:bg-primary/90"
                   >
                     {loading ? (
                       <>
@@ -433,30 +433,30 @@ export default function ImportarChecklistPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="card bg-base-100 shadow-sm border border-base-300"
+              className="relative flex flex-col rounded-lg border border-border bg-card shadow-sm"
             >
-              <div className="card-body items-center text-center py-12">
+              <div className="flex flex-1 flex-col gap-2 items-center text-center py-12">
                 <div className="w-20 h-20 rounded-full bg-success/20 flex items-center justify-center mb-4">
                   <CheckCircle className="w-10 h-10 text-success" />
                 </div>
                 <h2 className="text-2xl font-bold mb-2">Importação Concluída!</h2>
-                <p className="text-base-content/60 mb-6">
+                <p className="text-muted-foreground mb-6">
                   O checklist foi importado com sucesso.
                 </p>
 
                 <div className="grid grid-cols-2 gap-6 mb-8">
-                  <div className="stat bg-base-200 rounded-lg p-4">
-                    <div className="stat-value text-2xl text-primary">{resultado.gruposCriados}</div>
-                    <div className="stat-desc">Grupos Criados</div>
+                  <div className="flex flex-col gap-1 p-4 bg-muted rounded-lg">
+                    <div className="font-display text-3xl font-semibold text-2xl text-primary">{resultado.gruposCriados}</div>
+                    <div className="text-xs text-muted-foreground">Grupos Criados</div>
                   </div>
-                  <div className="stat bg-base-200 rounded-lg p-4">
-                    <div className="stat-value text-2xl text-secondary">{resultado.itensCriados}</div>
-                    <div className="stat-desc">Perguntas Criadas</div>
+                  <div className="flex flex-col gap-1 p-4 bg-muted rounded-lg">
+                    <div className="font-display text-3xl font-semibold text-2xl text-info">{resultado.itensCriados}</div>
+                    <div className="text-xs text-muted-foreground">Perguntas Criadas</div>
                   </div>
                 </div>
 
                 {resultado.avisos.length > 0 && (
-                  <div className="alert alert-warning mb-6 text-left">
+                  <div className="flex w-full items-start gap-3 rounded-md border p-4 text-sm border-warning/40 bg-warning/15 mb-6 text-left">
                     <AlertTriangle className="w-5 h-5" />
                     <div>
                       <p className="font-medium">Avisos durante a importação:</p>
@@ -470,12 +470,12 @@ export default function ImportarChecklistPage() {
                 )}
 
                 <div className="flex gap-3">
-                  <button onClick={handleNovaImportacao} className="btn btn-ghost">
+                  <button onClick={handleNovaImportacao} className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-10 px-4 hover:bg-muted">
                     Nova Importação
                   </button>
                   <Link
                     href={`/admin/templates/${resultado.templateId}`}
-                    className="btn btn-primary gap-2"
+                    className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-10 px-4 bg-primary text-primary-foreground hover:bg-primary/90"
                   >
                     Ver Checklist
                     <ArrowRight className="w-4 h-4" />

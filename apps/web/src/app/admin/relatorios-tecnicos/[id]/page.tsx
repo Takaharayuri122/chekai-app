@@ -233,7 +233,7 @@ export default function RelatorioTecnicoDetalhePage() {
           backHref="/admin/relatorios-tecnicos"
         />
         <div className="px-4 py-8 lg:px-8">
-          <span className="loading loading-spinner loading-lg text-primary"></span>
+          <span className="inline-block shrink-0 animate-spin rounded-full border-2 border-current border-r-transparent h-8 w-8 text-primary"></span>
         </div>
       </AppLayout>
     );
@@ -267,11 +267,11 @@ export default function RelatorioTecnicoDetalhePage() {
         action={(
           <div className="flex flex-wrap items-center justify-end gap-2">
             {formData.status === 'finalizado' && (
-              <span className="badge badge-success badge-sm whitespace-nowrap">Finalizado</span>
+              <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full font-semibold px-2 py-0.5 text-[11px] bg-success/12 text-[hsl(160_84%_28%)]">Finalizado</span>
             )}
             <button
               type="button"
-              className="btn btn-outline btn-sm gap-2"
+              className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 border border-input bg-card hover:bg-muted"
               onClick={handleBaixarPdf}
               disabled={baixandoPdf || finalizando}
             >
@@ -290,7 +290,7 @@ export default function RelatorioTecnicoDetalhePage() {
             {!somenteLeitura && formData.status === 'rascunho' && (
               <button
                 type="button"
-                className="btn btn-success btn-sm gap-2"
+                className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 bg-success text-white hover:bg-success/90"
                 onClick={() => setShowFinalizarConfirm(true)}
                 disabled={saving || finalizando}
               >
@@ -301,7 +301,7 @@ export default function RelatorioTecnicoDetalhePage() {
             {!somenteLeitura && (
               <button
                 type="button"
-                className="btn btn-primary btn-sm gap-2"
+                className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 bg-primary text-primary-foreground hover:bg-primary/90"
                 onClick={handleSalvar}
                 disabled={saving || finalizando}
               >

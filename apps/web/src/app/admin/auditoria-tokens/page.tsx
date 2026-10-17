@@ -154,41 +154,41 @@ export default function AuditoriaTokensPage() {
 
       <div className="px-4 py-4 lg:px-8 space-y-4">
         {/* Filtros */}
-        <div className="card bg-base-100 shadow-sm border border-base-300">
-          <div className="card-body p-4">
+        <div className="relative flex flex-col rounded-lg border border-border bg-card shadow-sm">
+          <div className="flex flex-1 flex-col gap-2 p-4">
             <div className="flex items-center gap-2 mb-4">
               <Filter className="w-5 h-5 text-primary" />
               <h3 className="font-semibold">Filtros</h3>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="form-control">
-                <label className="label">
-                  <span className="label-text">Data Início</span>
+              <div className="flex flex-col">
+                <label className="flex items-center justify-between gap-2 py-1">
+                  <span className="text-sm font-medium text-foreground">Data Início</span>
                 </label>
                 <input
                   type="date"
-                  className="input input-bordered"
+                  className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-10 px-3"
                   value={filtros.dataInicio}
                   onChange={(e) => setFiltros({ ...filtros, dataInicio: e.target.value })}
                 />
               </div>
-              <div className="form-control">
-                <label className="label">
-                  <span className="label-text">Data Fim</span>
+              <div className="flex flex-col">
+                <label className="flex items-center justify-between gap-2 py-1">
+                  <span className="text-sm font-medium text-foreground">Data Fim</span>
                 </label>
                 <input
                   type="date"
-                  className="input input-bordered"
+                  className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-10 px-3"
                   value={filtros.dataFim}
                   onChange={(e) => setFiltros({ ...filtros, dataFim: e.target.value })}
                 />
               </div>
-              <div className="form-control">
-                <label className="label">
-                  <span className="label-text">Provedor</span>
+              <div className="flex flex-col">
+                <label className="flex items-center justify-between gap-2 py-1">
+                  <span className="text-sm font-medium text-foreground">Provedor</span>
                 </label>
                 <select
-                  className="select select-bordered"
+                  className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-10 px-3"
                   value={filtros.provedor}
                   onChange={(e) => setFiltros({ ...filtros, provedor: e.target.value as ProvedorIa | '' })}
                 >
@@ -197,12 +197,12 @@ export default function AuditoriaTokensPage() {
                   <option value="deepseek">DeepSeek</option>
                 </select>
               </div>
-              <div className="form-control">
-                <label className="label">
-                  <span className="label-text">Ações</span>
+              <div className="flex flex-col">
+                <label className="flex items-center justify-between gap-2 py-1">
+                  <span className="text-sm font-medium text-foreground">Ações</span>
                 </label>
                 <button
-                  className="btn btn-ghost"
+                  className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-10 px-4 hover:bg-muted"
                   onClick={() => {
                     setFiltros({ dataInicio: '', dataFim: '', gestorId: '', provedor: '' });
                     setPage(1);
@@ -264,11 +264,11 @@ export default function AuditoriaTokensPage() {
         </div>
 
         {/* Estatísticas por Provedor */}
-        <div className="card bg-base-100 shadow-sm border border-base-300">
-          <div className="card-body p-4">
-            <h3 className="card-title text-lg mb-4">Por Provedor</h3>
+        <div className="relative flex flex-col rounded-lg border border-border bg-card shadow-sm">
+          <div className="flex flex-1 flex-col gap-2 p-4">
+            <h3 className="flex items-center gap-2 font-display text-lg font-semibold mb-4">Por Provedor</h3>
             <div className="overflow-x-auto">
-              <table className="table table-zebra">
+              <table className="w-full text-left [&_th]:text-xs [&_th]:font-medium [&_th]:uppercase [&_th]:tracking-wide [&_th]:text-muted-foreground [&_tr]:border-b [&_tr]:border-border text-sm [&_th]:px-4 [&_th]:py-3 [&_td]:px-4 [&_td]:py-3 [&_tbody_tr:nth-child(even)]:bg-muted/40">
                 <thead>
                   <tr>
                     <th>Provedor</th>
@@ -283,7 +283,7 @@ export default function AuditoriaTokensPage() {
                   {estatisticas.porProvedor.map((item) => (
                     <tr key={item.provedor}>
                       <td>
-                        <span className="badge badge-primary capitalize">{item.provedor}</span>
+                        <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full font-semibold px-2.5 py-0.5 text-xs bg-primary/12 text-primary capitalize">{item.provedor}</span>
                       </td>
                       <td>{formatarNumero(item.tokensInput)}</td>
                       <td>{formatarNumero(item.tokensOutput)}</td>
@@ -299,11 +299,11 @@ export default function AuditoriaTokensPage() {
         </div>
 
         {/* Estatísticas por Modelo */}
-        <div className="card bg-base-100 shadow-sm border border-base-300">
-          <div className="card-body p-4">
-            <h3 className="card-title text-lg mb-4">Por Modelo</h3>
+        <div className="relative flex flex-col rounded-lg border border-border bg-card shadow-sm">
+          <div className="flex flex-1 flex-col gap-2 p-4">
+            <h3 className="flex items-center gap-2 font-display text-lg font-semibold mb-4">Por Modelo</h3>
             <div className="overflow-x-auto">
-              <table className="table table-zebra">
+              <table className="w-full text-left [&_th]:text-xs [&_th]:font-medium [&_th]:uppercase [&_th]:tracking-wide [&_th]:text-muted-foreground [&_tr]:border-b [&_tr]:border-border text-sm [&_th]:px-4 [&_th]:py-3 [&_td]:px-4 [&_td]:py-3 [&_tbody_tr:nth-child(even)]:bg-muted/40">
                 <thead>
                   <tr>
                     <th>Provedor</th>
@@ -319,10 +319,10 @@ export default function AuditoriaTokensPage() {
                   {estatisticas.porModelo.map((item, index) => (
                     <tr key={`${item.provedor}-${item.modelo}-${index}`}>
                       <td>
-                        <span className="badge badge-primary badge-sm capitalize">{item.provedor}</span>
+                        <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full font-semibold px-2 py-0.5 text-[11px] bg-primary/12 text-primary capitalize">{item.provedor}</span>
                       </td>
                       <td>
-                        <code className="text-sm bg-base-200 px-2 py-1 rounded">{item.modelo}</code>
+                        <code className="text-sm bg-muted px-2 py-1 rounded">{item.modelo}</code>
                       </td>
                       <td>{formatarNumero(item.tokensInput)}</td>
                       <td>{formatarNumero(item.tokensOutput)}</td>
@@ -338,11 +338,11 @@ export default function AuditoriaTokensPage() {
         </div>
 
         {/* Estatísticas por Gestor */}
-        <div className="card bg-base-100 shadow-sm border border-base-300">
-          <div className="card-body p-4">
-            <h3 className="card-title text-lg mb-4">Por Gestor</h3>
+        <div className="relative flex flex-col rounded-lg border border-border bg-card shadow-sm">
+          <div className="flex flex-1 flex-col gap-2 p-4">
+            <h3 className="flex items-center gap-2 font-display text-lg font-semibold mb-4">Por Gestor</h3>
             <div className="overflow-x-auto">
-              <table className="table table-zebra">
+              <table className="w-full text-left [&_th]:text-xs [&_th]:font-medium [&_th]:uppercase [&_th]:tracking-wide [&_th]:text-muted-foreground [&_tr]:border-b [&_tr]:border-border text-sm [&_th]:px-4 [&_th]:py-3 [&_td]:px-4 [&_td]:py-3 [&_tbody_tr:nth-child(even)]:bg-muted/40">
                 <thead>
                   <tr>
                     <th>Gestor</th>
@@ -377,11 +377,11 @@ export default function AuditoriaTokensPage() {
 
         {/* Estatísticas por Período */}
         {estatisticas.porPeriodo.length > 0 && (
-          <div className="card bg-base-100 shadow-sm border border-base-300">
-            <div className="card-body p-4">
-              <h3 className="card-title text-lg mb-4">Uso por Período</h3>
+          <div className="relative flex flex-col rounded-lg border border-border bg-card shadow-sm">
+            <div className="flex flex-1 flex-col gap-2 p-4">
+              <h3 className="flex items-center gap-2 font-display text-lg font-semibold mb-4">Uso por Período</h3>
               <div className="overflow-x-auto">
-                <table className="table table-zebra">
+                <table className="w-full text-left [&_th]:text-xs [&_th]:font-medium [&_th]:uppercase [&_th]:tracking-wide [&_th]:text-muted-foreground [&_tr]:border-b [&_tr]:border-border text-sm [&_th]:px-4 [&_th]:py-3 [&_td]:px-4 [&_td]:py-3 [&_tbody_tr:nth-child(even)]:bg-muted/40">
                   <thead>
                     <tr>
                       <th>Data</th>
@@ -416,12 +416,12 @@ export default function AuditoriaTokensPage() {
         )}
 
         {/* Histórico Detalhado */}
-        <div className="card bg-base-100 shadow-sm border border-base-300">
-          <div className="card-body p-4">
+        <div className="relative flex flex-col rounded-lg border border-border bg-card shadow-sm">
+          <div className="flex flex-1 flex-col gap-2 p-4">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="card-title text-lg">Histórico Detalhado</h3>
+              <h3 className="flex items-center gap-2 font-display text-lg font-semibold">Histórico Detalhado</h3>
               {historico && historico.total > 0 && (
-                <div className="text-sm text-base-content/70">
+                <div className="text-sm text-muted-foreground">
                   Total: {formatarNumero(historico.total)} registros
                 </div>
               )}
@@ -439,7 +439,7 @@ export default function AuditoriaTokensPage() {
             ) : (
               <>
                 <div className="overflow-x-auto">
-                  <table className="table table-zebra">
+                  <table className="w-full text-left [&_th]:text-xs [&_th]:font-medium [&_th]:uppercase [&_th]:tracking-wide [&_th]:text-muted-foreground [&_tr]:border-b [&_tr]:border-border text-sm [&_th]:px-4 [&_th]:py-3 [&_td]:px-4 [&_td]:py-3 [&_tbody_tr:nth-child(even)]:bg-muted/40">
                     <thead>
                       <tr>
                         <th>Data/Hora</th>
@@ -466,10 +466,10 @@ export default function AuditoriaTokensPage() {
                             <span className="text-sm">{item.usuario?.nome || 'N/A'}</span>
                           </td>
                           <td>
-                            <span className="badge badge-primary badge-sm capitalize">{item.provedor}</span>
+                            <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full font-semibold px-2 py-0.5 text-[11px] bg-primary/12 text-primary capitalize">{item.provedor}</span>
                           </td>
                           <td>
-                            <code className="text-xs bg-base-200 px-2 py-1 rounded">{item.modelo}</code>
+                            <code className="text-xs bg-muted px-2 py-1 rounded">{item.modelo}</code>
                           </td>
                           <td>
                             <span className="text-sm">
@@ -479,7 +479,7 @@ export default function AuditoriaTokensPage() {
                           <td className="font-semibold">{formatarNumero(item.tokensTotal)}</td>
                           <td>{formatarNumero(item.creditosConsumidos)}</td>
                           <td>
-                            <span className="text-xs text-base-content/70" title={item.metodoChamado}>
+                            <span className="text-xs text-muted-foreground" title={item.metodoChamado}>
                               {item.metodoChamado?.split('/').pop() || 'N/A'}
                             </span>
                           </td>
@@ -489,19 +489,19 @@ export default function AuditoriaTokensPage() {
                   </table>
                 </div>
                 {historico.total > limit && (
-                  <div className="join mt-4 flex justify-center">
+                  <div className="inline-flex items-stretch [&>*]:rounded-none [&>*:first-child]:rounded-l-md [&>*:last-child]:rounded-r-md mt-4 flex justify-center">
                     <button
-                      className="join-item btn"
+                      className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-10 px-4 bg-muted text-foreground hover:bg-muted/80"
                       onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
                       disabled={page === 1}
                     >
                       «
                     </button>
-                    <button className="join-item btn">
+                    <button className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-10 px-4 bg-muted text-foreground hover:bg-muted/80">
                       Página {page} de {Math.ceil(historico.total / limit)}
                     </button>
                     <button
-                      className="join-item btn"
+                      className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-10 px-4 bg-muted text-foreground hover:bg-muted/80"
                       onClick={() => setPage((prev) => prev + 1)}
                       disabled={page * limit >= historico.total}
                     >
