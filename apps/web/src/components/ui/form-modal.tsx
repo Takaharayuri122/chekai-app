@@ -117,7 +117,7 @@ export function FormModal({
 
                 <div
                   onClick={(e) => e.stopPropagation()}
-                  className={`relative flex w-full ${MAX_WIDTH_MAP[maxWidth]} max-h-[92vh] flex-col overflow-hidden rounded-t-2xl border border-border bg-card shadow-lg sm:max-h-[90vh] sm:rounded-lg`}
+                  className={`relative flex w-full ${MAX_WIDTH_MAP[maxWidth]} max-h-[92vh] supports-[height:100dvh]:max-h-[92dvh] flex-col overflow-hidden rounded-t-2xl border border-border bg-card shadow-lg sm:max-h-[90vh] sm:supports-[height:100dvh]:max-h-[90dvh] sm:rounded-lg`}
                 >
                   <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border px-4 py-3 sm:px-6 sm:py-4">
                     <h3 id="form-modal-titulo" className="truncate font-display text-lg font-semibold">
@@ -134,7 +134,7 @@ export function FormModal({
                   </div>
 
                   <div
-                    className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 sm:px-6 sm:py-5"
+                    className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain px-4 py-4 sm:px-6 sm:py-5"
                     onChangeCapture={() => setHasInteracted(true)}
                     onInputCapture={() => setHasInteracted(true)}
                   >
