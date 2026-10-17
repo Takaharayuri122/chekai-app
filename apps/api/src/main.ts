@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+import { ROTAS_OAUTH_SEM_PREFIXO_API } from './modules/mcp/oauth/oauth.constants';
 
 /**
  * Função principal que inicializa a aplicação NestJS.
@@ -58,7 +59,9 @@ async function bootstrap(): Promise<void> {
     }),
   );
 
-  app.setGlobalPrefix('api');
+  app.setGlobalPrefix('api', {
+    exclude: ROTAS_OAUTH_SEM_PREFIXO_API,
+  });
 
   const config = new DocumentBuilder()
     .setTitle('Meta App API')

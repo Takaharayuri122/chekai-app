@@ -290,3 +290,4 @@ Contrato: `docs/regras-de-negocio.md` (RN-AUTH-010, RN-MCP-001 a RN-MCP-011) e `
 
 - Ondas posteriores (CRUD de clientes, unidades e checklists; fotos e PDF; check-in com coordenada explícita; IA de domínio) não têm RN de capacidade. RN-MCP-010 as deixa fora até regra nova. Check-in, exclusão e IA já herdam a confirmação em duas etapas (RN-MCP-007) quando essa regra existir. Não bloqueia a primeira onda.
 - `docs/de-para-web-mobile.md` não muda: o canal não altera endpoints, parâmetros nem relations de web e mobile.
+- A fatia OAuth anterior às tools (UC-01 e UC-02) está em `fundacao-oauth-21.brief.md`. Os testes RED estão em `apps/api/src/modules/mcp/oauth/oauth-fundacao.spec.ts`. UC-03 em diante não entram nessa suíte.

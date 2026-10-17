@@ -19,6 +19,7 @@ import { RelatorioTecnicoModule } from './modules/relatorio-tecnico/relatorio-te
 import { CheckinModule } from './modules/checkin/checkin.module';
 import { PlanoAcaoModule } from './modules/plano-acao/plano-acao.module';
 import { AgendaModule } from './modules/agenda/agenda.module';
+import { McpModule } from './modules/mcp/mcp.module';
 
 /**
  * Módulo principal da aplicação.
@@ -74,6 +75,7 @@ import { AgendaModule } from './modules/agenda/agenda.module';
     CheckinModule,
     PlanoAcaoModule,
     AgendaModule,
+    McpModule,
   ],
 })
 export class AppModule {}
