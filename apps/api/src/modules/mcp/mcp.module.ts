@@ -2,8 +2,14 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { AgendaModule } from '../agenda/agenda.module';
+import { AuditoriaModule } from '../auditoria/auditoria.module';
+import { ChecklistModule } from '../checklist/checklist.module';
+import { ClienteModule } from '../cliente/cliente.module';
 import { EmailModule } from '../email/email.module';
 import { EmailService } from '../email/email.service';
+import { PlanoAcaoModule } from '../plano-acao/plano-acao.module';
+import { RelatorioTecnicoModule } from '../relatorio-tecnico/relatorio-tecnico.module';
 import { UsuarioModule } from '../usuario/usuario.module';
 import { CimdHttp } from './oauth/cimd-http';
 import { OauthAccessTokenEntity } from './oauth/entities/oauth-access-token.entity';
@@ -49,6 +55,7 @@ import {
   McpRegistryService,
 } from './core/mcp-registry.service';
 import { McpServerService } from './core/mcp-server.service';
+import { McpToolsService } from './tools/mcp-tools.service';
 
 /**
  * Canal MCP: servidor de autorização OAuth 2.1 e recurso protegido `/mcp`.
@@ -67,6 +74,12 @@ import { McpServerService } from './core/mcp-server.service';
     ]),
     UsuarioModule,
     EmailModule,
+    ClienteModule,
+    ChecklistModule,
+    AuditoriaModule,
+    AgendaModule,
+    PlanoAcaoModule,
+    RelatorioTecnicoModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [OauthConfigService],
@@ -89,7 +102,12 @@ import { McpServerService } from './core/mcp-server.service';
     McpPrincipalService,
     McpRegistryService,
     McpServerService,
-    { provide: MCP_TOOL_DEFINITIONS, useValue: [] },
+    McpToolsService,
+    {
+      provide: MCP_TOOL_DEFINITIONS,
+      inject: [McpToolsService],
+      useFactory: (tools: McpToolsService) => tools.definicoes(),
+    },
     { provide: UsuarioOtpPorta, useClass: UsuarioOtpAdaptador },
     { provide: EmailOtpPorta, useExisting: EmailService },
     { provide: RelogioPorta, useClass: RelogioSistema },

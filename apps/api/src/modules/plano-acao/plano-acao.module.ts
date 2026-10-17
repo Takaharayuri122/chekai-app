@@ -10,5 +10,6 @@ import { PlanoAcaoService } from './plano-acao.service';
   imports: [TypeOrmModule.forFeature([PlanoAcaoTarefa, Usuario, AuditoriaItem])],
   controllers: [PlanoAcaoController],
   providers: [PlanoAcaoService],
+  exports: [PlanoAcaoService],
 })
 export class PlanoAcaoModule {}
