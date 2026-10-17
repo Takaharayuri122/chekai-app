@@ -25,12 +25,10 @@ function lerPreferencia(): boolean {
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const [recolhida, setRecolhida] = useState(false);
+  // AppShell só renderiza no cliente (AppLayout aguarda montagem/hidratação), então ler a preferência
+  // já no estado inicial evita que a sidebar anime de 240px para 64px a cada navegação.
+  const [recolhida, setRecolhida] = useState(lerPreferencia);
   const [buscaAberta, setBuscaAberta] = useState(false);
-
-  useEffect(() => {
-    setRecolhida(lerPreferencia());
-  }, []);
 
   useEffect(() => {
     const atalho = (e: KeyboardEvent) => {

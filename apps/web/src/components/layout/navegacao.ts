@@ -123,12 +123,24 @@ export function isRotaAtiva(pathname: string, href: string): boolean {
   return (ROTAS_RELACIONADAS[href] ?? []).some((base) => casa(pathname, base));
 }
 
-function normalizar(texto: string): string {
-  return texto.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+/** Entre os itens que casam com a rota, retorna o mais específico (evita "Planos" e "Assinaturas" ativos juntos). */
+export function getHrefAtivo(pathname: string, itens: ItemNavegacao[]): string | null {
+  const candidatos = itens.filter((i) => isRotaAtiva(pathname, i.href));
+  if (candidatos.length === 0) return null;
+  const diretos = candidatos.filter((i) => casa(pathname, i.href)).sort((a, b) => b.href.length - a.href.length);
+  return (diretos[0] ?? candidatos[0]).href;
+}
+
+export function normalizar(texto: string): string {
+  return texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+}
+
+/** Filtro da busca global (assinatura do cmdk): 1 casa, 0 não casa; ignora acentos e maiúsculas. */
+export function filtroBusca(valor: string, termo: string): number {
+  return normalizar(valor).includes(normalizar(termo)) ? 1 : 0;
 }
 
 export function filtrarItensBusca(itens: ItemNavegacao[], termo: string): ItemNavegacao[] {
-  const t = normalizar(termo);
-  if (!t) return itens;
-  return itens.filter((i) => normalizar(i.label).includes(t));
+  if (!normalizar(termo)) return itens;
+  return itens.filter((i) => filtroBusca(i.label, termo) === 1);
 }

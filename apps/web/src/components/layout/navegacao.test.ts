@@ -3,6 +3,8 @@ import { PerfilUsuario } from '@/lib/store';
 import {
   HREF_NOVA_AUDITORIA,
   filtrarItensBusca,
+  filtroBusca,
+  getHrefAtivo,
   getBarraInferior,
   getGruposNavegacao,
   getItensConta,
@@ -87,5 +89,24 @@ describe('filtrarItensBusca', () => {
   });
   it('termo vazio retorna tudo', () => {
     expect(filtrarItensBusca(itens, '   ')).toHaveLength(itens.length);
+  });
+});
+
+describe('filtroBusca (usado pela busca global)', () => {
+  it('casa termos sem acento e em maiúsculas', () => {
+    expect(filtroBusca('Relatórios técnicos', 'relatorio')).toBe(1);
+    expect(filtroBusca('Legislações', 'legislacoes')).toBe(1);
+    expect(filtroBusca('Planos de ação', 'ACAO')).toBe(1);
+    expect(filtroBusca('Agenda', 'clientes')).toBe(0);
+  });
+});
+
+describe('getHrefAtivo', () => {
+  it('escolhe o item mais específico quando dois casam', () => {
+    const itens = getGruposNavegacao(PerfilUsuario.MASTER).flatMap((g) => g.itens);
+    expect(getHrefAtivo('/admin/planos/assinaturas', itens)).toBe('/admin/planos/assinaturas');
+    expect(getHrefAtivo('/admin/planos', itens)).toBe('/admin/planos');
+    expect(getHrefAtivo('/admin/auditoria/abc', itens)).toBe('/admin/auditorias');
+    expect(getHrefAtivo('/admin/inexistente', itens)).toBeNull();
   });
 });

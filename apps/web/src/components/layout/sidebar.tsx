@@ -8,7 +8,7 @@ import { useAuthStore } from '@/lib/store';
 import { cn } from '@/lib/cn';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/shadcn/tooltip';
 import { MenuConta } from './menu-conta';
-import { getGruposNavegacao, isRotaAtiva, type ItemNavegacao } from './navegacao';
+import { getGruposNavegacao, getHrefAtivo, type ItemNavegacao } from './navegacao';
 
 function LinkSidebar({ item, ativo, recolhida }: { item: ItemNavegacao; ativo: boolean; recolhida: boolean }) {
   const link = (
@@ -40,6 +40,8 @@ export function Sidebar({ recolhida, onAlternar }: { recolhida: boolean; onAlter
   const pathname = usePathname();
   const { usuario } = useAuthStore();
   if (!usuario) return null;
+  const grupos = getGruposNavegacao(usuario.perfil);
+  const hrefAtivo = getHrefAtivo(pathname, grupos.flatMap((g) => g.itens));
 
   return (
     <TooltipProvider delayDuration={200}>
@@ -61,14 +63,14 @@ export function Sidebar({ recolhida, onAlternar }: { recolhida: boolean; onAlter
         </div>
 
         <nav className="flex-1 space-y-5 overflow-y-auto px-2 py-4">
-          {getGruposNavegacao(usuario.perfil).map((grupo) => (
+          {grupos.map((grupo) => (
             <div key={grupo.id} className="space-y-1">
               {grupo.titulo && !recolhida && (
                 <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-sidebar-foreground/60">{grupo.titulo}</p>
               )}
               {grupo.titulo && recolhida && <div className="mx-3 border-t border-sidebar-border" aria-hidden />}
               {grupo.itens.map((item) => (
-                <LinkSidebar key={item.href} item={item} ativo={isRotaAtiva(pathname, item.href)} recolhida={recolhida} />
+                <LinkSidebar key={item.href} item={item} ativo={item.href === hrefAtivo} recolhida={recolhida} />
               ))}
             </div>
           ))}

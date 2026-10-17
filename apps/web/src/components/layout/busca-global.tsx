@@ -11,7 +11,7 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/shadcn/command';
-import { HREF_NOVA_AUDITORIA, getGruposNavegacao, getItensConta } from './navegacao';
+import { HREF_NOVA_AUDITORIA, filtroBusca, getGruposNavegacao, getItensConta } from './navegacao';
 
 export function BuscaGlobal({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const router = useRouter();
@@ -24,7 +24,7 @@ export function BuscaGlobal({ open, onOpenChange }: { open: boolean; onOpenChang
   };
 
   return (
-    <CommandDialog open={open} onOpenChange={onOpenChange}>
+    <CommandDialog open={open} onOpenChange={onOpenChange} filter={filtroBusca}>
       <CommandInput placeholder="Buscar telas e atalhos…" />
       <CommandList>
         <CommandEmpty>Nada encontrado.</CommandEmpty>

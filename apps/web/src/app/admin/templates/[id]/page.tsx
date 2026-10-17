@@ -832,7 +832,7 @@ export default function EditarTemplatePage() {
   return (
     <AppLayout>
       {/* Header */}
-      <div className="bg-base-100 border-b border-base-300 px-4 lg:px-8 py-3 sm:py-4 sticky top-16 z-30">
+      <div className="bg-base-100 border-b border-base-300 px-4 lg:px-8 py-3 sm:py-4 sticky top-14 z-30">
         <div className="flex items-center gap-2 sm:gap-3 max-w-4xl mx-auto">
           <Link href="/admin/templates" className="btn btn-ghost btn-sm btn-circle flex-shrink-0">
             <ChevronLeft className="w-5 h-5" />
