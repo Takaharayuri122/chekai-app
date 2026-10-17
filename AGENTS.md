@@ -2,7 +2,7 @@
 
 ## Learned User Preferences
 
-- Commits, MRs e comunicação geral em português (pt-BR); alinhar implementação ao design system DaisyUI e regras NestJS/TS do projeto
+- Commits, MRs e comunicação geral em português (pt-BR); alinhar implementação ao design system shadcn/ui + Radix com os tokens da marca (DaisyUI em remoção gradual; ver docs/superpowers/specs/2026-10-17-reestruturacao-visual-web-design.md) e às regras NestJS/TS do projeto
 - UX mobile-first em listagens e formulários — tabelas em cards no mobile, modais e fluxos pensados primeiro para telas pequenas; no app Expo, evitar `SafeAreaView` com inset superior duplicado em telas filhas quando o layout `(app)/_layout` já aplicar safe area no topo
 - Modais com cabeçalho e rodapé fixos, scroll vertical no conteúdo, botão fechar visível e confirmação ao descartar alterações somente após interação real do usuário
 - CRUDs administrativos no web seguem a skill `crud-frontend` (`CrudFiltros` + `CrudTable`): filtros com Pesquisar/Limpar, listagem com menu de ações e carga inicial ~20 registros; a tabela usa o mesmo card visual dos filtros e o menu de ações não pode ser cortado por overflow (posicionamento fixed + getBoundingClientRect)
