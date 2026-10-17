@@ -49,3 +49,4 @@ Thumbs.db
 
 # Worktrees locais
 .worktrees/
+.superpowers/
