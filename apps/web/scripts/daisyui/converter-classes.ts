@@ -326,7 +326,19 @@ export function converterClasses(classes: string): string {
     resultado.push(token);
   }
   if (!gruposEmitidos && saida.length) resultado.unshift(...saida);
-  return resultado.filter(Boolean).join(' ');
+  // Remove duplicadas (a mesma classe vinda do grupo e do literal original)
+  const vistos = new Set<string>();
+  return resultado
+    .join(' ')
+    .split(/(\$\{[^}]*\}|\s+)/)
+    .filter((t) => t && !/^\s+$/.test(t))
+    .filter((t) => {
+      if (t.startsWith('${')) return true;
+      if (vistos.has(t)) return false;
+      vistos.add(t);
+      return true;
+    })
+    .join(' ');
 }
 
 function converterAvulso(core: string): string | null {

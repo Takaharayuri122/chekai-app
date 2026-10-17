@@ -134,3 +134,14 @@ describe('preservação', () => {
     expect(c('loading-spinner')).toBe('');
   });
 });
+
+describe('duplicadas', () => {
+  it('remove classes repetidas mantendo a primeira ocorrência', () => {
+    const s = c('card bg-base-100 shadow-sm border border-base-300');
+    const lista = s.split(/\s+/);
+    expect(lista.filter((x) => x === 'bg-card')).toHaveLength(1);
+    expect(lista.filter((x) => x === 'border')).toHaveLength(1);
+    expect(lista.filter((x) => x === 'border-border')).toHaveLength(1);
+    expect(c('btn btn-primary gap-2').split(/\s+/).filter((x) => x === 'gap-2')).toHaveLength(1);
+  });
+});
