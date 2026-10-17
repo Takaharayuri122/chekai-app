@@ -234,12 +234,12 @@ export default function ConfiguracoesCreditoPage() {
                       </td>
                       <td>
                         {config.ativo ? (
-                          <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full font-semibold px-2.5 py-0.5 text-xs bg-success/12 text-[hsl(160_84%_28%)] gap-2">
+                          <span className="inline-flex items-center whitespace-nowrap rounded-full font-semibold px-2.5 py-0.5 text-xs bg-success/12 text-[hsl(160_84%_28%)] gap-2">
                             <CheckCircle2 className="w-3 h-3" />
                             Ativa
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full font-semibold px-2.5 py-0.5 text-xs bg-destructive/12 text-[hsl(0_72%_45%)] gap-2">
+                          <span className="inline-flex items-center whitespace-nowrap rounded-full font-semibold px-2.5 py-0.5 text-xs bg-destructive/12 text-[hsl(0_72%_45%)] gap-2">
                             <XCircle className="w-3 h-3" />
                             Inativa
                           </span>
@@ -319,7 +319,7 @@ export default function ConfiguracoesCreditoPage() {
           <div className="flex flex-col">
             <label className="flex items-center justify-between gap-2 py-1">
               <span className="text-sm font-medium text-foreground">Provedor</span>
-              <span className="text-xs text-muted-foreground text-destructive">*</span>
+              <span className="text-xs text-destructive">*</span>
             </label>
             <select
               className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-10 px-3 w-full"
@@ -336,7 +336,7 @@ export default function ConfiguracoesCreditoPage() {
           <div className="flex flex-col">
             <label className="flex items-center justify-between gap-2 py-1">
               <span className="text-sm font-medium text-foreground">Modelo</span>
-              <span className="text-xs text-muted-foreground text-destructive">*</span>
+              <span className="text-xs text-destructive">*</span>
             </label>
             <input
               type="text"
@@ -355,7 +355,7 @@ export default function ConfiguracoesCreditoPage() {
           <div className="flex flex-col">
             <label className="flex items-center justify-between gap-2 py-1">
               <span className="text-sm font-medium text-foreground">Tokens por Crédito</span>
-              <span className="text-xs text-muted-foreground text-destructive">*</span>
+              <span className="text-xs text-destructive">*</span>
             </label>
             <input
               type="number"

@@ -62,35 +62,35 @@ export function EditorRichTextBasico({
         <div className="border-b border-border bg-base-50 px-2 py-2 flex flex-wrap gap-2">
           <button
             type="button"
-            className={`inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-7 px-2 text-xs bg-muted text-foreground hover:bg-muted/80 ${editor.isActive('bold') ? '!bg-primary !text-primary-foreground hover:!bg-primary/90' : '!bg-transparent hover:!bg-muted'}`}
+            className={`inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-7 px-2 text-xs bg-muted text-foreground hover:bg-muted/80 ${editor.isActive('bold') ? '!bg-primary !text-primary-foreground hover:!bg-primary/90' : '!bg-transparent hover:!bg-muted'}`}
             onClick={() => editor.chain().focus().toggleBold().run()}
           >
             B
           </button>
           <button
             type="button"
-            className={`inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-7 px-2 text-xs bg-muted text-foreground hover:bg-muted/80 italic ${editor.isActive('italic') ? '!bg-primary !text-primary-foreground hover:!bg-primary/90' : '!bg-transparent hover:!bg-muted'}`}
+            className={`inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-7 px-2 text-xs bg-muted text-foreground hover:bg-muted/80 italic ${editor.isActive('italic') ? '!bg-primary !text-primary-foreground hover:!bg-primary/90' : '!bg-transparent hover:!bg-muted'}`}
             onClick={() => editor.chain().focus().toggleItalic().run()}
           >
             I
           </button>
           <button
             type="button"
-            className={`inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-7 px-2 text-xs bg-muted text-foreground hover:bg-muted/80 ${editor.isActive('bulletList') ? '!bg-primary !text-primary-foreground hover:!bg-primary/90' : '!bg-transparent hover:!bg-muted'}`}
+            className={`inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-7 px-2 text-xs bg-muted text-foreground hover:bg-muted/80 ${editor.isActive('bulletList') ? '!bg-primary !text-primary-foreground hover:!bg-primary/90' : '!bg-transparent hover:!bg-muted'}`}
             onClick={() => editor.chain().focus().toggleBulletList().run()}
           >
             Lista
           </button>
           <button
             type="button"
-            className={`inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-7 px-2 text-xs bg-muted text-foreground hover:bg-muted/80 ${editor.isActive('orderedList') ? '!bg-primary !text-primary-foreground hover:!bg-primary/90' : '!bg-transparent hover:!bg-muted'}`}
+            className={`inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-7 px-2 text-xs bg-muted text-foreground hover:bg-muted/80 ${editor.isActive('orderedList') ? '!bg-primary !text-primary-foreground hover:!bg-primary/90' : '!bg-transparent hover:!bg-muted'}`}
             onClick={() => editor.chain().focus().toggleOrderedList().run()}
           >
             1.
           </button>
           <button
             type="button"
-            className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-7 px-2 text-xs hover:bg-muted"
+            className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-7 px-2 text-xs hover:bg-muted"
             onClick={() => editor.chain().focus().clearNodes().unsetAllMarks().run()}
           >
             Limpar

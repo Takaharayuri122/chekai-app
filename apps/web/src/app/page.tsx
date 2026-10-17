@@ -357,14 +357,14 @@ function HomePageContent() {
               <button
                 type="button"
                 onClick={() => setModalListaEsperaAberto(true)}
-                className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-11 px-6 text-base bg-primary text-primary-foreground hover:bg-primary/90 text-lg px-8 hover:scale-105 transition-transform"
+                className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium disabled:pointer-events-none disabled:opacity-50 h-11 bg-primary text-primary-foreground hover:bg-primary/90 text-lg px-8 hover:scale-105 transition-transform"
               >
                 Conhecer agora
                 <ArrowRight className="w-5 h-5" />
               </button>
               <Link
                 href="/login"
-                className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-11 px-6 text-base border border-input bg-card hover:bg-muted text-lg px-8 hover:scale-105 transition-transform"
+                className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium disabled:pointer-events-none disabled:opacity-50 h-11 border border-input bg-card hover:bg-muted text-lg px-8 hover:scale-105 transition-transform"
               >
                 Entrar
               </Link>
@@ -383,7 +383,7 @@ function HomePageContent() {
                   initial={{ opacity: 0, scale: 0.8 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: 0.5 + index * 0.1 }}
-                  className="relative flex flex-col rounded-lg border border-border bg-card bg-card/80 backdrop-blur-sm shadow-sm"
+                  className="relative flex flex-col rounded-lg border border-border bg-card/80 backdrop-blur-sm shadow-sm"
                 >
                   <div className="flex flex-1 flex-col gap-2 p-4 text-center">
                     <stat.icon className="w-8 h-8 text-primary mx-auto mb-2" />
@@ -719,14 +719,14 @@ function HomePageContent() {
               <button
                 type="button"
                 onClick={() => setModalListaEsperaAberto(true)}
-                className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-11 px-6 text-base bg-muted text-foreground hover:bg-muted/80 bg-white text-primary hover:bg-muted text-lg px-8 hover:scale-105 transition-transform"
+                className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium disabled:pointer-events-none disabled:opacity-50 h-11 bg-white text-primary hover:bg-muted text-lg px-8 hover:scale-105 transition-transform"
               >
                 Conhecer agora
                 <ArrowRight className="w-5 h-5" />
               </button>
               <Link
                 href="/login"
-                className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-11 px-6 text-base border border-input bg-card hover:bg-muted border-white text-white hover:bg-white/10 text-lg px-8 hover:scale-105 transition-transform"
+                className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium disabled:pointer-events-none disabled:opacity-50 h-11 border bg-card border-white text-white hover:bg-white/10 text-lg px-8 hover:scale-105 transition-transform"
               >
                 Entrar
               </Link>

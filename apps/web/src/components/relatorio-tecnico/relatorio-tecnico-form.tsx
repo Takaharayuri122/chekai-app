@@ -148,7 +148,7 @@ export function RelatorioTecnicoForm({
     <div className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div className="flex flex-col">
-          <label className="flex items-center justify-between gap-2 py-1 py-0">
+          <label className="flex items-center justify-between gap-2 py-0">
             <span className="text-sm font-medium text-foreground">Cliente</span>
           </label>
           <select
@@ -169,7 +169,7 @@ export function RelatorioTecnicoForm({
           </select>
         </div>
         <div className="flex flex-col">
-          <label className="flex items-center justify-between gap-2 py-1 py-0">
+          <label className="flex items-center justify-between gap-2 py-0">
             <span className="text-sm font-medium text-foreground">Unidade (opcional)</span>
           </label>
           <select
@@ -189,7 +189,7 @@ export function RelatorioTecnicoForm({
       </div>
 
       <div className="flex flex-col">
-        <label className="flex items-center justify-between gap-2 py-1 py-0">
+        <label className="flex items-center justify-between gap-2 py-0">
           <span className="text-sm font-medium text-foreground">Identificação</span>
         </label>
         <input
@@ -284,7 +284,7 @@ export function RelatorioTecnicoForm({
                   ) : !somenteLeitura && relatorioId ? (
                     <button
                       type="button"
-                      className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-7 w-7 px-0 rounded-full bg-destructive text-destructive-foreground hover:bg-destructive/90 absolute top-1 right-1"
+                      className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-7 w-7 px-0 rounded-full bg-destructive text-destructive-foreground hover:bg-destructive/90 absolute top-1 right-1"
                       onClick={async () => {
                         setRemovendoFotoId(foto.id);
                         try {
@@ -391,7 +391,7 @@ export function RelatorioTecnicoForm({
                 <span>{acao}</span>
                 <button
                   type="button"
-                  className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-7 px-2 text-xs hover:bg-muted text-destructive"
+                  className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-7 px-2 text-xs hover:bg-muted text-destructive"
                   onClick={() => removerAcao(index)}
                   disabled={somenteLeitura}
                 >
@@ -418,7 +418,7 @@ export function RelatorioTecnicoForm({
       />
 
       <div className="flex flex-col">
-        <label className="flex items-center justify-between gap-2 py-1 py-0">
+        <label className="flex items-center justify-between gap-2 py-0">
           <span className="text-sm font-medium text-foreground">Apoio analítico ChekAi</span>
         </label>
         <div className="flex justify-end mb-2">
@@ -485,7 +485,7 @@ export function RelatorioTecnicoForm({
           </div>
         ) : (
           <textarea
-            className="min-h-[80px] px-3 py-2 rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 min-h-[120px]"
+            className="px-3 py-2 rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 min-h-[120px]"
             value={valor.apoioAnaliticoChekAi || ''}
             readOnly
             disabled

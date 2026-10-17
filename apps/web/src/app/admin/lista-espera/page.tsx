@@ -112,7 +112,7 @@ export default function ListaEsperaPage() {
                     type="button"
                     onClick={() => carregar(dados.page - 1)}
                     disabled={dados.page <= 1}
-                    className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 hover:bg-muted gap-1"
+                    className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 hover:bg-muted gap-1"
                   >
                     <ChevronLeft className="w-4 h-4" />
                     Anterior
@@ -124,7 +124,7 @@ export default function ListaEsperaPage() {
                     type="button"
                     onClick={() => carregar(dados.page + 1)}
                     disabled={dados.page >= dados.totalPages}
-                    className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 hover:bg-muted gap-1"
+                    className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 hover:bg-muted gap-1"
                   >
                     Próxima
                     <ChevronRight className="w-4 h-4" />

@@ -155,7 +155,7 @@ export function CheckinFab() {
           <div className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] right-4 z-50 md:bottom-8 md:right-8">
             <div className="flex flex-col items-center gap-2">
               <button
-                className={`inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-11 w-11 px-0 rounded-full bg-muted text-foreground hover:bg-muted/80 shadow-md ${checkinAberto ? '!bg-warning !text-white hover:!bg-warning/90' : '!bg-primary !text-primary-foreground hover:!bg-primary/90'} relative`}
+                className={`inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-11 w-11 px-0 rounded-full bg-muted text-foreground hover:bg-muted/80 shadow-md ${checkinAberto ? '!bg-warning !text-white hover:!bg-warning/90' : '!bg-primary !text-primary-foreground hover:!bg-primary/90'} relative`}
                 onClick={() => {
                   if (checkinAberto) {
                     setIsCheckoutDialogOpen(true);

@@ -220,7 +220,7 @@ function LoginContent() {
                     </div>
                     {emailForm.formState.errors.email && (
                       <label className="flex items-center justify-between gap-2 py-1">
-                        <span className="text-xs text-muted-foreground text-destructive">
+                        <span className="text-xs text-destructive">
                           {emailForm.formState.errors.email.message}
                         </span>
                       </label>
@@ -252,20 +252,20 @@ function LoginContent() {
                     <label className="flex items-center justify-between gap-2 py-1">
                       <span className="text-sm font-medium text-foreground">Código de acesso</span>
                       {timeRemaining !== null && !otpExpired && (
-                        <span className="text-xs text-muted-foreground flex items-center gap-1 text-warning">
+                        <span className="text-xs flex items-center gap-1 text-warning">
                           <Clock className="w-4 h-4" />
                           {formatTime(timeRemaining)}
                         </span>
                       )}
                       {otpExpired && (
-                        <span className="text-xs text-muted-foreground text-destructive">Expirado</span>
+                        <span className="text-xs text-destructive">Expirado</span>
                       )}
                     </label>
                     <input
                       type="text"
                       placeholder="000000"
                       maxLength={6}
-                      className={`rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-10 px-3 w-full text-center text-2xl tracking-widest font-mono ${
+                      className={`rounded-md border border-input bg-card outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-10 px-3 w-full text-center text-2xl tracking-widest font-mono ${
                         otpForm.formState.errors.codigo || otpExpired ? '!border-destructive' : ''
                       }`}
                       {...otpForm.register('codigo', {
@@ -277,14 +277,14 @@ function LoginContent() {
                     />
                     {otpForm.formState.errors.codigo && (
                       <label className="flex items-center justify-between gap-2 py-1">
-                        <span className="text-xs text-muted-foreground text-destructive">
+                        <span className="text-xs text-destructive">
                           {otpForm.formState.errors.codigo.message}
                         </span>
                       </label>
                     )}
                     {otpExpired && (
                       <label className="flex items-center justify-between gap-2 py-1">
-                        <span className="text-xs text-muted-foreground text-destructive">
+                        <span className="text-xs text-destructive">
                           O código expirou. Solicite um novo código.
                         </span>
                       </label>
@@ -330,7 +330,7 @@ function LoginContent() {
               )}
             </AnimatePresence>
 
-            <div className="my-4 flex items-center gap-4 text-xs text-muted-foreground before:h-px before:flex-1 before:bg-border after:h-px after:flex-1 after:bg-border text-muted-foreground/70">ou</div>
+            <div className="my-4 flex items-center gap-4 text-xs before:h-px before:flex-1 before:bg-border after:h-px after:flex-1 after:bg-border text-muted-foreground/70">ou</div>
 
             <p className="text-center text-sm text-muted-foreground">
               Não tem uma conta?{' '}

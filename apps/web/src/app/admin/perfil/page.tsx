@@ -181,7 +181,7 @@ export default function PerfilPage() {
                     </button>
                     <button
                       type="button"
-                      className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 hover:bg-muted text-destructive hover:bg-destructive/10"
+                      className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 text-destructive hover:bg-destructive/10"
                       onClick={handleRemoverLogo}
                       disabled={uploadingLogo || removingLogo}
                     >
@@ -308,8 +308,8 @@ export default function PerfilPage() {
               <Shield className="w-5 h-5 text-primary" />
               Segurança
             </h3>
-            <div className="my-4 flex items-center gap-4 text-xs text-muted-foreground before:h-px before:flex-1 before:bg-border after:h-px after:flex-1 after:bg-border my-2"></div>
-            <button className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-10 px-4 hover:bg-muted justify-start">
+            <div className="flex items-center gap-4 text-xs text-muted-foreground before:h-px before:flex-1 before:bg-border after:h-px after:flex-1 after:bg-border my-2"></div>
+            <button className="inline-flex items-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-10 px-4 hover:bg-muted justify-start">
               Alterar senha
             </button>
           </div>

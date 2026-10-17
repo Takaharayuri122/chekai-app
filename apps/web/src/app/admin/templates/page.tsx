@@ -210,16 +210,16 @@ export default function TemplatesPage() {
           <div className="flex gap-2">
             <button
               onClick={() => setMostrarChatIa(true)}
-              className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 bg-info text-white hover:bg-info/90 gap-1"
+              className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 bg-info text-white hover:bg-info/90 gap-1"
             >
               <Sparkles className="w-4 h-4" />
               Criar com IA
             </button>
-            <Link href="/admin/templates/importar" className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 hover:bg-muted gap-1">
+            <Link href="/admin/templates/importar" className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 hover:bg-muted gap-1">
               <Upload className="w-4 h-4" />
               Importar
             </Link>
-            <Link href="/admin/templates/novo" className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 bg-primary text-primary-foreground hover:bg-primary/90 gap-1">
+            <Link href="/admin/templates/novo" className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 bg-primary text-primary-foreground hover:bg-primary/90 gap-1">
               <Plus className="w-4 h-4" />
               Novo Checklist
             </Link>

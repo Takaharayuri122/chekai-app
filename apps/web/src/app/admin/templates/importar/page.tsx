@@ -137,7 +137,7 @@ export default function ImportarChecklistPage() {
       {/* Header */}
       <div className="bg-card border-b border-border px-4 lg:px-8 py-4 sticky top-14 z-30">
         <div className="flex items-center gap-3 max-w-3xl mx-auto">
-          <Link href="/admin/templates" className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 w-9 px-0 rounded-full hover:bg-muted">
+          <Link href="/admin/templates" className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 w-9 px-0 rounded-full hover:bg-muted">
             <ChevronLeft className="w-5 h-5" />
           </Link>
           <div className="flex-1">
@@ -165,7 +165,7 @@ export default function ImportarChecklistPage() {
           <div className="flex w-full items-start gap-3 rounded-md border p-4 text-sm border-destructive/30 bg-destructive/10 text-destructive mb-6">
             <AlertTriangle className="w-5 h-5" />
             <span>{erro}</span>
-            <button onClick={() => setErro('')} className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 w-9 px-0 rounded-full hover:bg-muted">
+            <button onClick={() => setErro('')} className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 w-9 px-0 rounded-full hover:bg-muted">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -255,7 +255,7 @@ export default function ImportarChecklistPage() {
               {/* Info Card */}
               <div className="relative flex flex-col rounded-lg border border-border bg-card shadow-sm">
                 <div className="flex flex-1 flex-col gap-2 p-6">
-                  <h2 className="flex items-center gap-2 font-display text-lg font-semibold text-base">
+                  <h2 className="flex items-center gap-2 font-display font-semibold text-base">
                     <FileSpreadsheet className="w-5 h-5 text-primary" />
                     Arquivo Detectado
                   </h2>
@@ -271,11 +271,11 @@ export default function ImportarChecklistPage() {
                   </div>
                   <div className="flex gap-4 mt-4">
                     <div className="flex flex-col gap-1 p-4 bg-muted rounded-lg">
-                      <div className="font-display text-3xl font-semibold text-2xl text-primary">{preview.totalGrupos}</div>
+                      <div className="font-display font-semibold text-2xl text-primary">{preview.totalGrupos}</div>
                       <div className="text-xs text-muted-foreground">Grupos</div>
                     </div>
                     <div className="flex flex-col gap-1 p-4 bg-muted rounded-lg">
-                      <div className="font-display text-3xl font-semibold text-2xl text-info">{preview.totalPerguntas}</div>
+                      <div className="font-display font-semibold text-2xl text-info">{preview.totalPerguntas}</div>
                       <div className="text-xs text-muted-foreground">Perguntas</div>
                     </div>
                   </div>
@@ -285,7 +285,7 @@ export default function ImportarChecklistPage() {
               {/* Grupos Preview */}
               <div className="relative flex flex-col rounded-lg border border-border bg-card shadow-sm">
                 <div className="flex flex-1 flex-col gap-2 p-6">
-                  <h2 className="flex items-center gap-2 font-display text-lg font-semibold text-base">Grupos Detectados</h2>
+                  <h2 className="flex items-center gap-2 font-display font-semibold text-base">Grupos Detectados</h2>
                   <div className="space-y-3 mt-4 max-h-80 overflow-y-auto">
                     {preview.grupos.map((grupo, idx) => (
                       <div key={idx} className="flex items-start gap-3 p-3 bg-muted rounded-lg">
@@ -328,7 +328,7 @@ export default function ImportarChecklistPage() {
               className="relative flex flex-col rounded-lg border border-border bg-card shadow-sm"
             >
               <div className="flex flex-1 flex-col gap-2 p-6">
-                <h2 className="flex items-center gap-2 font-display text-lg font-semibold text-base">Configurar Importação</h2>
+                <h2 className="flex items-center gap-2 font-display font-semibold text-base">Configurar Importação</h2>
                 <div className="space-y-4 mt-4">
                   <div className="flex flex-col">
                     <label className="flex items-center justify-between gap-2 py-1">
@@ -446,11 +446,11 @@ export default function ImportarChecklistPage() {
 
                 <div className="grid grid-cols-2 gap-6 mb-8">
                   <div className="flex flex-col gap-1 p-4 bg-muted rounded-lg">
-                    <div className="font-display text-3xl font-semibold text-2xl text-primary">{resultado.gruposCriados}</div>
+                    <div className="font-display font-semibold text-2xl text-primary">{resultado.gruposCriados}</div>
                     <div className="text-xs text-muted-foreground">Grupos Criados</div>
                   </div>
                   <div className="flex flex-col gap-1 p-4 bg-muted rounded-lg">
-                    <div className="font-display text-3xl font-semibold text-2xl text-info">{resultado.itensCriados}</div>
+                    <div className="font-display font-semibold text-2xl text-info">{resultado.itensCriados}</div>
                     <div className="text-xs text-muted-foreground">Perguntas Criadas</div>
                   </div>
                 </div>

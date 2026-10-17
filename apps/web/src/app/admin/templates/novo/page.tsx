@@ -137,15 +137,15 @@ function SortableItem({ item, index, onEdit, onRemove, onDuplicate, isDuplicatin
       <div className="flex-1 min-w-0">
         <p className="text-xs sm:text-sm leading-relaxed break-words">{item.pergunta}</p>
         <div className="flex flex-wrap items-center gap-1.5 mt-1.5 sm:mt-1">
-          <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full font-semibold px-2 py-0.5 text-[11px] bg-muted text-muted-foreground py-1">{CATEGORIA_ITEM_LABELS[item.categoria]}</span>
-          <span className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full font-semibold px-2 py-0.5 text-[11px] bg-muted text-foreground py-1 ${getCriticidadeBadge(item.criticidade)}`}>
+          <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full font-semibold px-2 text-[11px] bg-muted text-muted-foreground py-1">{CATEGORIA_ITEM_LABELS[item.categoria]}</span>
+          <span className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full font-semibold px-2 text-[11px] bg-muted text-foreground py-1 ${getCriticidadeBadge(item.criticidade)}`}>
             {CRITICIDADE_LABELS[item.criticidade]}
           </span>
           {item.legislacaoReferencia && (
             <span className="text-xs text-muted-foreground truncate max-w-[120px] sm:max-w-none">{item.legislacaoReferencia}</span>
           )}
           {item.usarRespostasPersonalizadas && (
-            <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full font-semibold px-2 py-0.5 text-[11px] bg-info/12 text-[hsl(217_80%_45%)] py-1">
+            <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full font-semibold px-2 text-[11px] bg-info/12 text-[hsl(217_80%_45%)] py-1">
               <Settings className="w-2.5 h-2.5 sm:w-3 sm:h-3" />Pers.
             </span>
           )}
@@ -828,7 +828,7 @@ export default function NovoTemplatePage() {
       {/* Header */}
       <div className="bg-card border-b border-border px-4 lg:px-8 py-4 sticky top-14 z-30">
         <div className="flex items-center gap-3 max-w-4xl mx-auto">
-          <Link href="/admin/templates" className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 w-9 px-0 rounded-full hover:bg-muted">
+          <Link href="/admin/templates" className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 w-9 px-0 rounded-full hover:bg-muted">
             <ChevronLeft className="w-5 h-5" />
           </Link>
           <div className="flex-1">
@@ -841,7 +841,7 @@ export default function NovoTemplatePage() {
             </p>
           </div>
           {templateCreated && (
-            <button onClick={handleSalvar} disabled={saving} className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 bg-primary text-primary-foreground hover:bg-primary/90 gap-1">
+            <button onClick={handleSalvar} disabled={saving} className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 bg-primary text-primary-foreground hover:bg-primary/90 gap-1">
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
               Salvar
             </button>
@@ -857,7 +857,7 @@ export default function NovoTemplatePage() {
           className="relative flex flex-col rounded-lg border border-border bg-card shadow-sm"
         >
           <div className="flex flex-1 flex-col gap-2 p-6">
-            <h2 className="flex items-center gap-2 font-display text-lg font-semibold text-base">Informações do Checklist</h2>
+            <h2 className="flex items-center gap-2 font-display font-semibold text-base">Informações do Checklist</h2>
             <div className="space-y-4 mt-2">
               <div className="flex flex-col">
                 <label className="flex items-center justify-between gap-2 py-1"><span className="text-sm font-medium text-foreground">Nome *</span></label>
@@ -939,15 +939,15 @@ export default function NovoTemplatePage() {
           >
             <div className="flex flex-1 flex-col gap-2 p-6">
               <div className="flex items-center justify-between">
-                <h2 className="flex items-center gap-2 font-display text-lg font-semibold text-base">
+                <h2 className="flex items-center gap-2 font-display font-semibold text-base">
                   Grupos e Perguntas ({template?.grupos?.length || 0} grupos, {template?.itens?.filter(i => i.ativo !== false).length || 0} perguntas)
                 </h2>
                 <div className="flex gap-2">
-                  <button onClick={handleAbrirModalNovoGrupo} className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 bg-info text-white hover:bg-info/90 gap-1">
+                  <button onClick={handleAbrirModalNovoGrupo} className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 bg-info text-white hover:bg-info/90 gap-1">
                     <FolderOpen className="w-4 h-4" />
                     Novo Grupo
                   </button>
-                  <button onClick={() => handleAbrirModalNovoItem()} className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 bg-primary text-primary-foreground hover:bg-primary/90 gap-1">
+                  <button onClick={() => handleAbrirModalNovoItem()} className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 bg-primary text-primary-foreground hover:bg-primary/90 gap-1">
                     <Plus className="w-4 h-4" />
                     Nova Pergunta
                   </button>
@@ -1194,9 +1194,9 @@ export default function NovoTemplatePage() {
               {/* Grupo e Seção */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="flex flex-col">
-                  <label className="flex items-center justify-between gap-2 py-1"><span className="text-sm font-medium text-foreground text-xs sm:text-sm">Grupo</span></label>
+                  <label className="flex items-center justify-between gap-2 py-1"><span className="font-medium text-foreground text-xs sm:text-sm">Grupo</span></label>
                   <select
-                    className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs sm:!h-10 sm:!px-3"
+                    className="rounded-md border border-input bg-card outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs sm:!h-10 sm:!px-3"
                     value={itemForm.grupoId || ''}
                     onChange={(e) => setItemForm({ ...itemForm, grupoId: e.target.value || undefined })}
                   >
@@ -1207,11 +1207,11 @@ export default function NovoTemplatePage() {
                   </select>
                 </div>
                 <div className="flex flex-col">
-                  <label className="flex items-center justify-between gap-2 py-1"><span className="text-sm font-medium text-foreground text-xs sm:text-sm">Seção (opcional)</span></label>
+                  <label className="flex items-center justify-between gap-2 py-1"><span className="font-medium text-foreground text-xs sm:text-sm">Seção (opcional)</span></label>
                   <input
                     type="text"
                     placeholder="Ex: ÁREA DE LAVAGEM"
-                    className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs sm:!h-10 sm:!px-3"
+                    className="rounded-md border border-input bg-card outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs sm:!h-10 sm:!px-3"
                     value={itemForm.secao}
                     onChange={(e) => setItemForm({ ...itemForm, secao: e.target.value })}
                   />
@@ -1220,7 +1220,7 @@ export default function NovoTemplatePage() {
 
               {/* Pergunta */}
               <div className="flex flex-col">
-                <label className="flex items-center justify-between gap-2 py-1"><span className="text-sm font-medium text-foreground text-xs sm:text-sm">Pergunta *</span></label>
+                <label className="flex items-center justify-between gap-2 py-1"><span className="font-medium text-foreground text-xs sm:text-sm">Pergunta *</span></label>
                 <textarea
                   placeholder="Ex: As paredes, piso e teto estão em boas condições?"
                   className="min-h-[80px] px-3 py-2 rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60"
@@ -1233,9 +1233,9 @@ export default function NovoTemplatePage() {
               {/* Categoria, Criticidade, Peso e Obrigatório */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
                 <div className="flex flex-col">
-                  <label className="flex items-center justify-between gap-2 py-1"><span className="text-sm font-medium text-foreground text-xs sm:text-sm">Categoria</span></label>
+                  <label className="flex items-center justify-between gap-2 py-1"><span className="font-medium text-foreground text-xs sm:text-sm">Categoria</span></label>
                   <select
-                    className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs sm:!h-10 sm:!px-3"
+                    className="rounded-md border border-input bg-card outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs sm:!h-10 sm:!px-3"
                     value={itemForm.categoria}
                     onChange={(e) => setItemForm({ ...itemForm, categoria: e.target.value as CategoriaItem })}
                   >
@@ -1246,7 +1246,7 @@ export default function NovoTemplatePage() {
                 </div>
                 <div className="flex flex-col">
                   <label className="flex items-center justify-between gap-2 py-1">
-                    <span className="text-sm font-medium text-foreground text-xs sm:text-sm flex items-center gap-1">
+                    <span className="font-medium text-foreground text-xs sm:text-sm flex items-center gap-1">
                       Criticidade
                       <Tooltip content="Define o grau de impacto desta pergunta na avaliação. Perguntas com criticidade alta ou crítica têm maior relevância no resultado final e podem gerar alertas automáticos de não conformidade.">
                         <HelpCircle className="w-3.5 h-3.5 text-muted-foreground/70 cursor-help" />
@@ -1254,7 +1254,7 @@ export default function NovoTemplatePage() {
                     </span>
                   </label>
                   <select
-                    className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs sm:!h-10 sm:!px-3"
+                    className="rounded-md border border-input bg-card outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs sm:!h-10 sm:!px-3"
                     value={itemForm.criticidade}
                     onChange={(e) => setItemForm({ ...itemForm, criticidade: e.target.value as CriticidadeItem })}
                   >
@@ -1266,7 +1266,7 @@ export default function NovoTemplatePage() {
                 {itemForm.tipoRespostaCustomizada !== TipoRespostaCustomizada.TEXTO && (
                   <div className="flex flex-col">
                     <label className="flex items-center justify-between gap-2 py-1">
-                      <span className="text-sm font-medium text-foreground text-xs sm:text-sm flex items-center gap-1">
+                      <span className="font-medium text-foreground text-xs sm:text-sm flex items-center gap-1">
                         Peso
                         <Tooltip content="Multiplicador aplicado à pontuação desta pergunta. Um peso maior aumenta a influência desta pergunta no cálculo da nota final da auditoria. Ex: peso 2 dobra o valor da pontuação obtida.">
                           <HelpCircle className="w-3.5 h-3.5 text-muted-foreground/70 cursor-help" />
@@ -1277,7 +1277,7 @@ export default function NovoTemplatePage() {
                       type="number"
                       min="-10"
                       max="10"
-                      className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs sm:!h-10 sm:!px-3"
+                      className="rounded-md border border-input bg-card outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs sm:!h-10 sm:!px-3"
                       value={itemForm.peso}
                       onChange={(e) => {
                         const v = e.target.value === '' ? 1 : parseInt(e.target.value, 10);
@@ -1288,7 +1288,7 @@ export default function NovoTemplatePage() {
                 )}
                 <div className="flex flex-col justify-end">
                   <label className="flex items-center justify-between gap-2 py-1 cursor-pointer">
-                    <span className="text-sm font-medium text-foreground text-xs sm:text-sm">Pergunta Obrigatória</span>
+                    <span className="font-medium text-foreground text-xs sm:text-sm">Pergunta Obrigatória</span>
                     <input
                       type="checkbox"
                       className="relative shrink-0 cursor-pointer appearance-none rounded-full bg-muted-foreground/30 transition-colors checked:bg-primary before:absolute before:left-0.5 before:top-0.5 before:rounded-full before:bg-white before:shadow before:transition-transform disabled:opacity-50 h-4 w-7 before:h-3 before:w-3 checked:before:translate-x-3 sm:h-5 sm:w-9 sm:before:h-4 sm:before:w-4 sm:checked:before:translate-x-4"
@@ -1303,7 +1303,7 @@ export default function NovoTemplatePage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                 <div className="flex flex-col">
                   <label className="flex items-center justify-between gap-2 py-1">
-                    <span className="text-sm font-medium text-foreground text-xs sm:text-sm flex items-center gap-1">
+                    <span className="font-medium text-foreground text-xs sm:text-sm flex items-center gap-1">
                       Legislação
                       <Tooltip content="Norma ou legislação de referência que fundamenta esta pergunta. Será exibida ao auditor durante a avaliação como base legal para a verificação. Ex: RDC 216/2004, NR-12, ISO 9001.">
                         <HelpCircle className="w-3.5 h-3.5 text-muted-foreground/70 cursor-help" />
@@ -1313,14 +1313,14 @@ export default function NovoTemplatePage() {
                   <input
                     type="text"
                     placeholder="Ex: RDC 216/2004"
-                    className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs sm:!h-10 sm:!px-3"
+                    className="rounded-md border border-input bg-card outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs sm:!h-10 sm:!px-3"
                     value={itemForm.legislacaoReferencia}
                     onChange={(e) => setItemForm({ ...itemForm, legislacaoReferencia: e.target.value })}
                   />
                 </div>
                 <div className="flex flex-col">
                   <label className="flex items-center justify-between gap-2 py-1">
-                    <span className="text-sm font-medium text-foreground text-xs sm:text-sm flex items-center gap-1">
+                    <span className="font-medium text-foreground text-xs sm:text-sm flex items-center gap-1">
                       Artigo/Inciso
                       <Tooltip content="Artigo, parágrafo ou inciso específico da legislação informada. Permite ao auditor consultar o trecho exato da norma durante a auditoria. Ex: Art. 4.1.3, § 2º, Inciso IV.">
                         <HelpCircle className="w-3.5 h-3.5 text-muted-foreground/70 cursor-help" />
@@ -1330,22 +1330,22 @@ export default function NovoTemplatePage() {
                   <input
                     type="text"
                     placeholder="Ex: Art. 4.1.3"
-                    className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs sm:!h-10 sm:!px-3"
+                    className="rounded-md border border-input bg-card outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs sm:!h-10 sm:!px-3"
                     value={itemForm.artigo}
                     onChange={(e) => setItemForm({ ...itemForm, artigo: e.target.value })}
                   />
                 </div>
               </div>
 
-              <div className="my-4 flex items-center gap-4 text-xs text-muted-foreground before:h-px before:flex-1 before:bg-border after:h-px after:flex-1 after:bg-border my-2 sm:text-sm">Opções de Resposta</div>
+              <div className="flex items-center gap-4 text-xs text-muted-foreground before:h-px before:flex-1 before:bg-border after:h-px after:flex-1 after:bg-border my-2 sm:text-sm">Opções de Resposta</div>
 
               {/* Tipo de Resposta Customizada */}
               <div className="flex flex-col">
                 <label className="flex items-center justify-between gap-2 py-1">
-                  <span className="text-sm font-medium text-foreground text-xs sm:text-sm">Tipo de Resposta</span>
+                  <span className="font-medium text-foreground text-xs sm:text-sm">Tipo de Resposta</span>
                 </label>
                 <select
-                  className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs sm:!h-10 sm:!px-3"
+                  className="rounded-md border border-input bg-card outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs sm:!h-10 sm:!px-3"
                   value={itemForm.tipoRespostaCustomizada || ''}
                   onChange={(e) => {
                     const valor = e.target.value ? (e.target.value as TipoRespostaCustomizada) : undefined;
@@ -1363,7 +1363,7 @@ export default function NovoTemplatePage() {
                   <option value={TipoRespostaCustomizada.DATA}>{TIPO_RESPOSTA_LABELS[TipoRespostaCustomizada.DATA]}</option>
                   <option value={TipoRespostaCustomizada.SELECT}>{TIPO_RESPOSTA_LABELS[TipoRespostaCustomizada.SELECT]}</option>
                 </select>
-                <label className="flex items-center justify-between gap-2 py-1 py-0.5">
+                <label className="flex items-center justify-between gap-2 py-0.5">
                   <span className="text-xs text-muted-foreground">
                     {itemForm.tipoRespostaCustomizada === TipoRespostaCustomizada.SELECT && 'Configure as opções abaixo'}
                     {itemForm.tipoRespostaCustomizada === TipoRespostaCustomizada.TEXTO && 'Campo de texto livre (não pontua)'}
@@ -1377,7 +1377,7 @@ export default function NovoTemplatePage() {
               {/* Toggle Respostas Personalizadas */}
               {!itemForm.tipoRespostaCustomizada && (
                 <div className="flex flex-col bg-muted rounded-lg p-3">
-                  <label className="flex items-center justify-between gap-2 py-1 cursor-pointer justify-start gap-3 py-0">
+                  <label className="flex items-center cursor-pointer justify-start gap-3 py-0">
                     <input
                       type="checkbox"
                       className="relative shrink-0 cursor-pointer appearance-none rounded-full bg-muted-foreground/30 transition-colors checked:bg-primary before:absolute before:left-0.5 before:top-0.5 before:rounded-full before:bg-white before:shadow before:transition-transform disabled:opacity-50 h-4 w-7 before:h-3 before:w-3 checked:before:translate-x-3"
@@ -1400,7 +1400,7 @@ export default function NovoTemplatePage() {
                       }}
                     />
                     <div>
-                      <span className="text-sm font-medium text-foreground text-xs sm:text-sm">Respostas personalizadas</span>
+                      <span className="font-medium text-foreground text-xs sm:text-sm">Respostas personalizadas</span>
                       <p className="text-xs text-muted-foreground mt-0.5 hidden sm:block">Padrão: Conforme, Não Conforme, Não Aplicável, Não Avaliado</p>
                     </div>
                   </label>
@@ -1410,7 +1410,7 @@ export default function NovoTemplatePage() {
               {/* Respostas Personalizadas */}
               {itemForm.usarRespostasPersonalizadas && (
                 <div className="space-y-3 bg-muted/50 rounded-lg p-3 sm:p-4">
-                  <label className="flex items-center justify-between gap-2 py-1 py-0"><span className="text-sm font-medium text-foreground text-xs sm:text-sm">Opções de Resposta</span></label>
+                  <label className="flex items-center justify-between gap-2 py-0"><span className="font-medium text-foreground text-xs sm:text-sm">Opções de Resposta</span></label>
                   {itemForm.opcoesResposta && itemForm.opcoesResposta.length > 0 && (
                     <div className="space-y-2">
                       {itemForm.opcoesResposta.length > 1 && (
@@ -1459,18 +1459,18 @@ export default function NovoTemplatePage() {
                         return (
                           <div key={idx} className="bg-card rounded-lg p-2.5 sm:p-3">
                             <div className="flex items-center justify-between mb-2">
-                              <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full font-semibold px-2.5 py-0.5 text-xs bg-primary/12 text-primary border border-border bg-transparent sm:text-sm">{opcao}</span>
+                              <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full font-semibold px-2.5 py-0.5 text-xs text-primary border border-border bg-transparent sm:text-sm">{opcao}</span>
                               <div className="flex items-center gap-0.5">
                                 <button
                                   onClick={() => handleDuplicarResposta(opcao)}
-                                  className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-7 w-7 px-0 rounded-full hover:bg-muted"
+                                  className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-7 w-7 px-0 rounded-full hover:bg-muted"
                                   title="Duplicar resposta"
                                 >
                                   <Copy className="w-3 h-3" />
                                 </button>
                                 <button
                                   onClick={() => handleRemoverOpcaoResposta(opcao)}
-                                  className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-7 w-7 px-0 rounded-full hover:bg-muted text-destructive"
+                                  className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-7 w-7 px-0 rounded-full hover:bg-muted text-destructive"
                                 >
                                   <X className="w-3 h-3" />
                                 </button>
@@ -1483,7 +1483,7 @@ export default function NovoTemplatePage() {
                                   type="number"
                                   min={-10}
                                   max={10}
-                                  className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-7 px-2 text-xs border-transparent bg-transparent w-full p-0 text-center font-medium"
+                                  className="rounded-md border outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-7 text-xs border-transparent bg-transparent w-full p-0 text-center font-medium"
                                   placeholder="—"
                                   value={pontuacaoExibida}
                                   onChange={(e) => {
@@ -1522,7 +1522,7 @@ export default function NovoTemplatePage() {
                     <input
                       type="text"
                       placeholder="Nova opção de resposta"
-                      className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs flex-1"
+                      className="rounded-md border border-input bg-card outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs flex-1"
                       value={novaOpcaoResposta}
                       onChange={(e) => setNovaOpcaoResposta(e.target.value)}
                       onKeyPress={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAdicionarOpcaoResposta(); }}}
@@ -1535,7 +1535,7 @@ export default function NovoTemplatePage() {
                     <span className="text-xs text-muted-foreground">Sugestões:</span>
                     <div className="flex flex-wrap gap-1.5 mt-1.5">
                       {RESPOSTAS_PERSONALIZADAS_SUGESTOES.filter((s) => !itemForm.opcoesResposta?.includes(s)).map((sugestao) => (
-                        <button key={sugestao} type="button" onClick={() => handleAdicionarSugestao(sugestao)} className="inline-flex items-center gap-1 whitespace-nowrap rounded-full font-semibold px-2 py-0.5 text-[11px] border border-border bg-transparent sm:!px-2.5 sm:!py-0.5 sm:!text-xs text-foreground font-bold hover:!bg-primary/12 hover:!text-primary hover:!text-white cursor-pointer transition-colors sm:px-3 py-1">
+                        <button key={sugestao} type="button" onClick={() => handleAdicionarSugestao(sugestao)} className="inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2 text-[11px] border border-border bg-transparent sm:!px-2.5 sm:!py-0.5 sm:!text-xs text-foreground font-bold hover:!bg-primary/12 hover:!text-white cursor-pointer transition-colors sm:px-3 py-1">
                           + {sugestao}
                         </button>
                       ))}
@@ -1604,7 +1604,7 @@ export default function NovoTemplatePage() {
                                 type="number"
                                 min={-10}
                                 max={10}
-                                className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-7 px-2 text-xs border-transparent bg-transparent w-full sm:w-16 p-0 text-center font-medium"
+                                className="rounded-md border outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-7 text-xs border-transparent bg-transparent w-full sm:w-16 p-0 text-center font-medium"
                                 placeholder="—"
                                 value={pontuacaoExibida}
                                 onChange={(e) => {

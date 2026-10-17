@@ -75,7 +75,7 @@ export function CookieConsent() {
               <div className="relative flex flex-col rounded-lg border border-border bg-card shadow-2xl">
                 <button
                   onClick={handleClose}
-                  className="absolute top-4 right-4 md:top-4 md:right-4 inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 w-9 px-0 rounded-full hover:bg-muted z-10"
+                  className="absolute top-4 right-4 md:top-4 md:right-4 inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 w-9 px-0 rounded-full hover:bg-muted z-10"
                   aria-label="Fechar"
                 >
                   <X className="w-4 h-4" />

@@ -759,23 +759,23 @@ export default function RelatorioPage() {
           <div className="flex flex-1 flex-col gap-2 p-4 sm:p-6">
             <h2 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4">Métricas Gerais</h2>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6">
-              <div className="flex flex-col gap-1 p-4 bg-muted rounded-lg p-3 sm:p-4">
-                <div className="text-sm text-muted-foreground text-xs sm:text-sm">Aproveitamento</div>
-                <div className="font-display text-3xl font-semibold text-primary text-2xl sm:text-3xl">
+              <div className="flex flex-col gap-1 bg-muted rounded-lg p-3 sm:p-4">
+                <div className="text-muted-foreground text-xs sm:text-sm">Aproveitamento</div>
+                <div className="font-display font-semibold text-primary text-2xl sm:text-3xl">
                   {aproveitamentoSeguro.toFixed(2)}%
                 </div>
                 <div className="text-xs text-muted-foreground sm:text-sm">{getClassificacao(aproveitamentoSeguro)}</div>
               </div>
-              <div className="flex flex-col gap-1 p-4 bg-muted rounded-lg p-3 sm:p-4">
-                <div className="text-sm text-muted-foreground text-xs sm:text-sm">Pontos Realizados</div>
-                <div className="font-display text-3xl font-semibold text-success text-2xl sm:text-3xl">
+              <div className="flex flex-col gap-1 bg-muted rounded-lg p-3 sm:p-4">
+                <div className="text-muted-foreground text-xs sm:text-sm">Pontos Realizados</div>
+                <div className="font-display font-semibold text-success text-2xl sm:text-3xl">
                   {metricasGerais.pontosRealizados}
                 </div>
                 <div className="text-xs text-muted-foreground sm:text-sm">de {metricasGerais.pontosPossiveis} possíveis</div>
               </div>
-              <div className="flex flex-col gap-1 p-4 bg-muted rounded-lg p-3 sm:p-4">
-                <div className="text-sm text-muted-foreground text-xs sm:text-sm">Não Conformidades</div>
-                <div className="font-display text-3xl font-semibold text-destructive text-2xl sm:text-3xl">
+              <div className="flex flex-col gap-1 bg-muted rounded-lg p-3 sm:p-4">
+                <div className="text-muted-foreground text-xs sm:text-sm">Não Conformidades</div>
+                <div className="font-display font-semibold text-destructive text-2xl sm:text-3xl">
                   {metricasGerais.naoConformidades}
                 </div>
                 <div className="text-xs text-muted-foreground sm:text-sm">

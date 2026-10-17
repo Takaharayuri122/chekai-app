@@ -489,7 +489,7 @@ export default function AuditoriaTokensPage() {
                   </table>
                 </div>
                 {historico.total > limit && (
-                  <div className="inline-flex items-stretch [&>*]:rounded-none [&>*:first-child]:rounded-l-md [&>*:last-child]:rounded-r-md mt-4 flex justify-center">
+                  <div className="items-stretch [&>*]:rounded-none [&>*:first-child]:rounded-l-md [&>*:last-child]:rounded-r-md mt-4 flex justify-center">
                     <button
                       className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-10 px-4 bg-muted text-foreground hover:bg-muted/80"
                       onClick={() => setPage((prev) => Math.max(prev - 1, 1))}

@@ -992,7 +992,7 @@ export default function AuditoriaPage() {
                               {auditoria.status !== 'finalizada' && (
                                 <button
                                   onClick={() => handleRemoveFoto(index)}
-                                  className="absolute top-1 right-1 inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-7 w-7 px-0 rounded-full bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                  className="absolute top-1 right-1 inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-7 w-7 px-0 rounded-full bg-destructive text-destructive-foreground hover:bg-destructive/90"
                                 >
                                   <X className="w-3 h-3" />
                                 </button>
@@ -1068,7 +1068,7 @@ export default function AuditoriaPage() {
                         />
                         {observacaoObrigatoria && (!itemModal.observacao || itemModal.observacao.trim() === '') && (
                           <label className="flex items-center justify-between gap-2 py-1">
-                            <span className="text-xs text-muted-foreground text-destructive">Observação obrigatória para esta resposta</span>
+                            <span className="text-xs text-destructive">Observação obrigatória para esta resposta</span>
                           </label>
                         )}
                         {imagensNaoRelevantes && (

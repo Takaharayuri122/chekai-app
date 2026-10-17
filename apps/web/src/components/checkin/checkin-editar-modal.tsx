@@ -115,7 +115,7 @@ export function CheckinEditarModal({
         <label className="flex flex-col w-full">
           <span className="text-sm font-medium text-foreground">Comentário</span>
           <textarea
-            className="min-h-[80px] px-3 py-2 rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 min-h-24"
+            className="px-3 py-2 rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 min-h-24"
             value={comentario}
             onChange={(evento) => setComentario(evento.target.value)}
             maxLength={2000}

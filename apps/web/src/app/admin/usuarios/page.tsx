@@ -343,7 +343,7 @@ export default function UsuariosPage() {
                           <div className="flex justify-end gap-2">
                             {usuarioItem.status === StatusUsuario.NAO_CONFIRMADO && (
                               <button
-                                className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-7 px-2 text-xs hover:bg-muted gap-1 text-info"
+                                className="inline-flex items-center justify-center whitespace-nowrap rounded-md font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-7 px-2 text-xs hover:bg-muted gap-1 text-info"
                                 onClick={() => handleReenviarConvite(usuarioItem.id)}
                                 disabled={reenviandoConviteId === usuarioItem.id}
                                 title="Reenviar convite"
@@ -357,7 +357,7 @@ export default function UsuariosPage() {
                             )}
                             {(!isGestor() || isMaster() || (usuarioItem.gestorId === usuario?.id && usuarioItem.perfil === PerfilUsuario.AUDITOR)) && (
                               <button
-                                className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-7 px-2 text-xs hover:bg-muted gap-1"
+                                className="inline-flex items-center justify-center whitespace-nowrap rounded-md font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-7 px-2 text-xs hover:bg-muted gap-1"
                                 onClick={() => handleEditarUsuario(usuarioItem)}
                                 title="Editar"
                               >
@@ -366,7 +366,7 @@ export default function UsuariosPage() {
                             )}
                             {(!isGestor() || isMaster()) && (
                               <button
-                                className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-7 px-2 text-xs hover:bg-muted gap-1 text-destructive"
+                                className="inline-flex items-center justify-center whitespace-nowrap rounded-md font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-7 px-2 text-xs hover:bg-muted gap-1 text-destructive"
                                 onClick={() => handleDeleteClick(usuarioItem.id)}
                                 disabled={deletingId === usuarioItem.id}
                                 title="Remover"

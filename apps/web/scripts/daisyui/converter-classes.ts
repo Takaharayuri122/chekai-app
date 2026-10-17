@@ -1,3 +1,5 @@
+import { twMerge } from 'tailwind-merge';
+
 /**
  * Traduz classes DaisyUI para utilitários Tailwind com os tokens da marca (E1).
  * Regras de grupo (btn, badge, input…) só se aplicam quando a base está no mesmo literal;
@@ -328,7 +330,7 @@ export function converterClasses(classes: string): string {
   if (!gruposEmitidos && saida.length) resultado.unshift(...saida);
   // Remove duplicadas (a mesma classe vinda do grupo e do literal original)
   const vistos = new Set<string>();
-  return resultado
+  const unicos = resultado
     .join(' ')
     .split(/(\$\{[^}]*\}|\s+)/)
     .filter((t) => t && !/^\s+$/.test(t))
@@ -337,8 +339,25 @@ export function converterClasses(classes: string): string {
       if (vistos.has(t)) return false;
       vistos.add(t);
       return true;
-    })
-    .join(' ');
+    });
+  // Sem a camada "components" do DaisyUI, o vencedor de um conflito depende da ordem do CSS gerado;
+  // o twMerge mantém a última classe de cada grupo (a explícita do autor), como acontecia antes.
+  const saidaFinal: string[] = [];
+  let trecho: string[] = [];
+  const fecharTrecho = () => {
+    if (trecho.length) saidaFinal.push(twMerge(trecho.join(' ')));
+    trecho = [];
+  };
+  for (const t of unicos) {
+    if (t.startsWith('${')) {
+      fecharTrecho();
+      saidaFinal.push(t);
+    } else {
+      trecho.push(t);
+    }
+  }
+  fecharTrecho();
+  return saidaFinal.filter(Boolean).join(' ');
 }
 
 function converterAvulso(core: string): string | null {

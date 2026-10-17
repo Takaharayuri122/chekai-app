@@ -720,7 +720,7 @@ export default function ClientesPage() {
                   <label className="flex items-center justify-between gap-2 py-1">
                     <span className="text-sm font-medium text-foreground">E-mail</span>
                     {clienteForm.email && !emailValido(clienteForm.email) && (
-                      <span className="text-xs text-muted-foreground text-destructive">Inválido</span>
+                      <span className="text-xs text-destructive">Inválido</span>
                     )}
                   </label>
                   <input
@@ -776,7 +776,7 @@ export default function ClientesPage() {
                         <ImagePlus className="w-4 h-4" />
                         Alterar imagem
                       </button>
-                      <button type="button" className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 hover:bg-muted text-destructive hover:bg-destructive/10" onClick={handleRemoverLogoNoModal}>
+                      <button type="button" className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 text-destructive hover:bg-destructive/10" onClick={handleRemoverLogoNoModal}>
                         <Trash2 className="w-4 h-4" />
                         Remover imagem
                       </button>
@@ -811,7 +811,7 @@ export default function ClientesPage() {
                     )}
                   </div>
                   {!showInlineUnidadeForm && !editingUnidadeId && (
-                    <button type="button" className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 border border-input bg-card hover:bg-muted gap-1" onClick={handleAdicionarInlineUnidade}>
+                    <button type="button" className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 border border-input bg-card hover:bg-muted gap-1" onClick={handleAdicionarInlineUnidade}>
                       <Plus className="w-3.5 h-3.5" />
                       Adicionar
                     </button>
@@ -831,21 +831,21 @@ export default function ClientesPage() {
                             <div className="p-3 border border-primary/30 rounded-lg bg-muted/20 space-y-3">
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                 <div className="flex flex-col">
-                                  <label className="flex items-center justify-between gap-2 py-1"><span className="text-sm font-medium text-foreground text-xs">Nome *</span></label>
+                                  <label className="flex items-center justify-between gap-2 py-1"><span className="font-medium text-foreground text-xs">Nome *</span></label>
                                   <input
                                     type="text"
                                     placeholder="Nome da unidade"
-                                    className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs"
+                                    className="rounded-md border border-input bg-card outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs"
                                     value={editUnidadeForm.nome}
                                     onChange={(e) => setEditUnidadeForm({ ...editUnidadeForm, nome: e.target.value })}
                                   />
                                 </div>
                                 <div className="flex flex-col">
-                                  <label className="flex items-center justify-between gap-2 py-1"><span className="text-sm font-medium text-foreground text-xs">Endereço *</span></label>
+                                  <label className="flex items-center justify-between gap-2 py-1"><span className="font-medium text-foreground text-xs">Endereço *</span></label>
                                   <input
                                     type="text"
                                     placeholder="Rua, número, bairro"
-                                    className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs"
+                                    className="rounded-md border border-input bg-card outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs"
                                     value={editUnidadeForm.endereco}
                                     onChange={(e) => setEditUnidadeForm({ ...editUnidadeForm, endereco: e.target.value })}
                                   />
@@ -853,32 +853,32 @@ export default function ClientesPage() {
                               </div>
                               <div className="grid grid-cols-3 gap-3">
                                 <div className="flex flex-col">
-                                  <label className="flex items-center justify-between gap-2 py-1"><span className="text-sm font-medium text-foreground text-xs">Cidade *</span></label>
+                                  <label className="flex items-center justify-between gap-2 py-1"><span className="font-medium text-foreground text-xs">Cidade *</span></label>
                                   <input
                                     type="text"
                                     placeholder="Cidade"
-                                    className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs"
+                                    className="rounded-md border border-input bg-card outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs"
                                     value={editUnidadeForm.cidade}
                                     onChange={(e) => setEditUnidadeForm({ ...editUnidadeForm, cidade: e.target.value })}
                                   />
                                 </div>
                                 <div className="flex flex-col">
-                                  <label className="flex items-center justify-between gap-2 py-1"><span className="text-sm font-medium text-foreground text-xs">Estado *</span></label>
+                                  <label className="flex items-center justify-between gap-2 py-1"><span className="font-medium text-foreground text-xs">Estado *</span></label>
                                   <input
                                     type="text"
                                     placeholder="UF"
-                                    className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs"
+                                    className="rounded-md border border-input bg-card outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs"
                                     maxLength={2}
                                     value={editUnidadeForm.estado}
                                     onChange={(e) => setEditUnidadeForm({ ...editUnidadeForm, estado: e.target.value.toUpperCase() })}
                                   />
                                 </div>
                                 <div className="flex flex-col">
-                                  <label className="flex items-center justify-between gap-2 py-1"><span className="text-sm font-medium text-foreground text-xs">CEP</span></label>
+                                  <label className="flex items-center justify-between gap-2 py-1"><span className="font-medium text-foreground text-xs">CEP</span></label>
                                   <input
                                     type="text"
                                     placeholder="00000-000"
-                                    className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs"
+                                    className="rounded-md border border-input bg-card outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs"
                                     value={editUnidadeForm.cep}
                                     onChange={(e) => setEditUnidadeForm({ ...editUnidadeForm, cep: e.target.value })}
                                   />
@@ -886,21 +886,21 @@ export default function ClientesPage() {
                               </div>
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                 <div className="flex flex-col">
-                                  <label className="flex items-center justify-between gap-2 py-1"><span className="text-sm font-medium text-foreground text-xs">E-mail da Unidade *</span></label>
+                                  <label className="flex items-center justify-between gap-2 py-1"><span className="font-medium text-foreground text-xs">E-mail da Unidade *</span></label>
                                   <input
                                     type="email"
                                     placeholder="email@unidade.com"
-                                    className={`rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs ${editUnidadeForm.email && !emailValido(editUnidadeForm.email) ? '!border-destructive' : ''}`}
+                                    className={`rounded-md border border-input bg-card outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs ${editUnidadeForm.email && !emailValido(editUnidadeForm.email) ? '!border-destructive' : ''}`}
                                     value={editUnidadeForm.email}
                                     onChange={(e) => setEditUnidadeForm({ ...editUnidadeForm, email: e.target.value })}
                                   />
                                 </div>
                                 <div className="flex flex-col">
-                                  <label className="flex items-center justify-between gap-2 py-1"><span className="text-sm font-medium text-foreground text-xs">Responsável *</span></label>
+                                  <label className="flex items-center justify-between gap-2 py-1"><span className="font-medium text-foreground text-xs">Responsável *</span></label>
                                   <input
                                     type="text"
                                     placeholder="Nome do responsável"
-                                    className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs"
+                                    className="rounded-md border border-input bg-card outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs"
                                     value={editUnidadeForm.responsavel}
                                     onChange={(e) => setEditUnidadeForm({ ...editUnidadeForm, responsavel: e.target.value })}
                                   />
@@ -908,11 +908,11 @@ export default function ClientesPage() {
                               </div>
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                 <div className="flex flex-col">
-                                  <label className="flex items-center justify-between gap-2 py-1"><span className="text-sm font-medium text-foreground text-xs">WhatsApp</span></label>
+                                  <label className="flex items-center justify-between gap-2 py-1"><span className="font-medium text-foreground text-xs">WhatsApp</span></label>
                                   <input
                                     type="tel"
                                     placeholder="(00) 00000-0000"
-                                    className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs"
+                                    className="rounded-md border border-input bg-card outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs"
                                     value={editUnidadeForm.whatsapp}
                                     onChange={(e) => setEditUnidadeForm({ ...editUnidadeForm, whatsapp: aplicarMascaraTelefone(e.target.value) })}
                                     maxLength={15}
@@ -939,7 +939,7 @@ export default function ClientesPage() {
                                 </button>
                                 <button
                                   type="button"
-                                  className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 bg-primary text-primary-foreground hover:bg-primary/90 gap-1"
+                                  className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 bg-primary text-primary-foreground hover:bg-primary/90 gap-1"
                                   onClick={handleSalvarUnidadeExistente}
                                   disabled={
                                     savingUnidade ||
@@ -971,7 +971,7 @@ export default function ClientesPage() {
                                 <button
                                   type="button"
                                   onClick={() => handleEditarUnidadeExistente(unidade)}
-                                  className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-7 px-2 text-xs hover:bg-muted opacity-0 group-hover:opacity-100 transition-opacity"
+                                  className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium disabled:pointer-events-none disabled:opacity-50 h-7 px-2 text-xs hover:bg-muted opacity-0 group-hover:opacity-100 transition-opacity"
                                 >
                                   <Edit className="w-3.5 h-3.5" />
                                 </button>
@@ -998,21 +998,21 @@ export default function ClientesPage() {
                         <p className="text-xs font-medium text-muted-foreground">Nova unidade</p>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           <div className="flex flex-col">
-                            <label className="flex items-center justify-between gap-2 py-1"><span className="text-sm font-medium text-foreground text-xs">Nome *</span></label>
+                            <label className="flex items-center justify-between gap-2 py-1"><span className="font-medium text-foreground text-xs">Nome *</span></label>
                             <input
                               type="text"
                               placeholder="Nome da unidade"
-                              className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs"
+                              className="rounded-md border border-input bg-card outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs"
                               value={inlineUnidadeForm.nome}
                               onChange={(e) => setInlineUnidadeForm({ ...inlineUnidadeForm, nome: e.target.value })}
                             />
                           </div>
                           <div className="flex flex-col">
-                            <label className="flex items-center justify-between gap-2 py-1"><span className="text-sm font-medium text-foreground text-xs">Endereço *</span></label>
+                            <label className="flex items-center justify-between gap-2 py-1"><span className="font-medium text-foreground text-xs">Endereço *</span></label>
                             <input
                               type="text"
                               placeholder="Rua, número, bairro"
-                              className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs"
+                              className="rounded-md border border-input bg-card outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs"
                               value={inlineUnidadeForm.endereco}
                               onChange={(e) => setInlineUnidadeForm({ ...inlineUnidadeForm, endereco: e.target.value })}
                             />
@@ -1020,32 +1020,32 @@ export default function ClientesPage() {
                         </div>
                         <div className="grid grid-cols-3 gap-3">
                           <div className="flex flex-col">
-                            <label className="flex items-center justify-between gap-2 py-1"><span className="text-sm font-medium text-foreground text-xs">Cidade *</span></label>
+                            <label className="flex items-center justify-between gap-2 py-1"><span className="font-medium text-foreground text-xs">Cidade *</span></label>
                             <input
                               type="text"
                               placeholder="Cidade"
-                              className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs"
+                              className="rounded-md border border-input bg-card outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs"
                               value={inlineUnidadeForm.cidade}
                               onChange={(e) => setInlineUnidadeForm({ ...inlineUnidadeForm, cidade: e.target.value })}
                             />
                           </div>
                           <div className="flex flex-col">
-                            <label className="flex items-center justify-between gap-2 py-1"><span className="text-sm font-medium text-foreground text-xs">Estado *</span></label>
+                            <label className="flex items-center justify-between gap-2 py-1"><span className="font-medium text-foreground text-xs">Estado *</span></label>
                             <input
                               type="text"
                               placeholder="UF"
-                              className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs"
+                              className="rounded-md border border-input bg-card outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs"
                               maxLength={2}
                               value={inlineUnidadeForm.estado}
                               onChange={(e) => setInlineUnidadeForm({ ...inlineUnidadeForm, estado: e.target.value.toUpperCase() })}
                             />
                           </div>
                           <div className="flex flex-col">
-                            <label className="flex items-center justify-between gap-2 py-1"><span className="text-sm font-medium text-foreground text-xs">CEP</span></label>
+                            <label className="flex items-center justify-between gap-2 py-1"><span className="font-medium text-foreground text-xs">CEP</span></label>
                             <input
                               type="text"
                               placeholder="00000-000"
-                              className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs"
+                              className="rounded-md border border-input bg-card outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs"
                               value={inlineUnidadeForm.cep}
                               onChange={(e) => setInlineUnidadeForm({ ...inlineUnidadeForm, cep: e.target.value })}
                             />
@@ -1053,21 +1053,21 @@ export default function ClientesPage() {
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           <div className="flex flex-col">
-                            <label className="flex items-center justify-between gap-2 py-1"><span className="text-sm font-medium text-foreground text-xs">E-mail da Unidade *</span></label>
+                            <label className="flex items-center justify-between gap-2 py-1"><span className="font-medium text-foreground text-xs">E-mail da Unidade *</span></label>
                             <input
                               type="email"
                               placeholder="email@unidade.com"
-                              className={`rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs ${inlineUnidadeForm.email && !emailValido(inlineUnidadeForm.email) ? '!border-destructive' : ''}`}
+                              className={`rounded-md border border-input bg-card outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs ${inlineUnidadeForm.email && !emailValido(inlineUnidadeForm.email) ? '!border-destructive' : ''}`}
                               value={inlineUnidadeForm.email}
                               onChange={(e) => setInlineUnidadeForm({ ...inlineUnidadeForm, email: e.target.value })}
                             />
                           </div>
                           <div className="flex flex-col">
-                            <label className="flex items-center justify-between gap-2 py-1"><span className="text-sm font-medium text-foreground text-xs">Responsável *</span></label>
+                            <label className="flex items-center justify-between gap-2 py-1"><span className="font-medium text-foreground text-xs">Responsável *</span></label>
                             <input
                               type="text"
                               placeholder="Nome do responsável"
-                              className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs"
+                              className="rounded-md border border-input bg-card outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs"
                               value={inlineUnidadeForm.responsavel}
                               onChange={(e) => setInlineUnidadeForm({ ...inlineUnidadeForm, responsavel: e.target.value })}
                             />
@@ -1075,11 +1075,11 @@ export default function ClientesPage() {
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           <div className="flex flex-col">
-                            <label className="flex items-center justify-between gap-2 py-1"><span className="text-sm font-medium text-foreground text-xs">WhatsApp</span></label>
+                            <label className="flex items-center justify-between gap-2 py-1"><span className="font-medium text-foreground text-xs">WhatsApp</span></label>
                             <input
                               type="tel"
                               placeholder="(00) 00000-0000"
-                              className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs"
+                              className="rounded-md border border-input bg-card outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs"
                               value={inlineUnidadeForm.whatsapp}
                               onChange={(e) => setInlineUnidadeForm({ ...inlineUnidadeForm, whatsapp: aplicarMascaraTelefone(e.target.value) })}
                               maxLength={15}
@@ -1110,7 +1110,7 @@ export default function ClientesPage() {
                           </button>
                           <button
                             type="button"
-                            className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 bg-primary text-primary-foreground hover:bg-primary/90 gap-1"
+                            className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 bg-primary text-primary-foreground hover:bg-primary/90 gap-1"
                             onClick={() => handleSalvarInlineUnidade()}
                             disabled={
                               savingUnidade ||
@@ -1133,7 +1133,7 @@ export default function ClientesPage() {
                       </div>
                     )}
                     {!showInlineUnidadeForm && (editingCliente?.unidades?.length || 0) > 0 && (
-                      <button type="button" className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 border border-input bg-card hover:bg-muted gap-1 mt-2" onClick={handleAdicionarInlineUnidade}>
+                      <button type="button" className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 border border-input bg-card hover:bg-muted gap-1 mt-2" onClick={handleAdicionarInlineUnidade}>
                         <Plus className="w-3.5 h-3.5" />
                         Adicionar outra unidade
                       </button>
@@ -1158,10 +1158,10 @@ export default function ClientesPage() {
                               </p>
                             </div>
                             <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <button type="button" onClick={() => handleEditarInlineUnidade(unidade.tempId)} className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-7 px-2 text-xs hover:bg-muted">
+                              <button type="button" onClick={() => handleEditarInlineUnidade(unidade.tempId)} className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-7 px-2 text-xs hover:bg-muted">
                                 <Edit className="w-3.5 h-3.5" />
                               </button>
-                              <button type="button" onClick={() => handleRemoverInlineUnidade(unidade.tempId)} className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-7 px-2 text-xs hover:bg-muted text-destructive">
+                              <button type="button" onClick={() => handleRemoverInlineUnidade(unidade.tempId)} className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-7 px-2 text-xs hover:bg-muted text-destructive">
                                 <Trash2 className="w-3.5 h-3.5" />
                               </button>
                             </div>
@@ -1187,21 +1187,21 @@ export default function ClientesPage() {
                       <div className="mt-3 p-3 border border-border rounded-lg bg-muted/20 space-y-3">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           <div className="flex flex-col">
-                            <label className="flex items-center justify-between gap-2 py-1"><span className="text-sm font-medium text-foreground text-xs">Nome *</span></label>
+                            <label className="flex items-center justify-between gap-2 py-1"><span className="font-medium text-foreground text-xs">Nome *</span></label>
                             <input
                               type="text"
                               placeholder="Nome da unidade"
-                              className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs"
+                              className="rounded-md border border-input bg-card outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs"
                               value={inlineUnidadeForm.nome}
                               onChange={(e) => setInlineUnidadeForm({ ...inlineUnidadeForm, nome: e.target.value })}
                             />
                           </div>
                           <div className="flex flex-col">
-                            <label className="flex items-center justify-between gap-2 py-1"><span className="text-sm font-medium text-foreground text-xs">Endereço *</span></label>
+                            <label className="flex items-center justify-between gap-2 py-1"><span className="font-medium text-foreground text-xs">Endereço *</span></label>
                             <input
                               type="text"
                               placeholder="Rua, número, bairro"
-                              className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs"
+                              className="rounded-md border border-input bg-card outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs"
                               value={inlineUnidadeForm.endereco}
                               onChange={(e) => setInlineUnidadeForm({ ...inlineUnidadeForm, endereco: e.target.value })}
                             />
@@ -1209,32 +1209,32 @@ export default function ClientesPage() {
                         </div>
                         <div className="grid grid-cols-3 gap-3">
                           <div className="flex flex-col">
-                            <label className="flex items-center justify-between gap-2 py-1"><span className="text-sm font-medium text-foreground text-xs">Cidade *</span></label>
+                            <label className="flex items-center justify-between gap-2 py-1"><span className="font-medium text-foreground text-xs">Cidade *</span></label>
                             <input
                               type="text"
                               placeholder="Cidade"
-                              className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs"
+                              className="rounded-md border border-input bg-card outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs"
                               value={inlineUnidadeForm.cidade}
                               onChange={(e) => setInlineUnidadeForm({ ...inlineUnidadeForm, cidade: e.target.value })}
                             />
                           </div>
                           <div className="flex flex-col">
-                            <label className="flex items-center justify-between gap-2 py-1"><span className="text-sm font-medium text-foreground text-xs">Estado *</span></label>
+                            <label className="flex items-center justify-between gap-2 py-1"><span className="font-medium text-foreground text-xs">Estado *</span></label>
                             <input
                               type="text"
                               placeholder="UF"
-                              className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs"
+                              className="rounded-md border border-input bg-card outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs"
                               maxLength={2}
                               value={inlineUnidadeForm.estado}
                               onChange={(e) => setInlineUnidadeForm({ ...inlineUnidadeForm, estado: e.target.value.toUpperCase() })}
                             />
                           </div>
                           <div className="flex flex-col">
-                            <label className="flex items-center justify-between gap-2 py-1"><span className="text-sm font-medium text-foreground text-xs">CEP</span></label>
+                            <label className="flex items-center justify-between gap-2 py-1"><span className="font-medium text-foreground text-xs">CEP</span></label>
                             <input
                               type="text"
                               placeholder="00000-000"
-                              className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs"
+                              className="rounded-md border border-input bg-card outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs"
                               value={inlineUnidadeForm.cep}
                               onChange={(e) => setInlineUnidadeForm({ ...inlineUnidadeForm, cep: e.target.value })}
                             />
@@ -1242,21 +1242,21 @@ export default function ClientesPage() {
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           <div className="flex flex-col">
-                            <label className="flex items-center justify-between gap-2 py-1"><span className="text-sm font-medium text-foreground text-xs">E-mail da Unidade *</span></label>
+                            <label className="flex items-center justify-between gap-2 py-1"><span className="font-medium text-foreground text-xs">E-mail da Unidade *</span></label>
                             <input
                               type="email"
                               placeholder="email@unidade.com"
-                              className={`rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs ${inlineUnidadeForm.email && !emailValido(inlineUnidadeForm.email) ? '!border-destructive' : ''}`}
+                              className={`rounded-md border border-input bg-card outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs ${inlineUnidadeForm.email && !emailValido(inlineUnidadeForm.email) ? '!border-destructive' : ''}`}
                               value={inlineUnidadeForm.email}
                               onChange={(e) => setInlineUnidadeForm({ ...inlineUnidadeForm, email: e.target.value })}
                             />
                           </div>
                           <div className="flex flex-col">
-                            <label className="flex items-center justify-between gap-2 py-1"><span className="text-sm font-medium text-foreground text-xs">Responsável *</span></label>
+                            <label className="flex items-center justify-between gap-2 py-1"><span className="font-medium text-foreground text-xs">Responsável *</span></label>
                             <input
                               type="text"
                               placeholder="Nome do responsável"
-                              className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs"
+                              className="rounded-md border border-input bg-card outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs"
                               value={inlineUnidadeForm.responsavel}
                               onChange={(e) => setInlineUnidadeForm({ ...inlineUnidadeForm, responsavel: e.target.value })}
                             />
@@ -1264,11 +1264,11 @@ export default function ClientesPage() {
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           <div className="flex flex-col">
-                            <label className="flex items-center justify-between gap-2 py-1"><span className="text-sm font-medium text-foreground text-xs">WhatsApp</span></label>
+                            <label className="flex items-center justify-between gap-2 py-1"><span className="font-medium text-foreground text-xs">WhatsApp</span></label>
                             <input
                               type="tel"
                               placeholder="(00) 00000-0000"
-                              className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs"
+                              className="rounded-md border border-input bg-card outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs"
                               value={inlineUnidadeForm.whatsapp}
                               onChange={(e) => setInlineUnidadeForm({ ...inlineUnidadeForm, whatsapp: aplicarMascaraTelefone(e.target.value) })}
                               maxLength={15}
@@ -1298,7 +1298,7 @@ export default function ClientesPage() {
                           </button>
                           <button
                             type="button"
-                            className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 bg-primary text-primary-foreground hover:bg-primary/90 gap-1"
+                            className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 bg-primary text-primary-foreground hover:bg-primary/90 gap-1"
                             onClick={handleSalvarInlineUnidade}
                             disabled={
                               !inlineUnidadeForm.nome ||
@@ -1317,7 +1317,7 @@ export default function ClientesPage() {
                       </div>
                     )}
                     {!showInlineUnidadeForm && unidadesPendentes.length > 0 && (
-                      <button type="button" className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 border border-input bg-card hover:bg-muted gap-1 mt-2" onClick={handleAdicionarInlineUnidade}>
+                      <button type="button" className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 border border-input bg-card hover:bg-muted gap-1 mt-2" onClick={handleAdicionarInlineUnidade}>
                         <Plus className="w-3.5 h-3.5" />
                         Adicionar outra unidade
                       </button>

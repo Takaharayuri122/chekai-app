@@ -145,3 +145,18 @@ describe('duplicadas', () => {
     expect(c('btn btn-primary gap-2').split(/\s+/).filter((x) => x === 'gap-2')).toHaveLength(1);
   });
 });
+
+describe('conflitos resolvidos a favor da classe explícita', () => {
+  it('cor explícita vence a cor padrão do componente', () => {
+    const s = c('label-text-alt text-error');
+    expect(tem(s, 'text-xs', 'text-destructive')).toBe(true);
+    expect(naoTem(s, 'text-muted-foreground')).toBe(true);
+  });
+  it('display e alinhamento explícitos vencem o padrão', () => {
+    const s = c('join flex justify-center');
+    expect(tem(s, 'flex', 'justify-center')).toBe(true);
+    expect(naoTem(s, 'inline-flex')).toBe(true);
+    expect(naoTem(c('btn btn-ghost justify-start'), 'justify-center')).toBe(true);
+    expect(naoTem(c('btn btn-ghost btn-sm hover:bg-destructive/10'), 'hover:bg-muted')).toBe(true);
+  });
+});

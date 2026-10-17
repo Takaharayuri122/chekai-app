@@ -112,7 +112,7 @@ export default function NovoRelatorioTecnicoPage() {
                   }}
                   className="relative flex flex-col rounded-lg border border-border bg-card shadow-sm hover:border-primary transition-colors w-full text-left"
                 >
-                  <div className="flex flex-1 flex-col gap-2 p-4 flex-row items-center gap-4">
+                  <div className="flex flex-1 p-4 flex-row items-center gap-4">
                     <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center">
                       <Building2 className="w-6 h-6 text-primary" />
                     </div>
@@ -149,7 +149,7 @@ export default function NovoRelatorioTecnicoPage() {
                   }}
                   className="relative flex flex-col rounded-lg border border-border bg-card shadow-sm hover:border-primary transition-colors w-full text-left"
                 >
-                  <div className="flex flex-1 flex-col gap-2 p-4 flex-row items-center gap-4">
+                  <div className="flex flex-1 p-4 flex-row items-center gap-4">
                     <div className="w-12 h-12 bg-info/10 rounded-xl flex items-center justify-center">
                       <MapPin className="w-6 h-6 text-info" />
                     </div>
