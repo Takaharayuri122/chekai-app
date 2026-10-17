@@ -3,12 +3,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
-import { TutorialInstalacaoModal } from '@/components/ui/tutorial-instalacao-modal';
-import { CheckinFab } from '@/components/checkin/checkin-fab';
-import { Navbar } from './navbar';
+import { AppShell } from './app-shell';
 
 const LoadingScreen = () => (
-  <div className="min-h-screen flex items-center justify-center bg-base-200">
+  <div className="min-h-screen flex items-center justify-center bg-background">
     <span className="loading loading-spinner loading-lg text-primary" />
   </div>
 );
@@ -55,19 +53,6 @@ export function AppLayout({ children }: AppLayoutProps) {
     return <LoadingScreen />;
   }
 
-  return (
-    <div className="min-h-screen bg-base-200">
-      <div className="print:hidden">
-        <Navbar />
-      </div>
-      <main className="pb-20 md:pb-8">
-        {children}
-      </main>
-      <div className="print:hidden">
-        <CheckinFab />
-        <TutorialInstalacaoModal />
-      </div>
-    </div>
-  );
+  return <AppShell>{children}</AppShell>;
 }
 

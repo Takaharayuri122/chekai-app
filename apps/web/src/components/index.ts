@@ -1,5 +1,4 @@
 // Layout
-export { Navbar } from './layout/navbar';
 export { AppLayout } from './layout/app-layout';
 
 // UI

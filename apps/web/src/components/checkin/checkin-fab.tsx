@@ -152,7 +152,7 @@ export function CheckinFab() {
     <>
       {!ocultarFab && (
         <>
-          <div className="fixed bottom-24 right-4 z-50 md:bottom-8 md:right-8">
+          <div className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] right-4 z-50 md:bottom-8 md:right-8">
             <div className="flex flex-col items-center gap-2">
               <button
                 className={`btn btn-circle btn-lg shadow-md ${checkinAberto ? 'btn-warning' : 'btn-primary'} relative`}
