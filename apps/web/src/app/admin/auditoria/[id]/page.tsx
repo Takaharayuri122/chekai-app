@@ -88,8 +88,16 @@ export default function AuditoriaPage() {
   // No celular a folha do item fecha para o modal de documentação poder receber toques; reabre ao fechar o modal
   const [voltarAoPainel, setVoltarAoPainel] = useState(false);
 
+  // Reabre a folha só quando o modal de documentação de fato abriu e depois fechou.
+  // (Sem isso, a folha reabria durante a espera de abertura e cobria o modal, bloqueando os toques.)
+  const modalDocumentacaoAberto = useRef(false);
   useEffect(() => {
-    if (!itemModal && voltarAoPainel) {
+    if (itemModal) {
+      modalDocumentacaoAberto.current = true;
+      return;
+    }
+    if (modalDocumentacaoAberto.current && voltarAoPainel) {
+      modalDocumentacaoAberto.current = false;
       setVoltarAoPainel(false);
       setPainelMobileAberto(true);
     }
