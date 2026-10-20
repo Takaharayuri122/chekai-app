@@ -2,11 +2,12 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { FileText, Plus, Search } from 'lucide-react';
+import { FileText, Plus, Search, SlidersHorizontal } from 'lucide-react';
 import { AppLayout, EmptyState, PageHeader, StatusChip } from '@/components';
 import { Button } from '@/components/ui/shadcn/button';
 import { Input } from '@/components/ui/shadcn/input';
 import { Skeleton } from '@/components/ui/shadcn/skeleton';
+import { Tooltip } from '@/components/ui/tooltip';
 import { type RelatorioTecnicoResumo, relatorioTecnicoService } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
 
@@ -26,6 +27,16 @@ export default function RelatoriosTecnicosPage() {
   const [busca, setBusca] = useState<string>('');
   const [filtroStatus, setFiltroStatus] = useState<FiltroStatus>('todos');
   const [relatorios, setRelatorios] = useState<RelatorioTecnicoResumo[]>([]);
+  const [podePersonalizar, setPodePersonalizar] = useState<boolean>(false);
+  const podeVerModelo = !isAuditor();
+
+  useEffect(() => {
+    if (!podeVerModelo) return;
+    relatorioTecnicoService
+      .buscarModelo()
+      .then((resposta) => setPodePersonalizar(resposta.podePersonalizar))
+      .catch(() => setPodePersonalizar(false));
+  }, [podeVerModelo]);
 
   useEffect(() => {
     async function carregar(): Promise<void> {
@@ -62,12 +73,35 @@ export default function RelatoriosTecnicosPage() {
         title="Relatórios técnicos"
         subtitle="Controle técnico geral por cliente"
         action={
-          <Button asChild>
-            <Link href="/admin/relatorios-tecnicos/novo">
-              <Plus className="h-4 w-4" />
-              Novo relatório
-            </Link>
-          </Button>
+          <div className="flex items-center gap-2">
+            {podeVerModelo && (
+              <Tooltip
+                content={
+                  podePersonalizar
+                    ? 'Escolher as seções e os nomes usados no relatório'
+                    : 'Recurso não incluído no seu plano atual'
+                }
+              >
+                {podePersonalizar ? (
+                  <Button variant="outline" size="icon" asChild aria-label="Personalizar modelo">
+                    <Link href="/admin/relatorios-tecnicos/modelo">
+                      <SlidersHorizontal className="h-4 w-4" />
+                    </Link>
+                  </Button>
+                ) : (
+                  <Button variant="outline" size="icon" disabled aria-label="Personalizar modelo">
+                    <SlidersHorizontal className="h-4 w-4" />
+                  </Button>
+                )}
+              </Tooltip>
+            )}
+            <Button asChild>
+              <Link href="/admin/relatorios-tecnicos/novo">
+                <Plus className="h-4 w-4" />
+                Novo relatório
+              </Link>
+            </Button>
+          </div>
         }
       />
 
