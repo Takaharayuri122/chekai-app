@@ -184,9 +184,10 @@ export class RelatorioTecnicoService {
       snapshot = modelo;
     }
     Object.assign(relatorio, {
-      modeloSecoes: snapshot,
       ...dto,
       unidadeId: dto.unidadeId === undefined ? relatorio.unidadeId : dto.unidadeId ?? null,
+      // O cliente nunca dita o modelo: o snapshot vem sempre da API (RN-REL-012)
+      modeloSecoes: snapshot,
     });
     return this.relatorioTecnicoRepository.save(relatorio);
   }

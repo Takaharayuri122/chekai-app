@@ -29,8 +29,7 @@ jest.mock('../../db/repositories/relatorio-foto.repo', () => ({
 }));
 const mockRelatorioRepo = {
   findById: jest.fn(),
-  updateStatus: jest.fn(),
-  setAvisoSync: jest.fn(),
+  voltarParaRascunho: jest.fn(),
   markSynced: jest.fn(),
   setRemoteId: jest.fn(),
 };
@@ -79,8 +78,7 @@ describe('pushRelatorioTecnico com modelo desatualizado', () => {
 
     await pushPending();
 
-    expect(mockRelatorioRepo.updateStatus).toHaveBeenCalledWith('local-1', 'rascunho');
-    expect(mockRelatorioRepo.setAvisoSync).toHaveBeenCalledWith('local-1', mensagem);
+    expect(mockRelatorioRepo.voltarParaRascunho).toHaveBeenCalledWith('local-1', mensagem);
     expect(pullModeloRelatorioTecnico).toHaveBeenCalled();
     const segundaChamada = (atualizarRelatorioTecnico as jest.Mock).mock.calls[1][1];
     expect(segundaChamada.status).toBeUndefined();
@@ -93,7 +91,7 @@ describe('pushRelatorioTecnico com modelo desatualizado', () => {
 
     await pushPending();
 
-    expect(mockRelatorioRepo.updateStatus).not.toHaveBeenCalled();
+    expect(mockRelatorioRepo.voltarParaRascunho).not.toHaveBeenCalled();
     expect(mockDb.runSync).toHaveBeenCalledWith(
       expect.stringContaining('UPDATE sync_queue SET retries'),
       ['q1'],

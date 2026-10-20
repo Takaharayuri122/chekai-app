@@ -231,10 +231,24 @@ export class RelatorioTecnicoRepo {
     );
   }
 
-  setAvisoSync(id: string, aviso: string | null): void {
+  /** Finaliza localmente congelando o modelo aplicado (RN-REL-012), até o servidor confirmar. */
+  finalizarLocal(id: string, modelo: ModeloSecao[]): void {
     this.db.runSync(
-      `UPDATE relatorios_tecnicos SET aviso_sync = ? WHERE id = ?`,
-      [aviso, id],
+      `UPDATE relatorios_tecnicos
+       SET status = 'finalizado', modelo_secoes = ?, aviso_sync = NULL,
+           sync_status = 'pending', updated_at = ?
+       WHERE id = ?`,
+      [JSON.stringify(modelo), new Date().toISOString(), id],
+    );
+  }
+
+  /** Finalização recusada pelo servidor (RN-REL-013): volta a rascunho e descarta o snapshot local. */
+  voltarParaRascunho(id: string, aviso: string): void {
+    this.db.runSync(
+      `UPDATE relatorios_tecnicos
+       SET status = 'rascunho', modelo_secoes = NULL, aviso_sync = ?, updated_at = ?
+       WHERE id = ?`,
+      [aviso, new Date().toISOString(), id],
     );
   }
 

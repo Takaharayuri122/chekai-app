@@ -204,8 +204,7 @@ export default function RelatorioTecnicoFormScreen() {
     setErro(null);
     try {
       persistirCampos();
-      repo.updateStatus(id, 'finalizado');
-      repo.setAvisoSync(id, null);
+      repo.finalizarLocal(id, modelo);
       const online = await SyncService.isOnline();
       if (online) {
         await pushRelatorioTecnico(id);

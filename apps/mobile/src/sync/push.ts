@@ -192,8 +192,7 @@ export async function pushRelatorioTecnico(localId: string): Promise<void> {
       throw e;
     }
     console.warn(`[pushRelatorioTecnico] Finalização recusada (${e.message}); voltando a rascunho`);
-    relatorioRepo.updateStatus(localId, 'rascunho');
-    relatorioRepo.setAvisoSync(localId, e.message);
+    relatorioRepo.voltarParaRascunho(localId, e.message);
     await pullModeloRelatorioTecnico(); // não lança: mantém o cache em caso de falha
     delete payload.status;
     await atualizarRelatorioTecnico(remoteId, payload);

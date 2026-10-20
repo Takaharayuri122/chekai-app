@@ -104,6 +104,23 @@ describe('RelatorioTecnicoService com modelo', () => {
     expect(repo.save).toHaveBeenCalledWith(expect.objectContaining({ modeloSecoes: SEM_AVALIACAO }));
   });
 
+  it('ignora modeloSecoes enviado pelo cliente ao finalizar e ao editar finalizado', async () => {
+    const forjado = mesclarComPadrao([{ secao: 'planoAcaoSugerido', ativa: false, titulo: '<b>x' }]);
+    const rascunho = criarService(relatorioBase(), SEM_AVALIACAO);
+    await rascunho.service.atualizar(
+      'r1',
+      { status: StatusRelatorioTecnico.FINALIZADO, modeloSecoes: forjado } as never,
+      auditor,
+    );
+    expect(rascunho.repo.save).toHaveBeenCalledWith(expect.objectContaining({ modeloSecoes: SEM_AVALIACAO }));
+
+    const finalizado = criarService(
+      relatorioBase({ status: StatusRelatorioTecnico.FINALIZADO, modeloSecoes: SEM_AVALIACAO }),
+    );
+    await finalizado.service.atualizar('r1', { modeloSecoes: forjado } as never, auditor);
+    expect(finalizado.repo.save).toHaveBeenCalledWith(expect.objectContaining({ modeloSecoes: SEM_AVALIACAO }));
+  });
+
   it('finalizado legado sem snapshot valida com o padrão', async () => {
     const { service } = criarService(
       relatorioBase({ status: StatusRelatorioTecnico.FINALIZADO, avaliacaoTecnicaHtml: '' }),
