@@ -9,6 +9,9 @@ import { RelatorioFotoRepo } from '../db/repositories/relatorio-foto.repo';
 import { CheckinRepo } from '../db/repositories/checkin.repo';
 import { buscarCheckinAberto } from '../api/checkin.api';
 import { useAuthStore } from '../store/auth';
+import { salvarModeloCache } from '../store/modelo-relatorio';
+import { buscarModeloRelatorioTecnico } from '../api/relatorio-tecnico.api';
+import type { ModeloSecao } from '../utils/modelo-secoes';
 import type { Cliente } from '@meta-app/shared';
 
 const PAGE_LIMIT = 100;
@@ -509,6 +512,7 @@ interface RelatorioTecnicoApiPull {
   assinaturaNomeConsultora?: string;
   responsavel?: string;
   pdfUrl?: string | null;
+  modeloSecoes?: ModeloSecao[] | null;
   cliente?: { id: string };
   unidade?: { id: string } | null;
   fotos?: Array<{ id: string; url: string }>;
@@ -554,6 +558,7 @@ export async function pullRelatoriosTecnicos(): Promise<void> {
       assinaturaNomeConsultora: r.assinaturaNomeConsultora ?? '',
       responsavel: r.responsavel ?? '',
       pdfUrl: r.pdfUrl ?? null,
+      modeloSecoes: r.modeloSecoes ?? null,
     });
     inseridos++;
     if (!repo.isPending(localId) && fotoRepo.countByRelatorio(localId) === 0) {
@@ -565,6 +570,23 @@ export async function pullRelatoriosTecnicos(): Promise<void> {
   }
   console.log(`[pullRelatoriosTecnicos] Inseridos/atualizados: ${inseridos}, ignorados (FK ausente): ${ignorados}`);
   setLastSyncedAt(db, 'relatorios_tecnicos', new Date().toISOString());
+}
+
+/**
+ * Atualiza o cache (por usuário) do modelo de relatório técnico definido pelo gestor.
+ * Falhas não interrompem o sync: o app segue com o último modelo em cache (ou o padrão).
+ */
+export async function pullModeloRelatorioTecnico(): Promise<void> {
+  const usuarioId = useAuthStore.getState().user?.id;
+  if (!usuarioId) {
+    return;
+  }
+  try {
+    const modelo = await buscarModeloRelatorioTecnico();
+    salvarModeloCache(usuarioId, modelo.secoes);
+  } catch (e) {
+    console.warn('[pullModeloRelatorioTecnico] Falha ao atualizar modelo, mantendo cache:', e);
+  }
 }
 
 function mapearStatusRelatorio(status: string | undefined): RelatorioTecnicoStatus {
@@ -608,6 +630,7 @@ export async function pullAll(): Promise<void> {
   await pullClientes();
   await pullTemplates();
   await pullAuditorias();
+  await pullModeloRelatorioTecnico();
   await pullRelatoriosTecnicos();
   try {
     await pullCheckinAberto();

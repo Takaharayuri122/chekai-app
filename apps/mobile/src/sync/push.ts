@@ -13,6 +13,8 @@ import {
   type AtualizarRelatorioTecnicoPayload,
 } from '../api/relatorio-tecnico.api';
 import { gerarUUID } from '../utils/uuid';
+import { ApiError } from '../api/client';
+import { pullModeloRelatorioTecnico } from './pull';
 
 const auditoriaRepo = new AuditoriaRepo();
 const itemRepo = new AuditoriaItemRepo();
@@ -182,7 +184,20 @@ export async function pushRelatorioTecnico(localId: string): Promise<void> {
   if (relatorio.status === 'finalizado') {
     payload.status = 'finalizado';
   }
-  await atualizarRelatorioTecnico(remoteId, payload);
+  try {
+    await atualizarRelatorioTecnico(remoteId, payload);
+  } catch (e) {
+    // RN-REL-013: o modelo mudou desde a finalização offline — volta a rascunho com aviso
+    if (!(e instanceof ApiError) || e.status !== 409 || payload.status !== 'finalizado') {
+      throw e;
+    }
+    console.warn(`[pushRelatorioTecnico] Finalização recusada (${e.message}); voltando a rascunho`);
+    relatorioRepo.updateStatus(localId, 'rascunho');
+    relatorioRepo.setAvisoSync(localId, e.message);
+    await pullModeloRelatorioTecnico(); // não lança: mantém o cache em caso de falha
+    delete payload.status;
+    await atualizarRelatorioTecnico(remoteId, payload);
+  }
 
   relatorioRepo.markSynced(localId, remoteId);
   console.log(`[pushRelatorioTecnico] Concluído — remoteId=${remoteId}`);

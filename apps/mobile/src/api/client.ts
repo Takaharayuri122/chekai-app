@@ -14,6 +14,14 @@ async function buildHeaders(): Promise<Record<string, string>> {
   return headers;
 }
 
+/** Erro HTTP da API, preservando o status para tratamentos específicos (ex.: 409). */
+export class ApiError extends Error {
+  constructor(message: string, readonly status: number) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}
+
 function extrairMensagemErro(payload: unknown): string {
   if (payload && typeof payload === 'object' && 'message' in payload) {
     const m = (payload as { message?: string | string[] }).message;
@@ -50,7 +58,7 @@ async function requestJson<T>(method: string, path: string, body?: unknown): Pro
     const json = text ? (JSON.parse(text) as { data?: T; message?: string | string[] }) : {};
     if (!response.ok) {
       console.error(`[API] Erro ${response.status}: ${text.substring(0, 300)}`);
-      throw new Error(extrairMensagemErro(json));
+      throw new ApiError(extrairMensagemErro(json), response.status);
     }
     if (json.data === undefined) {
       console.error(`[API] Resposta sem campo 'data': ${text.substring(0, 300)}`);
@@ -93,7 +101,7 @@ async function requestVoid(method: string, path: string, body?: unknown): Promis
     const text = await response.text();
     if (!response.ok) {
       const json = text ? JSON.parse(text) : {};
-      throw new Error(extrairMensagemErro(json));
+      throw new ApiError(extrairMensagemErro(json), response.status);
     }
   } catch (err) {
     clearTimeout(timeoutId);
