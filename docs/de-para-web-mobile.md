@@ -242,6 +242,16 @@
 - **Critérios de aceite:** criar/editar/finalizar relatório técnico no app com paridade de campos obrigatórios (RN-REL-003/004); fotos de evidência sem IA (RN-REL-006).
 - **Prioridade sugerida:** **média** (marcado "Plano 3" no app — confirmar prioridade de produto).
 
+### [AJUSTE] Relatório Técnico — Modelo personalizável pelo gestor
+- **Funcionalidade no web:** GESTOR/MASTER (com plano que inclua o recurso) configura em `/admin/relatorios-tecnicos/modelo` quais seções aparecem e seus títulos; o formulário e o PDF seguem o modelo (RN-REL-009..012).
+- **Endpoint(s)/query(s) da API:**
+  - `GET /relatorios-tecnicos/modelo` → `{ secoes: ModeloSecao[], podePersonalizar }` (modelo resolvido para o usuário logado)
+  - `PUT /relatorios-tecnicos/modelo` (`{ secoes }`) — GESTOR/MASTER
+  - `GET /relatorios-tecnicos/:id` devolve `modeloEfetivo` (snapshot se finalizado; senão modelo vigente)
+  - `GET /relatorios-tecnicos` devolve `modeloSecoes` (snapshot; `null` em rascunhos/legados)
+- **No mobile:** sem tela de configuração; o pull grava o modelo em cache MMKV por usuário (`store/modelo-relatorio.ts`) e o snapshot em `relatorios_tecnicos.modelo_secoes`; a tela do relatório esconde seções inativas e usa os títulos; finalização recusada (409) volta a rascunho com aviso (RN-REL-013).
+- **Arquivos de referência:** `apps/api/src/modules/relatorio-tecnico/modelo-secoes.ts` (cópias idênticas em `apps/web/src/lib/relatorio-tecnico/` e `apps/mobile/src/utils/`).
+
 ### [NOVA] Check-in — Módulo completo (check-in / checkout / alerta 3h)
 - **Funcionalidade no web:** FAB global de check-in/checkout com geolocalização; alerta após 3h (Notification API); listagem administrativa (GESTOR/MASTER) com início/fim, mapa no detalhe, edição de datas/comentário; relatório de horas por cliente ou usuário (PDF/CSV) (RN-CKI-001..011).
 - **Endpoint(s)/query(s) da API:**
