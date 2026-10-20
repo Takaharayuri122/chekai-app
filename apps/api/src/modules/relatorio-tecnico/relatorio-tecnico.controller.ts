@@ -229,7 +229,10 @@ export class RelatorioTecnicoController {
     @Res() res: Response,
   ): Promise<void> {
     const relatorio = await this.relatorioTecnicoService.buscarPorId(id, usuario);
-    const pdfBuffer = await this.relatorioTecnicoPdfPuppeteerService.gerarPdf(relatorio);
+    const pdfBuffer = await this.relatorioTecnicoPdfPuppeteerService.gerarPdf(
+      relatorio,
+      await this.relatorioTecnicoService.modeloEfetivo(relatorio),
+    );
     try {
       const pdfUrl = await this.relatorioTecnicoPdfPuppeteerService.salvarPdfNoStorage(
         relatorio.id,

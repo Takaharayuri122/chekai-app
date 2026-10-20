@@ -24,6 +24,7 @@ import { RelatorioTecnicoFoto } from './entities/relatorio-tecnico-foto.entity';
 import { ModeloRelatorioTecnicoService } from './modelo-relatorio-tecnico.service';
 import {
   ModeloSecao,
+  SECOES_CONTEUDO,
   SecaoConfiguravel,
   modeloPadrao,
   secaoAtiva,
@@ -210,11 +211,7 @@ export class RelatorioTecnicoService {
     const apoioAnaliticoChekAi = await this.iaService.gerarApoioAnaliticoRelatorioTecnico(
       {
         identificacao: relatorio.identificacao,
-        descricaoOcorrenciaHtml: relatorio.descricaoOcorrenciaHtml,
-        avaliacaoTecnicaHtml: relatorio.avaliacaoTecnicaHtml,
-        acoesExecutadas: relatorio.acoesExecutadas,
-        recomendacoesConsultoraHtml: relatorio.recomendacoesConsultoraHtml,
-        planoAcaoSugeridoHtml: relatorio.planoAcaoSugeridoHtml,
+        secoes: this.montarSecoesParaIa(relatorio, modelo),
         nomeConsultora: relatorio.assinaturaNomeConsultora || relatorio.consultora?.nome || '',
         contextoComplementar: promptComplementar ?? '',
       },
@@ -272,6 +269,26 @@ export class RelatorioTecnicoService {
       throw new NotFoundException('Foto não encontrada no relatório técnico');
     }
     await this.relatorioTecnicoFotoRepository.delete({ id: foto.id });
+  }
+
+  /** Seções de texto ativas, na ordem fixa, rotuladas com os títulos do modelo. */
+  private montarSecoesParaIa(
+    relatorio: RelatorioTecnico,
+    modelo: ModeloSecao[],
+  ): Array<{ titulo: string; conteudo: string }> {
+    const conteudoPorSecao: Partial<Record<SecaoConfiguravel, string>> = {
+      descricaoOcorrencia: relatorio.descricaoOcorrenciaHtml,
+      avaliacaoTecnica: relatorio.avaliacaoTecnicaHtml,
+      acoesExecutadas: (relatorio.acoesExecutadas ?? [])
+        .map((acao, index) => `${index + 1}. ${acao}`)
+        .join('\n'),
+      recomendacoesConsultora: relatorio.recomendacoesConsultoraHtml,
+      planoAcaoSugerido: relatorio.planoAcaoSugeridoHtml,
+    };
+    return SECOES_CONTEUDO.filter((secao) => secaoAtiva(modelo, secao)).map((secao) => ({
+      titulo: tituloSecao(modelo, secao),
+      conteudo: conteudoPorSecao[secao] ?? '',
+    }));
   }
 
   /** Modelo aplicado ao relatório: snapshot se finalizado, senão o vigente do dono. */

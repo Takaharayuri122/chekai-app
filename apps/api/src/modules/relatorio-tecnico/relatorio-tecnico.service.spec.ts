@@ -128,6 +128,29 @@ describe('RelatorioTecnicoService com modelo', () => {
     );
   });
 
+  it('apoio envia à IA só as seções de texto ativas, com os títulos do modelo', async () => {
+    const modelo = mesclarComPadrao([
+      { secao: 'avaliacaoTecnica', ativa: false, titulo: '' },
+      { secao: 'recomendacoesConsultora', ativa: true, titulo: 'Retorno do Cliente' },
+    ]);
+    const { service, iaService } = criarService(relatorioBase(), modelo);
+    await service.atualizarApoioAnalitico('r1', 'extra', auditor);
+    expect(iaService.gerarApoioAnaliticoRelatorioTecnico).toHaveBeenCalledWith(
+      {
+        identificacao: 'Cozinha',
+        secoes: [
+          { titulo: 'Descrição da Ocorrência', conteudo: '<p>desc</p>' },
+          { titulo: 'Ações Executadas na Visita', conteudo: '1. ação' },
+          { titulo: 'Retorno do Cliente', conteudo: '<p>rec</p>' },
+          { titulo: 'Plano de Ação Sugerido', conteudo: '<p>plano</p>' },
+        ],
+        nomeConsultora: 'Ana',
+        contextoComplementar: 'extra',
+      },
+      auditor,
+    );
+  });
+
   it('apoio desligado no modelo bloqueia a geração sem chamar a IA', async () => {
     const { service, iaService } = criarService(relatorioBase(), SEM_APOIO);
     await expect(service.atualizarApoioAnalitico('r1', undefined, auditor)).rejects.toThrow(
