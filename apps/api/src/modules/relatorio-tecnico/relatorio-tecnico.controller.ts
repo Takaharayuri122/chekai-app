@@ -27,6 +27,7 @@ import { IniciarRelatorioTecnicoDto } from './dto/iniciar-relatorio-tecnico.dto'
 import { ListarRelatoriosTecnicosDto } from './dto/listar-relatorios-tecnicos.dto';
 import { GerarApoioAnaliticoDto } from './dto/gerar-apoio-analitico.dto';
 import { SalvarModeloRelatorioTecnicoDto } from './dto/salvar-modelo-relatorio-tecnico.dto';
+import { ModeloSecao } from './modelo-secoes';
 import { RelatorioTecnico } from './entities/relatorio-tecnico.entity';
 import { RelatorioTecnicoService } from './relatorio-tecnico.service';
 import {
@@ -113,8 +114,8 @@ export class RelatorioTecnicoController {
   async buscarPorId(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
-  ): Promise<RelatorioTecnico> {
-    return this.relatorioTecnicoService.buscarPorId(id, usuario);
+  ): Promise<RelatorioTecnico & { modeloEfetivo: ModeloSecao[] }> {
+    return this.relatorioTecnicoService.buscarComModelo(id, usuario);
   }
 
   @Put(':id')
