@@ -14,6 +14,7 @@ import {
   type RelatorioTecnicoFormData,
 } from '@/components/relatorio-tecnico/relatorio-tecnico-form';
 import { useAuthStore } from '@/lib/store';
+import { type ModeloSecao, modeloPadrao } from '@/lib/relatorio-tecnico/modelo-secoes';
 
 function mapearParaFormulario(data: any): RelatorioTecnicoFormData {
   return {
@@ -49,6 +50,7 @@ export default function RelatorioTecnicoDetalhePage() {
   const [finalizando, setFinalizando] = useState<boolean>(false);
   const [formData, setFormData] = useState<RelatorioTecnicoFormData | null>(null);
   const [consultoraId, setConsultoraId] = useState<string>('');
+  const [modeloEfetivo, setModeloEfetivo] = useState<ModeloSecao[]>(modeloPadrao());
   const [ultimaSincronizacao, setUltimaSincronizacao] = useState<Date | null>(null);
   const snapshotSalvoRef = useRef<string>('');
   const carregandoInicialRef = useRef<boolean>(true);
@@ -78,6 +80,7 @@ export default function RelatorioTecnicoDetalhePage() {
       try {
         const data = await relatorioTecnicoService.buscarPorId(relatorioId);
         setConsultoraId(data.consultoraId || '');
+        setModeloEfetivo(data.modeloEfetivo ?? modeloPadrao());
         const formMapeado = mapearParaFormulario(data);
         setFormData(formMapeado);
         snapshotSalvoRef.current = JSON.stringify({
@@ -330,6 +333,7 @@ export default function RelatorioTecnicoDetalhePage() {
           onChange={setFormData}
           somenteLeitura={somenteLeitura}
           nomeConsultoraLogada={usuario?.nome || ''}
+          modelo={modeloEfetivo}
           onAntesGerarApoioAnalitico={somenteLeitura ? undefined : async () => salvarRelatorio(false)}
           onApoioAnaliticoGerado={somenteLeitura ? undefined : (texto) => {
             setFormData((prev) => (prev ? { ...prev, apoioAnaliticoChekAi: texto } : prev));
