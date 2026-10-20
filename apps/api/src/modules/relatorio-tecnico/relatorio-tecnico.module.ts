@@ -14,17 +14,21 @@ import { SupabaseModule } from '../supabase/supabase.module';
 import { PdfModule } from '../pdf/pdf.module';
 import { RelatorioTecnicoPdfPuppeteerService } from './services/relatorio-tecnico-pdf-puppeteer.service';
 import { RelatorioTecnicoHtmlService } from './services/relatorio-tecnico-html.service';
+import { ModeloRelatorioTecnicoService } from './modelo-relatorio-tecnico.service';
+import { PlanoModule } from '../plano/plano.module';
+import { Usuario } from '../usuario/entities/usuario.entity';
 
 @Module({
   imports: [
     PdfModule,
-    TypeOrmModule.forFeature([RelatorioTecnico, RelatorioTecnicoFoto, ModeloRelatorioTecnico]),
+    TypeOrmModule.forFeature([RelatorioTecnico, RelatorioTecnicoFoto, ModeloRelatorioTecnico, Usuario]),
     MulterModule.register({
       limits: { fileSize: 10 * 1024 * 1024 },
     }),
     ClienteModule,
     IaModule,
     SupabaseModule,
+    PlanoModule,
   ],
   controllers: [RelatorioTecnicoController],
   providers: [
@@ -33,6 +37,7 @@ import { RelatorioTecnicoHtmlService } from './services/relatorio-tecnico-html.s
     ExtrairExifService,
     RelatorioTecnicoPdfPuppeteerService,
     RelatorioTecnicoHtmlService,
+    ModeloRelatorioTecnicoService,
   ],
   exports: [RelatorioTecnicoService],
 })
