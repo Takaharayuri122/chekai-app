@@ -5,6 +5,7 @@ import { ClienteModule } from '../cliente/cliente.module';
 import { IaModule } from '../ia/ia.module';
 import { RelatorioTecnico } from './entities/relatorio-tecnico.entity';
 import { RelatorioTecnicoFoto } from './entities/relatorio-tecnico-foto.entity';
+import { ModeloRelatorioTecnico } from './entities/modelo-relatorio-tecnico.entity';
 import { RelatorioTecnicoController } from './relatorio-tecnico.controller';
 import { RelatorioTecnicoService } from './relatorio-tecnico.service';
 import { ComprimirImagemService } from '../auditoria/services/comprimir-imagem.service';
@@ -17,7 +18,7 @@ import { RelatorioTecnicoHtmlService } from './services/relatorio-tecnico-html.s
 @Module({
   imports: [
     PdfModule,
-    TypeOrmModule.forFeature([RelatorioTecnico, RelatorioTecnicoFoto]),
+    TypeOrmModule.forFeature([RelatorioTecnico, RelatorioTecnicoFoto, ModeloRelatorioTecnico]),
     MulterModule.register({
       limits: { fileSize: 10 * 1024 * 1024 },
     }),

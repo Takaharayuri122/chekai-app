@@ -42,6 +42,14 @@ export class CriarPlanoDto {
   @Min(0, { message: 'O limite de créditos deve ser maior ou igual a zero' })
   limiteCreditos: number;
 
+  @ApiPropertyOptional({
+    description: 'Se o plano permite personalizar o modelo do relatório técnico',
+    default: false,
+  })
+  @IsBoolean()
+  @IsOptional()
+  permiteModeloRelatorioTecnico?: boolean;
+
   @ApiPropertyOptional({ description: 'Se o plano está ativo', default: true })
   @IsBoolean()
   @IsOptional()
