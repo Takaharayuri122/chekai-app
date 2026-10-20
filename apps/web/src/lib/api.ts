@@ -1,6 +1,7 @@
 import axios, { AxiosError } from 'axios';
 import { abrirPdfBlobEmNovaAba, type ResultadoAberturaPdf } from './pdf-abertura';
 import { toastService } from './toast';
+import type { ModeloSecao } from './relatorio-tecnico/modelo-secoes';
 
 export type { ResultadoAberturaPdf } from './pdf-abertura';
 
@@ -1168,6 +1169,7 @@ export interface Plano {
   limiteAuditorias: number;
   limiteClientes: number;
   limiteCreditos: number;
+  permiteModeloRelatorioTecnico: boolean;
   ativo: boolean;
   criadoEm: string;
   atualizadoEm: string;
@@ -1180,6 +1182,7 @@ export interface CriarPlanoRequest {
   limiteAuditorias: number;
   limiteClientes: number;
   limiteCreditos: number;
+  permiteModeloRelatorioTecnico?: boolean;
   ativo?: boolean;
 }
 
@@ -1523,6 +1526,8 @@ export interface RelatorioTecnico extends RelatorioTecnicoResumo {
   assinaturaNomeConsultora: string;
   responsavel: string;
   pdfUrl?: string | null;
+  /** Modelo aplicado ao relatório (snapshot se finalizado); só vem no detalhe. */
+  modeloEfetivo?: ModeloSecao[];
   fotos: Array<{
     id: string;
     url: string;
@@ -1545,6 +1550,11 @@ export interface CriarRelatorioTecnicoRequest {
   assinaturaNomeConsultora?: string;
   responsavel?: string;
   status?: 'rascunho' | 'finalizado';
+}
+
+export interface ModeloRelatorioTecnicoResposta {
+  secoes: ModeloSecao[];
+  podePersonalizar: boolean;
 }
 
 export interface IniciarRelatorioTecnicoRequest {
@@ -1608,6 +1618,16 @@ export const relatorioTecnicoService = {
 
   async removerFoto(id: string, fotoId: string): Promise<void> {
     await api.delete(`/relatorios-tecnicos/${id}/fotos/${fotoId}`);
+  },
+
+  async buscarModelo(): Promise<ModeloRelatorioTecnicoResposta> {
+    const response = await api.get('/relatorios-tecnicos/modelo');
+    return response.data.data;
+  },
+
+  async salvarModelo(secoes: ModeloSecao[]): Promise<ModeloRelatorioTecnicoResposta> {
+    const response = await api.put('/relatorios-tecnicos/modelo', { secoes });
+    return response.data.data;
   },
 
   async gerarApoioAnalitico(id: string, prompt?: string): Promise<RelatorioTecnico> {

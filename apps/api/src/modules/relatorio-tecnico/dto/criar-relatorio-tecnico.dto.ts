@@ -26,17 +26,17 @@ export class CriarRelatorioTecnicoDto {
   @IsNotEmpty()
   identificacao: string;
 
-  @ApiProperty({ description: 'Descrição da ocorrência em HTML' })
+  @ApiPropertyOptional({ description: 'Descrição da ocorrência em HTML (obrigatório ao finalizar se a seção estiver ativa)' })
   @IsString()
-  @IsNotEmpty()
-  descricaoOcorrenciaHtml: string;
+  @IsOptional()
+  descricaoOcorrenciaHtml?: string;
 
-  @ApiProperty({ description: 'Avaliação técnica em HTML' })
+  @ApiPropertyOptional({ description: 'Avaliação técnica em HTML (obrigatório ao finalizar se a seção estiver ativa)' })
   @IsString()
-  @IsNotEmpty()
-  avaliacaoTecnicaHtml: string;
+  @IsOptional()
+  avaliacaoTecnicaHtml?: string;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: 'Lista de ações executadas na visita',
     type: [String],
     example: ['Correção imediata de armazenamento', 'Treinamento da equipe'],
@@ -44,17 +44,18 @@ export class CriarRelatorioTecnicoDto {
   @IsArray()
   @ArrayMaxSize(100)
   @IsString({ each: true })
-  acoesExecutadas: string[];
+  @IsOptional()
+  acoesExecutadas?: string[];
 
-  @ApiProperty({ description: 'Recomendações da consultora em HTML' })
+  @ApiPropertyOptional({ description: 'Recomendações da consultora em HTML (obrigatório ao finalizar se a seção estiver ativa)' })
   @IsString()
-  @IsNotEmpty()
-  recomendacoesConsultoraHtml: string;
+  @IsOptional()
+  recomendacoesConsultoraHtml?: string;
 
-  @ApiProperty({ description: 'Plano de ação sugerido em HTML' })
+  @ApiPropertyOptional({ description: 'Plano de ação sugerido em HTML (obrigatório ao finalizar se a seção estiver ativa)' })
   @IsString()
-  @IsNotEmpty()
-  planoAcaoSugeridoHtml: string;
+  @IsOptional()
+  planoAcaoSugeridoHtml?: string;
 
   @ApiPropertyOptional({ description: 'Apoio analítico gerado pela IA' })
   @IsString()

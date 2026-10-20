@@ -27,7 +27,7 @@ describe('runMigrations', () => {
   });
 
   it('skips migrations when database is already at current version', () => {
-    mockDb.getFirstSync.mockReturnValue({ user_version: 5 });
+    mockDb.getFirstSync.mockReturnValue({ user_version: 6 });
 
     runMigrations(mockDb as any);
 
@@ -96,10 +96,26 @@ describe('runMigrations', () => {
   });
 
   it('skips v5 when database is already at version 5', () => {
-    mockDb.getFirstSync.mockReturnValue({ user_version: 5 });
+    mockDb.getFirstSync.mockReturnValue({ user_version: 6 });
 
     runMigrations(mockDb as any);
 
     expect(mockDb.withTransactionSync).not.toHaveBeenCalled();
+  });
+
+  it('executes schema v6 on a v5 database', () => {
+    mockDb.getFirstSync.mockReturnValue({ user_version: 5 });
+
+    runMigrations(mockDb as any);
+
+    expect(mockDb.execSync).toHaveBeenCalledWith(
+      expect.stringContaining('ALTER TABLE relatorios_tecnicos ADD COLUMN modelo_secoes TEXT;')
+    );
+    expect(mockDb.execSync).toHaveBeenCalledWith(
+      expect.stringContaining('ALTER TABLE relatorios_tecnicos ADD COLUMN aviso_sync TEXT;')
+    );
+    expect(mockDb.execSync).toHaveBeenCalledWith(
+      expect.stringContaining('PRAGMA user_version = 6')
+    );
   });
 });

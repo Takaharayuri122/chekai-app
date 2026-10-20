@@ -565,36 +565,22 @@ Retorne APENAS um JSON válido (sem markdown, sem backticks) com:
   async gerarApoioAnaliticoRelatorioTecnico(
     dadosRelatorio: {
       identificacao: string;
-      descricaoOcorrenciaHtml: string;
-      avaliacaoTecnicaHtml: string;
-      acoesExecutadas: string[];
-      recomendacoesConsultoraHtml: string;
-      planoAcaoSugeridoHtml: string;
+      secoes: Array<{ titulo: string; conteudo: string }>;
       nomeConsultora: string;
       contextoComplementar?: string;
     },
     usuario?: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
   ): Promise<string> {
+    const secoesTexto = dadosRelatorio.secoes
+      .map((secao) => `${secao.titulo.toUpperCase()}:\n${this.removerTagsHtml(secao.conteudo)}`)
+      .join('\n\n');
     const promptTexto = `Você é um especialista técnico em segurança de alimentos e conformidade sanitária.
 Gere um apoio analítico objetivo, técnico e acionável para o relatório abaixo.
 
 IDENTIFICAÇÃO:
 ${this.removerTagsHtml(dadosRelatorio.identificacao)}
 
-DESCRIÇÃO DA OCORRÊNCIA:
-${this.removerTagsHtml(dadosRelatorio.descricaoOcorrenciaHtml)}
-
-AVALIAÇÃO TÉCNICA:
-${this.removerTagsHtml(dadosRelatorio.avaliacaoTecnicaHtml)}
-
-AÇÕES EXECUTADAS NA VISITA:
-${dadosRelatorio.acoesExecutadas.map((acao, index) => `${index + 1}. ${this.removerTagsHtml(acao)}`).join('\n')}
-
-RECOMENDAÇÕES DA CONSULTORA:
-${this.removerTagsHtml(dadosRelatorio.recomendacoesConsultoraHtml)}
-
-PLANO DE AÇÃO SUGERIDO:
-${this.removerTagsHtml(dadosRelatorio.planoAcaoSugeridoHtml)}
+${secoesTexto}
 
 CONSULTORA RESPONSÁVEL:
 ${this.removerTagsHtml(dadosRelatorio.nomeConsultora)}
@@ -605,7 +591,7 @@ ${this.removerTagsHtml(dadosRelatorio.contextoComplementar || '')}
 Retorne APENAS texto em português-BR, sem markdown, estruturado em:
 1) Diagnóstico consolidado
 2) Riscos e impactos prioritários
-3) Consistência entre ações executadas e recomendações
+3) Consistência entre as seções do relatório
 4) Pontos críticos imediatos
 5) Próximos passos práticos (curto e médio prazo).`;
 

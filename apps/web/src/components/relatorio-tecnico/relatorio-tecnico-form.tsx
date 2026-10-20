@@ -19,6 +19,13 @@ import {
 import { toastService } from '@/lib/toast';
 import { EditorRichTextBasico } from '@/components/ui/editor-richtext-basico';
 import { AssinaturaRelatorio } from '@/components/ui/assinatura-relatorio';
+import {
+  type ModeloSecao,
+  type SecaoConfiguravel,
+  camposFaltantes,
+  secaoAtiva,
+  tituloSecao,
+} from '@/lib/relatorio-tecnico/modelo-secoes';
 
 export interface RelatorioTecnicoFormData extends CriarRelatorioTecnicoRequest {
   apoioAnaliticoChekAi?: string;
@@ -42,6 +49,8 @@ interface RelatorioTecnicoFormProps {
   onApoioAnaliticoGerado?: (texto: string) => void;
   onAntesGerarApoioAnalitico?: () => Promise<boolean>;
   nomeConsultoraLogada?: string;
+  /** Modelo do relatório: seções visíveis/obrigatórias e seus títulos. */
+  modelo: ModeloSecao[];
 }
 
 export function RelatorioTecnicoForm({
@@ -52,7 +61,10 @@ export function RelatorioTecnicoForm({
   onApoioAnaliticoGerado,
   onAntesGerarApoioAnalitico,
   nomeConsultoraLogada = '',
+  modelo,
 }: RelatorioTecnicoFormProps) {
+  const ativa = (secao: SecaoConfiguravel): boolean => secaoAtiva(modelo, secao);
+  const titulo = (secao: SecaoConfiguravel): string => tituloSecao(modelo, secao);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loadingClientes, setLoadingClientes] = useState<boolean>(true);
   const [novaAcao, setNovaAcao] = useState<string>('');
@@ -202,297 +214,305 @@ export function RelatorioTecnicoForm({
         />
       </div>
 
-      <EditorRichTextBasico label="Descrição da ocorrência" value={valor.descricaoOcorrenciaHtml} onChange={(html) => atualizarCampo('descricaoOcorrenciaHtml', html)} required />
+      {ativa('descricaoOcorrencia') && (
+        <EditorRichTextBasico label={titulo('descricaoOcorrencia')} value={valor.descricaoOcorrenciaHtml} onChange={(html) => atualizarCampo('descricaoOcorrenciaHtml', html)} required />
+      )}
 
-      <div className="relative flex flex-col rounded-lg border border-border bg-card">
-        <div className="flex flex-1 flex-col gap-2 p-4">
-          <h3 className="font-semibold">Evidências fotográficas</h3>
-          <input
-            ref={fileInputRef}
-            type="file"
-            className="hidden"
-            accept="image/*"
-            multiple
-            disabled={!relatorioId || somenteLeitura || enviandoFoto}
-            onChange={async (event) => {
-              if (!relatorioId || !event.target.files?.length) {
-                return;
-              }
-              const atuais = (valor.fotos?.length || 0) + fotosPendentes.length;
-              const vagas = MAX_FOTOS - atuais;
-              const selecionadas = Array.from(event.target.files).slice(0, vagas);
-              if (selecionadas.length === 0) {
-                toastService.warning(`Máximo de ${MAX_FOTOS} fotos por relatório.`);
-                event.target.value = '';
-                return;
-              }
-              if (event.target.files.length > vagas) {
-                toastService.warning(`Foram selecionadas muitas fotos. Apenas ${vagas} serão enviadas agora.`);
-              }
-              const pendentesSelecionadas = selecionadas.map((file) => ({
-                file,
-                localId: `preview-${crypto.randomUUID()}`,
-                preview: URL.createObjectURL(file),
-              }));
-              setFotosPendentes((prev) => [
-                ...prev,
-                ...pendentesSelecionadas.map(({ localId, preview }) => ({ localId, preview })),
-              ]);
-              setEnviandoFoto(true);
-              try {
-                for (const fotoSelecionada of pendentesSelecionadas) {
-                  const { file, localId, preview } = fotoSelecionada;
-                  const criada = await relatorioTecnicoService.adicionarFoto(relatorioId, file);
-                  setFotosPendentes((prev) => prev.filter((item) => item.localId !== localId));
-                  onChange((prevForm) => {
-                    if (!prevForm) {
-                      return prevForm;
-                    }
-                    return {
-                      ...prevForm,
-                      fotos: [
-                        ...(prevForm.fotos || []),
-                        { id: criada.id, url: criada.url, previewLocal: preview },
-                      ],
-                    };
-                  });
-                }
-                toastService.success('Fotos enviadas com sucesso.');
-              } catch {
-                // Erro tratado por interceptor
-              } finally {
-                setEnviandoFoto(false);
-                event.target.value = '';
-              }
-            }}
-          />
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-3">
-            {valor.fotos?.map((foto) => {
-              const isRemovendo = removendoFotoId === foto.id;
-              const srcMiniatura = foto.previewLocal ?? foto.url;
-              return (
-                <div key={foto.id} className="relative aspect-square rounded-lg overflow-hidden border border-border">
-                  <img
-                    src={srcMiniatura}
-                    alt="Evidência"
-                    className={`w-full h-full object-cover ${isRemovendo ? 'grayscale opacity-50' : ''}`}
-                  />
-                  {isRemovendo ? (
-                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                      <Loader2 className="w-5 h-5 animate-spin text-white" />
-                    </div>
-                  ) : !somenteLeitura && relatorioId ? (
-                    <button
-                      type="button"
-                      className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-7 w-7 px-0 rounded-full bg-destructive text-destructive-foreground hover:bg-destructive/90 absolute top-1 right-1"
-                      onClick={async () => {
-                        setRemovendoFotoId(foto.id);
-                        try {
-                          await relatorioTecnicoService.removerFoto(relatorioId, foto.id);
-                          if (foto.previewLocal) {
-                            URL.revokeObjectURL(foto.previewLocal);
-                          }
-                          const relatorioAtualizado = await relatorioTecnicoService.buscarPorId(relatorioId);
-                          onChange((prev) => {
-                            if (!prev) {
-                              return prev;
-                            }
-                            const mapaPreview = new Map(
-                              (prev.fotos || [])
-                                .filter((f) => f.id !== foto.id && f.previewLocal)
-                                .map((f) => [f.id, f.previewLocal!] as const),
-                            );
-                            const fotosMescladas = (relatorioAtualizado.fotos || []).map((f) => {
-                              const previewLocal = mapaPreview.get(f.id);
-                              return previewLocal ? { ...f, previewLocal } : f;
-                            });
-                            return {
-                              ...prev,
-                              apoioAnaliticoChekAi: relatorioAtualizado.apoioAnaliticoChekAi || '',
-                              fotos: fotosMescladas,
-                            };
-                          });
-                          toastService.success('Foto removida com sucesso.');
-                        } catch {
-                          // Erro tratado por interceptor
-                        } finally {
-                          setRemovendoFotoId(null);
-                        }
-                      }}
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  ) : null}
-                </div>
-              );
-            })}
-            {fotosPendentes.map((foto) => (
-              <div key={foto.localId} className="relative aspect-square rounded-lg overflow-hidden border border-border">
-                <img src={foto.preview} alt="Evidência em envio" className="w-full h-full object-cover grayscale blur-sm opacity-70" />
-                <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                  <div className="flex flex-col items-center gap-1 text-white">
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    <span className="text-[10px] font-medium uppercase tracking-wide">Enviando...</span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-          {(valor.fotos?.length || 0) + fotosPendentes.length < MAX_FOTOS && !somenteLeitura ? (
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className={`w-full mt-3 h-20 border-2 border-dashed border-border rounded-lg flex flex-col items-center justify-center gap-2 hover:border-primary hover:bg-primary/5 transition-colors ${!relatorioId || enviandoFoto ? 'opacity-60 pointer-events-none' : ''}`}
-              disabled={!relatorioId || enviandoFoto}
-            >
-              <Camera className="w-6 h-6 text-muted-foreground/70" />
-              <span className="text-sm text-muted-foreground">
-                Clique para adicionar fotos (até {MAX_FOTOS} • máx. 5MB cada)
-              </span>
-            </button>
-          ) : null}
-          {(valor.fotos?.length || 0) === 0 && fotosPendentes.length === 0 ? (
-            <p className="text-sm text-muted-foreground mt-2">Nenhuma evidência adicionada.</p>
-          ) : null}
-        </div>
-      </div>
-
-      <EditorRichTextBasico
-        label="Avaliação técnica"
-        value={valor.avaliacaoTecnicaHtml}
-        onChange={(html) => atualizarCampo('avaliacaoTecnicaHtml', html)}
-        required
-      />
-
-      <div className="relative flex flex-col rounded-lg border border-border bg-card">
-        <div className="flex flex-1 flex-col gap-2 p-4">
-          <h3 className="font-semibold">Ações executadas na visita</h3>
-          <div className="inline-flex items-stretch [&>*]:rounded-none [&>*:first-child]:rounded-l-md [&>*:last-child]:rounded-r-md w-full mt-3">
+      {ativa('evidenciasFotograficas') && (
+        <div className="relative flex flex-col rounded-lg border border-border bg-card">
+          <div className="flex flex-1 flex-col gap-2 p-4">
+            <h3 className="font-semibold">{titulo('evidenciasFotograficas')}</h3>
             <input
-              type="text"
-              className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-10 px-3 w-full"
-              value={novaAcao}
-              disabled={somenteLeitura}
-              placeholder="Adicionar ação executada"
-              onChange={(event) => setNovaAcao(event.target.value)}
-            />
-            <button
-              type="button"
-              className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-10 px-4 bg-primary text-primary-foreground hover:bg-primary/90"
-              onClick={adicionarAcao}
-              disabled={somenteLeitura}
-            >
-              <Plus className="w-4 h-4" />
-            </button>
-          </div>
-          <div className="space-y-2 mt-3">
-            {valor.acoesExecutadas.map((acao, index) => (
-              <div key={`${acao}-${index}`} className="flex items-center justify-between rounded-lg border border-border p-2 text-sm">
-                <span>{acao}</span>
-                <button
-                  type="button"
-                  className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-7 px-2 text-xs hover:bg-muted text-destructive"
-                  onClick={() => removerAcao(index)}
-                  disabled={somenteLeitura}
-                >
-                  <Trash2 className="w-3 h-3" />
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <EditorRichTextBasico
-        label="Recomendações da consultora"
-        value={valor.recomendacoesConsultoraHtml}
-        onChange={(html) => atualizarCampo('recomendacoesConsultoraHtml', html)}
-        required
-      />
-
-      <EditorRichTextBasico
-        label="Plano de ação sugerido"
-        value={valor.planoAcaoSugeridoHtml}
-        onChange={(html) => atualizarCampo('planoAcaoSugeridoHtml', html)}
-        required
-      />
-
-      <div className="flex flex-col">
-        <label className="flex items-center justify-between gap-2 py-0">
-          <span className="text-sm font-medium text-foreground">Apoio analítico ChekAi</span>
-        </label>
-        <div className="flex justify-end mb-2">
-          <button
-            type="button"
-            className={`inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 bg-primary text-primary-foreground hover:bg-primary/90 ${!relatorioId || somenteLeitura ? 'pointer-events-none opacity-50' : ''}`}
-            disabled={!relatorioId || somenteLeitura || gerandoApoioAnalitico}
-            onClick={async () => {
-              if (!relatorioId) {
-                return;
-              }
-              if (onAntesGerarApoioAnalitico) {
-                const sucessoSync = await onAntesGerarApoioAnalitico();
-                if (!sucessoSync) {
-                  toastService.warning('Não foi possível sincronizar o relatório antes de gerar o apoio analítico.');
+              ref={fileInputRef}
+              type="file"
+              className="hidden"
+              accept="image/*"
+              multiple
+              disabled={!relatorioId || somenteLeitura || enviandoFoto}
+              onChange={async (event) => {
+                if (!relatorioId || !event.target.files?.length) {
                   return;
                 }
-              }
-              const completo =
-                Boolean(valor.identificacao?.trim()) &&
-                Boolean(valor.descricaoOcorrenciaHtml?.trim()) &&
-                Boolean(valor.avaliacaoTecnicaHtml?.trim()) &&
-                Boolean(valor.recomendacoesConsultoraHtml?.trim()) &&
-                Boolean(valor.planoAcaoSugeridoHtml?.trim()) &&
-                Boolean(valor.acoesExecutadas?.length);
-              if (!completo) {
-                toastService.warning('Preencha todo o relatório antes de gerar o apoio analítico.');
-                return;
-              }
-              setGerandoApoioAnalitico(true);
-              try {
-                const relatorioAtualizado = await relatorioTecnicoService.gerarApoioAnalitico(relatorioId);
-                const apoio = relatorioAtualizado.apoioAnaliticoChekAi || '';
-                atualizarCampo('apoioAnaliticoChekAi', apoio);
-                if (onApoioAnaliticoGerado) {
-                  onApoioAnaliticoGerado(apoio);
+                const atuais = (valor.fotos?.length || 0) + fotosPendentes.length;
+                const vagas = MAX_FOTOS - atuais;
+                const selecionadas = Array.from(event.target.files).slice(0, vagas);
+                if (selecionadas.length === 0) {
+                  toastService.warning(`Máximo de ${MAX_FOTOS} fotos por relatório.`);
+                  event.target.value = '';
+                  return;
                 }
-                toastService.success('Apoio analítico gerado com sucesso.');
-              } catch {
-                // Erro tratado por interceptor
-              } finally {
-                setGerandoApoioAnalitico(false);
-              }
-            }}
-          >
-            <Sparkles className="w-4 h-4" />
-            {gerandoApoioAnalitico ? 'Gerando...' : 'Gerar apoio analítico'}
-          </button>
-        </div>
-        {blocosApoioAnalitico.length > 0 ? (
-          <div className="space-y-3">
-            {blocosApoioAnalitico.map((bloco, index) => (
-              <div key={`${bloco.titulo}-${index}`} className="flex w-full items-start gap-3 rounded-md border p-4 text-sm border-info/30 bg-info/10">
-                <div className="flex-1 space-y-1">
-                  {bloco.titulo ? <p className="font-semibold">{bloco.titulo}</p> : null}
-                  {bloco.linhas.map((linha, linhaIndex) => (
-                    <p key={`${index}-${linhaIndex}`} className="text-sm">
-                      {linha.replace(/^-\s*/, '• ')}
-                    </p>
-                  ))}
+                if (event.target.files.length > vagas) {
+                  toastService.warning(`Foram selecionadas muitas fotos. Apenas ${vagas} serão enviadas agora.`);
+                }
+                const pendentesSelecionadas = selecionadas.map((file) => ({
+                  file,
+                  localId: `preview-${crypto.randomUUID()}`,
+                  preview: URL.createObjectURL(file),
+                }));
+                setFotosPendentes((prev) => [
+                  ...prev,
+                  ...pendentesSelecionadas.map(({ localId, preview }) => ({ localId, preview })),
+                ]);
+                setEnviandoFoto(true);
+                try {
+                  for (const fotoSelecionada of pendentesSelecionadas) {
+                    const { file, localId, preview } = fotoSelecionada;
+                    const criada = await relatorioTecnicoService.adicionarFoto(relatorioId, file);
+                    setFotosPendentes((prev) => prev.filter((item) => item.localId !== localId));
+                    onChange((prevForm) => {
+                      if (!prevForm) {
+                        return prevForm;
+                      }
+                      return {
+                        ...prevForm,
+                        fotos: [
+                          ...(prevForm.fotos || []),
+                          { id: criada.id, url: criada.url, previewLocal: preview },
+                        ],
+                      };
+                    });
+                  }
+                  toastService.success('Fotos enviadas com sucesso.');
+                } catch {
+                  // Erro tratado por interceptor
+                } finally {
+                  setEnviandoFoto(false);
+                  event.target.value = '';
+                }
+              }}
+            />
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-3">
+              {valor.fotos?.map((foto) => {
+                const isRemovendo = removendoFotoId === foto.id;
+                const srcMiniatura = foto.previewLocal ?? foto.url;
+                return (
+                  <div key={foto.id} className="relative aspect-square rounded-lg overflow-hidden border border-border">
+                    <img
+                      src={srcMiniatura}
+                      alt="Evidência"
+                      className={`w-full h-full object-cover ${isRemovendo ? 'grayscale opacity-50' : ''}`}
+                    />
+                    {isRemovendo ? (
+                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                        <Loader2 className="w-5 h-5 animate-spin text-white" />
+                      </div>
+                    ) : !somenteLeitura && relatorioId ? (
+                      <button
+                        type="button"
+                        className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-7 w-7 px-0 rounded-full bg-destructive text-destructive-foreground hover:bg-destructive/90 absolute top-1 right-1"
+                        onClick={async () => {
+                          setRemovendoFotoId(foto.id);
+                          try {
+                            await relatorioTecnicoService.removerFoto(relatorioId, foto.id);
+                            if (foto.previewLocal) {
+                              URL.revokeObjectURL(foto.previewLocal);
+                            }
+                            const relatorioAtualizado = await relatorioTecnicoService.buscarPorId(relatorioId);
+                            onChange((prev) => {
+                              if (!prev) {
+                                return prev;
+                              }
+                              const mapaPreview = new Map(
+                                (prev.fotos || [])
+                                  .filter((f) => f.id !== foto.id && f.previewLocal)
+                                  .map((f) => [f.id, f.previewLocal!] as const),
+                              );
+                              const fotosMescladas = (relatorioAtualizado.fotos || []).map((f) => {
+                                const previewLocal = mapaPreview.get(f.id);
+                                return previewLocal ? { ...f, previewLocal } : f;
+                              });
+                              return {
+                                ...prev,
+                                apoioAnaliticoChekAi: relatorioAtualizado.apoioAnaliticoChekAi || '',
+                                fotos: fotosMescladas,
+                              };
+                            });
+                            toastService.success('Foto removida com sucesso.');
+                          } catch {
+                            // Erro tratado por interceptor
+                          } finally {
+                            setRemovendoFotoId(null);
+                          }
+                        }}
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    ) : null}
+                  </div>
+                );
+              })}
+              {fotosPendentes.map((foto) => (
+                <div key={foto.localId} className="relative aspect-square rounded-lg overflow-hidden border border-border">
+                  <img src={foto.preview} alt="Evidência em envio" className="w-full h-full object-cover grayscale blur-sm opacity-70" />
+                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                    <div className="flex flex-col items-center gap-1 text-white">
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      <span className="text-[10px] font-medium uppercase tracking-wide">Enviando...</span>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
+            {(valor.fotos?.length || 0) + fotosPendentes.length < MAX_FOTOS && !somenteLeitura ? (
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className={`w-full mt-3 h-20 border-2 border-dashed border-border rounded-lg flex flex-col items-center justify-center gap-2 hover:border-primary hover:bg-primary/5 transition-colors ${!relatorioId || enviandoFoto ? 'opacity-60 pointer-events-none' : ''}`}
+                disabled={!relatorioId || enviandoFoto}
+              >
+                <Camera className="w-6 h-6 text-muted-foreground/70" />
+                <span className="text-sm text-muted-foreground">
+                  Clique para adicionar fotos (até {MAX_FOTOS} • máx. 5MB cada)
+                </span>
+              </button>
+            ) : null}
+            {(valor.fotos?.length || 0) === 0 && fotosPendentes.length === 0 ? (
+              <p className="text-sm text-muted-foreground mt-2">Nenhuma evidência adicionada.</p>
+            ) : null}
           </div>
-        ) : (
-          <textarea
-            className="px-3 py-2 rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 min-h-[120px]"
-            value={valor.apoioAnaliticoChekAi || ''}
-            readOnly
-            disabled
-            placeholder="Campo somente leitura, gerado automaticamente pela IA"
-          />
-        )}
-      </div>
+        </div>
+      )}
+
+      {ativa('avaliacaoTecnica') && (
+        <EditorRichTextBasico
+          label={titulo('avaliacaoTecnica')}
+          value={valor.avaliacaoTecnicaHtml}
+          onChange={(html) => atualizarCampo('avaliacaoTecnicaHtml', html)}
+          required
+        />
+      )}
+
+      {ativa('acoesExecutadas') && (
+        <div className="relative flex flex-col rounded-lg border border-border bg-card">
+          <div className="flex flex-1 flex-col gap-2 p-4">
+            <h3 className="font-semibold">{titulo('acoesExecutadas')}</h3>
+            <div className="inline-flex items-stretch [&>*]:rounded-none [&>*:first-child]:rounded-l-md [&>*:last-child]:rounded-r-md w-full mt-3">
+              <input
+                type="text"
+                className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-10 px-3 w-full"
+                value={novaAcao}
+                disabled={somenteLeitura}
+                placeholder="Adicionar ação executada"
+                onChange={(event) => setNovaAcao(event.target.value)}
+              />
+              <button
+                type="button"
+                className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-10 px-4 bg-primary text-primary-foreground hover:bg-primary/90"
+                onClick={adicionarAcao}
+                disabled={somenteLeitura}
+              >
+                <Plus className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="space-y-2 mt-3">
+              {valor.acoesExecutadas.map((acao, index) => (
+                <div key={`${acao}-${index}`} className="flex items-center justify-between rounded-lg border border-border p-2 text-sm">
+                  <span>{acao}</span>
+                  <button
+                    type="button"
+                    className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-7 px-2 text-xs hover:bg-muted text-destructive"
+                    onClick={() => removerAcao(index)}
+                    disabled={somenteLeitura}
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {ativa('recomendacoesConsultora') && (
+        <EditorRichTextBasico
+          label={titulo('recomendacoesConsultora')}
+          value={valor.recomendacoesConsultoraHtml}
+          onChange={(html) => atualizarCampo('recomendacoesConsultoraHtml', html)}
+          required
+        />
+      )}
+
+      {ativa('planoAcaoSugerido') && (
+        <EditorRichTextBasico
+          label={titulo('planoAcaoSugerido')}
+          value={valor.planoAcaoSugeridoHtml}
+          onChange={(html) => atualizarCampo('planoAcaoSugeridoHtml', html)}
+          required
+        />
+      )}
+
+      {ativa('apoioAnalitico') && (
+        <div className="flex flex-col">
+          <label className="flex items-center justify-between gap-2 py-0">
+            <span className="text-sm font-medium text-foreground">{titulo('apoioAnalitico')}</span>
+          </label>
+          <div className="flex justify-end mb-2">
+            <button
+              type="button"
+              className={`inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 bg-primary text-primary-foreground hover:bg-primary/90 ${!relatorioId || somenteLeitura ? 'pointer-events-none opacity-50' : ''}`}
+              disabled={!relatorioId || somenteLeitura || gerandoApoioAnalitico}
+              onClick={async () => {
+                if (!relatorioId) {
+                  return;
+                }
+                if (onAntesGerarApoioAnalitico) {
+                  const sucessoSync = await onAntesGerarApoioAnalitico();
+                  if (!sucessoSync) {
+                    toastService.warning('Não foi possível sincronizar o relatório antes de gerar o apoio analítico.');
+                    return;
+                  }
+                }
+                const faltantes = camposFaltantes(valor, modelo);
+                if (faltantes.length > 0) {
+                  toastService.warning(`Preencha antes de gerar o apoio analítico: ${faltantes.join(', ')}.`);
+                  return;
+                }
+                setGerandoApoioAnalitico(true);
+                try {
+                  const relatorioAtualizado = await relatorioTecnicoService.gerarApoioAnalitico(relatorioId);
+                  const apoio = relatorioAtualizado.apoioAnaliticoChekAi || '';
+                  atualizarCampo('apoioAnaliticoChekAi', apoio);
+                  if (onApoioAnaliticoGerado) {
+                    onApoioAnaliticoGerado(apoio);
+                  }
+                  toastService.success('Apoio analítico gerado com sucesso.');
+                } catch {
+                  // Erro tratado por interceptor
+                } finally {
+                  setGerandoApoioAnalitico(false);
+                }
+              }}
+            >
+              <Sparkles className="w-4 h-4" />
+              {gerandoApoioAnalitico ? 'Gerando...' : 'Gerar apoio analítico'}
+            </button>
+          </div>
+          {blocosApoioAnalitico.length > 0 ? (
+            <div className="space-y-3">
+              {blocosApoioAnalitico.map((bloco, index) => (
+                <div key={`${bloco.titulo}-${index}`} className="flex w-full items-start gap-3 rounded-md border p-4 text-sm border-info/30 bg-info/10">
+                  <div className="flex-1 space-y-1">
+                    {bloco.titulo ? <p className="font-semibold">{bloco.titulo}</p> : null}
+                    {bloco.linhas.map((linha, linhaIndex) => (
+                      <p key={`${index}-${linhaIndex}`} className="text-sm">
+                        {linha.replace(/^-\s*/, '• ')}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <textarea
+              className="px-3 py-2 rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 min-h-[120px]"
+              value={valor.apoioAnaliticoChekAi || ''}
+              readOnly
+              disabled
+              placeholder="Campo somente leitura, gerado automaticamente pela IA"
+            />
+          )}
+        </div>
+      )}
 
       <AssinaturaRelatorio
         nomeConsultora={nomeConsultoraLogada || valor.assinaturaNomeConsultora || ''}

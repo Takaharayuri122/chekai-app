@@ -147,12 +147,17 @@
 |----|-------|
 | RN-REL-001 | Relatório técnico é por cliente (opcionalmente por unidade), sem pontuação de auditoria |
 | RN-REL-002 | `consultoraId` = usuário que cria; mesma regra de isolamento da auditoria para acesso |
-| RN-REL-003 | Campos HTML obrigatórios para finalizar: `identificacao`, `descricaoOcorrenciaHtml`, `avaliacaoTecnicaHtml`, `recomendacoesConsultoraHtml`, `planoAcaoSugeridoHtml` |
-| RN-REL-004 | Pelo menos uma `acaoExecutada` obrigatória antes de finalizar ou gerar apoio analítico |
+| RN-REL-003 | Para finalizar: `identificacao` sempre obrigatória; `descricaoOcorrenciaHtml`, `avaliacaoTecnicaHtml`, `recomendacoesConsultoraHtml` e `planoAcaoSugeridoHtml` obrigatórios **quando a seção estiver ativa no modelo** (RN-REL-009) |
+| RN-REL-004 | Pelo menos uma `acaoExecutada` obrigatória antes de finalizar ou gerar apoio analítico, **quando a seção estiver ativa no modelo** |
 | RN-REL-005 | Apoio analítico gerado por IA: somente leitura pelo usuário (preenchido pela IA) |
 | RN-REL-006 | Fotos de evidência sem processamento por IA (diferente das fotos de auditoria) |
 | RN-REL-007 | Vínculo cliente/unidade validado: unidade deve pertencer ao cliente informado |
 | RN-REL-008 | PDF: mesma lógica de geração e armazenamento das auditorias |
+| RN-REL-009 | Modelo por gestor (`modelos_relatorio_tecnico`, 1 por `gestorId`): seções configuráveis (descrição da ocorrência, evidências fotográficas, avaliação técnica, ações executadas, recomendações, plano de ação, apoio analítico) podem ser ligadas/desligadas e renomeadas (título ≤ 60 caracteres, sem `<`/`>`, vazio = padrão). Identificação e Assinaturas são fixas. Ao menos uma seção de texto deve ficar ativa. Ordem fixa. PDF, formulário (web/mobile), validação e apoio analítico seguem o modelo |
+| RN-REL-010 | Resolução do modelo: AUDITOR usa o modelo do seu gestor (sem gestor → padrão); GESTOR e MASTER usam o próprio. O modelo de um relatório é resolvido pela consultora do relatório, não por quem visualiza. Só GESTOR e MASTER editam (`PUT /relatorios-tecnicos/modelo`) |
+| RN-REL-011 | Recurso liberado por plano (`planos.permite_modelo_relatorio_tecnico`, configurado pelo MASTER); MASTER é isento. Gestor sem o recurso recebe 403 ao salvar; se perder o recurso, o modelo salvo é mantido mas deixa de ser aplicado (volta ao padrão) |
+| RN-REL-012 | Snapshot (`relatorios_tecnicos.modelo_secoes`) gravado somente na transição para finalizado; reenvios de `status=finalizado` não o refazem. Finalizados seguem o snapshot (inclusive em edições posteriores no web); finalizados legados sem snapshot usam o padrão. Rascunhos seguem o modelo vigente |
+| RN-REL-013 | Finalização offline (mobile) recusada pela API por modelo desatualizado (409) volta o relatório a rascunho no app, atualiza o modelo em cache e exibe à consultora o que falta preencher |
 
 ---
 

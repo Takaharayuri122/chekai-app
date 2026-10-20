@@ -26,8 +26,14 @@ import { CriarRelatorioTecnicoDto } from './dto/criar-relatorio-tecnico.dto';
 import { IniciarRelatorioTecnicoDto } from './dto/iniciar-relatorio-tecnico.dto';
 import { ListarRelatoriosTecnicosDto } from './dto/listar-relatorios-tecnicos.dto';
 import { GerarApoioAnaliticoDto } from './dto/gerar-apoio-analitico.dto';
+import { SalvarModeloRelatorioTecnicoDto } from './dto/salvar-modelo-relatorio-tecnico.dto';
+import { ModeloSecao } from './modelo-secoes';
 import { RelatorioTecnico } from './entities/relatorio-tecnico.entity';
 import { RelatorioTecnicoService } from './relatorio-tecnico.service';
+import {
+  ModeloRelatorioTecnicoResposta,
+  ModeloRelatorioTecnicoService,
+} from './modelo-relatorio-tecnico.service';
 import { ComprimirImagemService } from '../auditoria/services/comprimir-imagem.service';
 import { ExtrairExifService } from '../auditoria/services/extrair-exif.service';
 import { RelatorioTecnicoPdfPuppeteerService } from './services/relatorio-tecnico-pdf-puppeteer.service';
@@ -47,6 +53,7 @@ export class RelatorioTecnicoController {
     private readonly extrairExifService: ExtrairExifService,
     private readonly relatorioTecnicoPdfPuppeteerService: RelatorioTecnicoPdfPuppeteerService,
     private readonly supabaseService: SupabaseService,
+    private readonly modeloRelatorioTecnicoService: ModeloRelatorioTecnicoService,
   ) {
     this.bucketFotos = 'relatorios-fotos';
   }
@@ -81,14 +88,34 @@ export class RelatorioTecnicoController {
     return this.relatorioTecnicoService.listar(filtro, usuario);
   }
 
+  @Get('modelo')
+  @ApiOperation({ summary: 'Retorna o modelo de relatório técnico aplicado ao usuário' })
+  @ApiResponse({ status: 200, description: 'Modelo retornado com sucesso' })
+  async buscarModelo(
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
+  ): Promise<ModeloRelatorioTecnicoResposta> {
+    return this.modeloRelatorioTecnicoService.obterParaUsuario(usuario);
+  }
+
+  @Put('modelo')
+  @ApiOperation({ summary: 'Salva o modelo de relatório técnico do gestor' })
+  @ApiResponse({ status: 200, description: 'Modelo salvo com sucesso' })
+  @ApiResponse({ status: 403, description: 'Perfil ou plano sem permissão' })
+  async salvarModelo(
+    @Body() dto: SalvarModeloRelatorioTecnicoDto,
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
+  ): Promise<ModeloRelatorioTecnicoResposta> {
+    return this.modeloRelatorioTecnicoService.salvar(usuario, dto.secoes);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Busca relatório técnico por ID' })
   @ApiResponse({ status: 200, description: 'Relatório técnico encontrado' })
   async buscarPorId(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
-  ): Promise<RelatorioTecnico> {
-    return this.relatorioTecnicoService.buscarPorId(id, usuario);
+  ): Promise<RelatorioTecnico & { modeloEfetivo: ModeloSecao[] }> {
+    return this.relatorioTecnicoService.buscarComModelo(id, usuario);
   }
 
   @Put(':id')
@@ -202,7 +229,10 @@ export class RelatorioTecnicoController {
     @Res() res: Response,
   ): Promise<void> {
     const relatorio = await this.relatorioTecnicoService.buscarPorId(id, usuario);
-    const pdfBuffer = await this.relatorioTecnicoPdfPuppeteerService.gerarPdf(relatorio);
+    const pdfBuffer = await this.relatorioTecnicoPdfPuppeteerService.gerarPdf(
+      relatorio,
+      await this.relatorioTecnicoService.modeloEfetivo(relatorio),
+    );
     try {
       const pdfUrl = await this.relatorioTecnicoPdfPuppeteerService.salvarPdfNoStorage(
         relatorio.id,
