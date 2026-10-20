@@ -1,4 +1,4 @@
-export const SCHEMA_VERSION = 5;
+export const SCHEMA_VERSION = 6;
 
 export const SCHEMA_V1 = `
   CREATE TABLE IF NOT EXISTS usuarios (
@@ -252,4 +252,13 @@ export const SCHEMA_V5 = `
     updated_at TEXT NOT NULL
   );
   CREATE INDEX IF NOT EXISTS idx_checkins_usuario_status ON checkins(usuario_id, status);
+`;
+
+/**
+ * V6 — Modelo personalizável do relatório técnico (RN-REL-012/013): snapshot do
+ * modelo de relatórios finalizados vindo da API e aviso de finalização recusada.
+ */
+export const SCHEMA_V6 = `
+  ALTER TABLE relatorios_tecnicos ADD COLUMN modelo_secoes TEXT;
+  ALTER TABLE relatorios_tecnicos ADD COLUMN aviso_sync TEXT;
 `;

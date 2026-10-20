@@ -111,13 +111,13 @@ export default function AssinaturasPage() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'ativa':
-        return <span className="badge badge-success badge-sm">Ativa</span>;
+        return <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full font-semibold px-2 py-0.5 text-[11px] bg-success/12 text-[hsl(160_84%_28%)]">Ativa</span>;
       case 'cancelada':
-        return <span className="badge badge-error badge-sm">Cancelada</span>;
+        return <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full font-semibold px-2 py-0.5 text-[11px] bg-destructive/12 text-[hsl(0_72%_45%)]">Cancelada</span>;
       case 'expirada':
-        return <span className="badge badge-warning badge-sm">Expirada</span>;
+        return <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full font-semibold px-2 py-0.5 text-[11px] bg-warning/15 text-[hsl(32_95%_34%)]">Expirada</span>;
       default:
-        return <span className="badge badge-ghost badge-sm">{status}</span>;
+        return <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full font-semibold px-2 py-0.5 text-[11px] bg-muted text-muted-foreground">{status}</span>;
     }
   };
 
@@ -132,7 +132,7 @@ export default function AssinaturasPage() {
         subtitle="Gerencie as assinaturas dos gestores"
         action={
           <button
-            className="btn btn-primary gap-2"
+            className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-10 px-4 bg-primary text-primary-foreground hover:bg-primary/90"
             onClick={() => setShowModal(true)}
           >
             <Plus className="w-4 h-4" />
@@ -143,8 +143,8 @@ export default function AssinaturasPage() {
 
       <div className="px-4 py-4 lg:px-8 space-y-4">
         {loading ? (
-          <div className="card bg-base-100 shadow-sm border border-base-300">
-            <div className="card-body items-center py-12">
+          <div className="relative flex flex-col rounded-lg border border-border bg-card shadow-sm">
+            <div className="flex flex-1 flex-col gap-2 items-center py-12">
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
             </div>
           </div>
@@ -157,9 +157,9 @@ export default function AssinaturasPage() {
             actionOnClick={() => setShowModal(true)}
           />
         ) : (
-          <div className="card bg-base-100 shadow-sm border border-base-300 overflow-hidden">
+          <div className="relative flex flex-col rounded-lg border border-border bg-card shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="table table-zebra">
+              <table className="w-full text-left [&_th]:text-xs [&_th]:font-medium [&_th]:uppercase [&_th]:tracking-wide [&_th]:text-muted-foreground [&_tr]:border-b [&_tr]:border-border text-sm [&_th]:px-4 [&_th]:py-3 [&_td]:px-4 [&_td]:py-3 [&_tbody_tr:nth-child(even)]:bg-muted/40">
                 <thead>
                   <tr>
                     <th>Gestor</th>
@@ -174,8 +174,8 @@ export default function AssinaturasPage() {
                     <tr key={assinatura.id}>
                       <td>
                         <div className="flex items-center gap-3">
-                          <div className="avatar placeholder">
-                            <div className="bg-primary text-primary-content rounded-full w-10">
+                          <div className="relative inline-flex [&>div]:flex [&>div]:items-center [&>div]:justify-center">
+                            <div className="bg-primary text-primary-foreground rounded-full h-10 w-10">
                               <UserCheck className="w-5 h-5" />
                             </div>
                           </div>
@@ -183,7 +183,7 @@ export default function AssinaturasPage() {
                             <div className="font-medium">
                               {(assinatura as any).gestor?.nome || 'Gestor'}
                             </div>
-                            <div className="text-sm text-base-content/60">
+                            <div className="text-sm text-muted-foreground">
                               {(assinatura as any).gestor?.email || ''}
                             </div>
                           </div>
@@ -216,13 +216,13 @@ export default function AssinaturasPage() {
         footer={
           <>
             <button
-              className="btn btn-ghost"
+              className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-10 px-4 hover:bg-muted"
               onClick={handleFecharModal}
             >
               Cancelar
             </button>
             <button
-              className="btn btn-primary"
+              className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-10 px-4 bg-primary text-primary-foreground hover:bg-primary/90"
               onClick={handleCriarAssinatura}
               disabled={
                 saving || !assinaturaForm.gestorId || !assinaturaForm.planoId
@@ -238,12 +238,12 @@ export default function AssinaturasPage() {
         }
       >
         <div className="space-y-4">
-          <div className="form-control">
-            <label className="label">
-              <span className="label-text">Gestor *</span>
+          <div className="flex flex-col">
+            <label className="flex items-center justify-between gap-2 py-1">
+              <span className="text-sm font-medium text-foreground">Gestor *</span>
             </label>
             <select
-              className="select select-bordered"
+              className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-10 px-3"
               value={assinaturaForm.gestorId}
               onChange={(e) =>
                 setAssinaturaForm({
@@ -260,12 +260,12 @@ export default function AssinaturasPage() {
               ))}
             </select>
           </div>
-          <div className="form-control">
-            <label className="label">
-              <span className="label-text">Plano *</span>
+          <div className="flex flex-col">
+            <label className="flex items-center justify-between gap-2 py-1">
+              <span className="text-sm font-medium text-foreground">Plano *</span>
             </label>
             <select
-              className="select select-bordered"
+              className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-10 px-3"
               value={assinaturaForm.planoId}
               onChange={(e) =>
                 setAssinaturaForm({
@@ -285,13 +285,13 @@ export default function AssinaturasPage() {
             </select>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text">Data de Início</span>
+            <div className="flex flex-col">
+              <label className="flex items-center justify-between gap-2 py-1">
+                <span className="text-sm font-medium text-foreground">Data de Início</span>
               </label>
               <input
                 type="date"
-                className="input input-bordered"
+                className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-10 px-3"
                 value={assinaturaForm.dataInicio}
                 onChange={(e) =>
                   setAssinaturaForm({
@@ -301,13 +301,13 @@ export default function AssinaturasPage() {
                 }
               />
             </div>
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text">Data de Fim (opcional)</span>
+            <div className="flex flex-col">
+              <label className="flex items-center justify-between gap-2 py-1">
+                <span className="text-sm font-medium text-foreground">Data de Fim (opcional)</span>
               </label>
               <input
                 type="date"
-                className="input input-bordered"
+                className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-10 px-3"
                 value={assinaturaForm.dataFim}
                 onChange={(e) =>
                   setAssinaturaForm({

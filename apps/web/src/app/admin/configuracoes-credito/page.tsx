@@ -167,15 +167,15 @@ export default function ConfiguracoesCreditoPage() {
       <div className="px-4 py-4 lg:px-8 space-y-4">
         <div className="flex flex-col md:flex-row gap-4 mb-6">
           <div className="flex-1">
-            <div className="form-control">
-              <div className="input-group">
-                <span className="bg-base-200">
+            <div className="flex flex-col">
+              <div className="flex items-stretch">
+                <span className="bg-muted">
                   <Search className="w-4 h-4" />
                 </span>
                 <input
                   type="text"
                   placeholder="Buscar por provedor ou modelo..."
-                  className="input input-bordered flex-1"
+                  className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-10 px-3 flex-1"
                   value={busca}
                   onChange={(e) => setBusca(e.target.value)}
                 />
@@ -183,7 +183,7 @@ export default function ConfiguracoesCreditoPage() {
             </div>
           </div>
           <button
-            className="btn btn-primary gap-2"
+            className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-10 px-4 bg-primary text-primary-foreground hover:bg-primary/90"
             onClick={handleNovo}
           >
             <Plus className="w-5 h-5" />
@@ -202,9 +202,9 @@ export default function ConfiguracoesCreditoPage() {
             }
           />
         ) : (
-          <div className="card bg-base-100 shadow-sm border border-base-300 overflow-hidden">
+          <div className="relative flex flex-col rounded-lg border border-border bg-card shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="table table-zebra">
+              <table className="w-full text-left [&_th]:text-xs [&_th]:font-medium [&_th]:uppercase [&_th]:tracking-wide [&_th]:text-muted-foreground [&_tr]:border-b [&_tr]:border-border text-sm [&_th]:px-4 [&_th]:py-3 [&_td]:px-4 [&_td]:py-3 [&_tbody_tr:nth-child(even)]:bg-muted/40">
                 <thead>
                   <tr>
                     <th>Provedor</th>
@@ -225,7 +225,7 @@ export default function ConfiguracoesCreditoPage() {
                         </div>
                       </td>
                       <td>
-                        <code className="text-sm bg-base-200 px-2 py-1 rounded">
+                        <code className="text-sm bg-muted px-2 py-1 rounded">
                           {config.modelo}
                         </code>
                       </td>
@@ -234,33 +234,33 @@ export default function ConfiguracoesCreditoPage() {
                       </td>
                       <td>
                         {config.ativo ? (
-                          <span className="badge badge-success gap-2">
+                          <span className="inline-flex items-center whitespace-nowrap rounded-full font-semibold px-2.5 py-0.5 text-xs bg-success/12 text-[hsl(160_84%_28%)] gap-2">
                             <CheckCircle2 className="w-3 h-3" />
                             Ativa
                           </span>
                         ) : (
-                          <span className="badge badge-error gap-2">
+                          <span className="inline-flex items-center whitespace-nowrap rounded-full font-semibold px-2.5 py-0.5 text-xs bg-destructive/12 text-[hsl(0_72%_45%)] gap-2">
                             <XCircle className="w-3 h-3" />
                             Inativa
                           </span>
                         )}
                       </td>
                       <td>
-                        <span className="text-sm text-base-content/70">
+                        <span className="text-sm text-muted-foreground">
                           {new Date(config.criadoEm).toLocaleDateString('pt-BR')}
                         </span>
                       </td>
                       <td>
                         <div className="flex justify-end gap-2">
                           <button
-                            className="btn btn-sm btn-ghost"
+                            className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 hover:bg-muted"
                             onClick={() => handleEditar(config)}
                             title="Editar"
                           >
                             <Edit className="w-4 h-4" />
                           </button>
                           <button
-                            className="btn btn-sm btn-ghost text-error"
+                            className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 hover:bg-muted text-destructive"
                             onClick={() => {
                               setConfigToDelete(config.id);
                               setShowConfirmDelete(true);
@@ -289,14 +289,14 @@ export default function ConfiguracoesCreditoPage() {
         footer={
           <>
             <button
-              className="btn btn-ghost"
+              className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-10 px-4 hover:bg-muted"
               onClick={handleFecharModal}
               disabled={saving}
             >
               Cancelar
             </button>
             <button
-              className="btn btn-primary gap-2"
+              className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-10 px-4 bg-primary text-primary-foreground hover:bg-primary/90"
               onClick={handleCriarOuAtualizar}
               disabled={saving}
             >
@@ -316,13 +316,13 @@ export default function ConfiguracoesCreditoPage() {
         }
       >
         <div className="space-y-4">
-          <div className="form-control">
-            <label className="label">
-              <span className="label-text">Provedor</span>
-              <span className="label-text-alt text-error">*</span>
+          <div className="flex flex-col">
+            <label className="flex items-center justify-between gap-2 py-1">
+              <span className="text-sm font-medium text-foreground">Provedor</span>
+              <span className="text-xs text-destructive">*</span>
             </label>
             <select
-              className="select select-bordered w-full"
+              className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-10 px-3 w-full"
               value={configForm.provedor}
               onChange={(e) =>
                 setConfigForm({ ...configForm, provedor: e.target.value as ProvedorIa })
@@ -333,34 +333,34 @@ export default function ConfiguracoesCreditoPage() {
               <option value="deepseek">DeepSeek</option>
             </select>
           </div>
-          <div className="form-control">
-            <label className="label">
-              <span className="label-text">Modelo</span>
-              <span className="label-text-alt text-error">*</span>
+          <div className="flex flex-col">
+            <label className="flex items-center justify-between gap-2 py-1">
+              <span className="text-sm font-medium text-foreground">Modelo</span>
+              <span className="text-xs text-destructive">*</span>
             </label>
             <input
               type="text"
               placeholder="Ex: gpt-4o-mini, deepseek-chat"
-              className="input input-bordered w-full"
+              className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-10 px-3 w-full"
               value={configForm.modelo}
               onChange={(e) => setConfigForm({ ...configForm, modelo: e.target.value })}
               disabled={!!editingConfig}
             />
-            <label className="label">
-              <span className="label-text-alt">
+            <label className="flex items-center justify-between gap-2 py-1">
+              <span className="text-xs text-muted-foreground">
                 Nome do modelo da IA (não pode ser alterado após criar)
               </span>
             </label>
           </div>
-          <div className="form-control">
-            <label className="label">
-              <span className="label-text">Tokens por Crédito</span>
-              <span className="label-text-alt text-error">*</span>
+          <div className="flex flex-col">
+            <label className="flex items-center justify-between gap-2 py-1">
+              <span className="text-sm font-medium text-foreground">Tokens por Crédito</span>
+              <span className="text-xs text-destructive">*</span>
             </label>
             <input
               type="number"
               placeholder="Ex: 1000"
-              className="input input-bordered w-full"
+              className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-10 px-3 w-full"
               value={configForm.tokensPorCredito}
               onChange={(e) =>
                 setConfigForm({
@@ -370,24 +370,24 @@ export default function ConfiguracoesCreditoPage() {
               }
               min="1"
             />
-            <label className="label">
-              <span className="label-text-alt">
+            <label className="flex items-center justify-between gap-2 py-1">
+              <span className="text-xs text-muted-foreground">
                 Quantos tokens equivalem a 1 crédito de IA
               </span>
             </label>
           </div>
-          <div className="form-control">
-            <label className="label cursor-pointer">
-              <span className="label-text">Ativo</span>
+          <div className="flex flex-col">
+            <label className="flex items-center justify-between gap-2 py-1 cursor-pointer">
+              <span className="text-sm font-medium text-foreground">Ativo</span>
               <input
                 type="checkbox"
-                className="toggle toggle-primary"
+                className="relative shrink-0 cursor-pointer appearance-none rounded-full bg-muted-foreground/30 transition-colors checked:bg-primary before:absolute before:left-0.5 before:top-0.5 before:rounded-full before:bg-white before:shadow before:transition-transform disabled:opacity-50 h-5 w-9 before:h-4 before:w-4 checked:before:translate-x-4"
                 checked={configForm.ativo}
                 onChange={(e) => setConfigForm({ ...configForm, ativo: e.target.checked })}
               />
             </label>
-            <label className="label">
-              <span className="label-text-alt">
+            <label className="flex items-center justify-between gap-2 py-1">
+              <span className="text-xs text-muted-foreground">
                 Configurações inativas não serão utilizadas
               </span>
             </label>

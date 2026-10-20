@@ -80,10 +80,10 @@ const colunas: ColunaTabela<CheckinRegistro>[] = [
     label: 'Cliente',
     render: (c) => (
       <div>
-        <div className="font-medium text-base-content">
+        <div className="font-medium text-foreground">
           {c.cliente?.nomeFantasia || c.cliente?.razaoSocial || 'Cliente não informado'}
         </div>
-        <div className="text-xs text-base-content/50 flex items-center gap-1">
+        <div className="text-xs text-muted-foreground flex items-center gap-1">
           <MapPin className="w-3 h-3" />
           {c.unidade?.nome || 'Unidade não informada'}
         </div>
@@ -93,7 +93,7 @@ const colunas: ColunaTabela<CheckinRegistro>[] = [
   {
     label: 'Auditor',
     render: (c) => (
-      <span className="text-sm text-base-content/70">
+      <span className="text-sm text-muted-foreground">
         {c.usuario?.nome || 'Não informado'}
       </span>
     ),
@@ -101,7 +101,7 @@ const colunas: ColunaTabela<CheckinRegistro>[] = [
   {
     label: 'Início',
     render: (c) => (
-      <span className="text-sm text-base-content/70 tabular-nums">
+      <span className="text-sm text-muted-foreground tabular-nums">
         {formatarDataHora(c.dataCheckin)}
       </span>
     ),
@@ -109,7 +109,7 @@ const colunas: ColunaTabela<CheckinRegistro>[] = [
   {
     label: 'Fim',
     render: (c) => (
-      <span className="text-sm text-base-content/70 tabular-nums">
+      <span className="text-sm text-muted-foreground tabular-nums">
         {formatarFim(c.dataCheckin, c.dataCheckout)}
       </span>
     ),
@@ -117,7 +117,7 @@ const colunas: ColunaTabela<CheckinRegistro>[] = [
   {
     label: 'Duração',
     render: (c) => (
-      <span className="text-sm text-base-content/70 tabular-nums">
+      <span className="text-sm text-muted-foreground tabular-nums">
         {formatarDuracao(c.dataCheckin, c.dataCheckout)}
       </span>
     ),

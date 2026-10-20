@@ -23,9 +23,9 @@ interface GraficoAproveitamentoGruposProps {
 }
 
 function corPorAproveitamento(aproveitamento: number): string {
-  if (aproveitamento >= 70) return 'oklch(var(--s))';
-  if (aproveitamento >= 60) return 'oklch(var(--wa))';
-  return 'oklch(var(--er))';
+  if (aproveitamento >= 70) return 'hsl(var(--success))';
+  if (aproveitamento >= 60) return 'hsl(var(--warning))';
+  return 'hsl(var(--destructive))';
 }
 
 export function GraficoAproveitamentoGrupos({
@@ -50,9 +50,9 @@ export function GraficoAproveitamentoGrupos({
   ];
 
   const legendaFaixas = [
-    { label: '≥70% (Bom)', cor: 'oklch(var(--s))' },
-    { label: '60–70% (Atenção)', cor: 'oklch(var(--wa))' },
-    { label: '<60% (Crítico)', cor: 'oklch(var(--er))' },
+    { label: '≥70% (Bom)', cor: 'hsl(var(--success))' },
+    { label: '60–70% (Atenção)', cor: 'hsl(var(--warning))' },
+    { label: '<60% (Crítico)', cor: 'hsl(var(--destructive))' },
   ];
 
   return (
@@ -63,25 +63,25 @@ export function GraficoAproveitamentoGrupos({
             data={dados}
             margin={{ top: 16, right: 16, left: 0, bottom: 8 }}
           >
-            <CartesianGrid strokeDasharray="3 3" className="stroke-base-300" />
+            <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
             <XAxis
               dataKey="indice"
               tick={{ fontSize: 12 }}
-              className="text-base-content/70"
+              className="text-muted-foreground"
             />
             <YAxis
               domain={[0, 100]}
               tick={{ fontSize: 12 }}
               tickFormatter={(v) => `${v}%`}
-              className="text-base-content/70"
+              className="text-muted-foreground"
             />
             <Tooltip
               contentStyle={{
-                backgroundColor: 'oklch(var(--b1))',
-                border: '1px solid oklch(var(--b3))',
+                backgroundColor: 'hsl(var(--card))',
+                border: '1px solid hsl(var(--border))',
                 borderRadius: 'var(--rounded-box, 0.5rem)',
               }}
-              labelStyle={{ color: 'oklch(var(--bc))' }}
+              labelStyle={{ color: 'hsl(var(--foreground))' }}
               formatter={(value) => [`${value != null ? Number(value).toFixed(2) : 0}%`, 'Aproveitamento']}
               labelFormatter={(_, payload) => {
                 const p = payload[0]?.payload;
@@ -96,8 +96,8 @@ export function GraficoAproveitamentoGrupos({
           </BarChart>
         </ResponsiveContainer>
       </div>
-      <div className="flex flex-wrap justify-center gap-4 mt-3 pt-3 border-t border-base-300">
-        <span className="text-xs font-medium text-base-content/70">Legenda (faixa de aproveitamento):</span>
+      <div className="flex flex-wrap justify-center gap-4 mt-3 pt-3 border-t border-border">
+        <span className="text-xs font-medium text-muted-foreground">Legenda (faixa de aproveitamento):</span>
         {legendaFaixas.map((item) => (
           <div key={item.label} className="flex items-center gap-2">
             <span
@@ -105,7 +105,7 @@ export function GraficoAproveitamentoGrupos({
               style={{ backgroundColor: item.cor }}
               aria-hidden
             />
-            <span className="text-xs text-base-content/80">{item.label}</span>
+            <span className="text-xs text-foreground/80">{item.label}</span>
           </div>
         ))}
       </div>

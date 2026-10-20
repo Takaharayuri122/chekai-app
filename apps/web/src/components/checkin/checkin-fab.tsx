@@ -155,7 +155,7 @@ export function CheckinFab() {
           <div className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] right-4 z-50 md:bottom-8 md:right-8">
             <div className="flex flex-col items-center gap-2">
               <button
-                className={`btn btn-circle btn-lg shadow-md ${checkinAberto ? 'btn-warning' : 'btn-primary'} relative`}
+                className={`inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-11 w-11 px-0 rounded-full bg-muted text-foreground hover:bg-muted/80 shadow-md ${checkinAberto ? '!bg-warning !text-white hover:!bg-warning/90' : '!bg-primary !text-primary-foreground hover:!bg-primary/90'} relative`}
                 onClick={() => {
                   if (checkinAberto) {
                     setIsCheckoutDialogOpen(true);
@@ -174,12 +174,12 @@ export function CheckinFab() {
                   <LogIn className="h-5 w-5" />
                 )}
                 {isAtrasado3h && (
-                  <span className="absolute -right-1 -top-1 rounded-full bg-error p-1 text-white">
+                  <span className="absolute -right-1 -top-1 rounded-full bg-destructive p-1 text-white">
                     <TriangleAlert className="h-3 w-3" />
                   </span>
                 )}
               </button>
-              <div className="min-w-[124px] rounded-xl bg-base-100 px-3 py-1.5 text-center text-xs font-semibold leading-tight text-base-content shadow-md ring-1 ring-base-300">
+              <div className="min-w-[124px] rounded-xl bg-card px-3 py-1.5 text-center text-xs font-semibold leading-tight text-foreground shadow-md ring-1 ring-border">
                 {checkinAberto ? (
                   <span className="inline-flex items-center justify-center gap-1">
                     <LogOut className="h-3.5 w-3.5" />

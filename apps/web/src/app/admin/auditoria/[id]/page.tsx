@@ -88,8 +88,16 @@ export default function AuditoriaPage() {
   // No celular a folha do item fecha para o modal de documentação poder receber toques; reabre ao fechar o modal
   const [voltarAoPainel, setVoltarAoPainel] = useState(false);
 
+  // Reabre a folha só quando o modal de documentação de fato abriu e depois fechou.
+  // (Sem isso, a folha reabria durante a espera de abertura e cobria o modal, bloqueando os toques.)
+  const modalDocumentacaoAberto = useRef(false);
   useEffect(() => {
-    if (!itemModal && voltarAoPainel) {
+    if (itemModal) {
+      modalDocumentacaoAberto.current = true;
+      return;
+    }
+    if (modalDocumentacaoAberto.current && voltarAoPainel) {
+      modalDocumentacaoAberto.current = false;
       setVoltarAoPainel(false);
       setPainelMobileAberto(true);
     }
@@ -657,7 +665,7 @@ export default function AuditoriaPage() {
     return (
       <AppLayout>
         <div className="flex items-center justify-center min-h-[60vh]">
-          <span className="loading loading-spinner loading-lg text-primary"></span>
+          <span className="inline-block shrink-0 animate-spin rounded-full border-2 border-current border-r-transparent h-8 w-8 text-primary"></span>
         </div>
       </AppLayout>
     );
@@ -667,7 +675,7 @@ export default function AuditoriaPage() {
     return (
       <AppLayout>
         <div className="flex items-center justify-center min-h-[60vh]">
-          <p className="text-base-content/60">Auditoria não encontrada</p>
+          <p className="text-muted-foreground">Auditoria não encontrada</p>
         </div>
       </AppLayout>
     );
@@ -828,11 +836,11 @@ export default function AuditoriaPage() {
             : !temFotos || faltaObservacaoParaImagens;
           return auditoria.status !== 'finalizada' ? (
             <>
-              <button className="btn btn-ghost" onClick={() => setItemModal(null)}>
+              <button className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-10 px-4 hover:bg-muted" onClick={() => setItemModal(null)}>
                 Cancelar
               </button>
               <button
-                className="btn btn-primary"
+                className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-10 px-4 bg-primary text-primary-foreground hover:bg-primary/90"
                 onClick={handleSaveItemModal}
                 disabled={isDisabled}
               >
@@ -850,7 +858,7 @@ export default function AuditoriaPage() {
               </button>
             </>
           ) : (
-            <button className="btn btn-ghost" onClick={() => setItemModal(null)}>
+            <button className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-10 px-4 hover:bg-muted" onClick={() => setItemModal(null)}>
               Fechar
             </button>
           );
@@ -859,29 +867,29 @@ export default function AuditoriaPage() {
         {itemModal && (
           <>
             {auditoria.status === 'finalizada' && (
-                <div className="alert alert-info mb-4">
+                <div className="flex w-full items-start gap-3 rounded-md border p-4 text-sm border-info/30 bg-info/10 mb-4">
                   <AlertCircle className="w-4 h-4" />
                   <span className="text-sm">Auditoria finalizada. Apenas visualização disponível.</span>
                 </div>
               )}
 
               {/* Pergunta do checklist */}
-              <div className="bg-base-200 rounded-lg p-3 mb-4">
-                <p className="text-sm text-base-content/70">Item do Checklist:</p>
+              <div className="bg-muted rounded-lg p-3 mb-4">
+                <p className="text-sm text-muted-foreground">Item do Checklist:</p>
                 <p className="font-medium">{itemModal.item.templateItem.pergunta}</p>
               </div>
 
               {/* Tabs para Fotos e Observação */}
               <div className="mb-6">
                 {/* Tab Headers */}
-                <div className="tabs tabs-bordered">
+                <div className="flex items-center gap-1 border-b border-border">
                   {(() => {
                     const opcaoConfigModal = getOpcaoConfig(itemModal.item, itemModal.item.resposta || '');
                     const fotoObrigatoria = opcaoConfigModal?.fotoObrigatoria || false;
 
                     return (
                       <button
-                        className={`tab gap-2 ${activeTab === 'fotos' ? 'tab-active' : ''}`}
+                        className={`-mb-px inline-flex h-10 cursor-pointer items-center gap-2 border-b-2 border-transparent px-3 text-sm text-muted-foreground hover:text-foreground ${activeTab === 'fotos' ? '!border-primary !font-medium !text-foreground' : ''}`}
                         onClick={() => setActiveTab('fotos')}
                         title="Alt+1 para alternar"
                         aria-keyshortcuts="Alt+1"
@@ -889,10 +897,10 @@ export default function AuditoriaPage() {
                         <Camera className="w-4 h-4" />
                         Fotos
                         {itemModal.fotos.length > 0 && (
-                          <span className="badge badge-neutral badge-sm">{itemModal.fotos.length}</span>
+                          <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full font-semibold px-2 py-0.5 text-[11px] bg-sidebar text-white">{itemModal.fotos.length}</span>
                         )}
                         {fotoObrigatoria && itemModal.fotos.length === 0 && (
-                          <span className="badge badge-error badge-sm">Obrigatório</span>
+                          <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full font-semibold px-2 py-0.5 text-[11px] bg-destructive/12 text-[hsl(0_72%_45%)]">Obrigatório</span>
                         )}
                       </button>
                     );
@@ -904,7 +912,7 @@ export default function AuditoriaPage() {
 
                     return (
                       <button
-                        className={`tab gap-2 ${activeTab === 'observacao' ? 'tab-active' : ''}`}
+                        className={`-mb-px inline-flex h-10 cursor-pointer items-center gap-2 border-b-2 border-transparent px-3 text-sm text-muted-foreground hover:text-foreground ${activeTab === 'observacao' ? '!border-primary !font-medium !text-foreground' : ''}`}
                         onClick={() => setActiveTab('observacao')}
                         title="Alt+2 para alternar"
                         aria-keyshortcuts="Alt+2"
@@ -912,7 +920,7 @@ export default function AuditoriaPage() {
                         <MessageSquare className="w-4 h-4" />
                         Observação
                         {observacaoObrigatoria && (!itemModal.observacao || itemModal.observacao.trim() === '') && (
-                          <span className="badge badge-error badge-sm">Obrigatório</span>
+                          <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full font-semibold px-2 py-0.5 text-[11px] bg-destructive/12 text-[hsl(0_72%_45%)]">Obrigatório</span>
                         )}
                       </button>
                     );
@@ -920,7 +928,7 @@ export default function AuditoriaPage() {
                 </div>
 
                 {/* Tab Content */}
-                <div className="bg-base-100 border-x border-b border-base-300 rounded-b-box p-6 min-h-[300px]">
+                <div className="bg-card border-x border-b border-border rounded-b-lg p-6 min-h-[300px]">
                   {/* Tab Fotos - sempre visível; fotoObrigatoria só define se exige pelo menos uma imagem */}
                   {activeTab === 'fotos' && (() => {
                     const opcaoConfigModal = getOpcaoConfig(itemModal.item, itemModal.item.resposta || '');
@@ -958,7 +966,7 @@ export default function AuditoriaPage() {
                                   {!foto.analiseIa.imagemRelevante && (
                                     <div className="absolute bottom-1 left-1 right-1">
                                       <span
-                                        className="inline-flex w-full items-center justify-center gap-1 rounded-md bg-error px-2 py-1 text-[11px] font-semibold leading-none text-error-content shadow-sm"
+                                        className="inline-flex w-full items-center justify-center gap-1 rounded-md bg-destructive px-2 py-1 text-[11px] font-semibold leading-none text-destructive-foreground shadow-sm"
                                         title="Imagem não relacionada ao item do checklist"
                                       >
                                         <AlertCircle className="w-3 h-3 shrink-0" />
@@ -968,12 +976,12 @@ export default function AuditoriaPage() {
                                   )}
                                   {foto.analiseIa.imagemRelevante && (
                                     <div className="absolute bottom-1 left-1">
-                                      <span className={`badge badge-xs ${
+                                      <span className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full font-semibold px-1.5 py-0 text-[10px] bg-muted text-foreground ${
                                         foto.analiseIa.tipoNaoConformidade === 'Nenhuma identificada'
-                                          ? 'badge-success'
-                                          : foto.analiseIa.gravidade === 'critica' ? 'badge-error'
-                                          : foto.analiseIa.gravidade === 'alta' ? 'badge-warning'
-                                          : 'badge-info'
+                                          ? '!bg-success/12 !text-[hsl(160_84%_28%)]'
+                                          : foto.analiseIa.gravidade === 'critica' ? '!bg-destructive/12 !text-[hsl(0_72%_45%)]'
+                                          : foto.analiseIa.gravidade === 'alta' ? '!bg-warning/15 !text-[hsl(32_95%_34%)]'
+                                          : '!bg-info/12 !text-[hsl(217_80%_45%)]'
                                       }`}>
                                         <Sparkles className="w-2 h-2" />
                                       </span>
@@ -984,7 +992,7 @@ export default function AuditoriaPage() {
                               {auditoria.status !== 'finalizada' && (
                                 <button
                                   onClick={() => handleRemoveFoto(index)}
-                                  className="absolute top-1 right-1 btn btn-circle btn-xs btn-error"
+                                  className="absolute top-1 right-1 inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-7 w-7 px-0 rounded-full bg-destructive text-destructive-foreground hover:bg-destructive/90"
                                 >
                                   <X className="w-3 h-3" />
                                 </button>
@@ -997,16 +1005,16 @@ export default function AuditoriaPage() {
                         {itemModal.fotos.length < MAX_FOTOS_POR_ITEM && auditoria.status !== 'finalizada' && (
                           <button
                             onClick={() => fileInputRef.current?.click()}
-                            className="w-full mt-3 h-20 border-2 border-dashed border-base-300 rounded-lg flex flex-col items-center justify-center gap-2 hover:border-primary hover:bg-primary/5 transition-colors"
+                            className="w-full mt-3 h-20 border-2 border-dashed border-border rounded-lg flex flex-col items-center justify-center gap-2 hover:border-primary hover:bg-primary/5 transition-colors"
                           >
-                            <Camera className="w-6 h-6 text-base-content/40" />
-                            <span className="text-sm text-base-content/60">
+                            <Camera className="w-6 h-6 text-muted-foreground/70" />
+                            <span className="text-sm text-muted-foreground">
                               Clique para adicionar fotos (até {MAX_FOTOS_POR_ITEM} • máx. 5MB cada)
                             </span>
                           </button>
                         )}
                         {itemModal.fotos.length === 0 && auditoria.status === 'finalizada' && (
-                          <div className="text-center py-8 text-base-content/60">
+                          <div className="text-center py-8 text-muted-foreground">
                             <Camera className="w-12 h-12 mx-auto mb-2 opacity-50" />
                             <p>Nenhuma foto foi adicionada a este item</p>
                           </div>
@@ -1017,7 +1025,7 @@ export default function AuditoriaPage() {
                           <div className="mt-4 space-y-3">
                             {itemModal.fotos.map((foto, index) =>
                               foto.analiseIa && (
-                                <div key={index} className="alert alert-info text-sm">
+                                <div key={index} className="flex w-full items-start gap-3 rounded-md border p-4 text-sm border-info/30 bg-info/10">
                                   <Sparkles className="w-4 h-4" />
                                   <div className="flex-1">
                                     <p className="font-medium">Análise da Foto {index + 1}:</p>
@@ -1039,17 +1047,17 @@ export default function AuditoriaPage() {
                     const imagensNaoRelevantes = itemModal?.fotos.some((f) => f.analiseIa && !f.analiseIa.imagemRelevante) || false;
 
                     return (
-                      <div className="form-control">
-                        <label className="label">
-                          <span className="label-text font-medium">
-                            Observação do Auditor {observacaoObrigatoria && <span className="text-error">*</span>}
+                      <div className="flex flex-col">
+                        <label className="flex items-center justify-between gap-2 py-1">
+                          <span className="text-sm font-medium text-foreground">
+                            Observação do Auditor {observacaoObrigatoria && <span className="text-destructive">*</span>}
                           </span>
                         </label>
                         <textarea
                           placeholder="Adicione observações sobre este item..."
-                          className={`textarea textarea-bordered ${
+                          className={`min-h-[80px] px-3 py-2 rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 ${
                             observacaoObrigatoria && (!itemModal.observacao || itemModal.observacao.trim() === '')
-                              ? 'textarea-error'
+                              ? '!border-destructive'
                               : ''
                           }`}
                           rows={8}
@@ -1059,12 +1067,12 @@ export default function AuditoriaPage() {
                           readOnly={auditoria.status === 'finalizada'}
                         />
                         {observacaoObrigatoria && (!itemModal.observacao || itemModal.observacao.trim() === '') && (
-                          <label className="label">
-                            <span className="label-text-alt text-error">Observação obrigatória para esta resposta</span>
+                          <label className="flex items-center justify-between gap-2 py-1">
+                            <span className="text-xs text-destructive">Observação obrigatória para esta resposta</span>
                           </label>
                         )}
                         {imagensNaoRelevantes && (
-                          <div className="alert alert-warning mt-2 text-sm">
+                          <div className="flex w-full items-start gap-3 rounded-md border p-4 text-sm border-warning/40 bg-warning/15 mt-2">
                             <AlertCircle className="w-4 h-4" />
                             <span>Há fotos marcadas como não relevantes. Adicione uma observação explicando sua relevância.</span>
                           </div>

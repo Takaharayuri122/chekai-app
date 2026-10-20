@@ -260,16 +260,16 @@ export function ChecklistIaChatModal({ open, onClose, onChecklistGerado }: Check
 
             <div
               onClick={(e) => e.stopPropagation()}
-              className="relative flex flex-col bg-base-100 rounded-xl shadow-2xl border border-base-300 w-full max-w-3xl h-[85vh] overflow-hidden"
+              className="relative flex flex-col bg-card rounded-xl shadow-2xl border border-border w-full max-w-3xl h-[85vh] overflow-hidden"
             >
-              <div className="flex items-center justify-between gap-3 px-6 py-4 border-b border-base-300 shrink-0">
+              <div className="flex items-center justify-between gap-3 px-6 py-4 border-b border-border shrink-0">
                 <div className="flex items-center gap-3">
-                  <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-secondary/10">
-                    <Sparkles className="w-5 h-5 text-secondary" />
+                  <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-info/10">
+                    <Sparkles className="w-5 h-5 text-info" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold text-base-content">Criar Checklist com IA</h3>
-                    <p className="text-xs text-base-content/60">
+                    <h3 className="text-lg font-bold text-foreground">Criar Checklist com IA</h3>
+                    <p className="text-xs text-muted-foreground">
                       {isGerando ? 'Gerando seu checklist...' : 'Responda as perguntas para gerar seu checklist'}
                     </p>
                   </div>
@@ -278,19 +278,19 @@ export function ChecklistIaChatModal({ open, onClose, onChecklistGerado }: Check
                   type="button"
                   onClick={solicitarFechamento}
                   disabled={isGerando}
-                  className="flex items-center justify-center w-10 h-10 rounded-full bg-base-200 hover:bg-error/10 hover:text-error text-base-content/70 transition-colors shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex items-center justify-center w-10 h-10 rounded-full bg-muted hover:bg-destructive/10 hover:text-destructive text-muted-foreground transition-colors shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
                   aria-label="Fechar"
                 >
                   <X className="w-5 h-5" strokeWidth={2.5} />
                 </button>
               </div>
 
-              <div className="px-6 py-3 border-b border-base-300 shrink-0">
-                <ul className="steps steps-horizontal w-full text-xs">
+              <div className="px-6 py-3 border-b border-border shrink-0">
+                <ul className="flex w-full gap-2 steps-horizontal text-xs">
                   {etapas.map((label, idx) => (
                     <li
                       key={label}
-                      className={`step ${idx <= etapaIndex ? 'step-primary' : ''}`}
+                      className={`flex-1 text-center text-xs text-muted-foreground ${idx <= etapaIndex ? '!font-semibold !text-primary' : ''}`}
                     >
                       <span className="hidden sm:inline">{label}</span>
                     </li>
@@ -313,20 +313,20 @@ export function ChecklistIaChatModal({ open, onClose, onChecklistGerado }: Check
                     >
                       {msg.role === 'assistant' && (
                         <div className="flex items-start shrink-0">
-                          <div className="flex items-center justify-center w-8 h-8 rounded-full bg-secondary/10">
-                            <Sparkles className="w-4 h-4 text-secondary" />
+                          <div className="flex items-center justify-center w-8 h-8 rounded-full bg-info/10">
+                            <Sparkles className="w-4 h-4 text-info" />
                           </div>
                         </div>
                       )}
                       <div
                         className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
                           msg.role === 'user'
-                            ? 'bg-primary text-primary-content rounded-br-md'
-                            : 'bg-base-200 text-base-content rounded-bl-md'
+                            ? 'bg-primary text-primary-foreground rounded-br-md'
+                            : 'bg-muted text-foreground rounded-bl-md'
                         }`}
                       >
                         {msg.role === 'assistant' ? (
-                          <div className="prose prose-sm max-w-none prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5 prose-headings:my-2 prose-headings:text-base-content prose-strong:text-base-content prose-a:text-secondary">
+                          <div className="prose prose-sm max-w-none prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5 prose-headings:my-2 prose-headings:text-foreground prose-strong:text-foreground prose-a:text-info">
                             <ReactMarkdown remarkPlugins={[remarkGfm]}>
                               {msg.conteudo}
                             </ReactMarkdown>
@@ -335,7 +335,7 @@ export function ChecklistIaChatModal({ open, onClose, onChecklistGerado }: Check
                           <p className="whitespace-pre-wrap">{msg.conteudo}</p>
                         )}
                         <span className={`text-[10px] mt-1 block ${
-                          msg.role === 'user' ? 'text-primary-content/60' : 'text-base-content/40'
+                          msg.role === 'user' ? 'text-primary-foreground/60' : 'text-muted-foreground/70'
                         }`}>
                           {msg.timestamp.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                         </span>
@@ -358,15 +358,15 @@ export function ChecklistIaChatModal({ open, onClose, onChecklistGerado }: Check
                     className="flex gap-3 justify-start"
                   >
                     <div className="flex items-start shrink-0">
-                      <div className="flex items-center justify-center w-8 h-8 rounded-full bg-secondary/10">
-                        <Sparkles className="w-4 h-4 text-secondary" />
+                      <div className="flex items-center justify-center w-8 h-8 rounded-full bg-info/10">
+                        <Sparkles className="w-4 h-4 text-info" />
                       </div>
                     </div>
-                    <div className="bg-base-200 rounded-2xl rounded-bl-md px-4 py-3">
+                    <div className="bg-muted rounded-2xl rounded-bl-md px-4 py-3">
                       <div className="flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full bg-base-content/40 animate-bounce" style={{ animationDelay: '0ms' }} />
-                        <span className="w-2 h-2 rounded-full bg-base-content/40 animate-bounce" style={{ animationDelay: '150ms' }} />
-                        <span className="w-2 h-2 rounded-full bg-base-content/40 animate-bounce" style={{ animationDelay: '300ms' }} />
+                        <span className="w-2 h-2 rounded-full bg-foreground/40 animate-bounce" style={{ animationDelay: '0ms' }} />
+                        <span className="w-2 h-2 rounded-full bg-foreground/40 animate-bounce" style={{ animationDelay: '150ms' }} />
+                        <span className="w-2 h-2 rounded-full bg-foreground/40 animate-bounce" style={{ animationDelay: '300ms' }} />
                       </div>
                     </div>
                   </motion.div>
@@ -378,10 +378,10 @@ export function ChecklistIaChatModal({ open, onClose, onChecklistGerado }: Check
                     animate={{ opacity: 1, y: 0 }}
                     className="flex justify-center py-4"
                   >
-                    <div className="bg-base-200 rounded-2xl p-6 w-full max-w-md border border-base-300">
+                    <div className="bg-muted rounded-2xl p-6 w-full max-w-md border border-border">
                       <div className="flex items-center gap-2 mb-4">
-                        <Loader2 className="w-5 h-5 text-secondary animate-spin" />
-                        <span className="text-sm font-semibold text-base-content">Gerando checklist...</span>
+                        <Loader2 className="w-5 h-5 text-info animate-spin" />
+                        <span className="text-sm font-semibold text-foreground">Gerando checklist...</span>
                       </div>
                       <div className="space-y-3">
                         {PASSOS_GERACAO.map((passo, idx) => {
@@ -397,18 +397,18 @@ export function ChecklistIaChatModal({ open, onClose, onChecklistGerado }: Check
                               className="flex items-center gap-3"
                             >
                               <div className={`flex items-center justify-center w-8 h-8 rounded-full shrink-0 transition-colors duration-300 ${
-                                isConcluido ? 'bg-success/20' : isAtual ? 'bg-secondary/20' : 'bg-base-300'
+                                isConcluido ? 'bg-success/20' : isAtual ? 'bg-info/20' : 'bg-border'
                               }`}>
                                 {isConcluido ? (
                                   <CheckCircle className="w-4 h-4 text-success" />
                                 ) : isAtual ? (
-                                  <Icone className="w-4 h-4 text-secondary animate-pulse" />
+                                  <Icone className="w-4 h-4 text-info animate-pulse" />
                                 ) : (
-                                  <Icone className="w-4 h-4 text-base-content/30" />
+                                  <Icone className="w-4 h-4 text-muted-foreground/50" />
                                 )}
                               </div>
                               <span className={`text-sm transition-colors duration-300 ${
-                                isConcluido ? 'text-success font-medium' : isAtual ? 'text-base-content font-medium' : 'text-base-content/30'
+                                isConcluido ? 'text-success font-medium' : isAtual ? 'text-foreground font-medium' : 'text-muted-foreground/50'
                               }`}>
                                 {passo.label}
                               </span>
@@ -417,7 +417,7 @@ export function ChecklistIaChatModal({ open, onClose, onChecklistGerado }: Check
                         })}
                       </div>
                       <div className="mt-4">
-                        <progress className="progress progress-secondary w-full" />
+                        <progress className="h-2 w-full appearance-none overflow-hidden rounded-full bg-muted [&::-webkit-progress-bar]:bg-muted [&::-webkit-progress-value]:bg-info [&::-moz-progress-bar]:bg-info" />
                       </div>
                     </div>
                   </motion.div>
@@ -437,7 +437,7 @@ export function ChecklistIaChatModal({ open, onClose, onChecklistGerado }: Check
                 )}
               </div>
 
-              <div className="px-6 py-4 border-t border-base-300 shrink-0">
+              <div className="px-6 py-4 border-t border-border shrink-0">
                 <div className="flex gap-2">
                   <input
                     ref={inputRef}
@@ -453,12 +453,12 @@ export function ChecklistIaChatModal({ open, onClose, onChecklistGerado }: Check
                           : 'Digite sua resposta...'
                     }
                     disabled={isInputDesabilitado}
-                    className="input input-bordered flex-1 text-sm"
+                    className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-10 px-3 flex-1"
                   />
                   <button
                     onClick={enviarMensagem}
                     disabled={!input.trim() || isInputDesabilitado}
-                    className="btn btn-primary btn-square"
+                    className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-10 w-10 px-0 bg-primary text-primary-foreground hover:bg-primary/90"
                   >
                     {isEnviando || isGerando ? (
                       <Loader2 className="w-5 h-5 animate-spin" />

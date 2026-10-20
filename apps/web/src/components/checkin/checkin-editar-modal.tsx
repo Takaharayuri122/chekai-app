@@ -76,12 +76,12 @@ export function CheckinEditarModal({
       isDirty={isDirty}
       footer={(
         <>
-          <button type="button" className="btn btn-ghost" onClick={onClose} disabled={salvando}>
+          <button type="button" className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-10 px-4 hover:bg-muted" onClick={onClose} disabled={salvando}>
             Cancelar
           </button>
           <button
             type="button"
-            className="btn btn-primary"
+            className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-10 px-4 bg-primary text-primary-foreground hover:bg-primary/90"
             onClick={() => { void handleSalvar(); }}
             disabled={salvando || !dataCheckin}
           >
@@ -91,31 +91,31 @@ export function CheckinEditarModal({
       )}
     >
       <div className="space-y-4">
-        <label className="form-control w-full">
-          <span className="label-text">Início</span>
+        <label className="flex flex-col w-full">
+          <span className="text-sm font-medium text-foreground">Início</span>
           <input
             type="datetime-local"
-            className="input input-bordered w-full"
+            className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-10 px-3 w-full"
             value={dataCheckin}
             onChange={(evento) => setDataCheckin(evento.target.value)}
           />
         </label>
-        <label className="form-control w-full">
-          <span className="label-text">Fim</span>
+        <label className="flex flex-col w-full">
+          <span className="text-sm font-medium text-foreground">Fim</span>
           <input
             type="datetime-local"
-            className="input input-bordered w-full"
+            className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-10 px-3 w-full"
             value={dataCheckout}
             onChange={(evento) => setDataCheckout(evento.target.value)}
           />
-          <span className="label-text-alt text-base-content/50">
+          <span className="text-xs text-muted-foreground">
             Preencha para encerrar um check-in aberto. Não é possível reabrir um check-in fechado.
           </span>
         </label>
-        <label className="form-control w-full">
-          <span className="label-text">Comentário</span>
+        <label className="flex flex-col w-full">
+          <span className="text-sm font-medium text-foreground">Comentário</span>
           <textarea
-            className="textarea textarea-bordered min-h-24"
+            className="px-3 py-2 rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 min-h-24"
             value={comentario}
             onChange={(evento) => setComentario(evento.target.value)}
             maxLength={2000}

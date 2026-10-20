@@ -2,6 +2,7 @@ import { apiGet, apiPost, apiPut, apiDelete } from './client';
 import * as FileSystem from 'expo-file-system';
 import * as SecureStore from 'expo-secure-store';
 import { API_URL } from './config';
+import type { ModeloSecao } from '../utils/modelo-secoes';
 
 export type StatusRelatorioTecnicoApi = 'rascunho' | 'finalizado';
 
@@ -58,6 +59,18 @@ export interface RelatorioTecnicoApi {
   cliente?: { id: string; razaoSocial?: string; nomeFantasia?: string | null };
   unidade?: { id: string; nome?: string } | null;
   fotos?: RelatorioTecnicoFotoApi[];
+  /** Snapshot do modelo gravado na finalização (null em rascunhos/legados). */
+  modeloSecoes?: ModeloSecao[] | null;
+}
+
+export interface ModeloRelatorioTecnicoApi {
+  secoes: ModeloSecao[];
+  podePersonalizar: boolean;
+}
+
+/** Modelo de relatório técnico aplicado ao usuário logado (`GET /relatorios-tecnicos/modelo`). */
+export async function buscarModeloRelatorioTecnico(): Promise<ModeloRelatorioTecnicoApi> {
+  return apiGet<ModeloRelatorioTecnicoApi>('/relatorios-tecnicos/modelo');
 }
 
 /**

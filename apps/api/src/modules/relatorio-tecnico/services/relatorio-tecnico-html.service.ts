@@ -1,5 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { RelatorioTecnico } from '../entities/relatorio-tecnico.entity';
+import {
+  ModeloSecao,
+  SecaoConfiguravel,
+  modeloPadrao,
+  secaoAtiva,
+  tituloSecao,
+} from '../modelo-secoes';
 
 /** Assets opcionais para PDF (fotos e logos embutidos no HTML). */
 export interface RelatorioTecnicoPdfAssetsHtml {
@@ -8,7 +15,11 @@ export interface RelatorioTecnicoPdfAssetsHtml {
 
 @Injectable()
 export class RelatorioTecnicoHtmlService {
-  gerarHtml(relatorio: RelatorioTecnico, assetsPdf?: RelatorioTecnicoPdfAssetsHtml): string {
+  gerarHtml(
+    relatorio: RelatorioTecnico,
+    assetsPdf?: RelatorioTecnicoPdfAssetsHtml,
+    modelo: ModeloSecao[] = modeloPadrao(),
+  ): string {
     const nomeCliente =
       relatorio.cliente?.nomeFantasia || relatorio.cliente?.razaoSocial || 'Cliente';
     const nomeUnidade = relatorio.unidade?.nome || 'Sem unidade';
@@ -39,6 +50,14 @@ export class RelatorioTecnicoHtmlService {
       })
       .join('');
     const apoioAnaliticoHtml = this.gerarHtmlApoioAnalitico(relatorio.apoioAnaliticoChekAi || '');
+    const secao = (chave: SecaoConfiguravel, corpo: string): string =>
+      secaoAtiva(modelo, chave)
+        ? `
+    <div class="section">
+      <h2>${this.escapeHtml(tituloSecao(modelo, chave))}</h2>
+      ${corpo}
+    </div>`
+        : '';
     return `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -84,34 +103,13 @@ export class RelatorioTecnicoHtmlService {
       <h2>Identificação</h2>
       <div class="rich">${this.escapeHtml(relatorio.identificacao)}</div>
     </div>
-    <div class="section">
-      <h2>Descrição da Ocorrência</h2>
-      <div class="rich">${relatorio.descricaoOcorrenciaHtml}</div>
-    </div>
-    <div class="section">
-      <h2>Evidências Fotográficas</h2>
-      <div class="fotos-grid">${fotos || '<span>Sem evidências anexadas.</span>'}</div>
-    </div>
-    <div class="section">
-      <h2>Avaliação Técnica</h2>
-      <div class="rich">${relatorio.avaliacaoTecnicaHtml}</div>
-    </div>
-    <div class="section">
-      <h2>Ações Executadas na Visita</h2>
-      <ol class="acoes">${acoes || '<li>Sem ações informadas.</li>'}</ol>
-    </div>
-    <div class="section">
-      <h2>Recomendações da Consultora</h2>
-      <div class="rich">${relatorio.recomendacoesConsultoraHtml}</div>
-    </div>
-    <div class="section">
-      <h2>Plano de Ação Sugerido</h2>
-      <div class="rich">${relatorio.planoAcaoSugeridoHtml}</div>
-    </div>
-    <div class="section">
-      <h2>Apoio Analítico ChekAi</h2>
-      <div class="rich">${apoioAnaliticoHtml}</div>
-    </div>
+    ${secao('descricaoOcorrencia', `<div class="rich">${relatorio.descricaoOcorrenciaHtml}</div>`)}
+    ${secao('evidenciasFotograficas', `<div class="fotos-grid">${fotos || '<span>Sem evidências anexadas.</span>'}</div>`)}
+    ${secao('avaliacaoTecnica', `<div class="rich">${relatorio.avaliacaoTecnicaHtml}</div>`)}
+    ${secao('acoesExecutadas', `<ol class="acoes">${acoes || '<li>Sem ações informadas.</li>'}</ol>`)}
+    ${secao('recomendacoesConsultora', `<div class="rich">${relatorio.recomendacoesConsultoraHtml}</div>`)}
+    ${secao('planoAcaoSugerido', `<div class="rich">${relatorio.planoAcaoSugeridoHtml}</div>`)}
+    ${secao('apoioAnalitico', `<div class="rich">${apoioAnaliticoHtml}</div>`)}
     <div class="section">
       <h2>Assinaturas</h2>
       <div class="assinaturas-grid">

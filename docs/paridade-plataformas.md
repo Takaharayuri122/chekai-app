@@ -81,6 +81,7 @@
 | Fotos de evidência | ok | ok | - | |
 | Finalizar relatório | ok | ok | - | |
 | PDF de relatório | ok | ok | - | |
+| Modelo personalizável (seções/títulos) | ok | ok | parcial | Web configura (GESTOR/MASTER, por plano); web e mobile aplicam o modelo no formulário e na finalização (RN-REL-009..013) |
 
 ## Check-in
 

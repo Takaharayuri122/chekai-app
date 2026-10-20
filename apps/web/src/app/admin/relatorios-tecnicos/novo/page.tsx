@@ -72,21 +72,21 @@ export default function NovoRelatorioTecnicoPage() {
         backHref="/admin/relatorios-tecnicos"
       />
       <div className="px-4 py-4 lg:px-8 space-y-4">
-        <ul className="steps steps-horizontal w-full">
-          <li className={`step ${step >= 1 ? 'step-primary' : ''}`}>Cliente</li>
-          <li className={`step ${step >= 2 ? 'step-primary' : ''}`}>Unidade</li>
-          <li className={`step ${step >= 3 ? 'step-primary' : ''}`}>Confirmar</li>
+        <ul className="flex w-full gap-2 steps-horizontal">
+          <li className={`flex-1 text-center text-xs text-muted-foreground ${step >= 1 ? '!font-semibold !text-primary' : ''}`}>Cliente</li>
+          <li className={`flex-1 text-center text-xs text-muted-foreground ${step >= 2 ? '!font-semibold !text-primary' : ''}`}>Unidade</li>
+          <li className={`flex-1 text-center text-xs text-muted-foreground ${step >= 3 ? '!font-semibold !text-primary' : ''}`}>Confirmar</li>
         </ul>
         {erro ? (
-          <div className="alert alert-error">
+          <div className="flex w-full items-start gap-3 rounded-md border p-4 text-sm border-destructive/30 bg-destructive/10 text-destructive">
             <AlertCircle className="w-4 h-4" />
             <span>{erro}</span>
           </div>
         ) : null}
         {loadingClientes ? (
-          <div className="card bg-base-100 shadow-sm border border-base-300">
-            <div className="card-body items-center py-12">
-              <span className="loading loading-spinner loading-lg text-primary"></span>
+          <div className="relative flex flex-col rounded-lg border border-border bg-card shadow-sm">
+            <div className="flex flex-1 flex-col gap-2 items-center py-12">
+              <span className="inline-block shrink-0 animate-spin rounded-full border-2 border-current border-r-transparent h-8 w-8 text-primary"></span>
             </div>
           </div>
         ) : null}
@@ -94,10 +94,10 @@ export default function NovoRelatorioTecnicoPage() {
           <div className="space-y-3">
             <h2 className="text-lg font-semibold">Selecione o cliente</h2>
             {clientes.length === 0 ? (
-              <div className="card bg-base-100 shadow-sm border border-base-300">
-                <div className="card-body items-center text-center py-8">
-                  <Building2 className="w-12 h-12 text-base-content/30 mb-2" />
-                  <p className="text-base-content/60">Nenhum cliente cadastrado</p>
+              <div className="relative flex flex-col rounded-lg border border-border bg-card shadow-sm">
+                <div className="flex flex-1 flex-col gap-2 items-center text-center py-8">
+                  <Building2 className="w-12 h-12 text-muted-foreground/50 mb-2" />
+                  <p className="text-muted-foreground">Nenhum cliente cadastrado</p>
                 </div>
               </div>
             ) : (
@@ -110,15 +110,15 @@ export default function NovoRelatorioTecnicoPage() {
                     setUnidadeSelecionadaId('');
                     setStep(2);
                   }}
-                  className="card bg-base-100 shadow-sm border border-base-300 hover:border-primary transition-colors w-full text-left"
+                  className="relative flex flex-col rounded-lg border border-border bg-card shadow-sm hover:border-primary transition-colors w-full text-left"
                 >
-                  <div className="card-body p-4 flex-row items-center gap-4">
+                  <div className="flex flex-1 p-4 flex-row items-center gap-4">
                     <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center">
                       <Building2 className="w-6 h-6 text-primary" />
                     </div>
                     <div className="flex-1">
                       <p className="font-medium">{cliente.nomeFantasia || cliente.razaoSocial}</p>
-                      <p className="text-sm text-base-content/60">{cliente.unidades?.length || 0} unidade(s)</p>
+                      <p className="text-sm text-muted-foreground">{cliente.unidades?.length || 0} unidade(s)</p>
                     </div>
                   </div>
                 </button>
@@ -132,10 +132,10 @@ export default function NovoRelatorioTecnicoPage() {
               Selecione a unidade de {clienteSelecionado.nomeFantasia || clienteSelecionado.razaoSocial}
             </h2>
             {clienteSelecionado.unidades.length === 0 ? (
-              <div className="card bg-base-100 shadow-sm border border-base-300">
-                <div className="card-body items-center text-center py-8">
-                  <MapPin className="w-12 h-12 text-base-content/30 mb-2" />
-                  <p className="text-base-content/60">Este cliente não possui unidade cadastrada</p>
+              <div className="relative flex flex-col rounded-lg border border-border bg-card shadow-sm">
+                <div className="flex flex-1 flex-col gap-2 items-center text-center py-8">
+                  <MapPin className="w-12 h-12 text-muted-foreground/50 mb-2" />
+                  <p className="text-muted-foreground">Este cliente não possui unidade cadastrada</p>
                 </div>
               </div>
             ) : (
@@ -147,15 +147,15 @@ export default function NovoRelatorioTecnicoPage() {
                     setUnidadeSelecionadaId(unidade.id);
                     setStep(3);
                   }}
-                  className="card bg-base-100 shadow-sm border border-base-300 hover:border-primary transition-colors w-full text-left"
+                  className="relative flex flex-col rounded-lg border border-border bg-card shadow-sm hover:border-primary transition-colors w-full text-left"
                 >
-                  <div className="card-body p-4 flex-row items-center gap-4">
-                    <div className="w-12 h-12 bg-secondary/10 rounded-xl flex items-center justify-center">
-                      <MapPin className="w-6 h-6 text-secondary" />
+                  <div className="flex flex-1 p-4 flex-row items-center gap-4">
+                    <div className="w-12 h-12 bg-info/10 rounded-xl flex items-center justify-center">
+                      <MapPin className="w-6 h-6 text-info" />
                     </div>
                     <div className="flex-1">
                       <p className="font-medium">{unidade.nome}</p>
-                      <p className="text-sm text-base-content/60">
+                      <p className="text-sm text-muted-foreground">
                         {unidade.cidade}, {unidade.estado}
                       </p>
                     </div>
@@ -163,7 +163,7 @@ export default function NovoRelatorioTecnicoPage() {
                 </button>
               ))
             )}
-            <button type="button" className="btn btn-ghost" onClick={() => setStep(1)}>
+            <button type="button" className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-10 px-4 hover:bg-muted" onClick={() => setStep(1)}>
               Voltar
             </button>
           </div>
@@ -171,19 +171,19 @@ export default function NovoRelatorioTecnicoPage() {
         {!loadingClientes && step === 3 ? (
           <div className="space-y-4">
             <h2 className="text-lg font-semibold">Confirme os dados para iniciar</h2>
-            <div className="card bg-base-100 shadow-sm border border-base-300">
-              <div className="card-body p-4 space-y-4">
+            <div className="relative flex flex-col rounded-lg border border-border bg-card shadow-sm">
+              <div className="flex flex-1 flex-col gap-2 p-4 space-y-4">
                 <div className="flex items-center gap-3">
                   <Building2 className="w-5 h-5 text-primary" />
                   <div>
-                    <p className="text-sm text-base-content/60">Cliente</p>
+                    <p className="text-sm text-muted-foreground">Cliente</p>
                     <p className="font-medium">{clienteSelecionado?.nomeFantasia || clienteSelecionado?.razaoSocial}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <MapPin className="w-5 h-5 text-secondary" />
+                  <MapPin className="w-5 h-5 text-info" />
                   <div>
-                    <p className="text-sm text-base-content/60">Unidade</p>
+                    <p className="text-sm text-muted-foreground">Unidade</p>
                     <p className="font-medium">{unidadeSelecionada?.nome || '-'}</p>
                   </div>
                 </div>
@@ -194,12 +194,12 @@ export default function NovoRelatorioTecnicoPage() {
               </div>
             </div>
             <div className="flex gap-3">
-              <button type="button" className="btn btn-ghost flex-1" onClick={() => setStep(2)}>
+              <button type="button" className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-10 px-4 hover:bg-muted flex-1" onClick={() => setStep(2)}>
                 Voltar
               </button>
               <button
                 type="button"
-                className="btn btn-primary flex-1"
+                className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-10 px-4 bg-primary text-primary-foreground hover:bg-primary/90 flex-1"
                 onClick={handleIniciarRelatorio}
                 disabled={iniciandoRelatorio || !clienteSelecionadoId || !unidadeSelecionadaId}
               >

@@ -103,7 +103,7 @@ export function TutorialInstalacaoModal() {
     <button
       type="button"
       onClick={handleProximo}
-      className="btn btn-primary"
+      className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-10 px-4 bg-primary text-primary-foreground hover:bg-primary/90"
       autoFocus
     >
       {ehUltimoPasso ? 'Entendi' : 'Próximo'}
@@ -125,11 +125,11 @@ export function TutorialInstalacaoModal() {
           {passo.icone}
         </div>
         <div>
-          <p className="text-sm text-base-content/70 mb-1">
+          <p className="text-sm text-muted-foreground mb-1">
             Passo {passoAtual + 1} de {passos.length}
           </p>
-          <h3 className="font-semibold text-base-content mb-2">{passo.titulo}</h3>
-          <p className="text-sm text-base-content/80 leading-relaxed">{passo.descricao}</p>
+          <h3 className="font-semibold text-foreground mb-2">{passo.titulo}</h3>
+          <p className="text-sm text-foreground/80 leading-relaxed">{passo.descricao}</p>
         </div>
       </div>
     </FormModal>

@@ -50,12 +50,12 @@ export function LogoCropperModal({
 
   const footerContent = (
     <>
-      <button type="button" className="btn btn-ghost" onClick={onClose} disabled={loading}>
+      <button type="button" className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-10 px-4 hover:bg-muted" onClick={onClose} disabled={loading}>
         Cancelar
       </button>
       <button
         type="button"
-        className="btn btn-primary"
+        className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-10 px-4 bg-primary text-primary-foreground hover:bg-primary/90"
         onClick={handleConfirm}
         disabled={loading || !croppedAreaPixels}
       >
@@ -80,7 +80,7 @@ export function LogoCropperModal({
       isDirty={zoom !== 1 || crop.x !== 0 || crop.y !== 0}
       footer={footerContent}
     >
-      <p className="text-sm text-base-content/60 mb-4">
+      <p className="text-sm text-muted-foreground mb-4">
         Arraste e use o zoom para enquadrar. A logo será recortada em formato quadrado para o relatório.
       </p>
       <style>{`
@@ -89,7 +89,7 @@ export function LogoCropperModal({
           border-color: rgba(107, 114, 128, 0.7);
         }
       `}</style>
-      <div className="logo-cropper-wrap relative w-full h-[280px] bg-base-200 rounded-lg overflow-hidden">
+      <div className="logo-cropper-wrap relative w-full h-[280px] bg-muted rounded-lg overflow-hidden">
         <Cropper
           image={imageSource}
           crop={crop}
@@ -112,7 +112,7 @@ export function LogoCropperModal({
             step={0.1}
             value={zoom}
             onChange={(e) => setZoom(Number(e.target.value))}
-            className="range range-primary range-sm flex-1"
+            className="w-full cursor-pointer accent-[hsl(175_100%_36%)] range-primary flex-1"
           />
         </label>
       </div>

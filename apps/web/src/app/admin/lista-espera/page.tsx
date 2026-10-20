@@ -78,9 +78,9 @@ export default function ListaEsperaPage() {
           />
         ) : dados ? (
           <>
-            <div className="card bg-base-100 border border-base-300 overflow-hidden">
+            <div className="relative flex flex-col rounded-lg border border-border bg-card overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="table table-zebra">
+                <table className="w-full text-left [&_th]:text-xs [&_th]:font-medium [&_th]:uppercase [&_th]:tracking-wide [&_th]:text-muted-foreground [&_tr]:border-b [&_tr]:border-border text-sm [&_th]:px-4 [&_th]:py-3 [&_td]:px-4 [&_td]:py-3 [&_tbody_tr:nth-child(even)]:bg-muted/40">
                   <thead>
                     <tr>
                       <th>Data</th>
@@ -91,7 +91,7 @@ export default function ListaEsperaPage() {
                   <tbody>
                     {dados.items.map((item) => (
                       <tr key={item.id}>
-                        <td className="whitespace-nowrap text-base-content/80">
+                        <td className="whitespace-nowrap text-foreground/80">
                           {formatarData(item.criadoEm)}
                         </td>
                         <td>{item.email}</td>
@@ -104,7 +104,7 @@ export default function ListaEsperaPage() {
             </div>
             {dados.totalPages > 1 && (
               <div className="flex items-center justify-between mt-4">
-                <p className="text-sm text-base-content/60">
+                <p className="text-sm text-muted-foreground">
                   Total: {dados.total} registro{dados.total !== 1 ? 's' : ''}
                 </p>
                 <div className="flex gap-2">
@@ -112,7 +112,7 @@ export default function ListaEsperaPage() {
                     type="button"
                     onClick={() => carregar(dados.page - 1)}
                     disabled={dados.page <= 1}
-                    className="btn btn-sm btn-ghost gap-1"
+                    className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 hover:bg-muted gap-1"
                   >
                     <ChevronLeft className="w-4 h-4" />
                     Anterior
@@ -124,7 +124,7 @@ export default function ListaEsperaPage() {
                     type="button"
                     onClick={() => carregar(dados.page + 1)}
                     disabled={dados.page >= dados.totalPages}
-                    className="btn btn-sm btn-ghost gap-1"
+                    className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 hover:bg-muted gap-1"
                   >
                     Próxima
                     <ChevronRight className="w-4 h-4" />

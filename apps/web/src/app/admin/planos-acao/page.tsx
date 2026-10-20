@@ -163,7 +163,7 @@ export default function PlanosAcaoPage() {
     {
       label: 'Prazo',
       render: (t) => (
-        <span className={estaAtrasada(t) ? 'text-error font-semibold' : ''}>{formatarDataBr(t.prazo)}</span>
+        <span className={estaAtrasada(t) ? 'text-destructive font-semibold' : ''}>{formatarDataBr(t.prazo)}</span>
       ),
     },
     {
@@ -180,7 +180,7 @@ export default function PlanosAcaoPage() {
       isVisivel: (t) => t.status === 'pendente' || t.status === 'em_andamento',
     },
     { label: 'Editar', icon: Edit, onClick: abrirEdicao },
-    { label: 'Remover', icon: Trash2, onClick: setRemovendo, className: 'text-error', isVisivel: () => !ehAuditor },
+    { label: 'Remover', icon: Trash2, onClick: setRemovendo, className: 'text-destructive', isVisivel: () => !ehAuditor },
   ];
 
   return (

@@ -20,16 +20,16 @@ export function GraficoDistribuicaoPontos({
   const pontosNaoObtidos = Math.max(0, pontosPossiveis - pontosRealizados);
   const dados: DadoDistribuicao[] = [];
   if (pontosRealizados > 0) {
-    dados.push({ nome: 'Pontos realizados', valor: pontosRealizados, cor: 'oklch(var(--s))' });
+    dados.push({ nome: 'Pontos realizados', valor: pontosRealizados, cor: 'hsl(var(--success))' });
   }
   if (pontosNaoObtidos > 0) {
-    dados.push({ nome: 'Pontos não obtidos', valor: pontosNaoObtidos, cor: 'oklch(var(--er))' });
+    dados.push({ nome: 'Pontos não obtidos', valor: pontosNaoObtidos, cor: 'hsl(var(--destructive))' });
   }
 
   const total = dados.reduce((acc, d) => acc + d.valor, 0);
   if (total === 0) {
     return (
-      <div className="w-full h-[240px] flex items-center justify-center text-base-content/50 text-sm">
+      <div className="w-full h-[240px] flex items-center justify-center text-muted-foreground text-sm">
         Nenhum dado para exibir
       </div>
     );
@@ -51,13 +51,13 @@ export function GraficoDistribuicaoPontos({
               nameKey="nome"
             >
               {dados.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={entry.cor} stroke="oklch(var(--b1))" strokeWidth={2} />
+                <Cell key={`cell-${index}`} fill={entry.cor} stroke="hsl(var(--card))" strokeWidth={2} />
               ))}
             </Pie>
             <Tooltip
               contentStyle={{
-                backgroundColor: 'oklch(var(--b1))',
-                border: '1px solid oklch(var(--b3))',
+                backgroundColor: 'hsl(var(--card))',
+                border: '1px solid hsl(var(--border))',
                 borderRadius: 'var(--rounded-box, 0.5rem)',
               }}
               formatter={(value) => {
@@ -73,12 +73,12 @@ export function GraficoDistribuicaoPontos({
               wrapperStyle={{ fontSize: 13, paddingTop: 8 }}
               iconType="circle"
               iconSize={10}
-              formatter={(value) => <span className="text-base-content/90 font-medium">{value}</span>}
+              formatter={(value) => <span className="text-foreground/90 font-medium">{value}</span>}
             />
           </PieChart>
         </ResponsiveContainer>
       </div>
-      <p className="text-xs text-base-content/60 mt-1 text-center">
+      <p className="text-xs text-muted-foreground mt-1 text-center">
         Legenda: quantidade de pontos e percentual em relação ao total possível.
       </p>
     </div>

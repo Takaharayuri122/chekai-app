@@ -93,7 +93,7 @@ export function ListaEsperaModal({ open, onClose }: ListaEsperaModalProps) {
   };
 
   const footerSucesso = (
-    <button type="button" onClick={onClose} className="btn btn-primary">
+    <button type="button" onClick={onClose} className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-10 px-4 bg-primary text-primary-foreground hover:bg-primary/90">
       Fechar
     </button>
   );
@@ -103,7 +103,7 @@ export function ListaEsperaModal({ open, onClose }: ListaEsperaModalProps) {
       type="submit"
       form="lista-espera-form"
       disabled={enviando}
-      className="btn btn-primary w-full gap-2"
+      className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-10 px-4 bg-primary text-primary-foreground hover:bg-primary/90 w-full"
     >
       {enviando ? (
         <>
@@ -128,34 +128,34 @@ export function ListaEsperaModal({ open, onClose }: ListaEsperaModalProps) {
       {sucesso ? (
         <div className="text-center py-4">
           <CheckCircle className="w-14 h-14 text-success mx-auto mb-4" />
-          <p className="text-base-content">
+          <p className="text-foreground">
             Você entrou na lista de espera. Em breve você receberá um e-mail com mais
             informações.
           </p>
         </div>
       ) : (
         <>
-          <p className="text-base-content/80 mb-6">
+          <p className="text-foreground/80 mb-6">
             Estamos em fase de teste beta. Abrimos a lista de espera para quem quiser
             experimentar a aplicação. Preencha seus dados e entraremos em contato em breve.
           </p>
           <form id="lista-espera-form" onSubmit={handleSubmit(onSubmit, onInvalid)} className="space-y-4">
             <div>
-              <label htmlFor="lista-espera-email" className="label">
-                <span className="label-text">E-mail</span>
+              <label htmlFor="lista-espera-email" className="flex items-center justify-between gap-2 py-1">
+                <span className="text-sm font-medium text-foreground">E-mail</span>
               </label>
               <input
                 id="lista-espera-email"
                 type="email"
                 placeholder="seu@email.com"
                 disabled={enviando}
-                className="input input-bordered w-full"
+                className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-10 px-3 w-full"
                 {...register('email')}
               />
             </div>
             <div>
-              <label htmlFor="lista-espera-telefone" className="label">
-                <span className="label-text">Telefone (opcional)</span>
+              <label htmlFor="lista-espera-telefone" className="flex items-center justify-between gap-2 py-1">
+                <span className="text-sm font-medium text-foreground">Telefone (opcional)</span>
               </label>
               <Controller
                 name="telefone"
@@ -167,7 +167,7 @@ export function ListaEsperaModal({ open, onClose }: ListaEsperaModalProps) {
                     type="tel"
                     placeholder="(11) 99999-9999"
                     disabled={enviando}
-                    className="input input-bordered w-full"
+                    className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-10 px-3 w-full"
                     maxLength={15}
                     value={field.value}
                     onChange={(e) => field.onChange(aplicarMascaraTelefone(e.target.value))}

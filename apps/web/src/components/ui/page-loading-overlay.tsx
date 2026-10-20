@@ -48,16 +48,16 @@ export function PageLoadingOverlay({ open, title, subtitle }: PageLoadingOverlay
           <div className="absolute inset-0 bg-black/60" aria-hidden />
           <div
             onClick={(e) => e.stopPropagation()}
-            className="relative w-full max-w-md rounded-xl border border-base-300 bg-base-100 px-8 py-10 shadow-2xl"
+            className="relative w-full max-w-md rounded-xl border border-border bg-card px-8 py-10 shadow-2xl"
           >
             <div className="flex flex-col items-center gap-5 text-center">
               <Loader2 className="h-12 w-12 shrink-0 animate-spin text-primary" aria-hidden />
               <div className="space-y-2">
-                <p id="page-loading-overlay-titulo" className="text-lg font-bold text-base-content">
+                <p id="page-loading-overlay-titulo" className="text-lg font-bold text-foreground">
                   {title}
                 </p>
                 {subtitle ? (
-                  <p className="text-sm leading-relaxed text-base-content/70">{subtitle}</p>
+                  <p className="text-sm leading-relaxed text-muted-foreground">{subtitle}</p>
                 ) : null}
               </div>
             </div>

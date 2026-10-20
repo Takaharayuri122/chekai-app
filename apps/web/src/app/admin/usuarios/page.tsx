@@ -11,7 +11,6 @@ import {
   Edit,
   Trash2,
   Search,
-  Filter,
   Send,
 } from 'lucide-react';
 import { AppLayout, PageHeader, EmptyState, ConfirmDialog, FormModal } from '@/components';
@@ -40,9 +39,9 @@ const PERFIL_ICONS: Record<PerfilUsuario, typeof User> = {
 };
 
 const STATUS_CONFIG: Record<StatusUsuario, { label: string; className: string }> = {
-  [StatusUsuario.ATIVO]: { label: 'Ativo', className: 'badge-success' },
-  [StatusUsuario.NAO_CONFIRMADO]: { label: 'Não Confirmado', className: 'badge-warning' },
-  [StatusUsuario.INATIVO]: { label: 'Inativo', className: 'badge-error' },
+  [StatusUsuario.ATIVO]: { label: 'Ativo', className: '!bg-success/12 !text-[hsl(160_84%_28%)]' },
+  [StatusUsuario.NAO_CONFIRMADO]: { label: 'Não Confirmado', className: '!bg-warning/15 !text-[hsl(32_95%_34%)]' },
+  [StatusUsuario.INATIVO]: { label: 'Inativo', className: '!bg-destructive/12 !text-[hsl(0_72%_45%)]' },
 };
 
 export default function UsuariosPage() {
@@ -238,7 +237,7 @@ export default function UsuariosPage() {
         subtitle="Gerencie usuários do sistema"
         action={
           <button
-            className="btn btn-primary gap-2"
+            className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-10 px-4 bg-primary text-primary-foreground hover:bg-primary/90"
             onClick={() => setShowModal(true)}
           >
             <Plus className="w-4 h-4" />
@@ -250,49 +249,33 @@ export default function UsuariosPage() {
       <div className="px-4 py-4 lg:px-8 space-y-4">
         <div className="flex flex-col sm:flex-row gap-2">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-base-content/40" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/70" />
             <input
               type="text"
               placeholder="Buscar por nome ou e-mail..."
-              className="input input-bordered w-full pl-10"
+              className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-10 px-3 w-full pl-10"
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
             />
           </div>
-          <div className="dropdown dropdown-end sm:dropdown-bottom">
-            <div tabIndex={0} role="button" className="btn btn-outline gap-2">
-              <Filter className="w-4 h-4" />
-              {filtroPerfil !== 'todos' && PERFIL_LABELS[filtroPerfil]}
-            </div>
-            <ul
-              tabIndex={0}
-              className="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52 border border-base-300"
-            >
-              <li>
-                <button
-                  className={filtroPerfil === 'todos' ? 'active' : ''}
-                  onClick={() => setFiltroPerfil('todos')}
-                >
-                  Todos os perfis
-                </button>
-              </li>
-              {Object.values(PerfilUsuario).map((perfil) => (
-                <li key={perfil}>
-                  <button
-                    className={filtroPerfil === perfil ? 'active' : ''}
-                    onClick={() => setFiltroPerfil(perfil)}
-                  >
-                    {PERFIL_LABELS[perfil]}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
+          <select
+            aria-label="Perfil"
+            className="h-10 rounded-md border border-input bg-card px-3 text-sm sm:w-48"
+            value={filtroPerfil}
+            onChange={(e) => setFiltroPerfil(e.target.value as PerfilUsuario | 'todos')}
+          >
+            <option value="todos">Todos os perfis</option>
+            {Object.values(PerfilUsuario).map((perfil) => (
+              <option key={perfil} value={perfil}>
+                {PERFIL_LABELS[perfil]}
+              </option>
+            ))}
+          </select>
         </div>
 
         {loading ? (
-          <div className="card bg-base-100 shadow-sm border border-base-300">
-            <div className="card-body items-center py-12">
+          <div className="relative flex flex-col rounded-lg border border-border bg-card shadow-sm">
+            <div className="flex flex-1 flex-col gap-2 items-center py-12">
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
             </div>
           </div>
@@ -309,9 +292,9 @@ export default function UsuariosPage() {
             actionOnClick={() => setShowModal(true)}
           />
         ) : (
-          <div className="card bg-base-100 shadow-sm border border-base-300 overflow-hidden">
+          <div className="relative flex flex-col rounded-lg border border-border bg-card shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="table table-zebra">
+              <table className="w-full text-left [&_th]:text-xs [&_th]:font-medium [&_th]:uppercase [&_th]:tracking-wide [&_th]:text-muted-foreground [&_tr]:border-b [&_tr]:border-border text-sm [&_th]:px-4 [&_th]:py-3 [&_td]:px-4 [&_td]:py-3 [&_tbody_tr:nth-child(even)]:bg-muted/40">
                 <thead>
                   <tr>
                     <th>Nome</th>
@@ -330,8 +313,8 @@ export default function UsuariosPage() {
                       <tr key={usuarioItem.id}>
                         <td>
                           <div className="flex items-center gap-3">
-                            <div className="avatar placeholder">
-                              <div className="bg-primary text-primary-content rounded-full w-10">
+                            <div className="relative inline-flex [&>div]:flex [&>div]:items-center [&>div]:justify-center">
+                              <div className="bg-primary text-primary-foreground rounded-full h-10 w-10">
                                 <Icon className="w-5 h-5" />
                               </div>
                             </div>
@@ -342,17 +325,17 @@ export default function UsuariosPage() {
                           <span className="text-sm">{usuarioItem.email}</span>
                         </td>
                         <td>
-                          <span className="badge badge-outline">
+                          <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full font-semibold px-2.5 py-0.5 text-xs border border-border bg-transparent">
                             {PERFIL_LABELS[usuarioItem.perfil]}
                           </span>
                         </td>
                         <td>
-                          <span className="text-sm text-base-content/60">
+                          <span className="text-sm text-muted-foreground">
                             {usuarioItem.telefone ? aplicarMascaraTelefone(usuarioItem.telefone) : '-'}
                           </span>
                         </td>
                         <td>
-                          <span className={`badge badge-sm ${statusConfig.className}`}>
+                          <span className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full font-semibold px-2 py-0.5 text-[11px] bg-muted text-foreground ${statusConfig.className}`}>
                             {statusConfig.label}
                           </span>
                         </td>
@@ -360,7 +343,7 @@ export default function UsuariosPage() {
                           <div className="flex justify-end gap-2">
                             {usuarioItem.status === StatusUsuario.NAO_CONFIRMADO && (
                               <button
-                                className="btn btn-ghost btn-xs gap-1 text-info"
+                                className="inline-flex items-center justify-center whitespace-nowrap rounded-md font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-7 px-2 text-xs hover:bg-muted gap-1 text-info"
                                 onClick={() => handleReenviarConvite(usuarioItem.id)}
                                 disabled={reenviandoConviteId === usuarioItem.id}
                                 title="Reenviar convite"
@@ -374,7 +357,7 @@ export default function UsuariosPage() {
                             )}
                             {(!isGestor() || isMaster() || (usuarioItem.gestorId === usuario?.id && usuarioItem.perfil === PerfilUsuario.AUDITOR)) && (
                               <button
-                                className="btn btn-ghost btn-xs gap-1"
+                                className="inline-flex items-center justify-center whitespace-nowrap rounded-md font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-7 px-2 text-xs hover:bg-muted gap-1"
                                 onClick={() => handleEditarUsuario(usuarioItem)}
                                 title="Editar"
                               >
@@ -383,7 +366,7 @@ export default function UsuariosPage() {
                             )}
                             {(!isGestor() || isMaster()) && (
                               <button
-                                className="btn btn-ghost btn-xs gap-1 text-error"
+                                className="inline-flex items-center justify-center whitespace-nowrap rounded-md font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-7 px-2 text-xs hover:bg-muted gap-1 text-destructive"
                                 onClick={() => handleDeleteClick(usuarioItem.id)}
                                 disabled={deletingId === usuarioItem.id}
                                 title="Remover"
@@ -416,13 +399,13 @@ export default function UsuariosPage() {
         footer={
           <>
             <button
-              className="btn btn-ghost"
+              className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-10 px-4 hover:bg-muted"
               onClick={handleFecharModal}
             >
               Cancelar
             </button>
             <button
-              className="btn btn-primary"
+              className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-10 px-4 bg-primary text-primary-foreground hover:bg-primary/90"
               onClick={handleCriarUsuario}
               disabled={
                 saving ||
@@ -447,38 +430,38 @@ export default function UsuariosPage() {
         }
       >
         <div className="space-y-4">
-          <div className="form-control">
-            <label className="label">
-              <span className="label-text">Nome</span>
+          <div className="flex flex-col">
+            <label className="flex items-center justify-between gap-2 py-1">
+              <span className="text-sm font-medium text-foreground">Nome</span>
             </label>
             <input
               type="text"
-              className="input input-bordered"
+              className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-10 px-3"
               value={usuarioForm.nome}
               onChange={(e) =>
                 setUsuarioForm({ ...usuarioForm, nome: e.target.value })
               }
             />
           </div>
-          <div className="form-control">
-            <label className="label">
-              <span className="label-text">E-mail</span>
+          <div className="flex flex-col">
+            <label className="flex items-center justify-between gap-2 py-1">
+              <span className="text-sm font-medium text-foreground">E-mail</span>
             </label>
             <input
               type="email"
-              className="input input-bordered"
+              className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-10 px-3"
               value={usuarioForm.email}
               onChange={(e) =>
                 setUsuarioForm({ ...usuarioForm, email: e.target.value })
               }
             />
           </div>
-          <div className="form-control">
-            <label className="label">
-              <span className="label-text">Perfil</span>
+          <div className="flex flex-col">
+            <label className="flex items-center justify-between gap-2 py-1">
+              <span className="text-sm font-medium text-foreground">Perfil</span>
             </label>
             <select
-              className="select select-bordered"
+              className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-10 px-3"
               value={usuarioForm.perfil}
               disabled={isGestor() && !isMaster() && !editingUsuario}
               onChange={(e) => {
@@ -510,20 +493,20 @@ export default function UsuariosPage() {
               })}
             </select>
             {isGestor() && !isMaster() && !editingUsuario && (
-              <label className="label">
-                <span className="label-text-alt text-base-content/60">
+              <label className="flex items-center justify-between gap-2 py-1">
+                <span className="text-xs text-muted-foreground">
                   Gestores só podem criar usuários com perfil Auditor
                 </span>
               </label>
             )}
           </div>
-          <div className="form-control">
-            <label className="label">
-              <span className="label-text">WhatsApp *</span>
+          <div className="flex flex-col">
+            <label className="flex items-center justify-between gap-2 py-1">
+              <span className="text-sm font-medium text-foreground">WhatsApp *</span>
             </label>
             <input
               type="tel"
-              className="input input-bordered"
+              className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-10 px-3"
               placeholder="(00) 00000-0000"
               value={usuarioForm.telefone || ''}
               onChange={(e) => {
@@ -535,12 +518,12 @@ export default function UsuariosPage() {
             />
           </div>
           {usuarioForm.perfil === PerfilUsuario.AUDITOR && (
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text">Gestor Responsável *</span>
+            <div className="flex flex-col">
+              <label className="flex items-center justify-between gap-2 py-1">
+                <span className="text-sm font-medium text-foreground">Gestor Responsável *</span>
               </label>
               <select
-                className="select select-bordered"
+                className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-10 px-3"
                 value={usuarioForm.gestorId || ''}
                 disabled={isGestor() && !isMaster() && !editingUsuario}
                 onChange={(e) =>
@@ -559,8 +542,8 @@ export default function UsuariosPage() {
                 ))}
               </select>
               {isGestor() && !isMaster() && !editingUsuario && (
-                <label className="label">
-                  <span className="label-text-alt text-base-content/60">
+                <label className="flex items-center justify-between gap-2 py-1">
+                  <span className="text-xs text-muted-foreground">
                     O auditor será automaticamente vinculado a você
                   </span>
                 </label>
@@ -568,12 +551,12 @@ export default function UsuariosPage() {
             </div>
           )}
           {isMaster() && usuarioForm.perfil === PerfilUsuario.GESTOR && !editingUsuario && (
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text">Plano / Assinatura *</span>
+            <div className="flex flex-col">
+              <label className="flex items-center justify-between gap-2 py-1">
+                <span className="text-sm font-medium text-foreground">Plano / Assinatura *</span>
               </label>
               <select
-                className="select select-bordered"
+                className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-10 px-3"
                 value={usuarioForm.planoId || ''}
                 onChange={(e) =>
                   setUsuarioForm({
@@ -593,7 +576,7 @@ export default function UsuariosPage() {
             </div>
           )}
           {!editingUsuario && (
-            <div className="alert alert-info">
+            <div className="flex w-full items-start gap-3 rounded-md border p-4 text-sm border-info/30 bg-info/10">
               <Send className="w-4 h-4" />
               <span className="text-sm">Um convite será enviado por e-mail para que o usuário aceite e configure seu acesso.</span>
             </div>

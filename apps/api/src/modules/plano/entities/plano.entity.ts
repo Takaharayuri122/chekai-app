@@ -34,6 +34,9 @@ export class Plano {
   @Column({ type: 'int', default: 0 })
   limiteCreditos: number;
 
+  @Column({ name: 'permite_modelo_relatorio_tecnico', default: false })
+  permiteModeloRelatorioTecnico: boolean;
+
   @Column({ default: true })
   ativo: boolean;
 

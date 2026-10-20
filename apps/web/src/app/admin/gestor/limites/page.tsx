@@ -48,7 +48,7 @@ export default function LimitesPage() {
   };
 
   const getColorClass = (percentual: number) => {
-    if (percentual >= 90) return 'text-error';
+    if (percentual >= 90) return 'text-destructive';
     if (percentual >= 70) return 'text-warning';
     return 'text-success';
   };
@@ -66,19 +66,19 @@ export default function LimitesPage() {
 
       <div className="px-4 py-4 lg:px-8 space-y-4">
         {loading ? (
-          <div className="card bg-base-100 shadow-sm border border-base-300">
-            <div className="card-body items-center py-12">
+          <div className="relative flex flex-col rounded-lg border border-border bg-card shadow-sm">
+            <div className="flex flex-1 flex-col gap-2 items-center py-12">
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
             </div>
           </div>
         ) : limites ? (
           <>
             {/* Plano Atual */}
-            <div className="card bg-base-100 shadow-sm border border-base-300">
-              <div className="card-body">
+            <div className="relative flex flex-col rounded-lg border border-border bg-card shadow-sm">
+              <div className="flex flex-1 flex-col gap-2 p-6">
                 <div className="flex items-center gap-3 mb-4">
                   <Package className="w-6 h-6 text-primary" />
-                  <h2 className="card-title">Plano: {limites.plano.nome}</h2>
+                  <h2 className="flex items-center gap-2 font-display text-lg font-semibold">Plano: {limites.plano.nome}</h2>
                 </div>
               </div>
             </div>
@@ -160,9 +160,9 @@ export default function LimitesPage() {
             </div>
 
             {/* Barras de Progresso */}
-            <div className="card bg-base-100 shadow-sm border border-base-300">
-              <div className="card-body">
-                <h3 className="card-title mb-4">Uso Detalhado</h3>
+            <div className="relative flex flex-col rounded-lg border border-border bg-card shadow-sm">
+              <div className="flex flex-1 flex-col gap-2 p-6">
+                <h3 className="flex items-center gap-2 font-display text-lg font-semibold mb-4">Uso Detalhado</h3>
                 <div className="space-y-4">
                   <div>
                     <div className="flex justify-between mb-2">
@@ -183,7 +183,7 @@ export default function LimitesPage() {
                       </span>
                     </div>
                     <progress
-                      className="progress progress-primary w-full"
+                      className="h-2 w-full appearance-none overflow-hidden rounded-full bg-muted [&::-webkit-progress-bar]:bg-muted [&::-webkit-progress-value]:bg-primary [&::-moz-progress-bar]:bg-primary"
                       value={calcularPercentual(
                         limites.uso.usuarios,
                         limites.plano.limiteUsuarios,
@@ -210,7 +210,7 @@ export default function LimitesPage() {
                       </span>
                     </div>
                     <progress
-                      className="progress progress-primary w-full"
+                      className="h-2 w-full appearance-none overflow-hidden rounded-full bg-muted [&::-webkit-progress-bar]:bg-muted [&::-webkit-progress-value]:bg-primary [&::-moz-progress-bar]:bg-primary"
                       value={calcularPercentual(
                         limites.uso.auditorias,
                         limites.plano.limiteAuditorias,
@@ -237,7 +237,7 @@ export default function LimitesPage() {
                       </span>
                     </div>
                     <progress
-                      className="progress progress-primary w-full"
+                      className="h-2 w-full appearance-none overflow-hidden rounded-full bg-muted [&::-webkit-progress-bar]:bg-muted [&::-webkit-progress-value]:bg-primary [&::-moz-progress-bar]:bg-primary"
                       value={calcularPercentual(
                         limites.uso.clientes,
                         limites.plano.limiteClientes,
@@ -264,7 +264,7 @@ export default function LimitesPage() {
                       </span>
                     </div>
                     <progress
-                      className="progress progress-primary w-full"
+                      className="h-2 w-full appearance-none overflow-hidden rounded-full bg-muted [&::-webkit-progress-bar]:bg-muted [&::-webkit-progress-value]:bg-primary [&::-moz-progress-bar]:bg-primary"
                       value={calcularPercentual(
                         limites.uso.creditos,
                         limites.plano.limiteCreditos,
@@ -304,7 +304,7 @@ export default function LimitesPage() {
                 return (
                   <div
                     key={key}
-                    className="alert alert-error shadow-lg"
+                    className="flex w-full items-start gap-3 rounded-md border p-4 text-sm border-destructive/30 bg-destructive/10 text-destructive shadow-lg"
                   >
                     <AlertCircle className="w-6 h-6" />
                     <div>
@@ -321,11 +321,11 @@ export default function LimitesPage() {
             })}
           </>
         ) : (
-          <div className="card bg-base-100 shadow-sm border border-base-300">
-            <div className="card-body items-center py-12">
+          <div className="relative flex flex-col rounded-lg border border-border bg-card shadow-sm">
+            <div className="flex flex-1 flex-col gap-2 items-center py-12">
               <AlertCircle className="w-12 h-12 text-warning mb-4" />
-              <h3 className="card-title mb-2">Nenhuma assinatura ativa</h3>
-              <p className="text-base-content/60">
+              <h3 className="flex items-center gap-2 font-display text-lg font-semibold mb-2">Nenhuma assinatura ativa</h3>
+              <p className="text-muted-foreground">
                 Entre em contato com o administrador para ativar um plano.
               </p>
             </div>

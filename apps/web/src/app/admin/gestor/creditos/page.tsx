@@ -58,11 +58,11 @@ export default function CreditosPage() {
   const getProvedorBadge = (provedor: string) => {
     switch (provedor) {
       case 'openai':
-        return <span className="badge badge-info badge-sm">OpenAI</span>;
+        return <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full font-semibold px-2 py-0.5 text-[11px] bg-info/12 text-[hsl(217_80%_45%)]">OpenAI</span>;
       case 'deepseek':
-        return <span className="badge badge-secondary badge-sm">DeepSeek</span>;
+        return <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full font-semibold px-2 py-0.5 text-[11px] bg-info/12 text-[hsl(217_80%_45%)]">DeepSeek</span>;
       default:
-        return <span className="badge badge-ghost badge-sm">{provedor}</span>;
+        return <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full font-semibold px-2 py-0.5 text-[11px] bg-muted text-muted-foreground">{provedor}</span>;
     }
   };
 
@@ -84,8 +84,8 @@ export default function CreditosPage() {
 
       <div className="px-4 py-4 lg:px-8 space-y-4">
         {loading ? (
-          <div className="card bg-base-100 shadow-sm border border-base-300">
-            <div className="card-body items-center py-12">
+          <div className="relative flex flex-col rounded-lg border border-border bg-card shadow-sm">
+            <div className="flex flex-1 flex-col gap-2 items-center py-12">
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
             </div>
           </div>
@@ -126,14 +126,14 @@ export default function CreditosPage() {
             </div>
 
             {/* Barra de Progresso */}
-            <div className="card bg-base-100 shadow-sm border border-base-300">
-              <div className="card-body">
+            <div className="relative flex flex-col rounded-lg border border-border bg-card shadow-sm">
+              <div className="flex flex-1 flex-col gap-2 p-6">
                 <div className="flex justify-between mb-2">
                   <span className="text-sm font-medium">Uso de Créditos</span>
                   <span
                     className={`text-sm font-medium ${
                       calcularPercentual(saldo.usado, saldo.limite) >= 90
-                        ? 'text-error'
+                        ? 'text-destructive'
                         : calcularPercentual(saldo.usado, saldo.limite) >= 70
                           ? 'text-warning'
                           : 'text-success'
@@ -143,11 +143,11 @@ export default function CreditosPage() {
                   </span>
                 </div>
                 <progress
-                  className="progress progress-primary w-full"
+                  className="h-2 w-full appearance-none overflow-hidden rounded-full bg-muted [&::-webkit-progress-bar]:bg-muted [&::-webkit-progress-value]:bg-primary [&::-moz-progress-bar]:bg-primary"
                   value={calcularPercentual(saldo.usado, saldo.limite)}
                   max="100"
                 />
-                <div className="flex justify-between text-xs text-base-content/60 mt-2">
+                <div className="flex justify-between text-xs text-muted-foreground mt-2">
                   <span>0</span>
                   <span>{saldo.limite.toLocaleString('pt-BR')}</span>
                 </div>
@@ -155,17 +155,17 @@ export default function CreditosPage() {
             </div>
 
             {/* Histórico */}
-            <div className="card bg-base-100 shadow-sm border border-base-300">
-              <div className="card-body">
-                <h3 className="card-title mb-4">Histórico de Uso</h3>
+            <div className="relative flex flex-col rounded-lg border border-border bg-card shadow-sm">
+              <div className="flex flex-1 flex-col gap-2 p-6">
+                <h3 className="flex items-center gap-2 font-display text-lg font-semibold mb-4">Histórico de Uso</h3>
                 {historico.length === 0 ? (
-                  <div className="text-center py-8 text-base-content/60">
+                  <div className="text-center py-8 text-muted-foreground">
                     Nenhum uso registrado ainda
                   </div>
                 ) : (
                   <>
                     <div className="overflow-x-auto">
-                      <table className="table table-zebra">
+                      <table className="w-full text-left [&_th]:text-xs [&_th]:font-medium [&_th]:uppercase [&_th]:tracking-wide [&_th]:text-muted-foreground [&_tr]:border-b [&_tr]:border-border text-sm [&_th]:px-4 [&_th]:py-3 [&_td]:px-4 [&_td]:py-3 [&_tbody_tr:nth-child(even)]:bg-muted/40">
                         <thead>
                           <tr>
                             <th>Data</th>
@@ -182,7 +182,7 @@ export default function CreditosPage() {
                             <tr key={uso.id}>
                               <td>
                                 <div className="flex items-center gap-2">
-                                  <Calendar className="w-4 h-4 text-base-content/40" />
+                                  <Calendar className="w-4 h-4 text-muted-foreground/70" />
                                   <span className="text-sm">
                                     {formatarData(uso.criadoEm)}
                                   </span>
@@ -191,13 +191,13 @@ export default function CreditosPage() {
                               <td>
                                 {uso.usuario ? (
                                   <div className="flex items-center gap-2">
-                                    <User className="w-4 h-4 text-base-content/40" />
+                                    <User className="w-4 h-4 text-muted-foreground/70" />
                                     <span className="text-sm">
                                       {uso.usuario.nome}
                                     </span>
                                   </div>
                                 ) : (
-                                  <span className="text-sm text-base-content/60">
+                                  <span className="text-sm text-muted-foreground">
                                     -
                                   </span>
                                 )}
@@ -213,7 +213,7 @@ export default function CreditosPage() {
                               </td>
                               <td>
                                 <div className="flex items-center gap-1">
-                                  <Zap className="w-3 h-3 text-base-content/40" />
+                                  <Zap className="w-3 h-3 text-muted-foreground/70" />
                                   <span className="text-sm">
                                     {uso.tokensTotal.toLocaleString('pt-BR')}
                                   </span>
@@ -236,17 +236,17 @@ export default function CreditosPage() {
                     {total > limit && (
                       <div className="flex justify-center gap-2 mt-4">
                         <button
-                          className="btn btn-sm btn-outline"
+                          className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 border border-input bg-card hover:bg-muted"
                           disabled={page === 1}
                           onClick={() => setPage(page - 1)}
                         >
                           Anterior
                         </button>
-                        <span className="btn btn-sm btn-ghost">
+                        <span className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 hover:bg-muted">
                           Página {page} de {Math.ceil(total / limit)}
                         </span>
                         <button
-                          className="btn btn-sm btn-outline"
+                          className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 border border-input bg-card hover:bg-muted"
                           disabled={page >= Math.ceil(total / limit)}
                           onClick={() => setPage(page + 1)}
                         >
@@ -260,11 +260,11 @@ export default function CreditosPage() {
             </div>
           </>
         ) : (
-          <div className="card bg-base-100 shadow-sm border border-base-300">
-            <div className="card-body items-center py-12">
+          <div className="relative flex flex-col rounded-lg border border-border bg-card shadow-sm">
+            <div className="flex flex-1 flex-col gap-2 items-center py-12">
               <Coins className="w-12 h-12 text-warning mb-4" />
-              <h3 className="card-title mb-2">Nenhuma assinatura ativa</h3>
-              <p className="text-base-content/60">
+              <h3 className="flex items-center gap-2 font-display text-lg font-semibold mb-2">Nenhuma assinatura ativa</h3>
+              <p className="text-muted-foreground">
                 Entre em contato com o administrador para ativar um plano.
               </p>
             </div>

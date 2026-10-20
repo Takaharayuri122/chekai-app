@@ -13,8 +13,8 @@ export default function AdminPage() {
 
   return (
     <AppLayout>
-      <div className="min-h-screen flex items-center justify-center bg-base-200">
-        <span className="loading loading-spinner loading-lg text-primary"></span>
+      <div className="min-h-screen flex items-center justify-center bg-muted">
+        <span className="inline-block shrink-0 animate-spin rounded-full border-2 border-current border-r-transparent h-8 w-8 text-primary"></span>
       </div>
     </AppLayout>
   );

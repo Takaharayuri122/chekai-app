@@ -7,7 +7,7 @@ import { AppShell } from './app-shell';
 
 const LoadingScreen = () => (
   <div className="min-h-screen flex items-center justify-center bg-background">
-    <span className="loading loading-spinner loading-lg text-primary" />
+    <span className="inline-block shrink-0 animate-spin rounded-full border-2 border-current border-r-transparent h-8 w-8 text-primary" />
   </div>
 );
 

@@ -57,10 +57,10 @@ export function HistoricoEvolucao({
 
   if (historico.length === 0) {
     return (
-      <div className="rounded-lg border border-base-300 bg-base-200/50 p-6 text-center">
-        <TrendingUp className="mx-auto h-10 w-10 text-base-content/40" />
-        <p className="mt-2 text-sm font-medium text-base-content/70">Histórico de evolução</p>
-        <p className="mt-1 text-xs text-base-content/60">
+      <div className="rounded-lg border border-border bg-muted/50 p-6 text-center">
+        <TrendingUp className="mx-auto h-10 w-10 text-muted-foreground/70" />
+        <p className="mt-2 text-sm font-medium text-muted-foreground">Histórico de evolução</p>
+        <p className="mt-1 text-xs text-muted-foreground">
           Não há auditorias finalizadas anteriores nesta unidade. O histórico aparecerá a partir da próxima auditoria.
         </p>
       </div>
@@ -69,10 +69,10 @@ export function HistoricoEvolucao({
 
   if (soUmaAuditoria) {
     return (
-      <div className="rounded-lg border border-base-300 bg-base-200/50 p-6 text-center">
+      <div className="rounded-lg border border-border bg-muted/50 p-6 text-center">
         <TrendingUp className="mx-auto h-10 w-10 text-primary/70" />
-        <p className="mt-2 text-sm font-medium text-base-content/80">Histórico de evolução</p>
-        <p className="mt-1 text-xs text-base-content/60">
+        <p className="mt-2 text-sm font-medium text-foreground/80">Histórico de evolução</p>
+        <p className="mt-1 text-xs text-muted-foreground">
           Esta é a primeira auditoria finalizada desta unidade. O histórico de evolução aparecerá a partir da próxima auditoria.
         </p>
       </div>
@@ -97,7 +97,7 @@ export function HistoricoEvolucao({
         </h3>
         {dadosOrdenados.length >= 2 && (
           <span
-            className={`badge badge-sm ${melhorou ? 'badge-success' : piorou ? 'badge-error' : 'badge-ghost'}`}
+            className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full font-semibold px-2 py-0.5 text-[11px] bg-muted text-foreground ${melhorou ? '!bg-success/12 !text-[hsl(160_84%_28%)]' : piorou ? '!bg-destructive/12 !text-[hsl(0_72%_45%)]' : '!bg-muted !text-muted-foreground'}`}
           >
             {melhorou ? `+${variacao.toFixed(1)} pts vs anterior` : piorou ? `${variacao.toFixed(1)} pts vs anterior` : 'Sem variação'}
           </span>
@@ -110,50 +110,50 @@ export function HistoricoEvolucao({
             data={dadosOrdenados}
             margin={{ top: 8, right: 8, left: 0, bottom: 8 }}
           >
-            <CartesianGrid strokeDasharray="3 3" className="stroke-base-300" />
+            <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
             <XAxis
               dataKey="data"
               tick={{ fontSize: 11 }}
-              className="text-base-content/70"
+              className="text-muted-foreground"
             />
             <YAxis
               domain={[0, 100]}
               tick={{ fontSize: 11 }}
               tickFormatter={(v) => `${v}%`}
-              className="text-base-content/70"
+              className="text-muted-foreground"
             />
             <Tooltip
               contentStyle={{
-                backgroundColor: 'oklch(var(--b1))',
-                border: '1px solid oklch(var(--b3))',
+                backgroundColor: 'hsl(var(--card))',
+                border: '1px solid hsl(var(--border))',
                 borderRadius: 'var(--rounded-box, 0.5rem)',
               }}
-              labelStyle={{ color: 'oklch(var(--bc))' }}
+              labelStyle={{ color: 'hsl(var(--foreground))' }}
               formatter={(value) => [`${value != null ? Number(value).toFixed(2) : 0}%`, 'Aproveitamento']}
               labelFormatter={(_, payload) => {
                 const p = payload[0]?.payload;
                 return p ? `${p.data}${p.isAtual ? ' (atual)' : ''}` : '';
               }}
             />
-            <ReferenceLine y={70} stroke="oklch(var(--wa))" strokeDasharray="2 2" />
+            <ReferenceLine y={70} stroke="hsl(var(--warning))" strokeDasharray="2 2" />
             <Line
               type="monotone"
               dataKey="aproveitamento"
-              stroke="oklch(var(--p))"
+              stroke="hsl(var(--primary))"
               strokeWidth={2}
-              dot={{ r: 4, fill: 'oklch(var(--p))' }}
+              dot={{ r: 4, fill: 'hsl(var(--primary))' }}
               activeDot={{ r: 6 }}
             />
           </LineChart>
         </ResponsiveContainer>
       </div>
 
-      <p className="text-xs text-base-content/60">
+      <p className="text-xs text-muted-foreground">
         Legenda: linha tracejada = 70% (meta mínima). Ordenado da mais antiga à mais recente.
       </p>
 
-      <div className="rounded-lg border border-base-300 bg-base-200/50 p-3">
-        <p className="mb-2 text-xs font-medium text-base-content/70">Relatórios anteriores (mais recente primeiro)</p>
+      <div className="rounded-lg border border-border bg-muted/50 p-3">
+        <p className="mb-2 text-xs font-medium text-muted-foreground">Relatórios anteriores (mais recente primeiro)</p>
         <ul className="space-y-1.5">
           {historico.slice(0, 10).map((item) => {
             const isAtual = item.id === auditoriaAtualId;
@@ -162,7 +162,7 @@ export function HistoricoEvolucao({
               <li key={item.id}>
                 <Link
                   href={`${linkBase}/${item.id}/relatorio`}
-                  className={`flex items-center justify-between gap-2 rounded px-2 py-1.5 text-sm transition-colors hover:bg-base-300/50 ${isAtual ? 'bg-primary/10 font-medium text-primary' : 'text-base-content/80'}`}
+                  className={`flex items-center justify-between gap-2 rounded px-2 py-1.5 text-sm transition-colors hover:bg-border/50 ${isAtual ? 'bg-primary/10 font-medium text-primary' : 'text-foreground/80'}`}
                 >
                   <span className="truncate">
                     {formatarData(item.dataFim)} — {item.template?.nome ?? 'Auditoria'}
@@ -175,7 +175,7 @@ export function HistoricoEvolucao({
           })}
         </ul>
         {historico.length > 10 && (
-          <p className="mt-2 text-xs text-base-content/50">Exibindo as 10 mais recentes de {historico.length}.</p>
+          <p className="mt-2 text-xs text-muted-foreground">Exibindo as 10 mais recentes de {historico.length}.</p>
         )}
       </div>
     </div>

@@ -283,11 +283,11 @@ export default function RelatorioPage() {
       case 'medio':
         return 'text-warning';
       case 'alto':
-        return 'text-error';
+        return 'text-destructive';
       case 'critico':
-        return 'text-error';
+        return 'text-destructive';
       default:
-        return 'text-base-content';
+        return 'text-foreground';
     }
   };
 
@@ -310,7 +310,7 @@ export default function RelatorioPage() {
     return (
       <AppLayout>
         <div className="flex items-center justify-center min-h-screen">
-          <span className="loading loading-spinner loading-lg text-primary"></span>
+          <span className="inline-block shrink-0 animate-spin rounded-full border-2 border-current border-r-transparent h-8 w-8 text-primary"></span>
         </div>
       </AppLayout>
     );
@@ -732,7 +732,7 @@ export default function RelatorioPage() {
               <h2 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4">Desempenho por grupo</h2>
               {/* Tabela de Métricas por Grupo - Desktop */}
               <div className="hidden sm:block overflow-x-auto">
-                <table className="table table-zebra">
+                <table className="w-full text-left [&_th]:text-xs [&_th]:font-medium [&_th]:uppercase [&_th]:tracking-wide [&_th]:text-muted-foreground [&_tr]:border-b [&_tr]:border-border text-sm [&_th]:px-4 [&_th]:py-3 [&_td]:px-4 [&_td]:py-3 [&_tbody_tr:nth-child(even)]:bg-muted/40">
                   <thead>
                     <tr>
                       <th>GRUPO</th>
@@ -756,15 +756,15 @@ export default function RelatorioPage() {
                         <td className="text-center">{grupo.naoAplicaveis}</td>
                         <td className="text-center">
                           {grupo.naoConformidades > 0 ? (
-                            <span className="badge badge-error badge-sm">{grupo.naoConformidades}</span>
+                            <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full font-semibold px-2 py-0.5 text-[11px] bg-destructive/12 text-[hsl(0_72%_45%)]">{grupo.naoConformidades}</span>
                           ) : (
-                            <span className="text-base-content/40">0</span>
+                            <span className="text-muted-foreground/70">0</span>
                           )}
                         </td>
                         <td className="text-center">{grupo.naoRespondidas}</td>
                       </tr>
                     ))}
-                    <tr className="font-bold bg-base-200">
+                    <tr className="font-bold bg-muted">
                       <td>GERAL</td>
                       <td className="text-center">{aproveitamentoSeguro.toFixed(2)}%</td>
                       <td className="text-center">{metricasGerais.pontosPossiveis}</td>
@@ -784,7 +784,7 @@ export default function RelatorioPage() {
                 </div>
               </div>
 
-              <div className="mt-6 pt-6 border-t border-base-300">
+              <div className="mt-6 pt-6 border-t border-border">
                 <h3 className="text-base font-bold mb-4">% de aproveitamento por grupo do formulário</h3>
                 <GraficoAproveitamentoGrupos
                   grupos={gruposMetricas.map((g) => ({
@@ -808,7 +808,7 @@ export default function RelatorioPage() {
               {/* Cards de Métricas por Grupo - Mobile */}
               <div className="sm:hidden space-y-3">
                 {gruposMetricas.map((grupo) => (
-                  <div key={grupo.grupoId} className="bg-base-200 rounded-lg p-3 border border-base-300">
+                  <div key={grupo.grupoId} className="bg-muted rounded-lg p-3 border border-border">
                     <div className="font-semibold text-sm mb-2">{grupo.nome}</div>
                     <div className="grid grid-cols-2 gap-2 text-xs">
                       <div>
@@ -830,7 +830,7 @@ export default function RelatorioPage() {
                       <div>
                         <span className="text-muted-foreground">NC:</span>{' '}
                         {grupo.naoConformidades > 0 ? (
-                          <span className="badge badge-error badge-xs">{grupo.naoConformidades}</span>
+                          <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full font-semibold px-1.5 py-0 text-[10px] bg-destructive/12 text-[hsl(0_72%_45%)]">{grupo.naoConformidades}</span>
                         ) : (
                           <span>0</span>
                         )}
@@ -916,7 +916,7 @@ export default function RelatorioPage() {
                   )}
                   <div>
                     <h3 className="font-semibold mb-2 text-sm sm:text-base">Resumo</h3>
-                    <p className="text-xs sm:text-sm text-base-content/80 leading-relaxed whitespace-pre-line">
+                    <p className="text-xs sm:text-sm text-foreground/80 leading-relaxed whitespace-pre-line">
                       {resumoExecutivo.resumo}
                     </p>
                   </div>
@@ -934,11 +934,11 @@ export default function RelatorioPage() {
                       </ul>
                     </div>
                     <div>
-                      <h3 className="font-semibold mb-2 text-error text-sm sm:text-base">Pontos Fracos</h3>
+                      <h3 className="font-semibold mb-2 text-destructive text-sm sm:text-base">Pontos Fracos</h3>
                       <ul className="space-y-1.5">
                         {resumoExecutivo.pontosFracos.map((ponto, idx) => (
                           <li key={idx} className="flex items-start gap-2 text-xs sm:text-sm">
-                            <XCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-error flex-shrink-0 mt-0.5" />
+                            <XCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-destructive flex-shrink-0 mt-0.5" />
                             <span>{ponto}</span>
                           </li>
                         ))}
@@ -950,7 +950,7 @@ export default function RelatorioPage() {
                     <h3 className="font-semibold mb-2 text-sm sm:text-base">Recomendações Prioritárias</h3>
                     <ul className="space-y-2">
                       {resumoExecutivo.recomendacoesPrioritarias.map((rec, idx) => (
-                        <li key={idx} className="flex items-start gap-2 p-2 sm:p-3 bg-base-200 rounded">
+                        <li key={idx} className="flex items-start gap-2 p-2 sm:p-3 bg-muted rounded">
                           <span className="font-semibold text-primary text-xs sm:text-sm">{idx + 1}.</span>
                           <span className="text-xs sm:text-sm flex-1">{rec}</span>
                         </li>
@@ -961,7 +961,7 @@ export default function RelatorioPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <h3 className="font-semibold mb-2 text-sm sm:text-base">Risco Geral</h3>
-                      <div className={`badge badge-md sm:badge-lg ${getRiscoColor(resumoExecutivo.riscoGeral)}`}>
+                      <div className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full font-semibold px-2.5 py-0.5 text-xs bg-muted text-foreground sm:!px-3 sm:!py-1 sm:!text-sm ${getRiscoColor(resumoExecutivo.riscoGeral)}`}>
                         {getRiscoLabel(resumoExecutivo.riscoGeral)}
                       </div>
                     </div>
@@ -1040,7 +1040,7 @@ export default function RelatorioPage() {
                       <span className="text-xs sm:text-sm text-muted-foreground">
                         Aproveitamento: <strong>{Number(grupo.aproveitamento || 0).toFixed(2)}%</strong>
                       </span>
-                      <div className="badge badge-outline badge-sm">
+                      <div className="inline-flex items-center gap-1 whitespace-nowrap rounded-full font-semibold px-2 py-0.5 text-[11px] border border-border bg-transparent">
                         {grupo.pontuacaoObtida}/{grupo.pontuacaoPossivel} pontos
                       </div>
                     </div>
@@ -1057,10 +1057,10 @@ export default function RelatorioPage() {
                           key={item.id}
                           className={`p-3 sm:p-4 rounded-lg border ${
                             isNaoConforme
-                              ? 'bg-error/5 border-error/20'
+                              ? 'bg-destructive/5 border-destructive/20'
                               : isConforme
                                 ? 'bg-success/5 border-success/20'
-                                : 'bg-base-200 border-base-300'
+                                : 'bg-muted border-border'
                           }`}
                         >
                           <div className="flex items-start gap-2 sm:gap-3">
@@ -1068,18 +1068,18 @@ export default function RelatorioPage() {
                               {isConforme ? (
                                 <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-success" />
                               ) : isNaoConforme ? (
-                                <XCircle className="w-4 h-4 sm:w-5 sm:h-5 text-error" />
+                                <XCircle className="w-4 h-4 sm:w-5 sm:h-5 text-destructive" />
                               ) : (
                                 <MinusCircle className="w-4 h-4 sm:w-5 sm:h-5 text-warning" />
                               )}
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="font-medium text-sm sm:text-base text-base-content mb-2">
+                              <p className="font-medium text-sm sm:text-base text-foreground mb-2">
                                 {item.templateItem?.pergunta || 'Pergunta não encontrada'}
                               </p>
                               <div className="space-y-1.5 sm:space-y-2">
                                 <div>
-                                  <span className="text-xs sm:text-sm font-medium text-base-content/70">
+                                  <span className="text-xs sm:text-sm font-medium text-muted-foreground">
                                     Resposta:
                                   </span>{' '}
                                   <span className="text-xs sm:text-sm">
@@ -1094,7 +1094,7 @@ export default function RelatorioPage() {
                                 </div>
                                 {item.observacao && (
                                   <div>
-                                    <span className="text-xs sm:text-sm font-medium text-base-content/70">
+                                    <span className="text-xs sm:text-sm font-medium text-muted-foreground">
                                       Observação:
                                     </span>{' '}
                                     <span className="text-xs sm:text-sm">{item.observacao}</span>
@@ -1102,7 +1102,7 @@ export default function RelatorioPage() {
                                 )}
                                 {item.descricaoNaoConformidade && (
                                   <div>
-                                    <span className="text-xs sm:text-sm font-medium text-error">
+                                    <span className="text-xs sm:text-sm font-medium text-destructive">
                                       Justificativa:
                                     </span>{' '}
                                     <span className="text-xs sm:text-sm">{item.descricaoNaoConformidade}</span>
@@ -1110,7 +1110,7 @@ export default function RelatorioPage() {
                                 )}
                                 {item.descricaoIa && (
                                   <div>
-                                    <span className="text-xs sm:text-sm font-medium text-base-content/70">
+                                    <span className="text-xs sm:text-sm font-medium text-muted-foreground">
                                       Análise IA:
                                     </span>{' '}
                                     <span className="text-xs sm:text-sm">{item.descricaoIa}</span>
@@ -1124,7 +1124,7 @@ export default function RelatorioPage() {
                                           key={foto.id}
                                           type="button"
                                           onClick={() => setFotoModal({ url: foto.url, exif: foto.exif ?? undefined })}
-                                          className="rounded border border-base-300 overflow-hidden focus:outline-none focus:ring-2 focus:ring-primary"
+                                          className="rounded border border-border overflow-hidden focus:outline-none focus:ring-2 focus:ring-primary"
                                         >
                                           <img
                                             src={foto.url}
@@ -1177,8 +1177,8 @@ export default function RelatorioPage() {
               className="w-full h-auto max-h-[70vh] object-contain mx-auto rounded"
             />
             {fotoModal.exif && Object.keys(fotoModal.exif).length > 0 && (
-              <div className="mt-4 border-t border-base-300 pt-4">
-                <h4 className="text-sm font-semibold text-base-content/80 mb-2">Metadados EXIF (auditoria)</h4>
+              <div className="mt-4 border-t border-border pt-4">
+                <h4 className="text-sm font-semibold text-foreground/80 mb-2">Metadados EXIF (auditoria)</h4>
                 <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-xs">
                   {Object.entries(fotoModal.exif).map(([key, value]) => {
                     if (value === null || value === undefined) return null;
@@ -1186,7 +1186,7 @@ export default function RelatorioPage() {
                     const display = typeof value === 'object' ? JSON.stringify(value) : String(value);
                     return (
                       <div key={key} className="flex gap-2">
-                        <dt className="text-base-content/60 shrink-0">{label}:</dt>
+                        <dt className="text-muted-foreground shrink-0">{label}:</dt>
                         <dd className="break-all">{display}</dd>
                       </div>
                     );

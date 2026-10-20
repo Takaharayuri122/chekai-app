@@ -164,14 +164,14 @@ function LoginContent() {
         open={modalListaEsperaAberto}
         onClose={() => setModalListaEsperaAberto(false)}
       />
-      <main className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-base-100 via-base-200 to-base-100">
+      <main className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-card via-muted to-card">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-md"
       >
-        <div className="card bg-base-100 shadow-xl border border-base-300">
-          <div className="card-body p-8">
+        <div className="relative flex flex-col rounded-lg border border-border bg-card shadow-xl">
+          <div className="flex flex-1 flex-col gap-2 p-8">
             <div className="text-center mb-6">
               <Link href="/" className="inline-block mb-4">
                 <Image
@@ -183,10 +183,10 @@ function LoginContent() {
                   priority
                 />
               </Link>
-              <h1 className="text-2xl font-bold text-base-content font-display">
+              <h1 className="text-2xl font-bold text-foreground font-display">
                 {step === 'email' ? 'Bem-vindo de volta' : 'Código de acesso'}
               </h1>
-              <p className="text-sm text-base-content/60 mt-1">
+              <p className="text-sm text-muted-foreground mt-1">
                 {step === 'email'
                   ? 'Entre para continuar suas auditorias'
                   : 'Digite o código enviado para seu e-mail'}
@@ -203,24 +203,24 @@ function LoginContent() {
                   onSubmit={emailForm.handleSubmit(onEmailSubmit)}
                   className="space-y-4"
                 >
-                  <div className="form-control">
-                    <label className="label">
-                      <span className="label-text font-medium">E-mail</span>
+                  <div className="flex flex-col">
+                    <label className="flex items-center justify-between gap-2 py-1">
+                      <span className="text-sm font-medium text-foreground">E-mail</span>
                     </label>
                     <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-base-content/40" />
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground/70" />
                       <input
                         type="email"
                         placeholder="seu@email.com"
-                        className={`input input-bordered w-full pl-10 ${
-                          emailForm.formState.errors.email ? 'input-error' : ''
+                        className={`rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-10 px-3 w-full pl-10 ${
+                          emailForm.formState.errors.email ? '!border-destructive' : ''
                         }`}
                         {...emailForm.register('email')}
                       />
                     </div>
                     {emailForm.formState.errors.email && (
-                      <label className="label">
-                        <span className="label-text-alt text-error">
+                      <label className="flex items-center justify-between gap-2 py-1">
+                        <span className="text-xs text-destructive">
                           {emailForm.formState.errors.email.message}
                         </span>
                       </label>
@@ -229,11 +229,11 @@ function LoginContent() {
 
                   <button
                     type="submit"
-                    className="btn btn-primary w-full mt-6"
+                    className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-10 px-4 bg-primary text-primary-foreground hover:bg-primary/90 w-full mt-6"
                     disabled={isLoading}
                   >
                     {isLoading ? (
-                      <span className="loading loading-spinner loading-sm"></span>
+                      <span className="inline-block shrink-0 animate-spin rounded-full border-2 border-current border-r-transparent h-4 w-4"></span>
                     ) : (
                       'Enviar código de acesso'
                     )}
@@ -248,25 +248,25 @@ function LoginContent() {
                   onSubmit={otpForm.handleSubmit(onOtpSubmit)}
                   className="space-y-4"
                 >
-                  <div className="form-control">
-                    <label className="label">
-                      <span className="label-text font-medium">Código de acesso</span>
+                  <div className="flex flex-col">
+                    <label className="flex items-center justify-between gap-2 py-1">
+                      <span className="text-sm font-medium text-foreground">Código de acesso</span>
                       {timeRemaining !== null && !otpExpired && (
-                        <span className="label-text-alt flex items-center gap-1 text-warning">
+                        <span className="text-xs flex items-center gap-1 text-warning">
                           <Clock className="w-4 h-4" />
                           {formatTime(timeRemaining)}
                         </span>
                       )}
                       {otpExpired && (
-                        <span className="label-text-alt text-error">Expirado</span>
+                        <span className="text-xs text-destructive">Expirado</span>
                       )}
                     </label>
                     <input
                       type="text"
                       placeholder="000000"
                       maxLength={6}
-                      className={`input input-bordered w-full text-center text-2xl tracking-widest font-mono ${
-                        otpForm.formState.errors.codigo || otpExpired ? 'input-error' : ''
+                      className={`rounded-md border border-input bg-card outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-10 px-3 w-full text-center text-2xl tracking-widest font-mono ${
+                        otpForm.formState.errors.codigo || otpExpired ? '!border-destructive' : ''
                       }`}
                       {...otpForm.register('codigo', {
                         onChange: (e) => {
@@ -276,32 +276,32 @@ function LoginContent() {
                       })}
                     />
                     {otpForm.formState.errors.codigo && (
-                      <label className="label">
-                        <span className="label-text-alt text-error">
+                      <label className="flex items-center justify-between gap-2 py-1">
+                        <span className="text-xs text-destructive">
                           {otpForm.formState.errors.codigo.message}
                         </span>
                       </label>
                     )}
                     {otpExpired && (
-                      <label className="label">
-                        <span className="label-text-alt text-error">
+                      <label className="flex items-center justify-between gap-2 py-1">
+                        <span className="text-xs text-destructive">
                           O código expirou. Solicite um novo código.
                         </span>
                       </label>
                     )}
                   </div>
 
-                  <div className="text-sm text-base-content/60 text-center">
+                  <div className="text-sm text-muted-foreground text-center">
                     Código enviado para <strong>{email}</strong>
                   </div>
 
                   <button
                     type="submit"
-                    className="btn btn-primary w-full"
+                    className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-10 px-4 bg-primary text-primary-foreground hover:bg-primary/90 w-full"
                     disabled={isLoading || otpExpired}
                   >
                     {isLoading ? (
-                      <span className="loading loading-spinner loading-sm"></span>
+                      <span className="inline-block shrink-0 animate-spin rounded-full border-2 border-current border-r-transparent h-4 w-4"></span>
                     ) : (
                       'Entrar'
                     )}
@@ -310,7 +310,7 @@ function LoginContent() {
                   <div className="flex gap-2">
                     <button
                       type="button"
-                      className="btn btn-ghost btn-sm flex-1"
+                      className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 hover:bg-muted flex-1"
                       onClick={handleBackToEmail}
                       disabled={isLoading}
                     >
@@ -318,7 +318,7 @@ function LoginContent() {
                     </button>
                     <button
                       type="button"
-                      className="btn btn-ghost btn-sm flex-1 gap-2"
+                      className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 hover:bg-muted flex-1"
                       onClick={handleResendOtp}
                       disabled={isLoading}
                     >
@@ -330,14 +330,14 @@ function LoginContent() {
               )}
             </AnimatePresence>
 
-            <div className="divider text-xs text-base-content/40">ou</div>
+            <div className="my-4 flex items-center gap-4 text-xs before:h-px before:flex-1 before:bg-border after:h-px after:flex-1 after:bg-border text-muted-foreground/70">ou</div>
 
-            <p className="text-center text-sm text-base-content/60">
+            <p className="text-center text-sm text-muted-foreground">
               Não tem uma conta?{' '}
               <button
                 type="button"
                 onClick={() => setModalListaEsperaAberto(true)}
-                className="link link-primary font-medium"
+                className="cursor-pointer underline underline-offset-2 text-primary font-medium"
               >
                 Entrar na lista de espera
               </button>
@@ -345,7 +345,7 @@ function LoginContent() {
 
             <Link
               href="/"
-              className="btn btn-ghost btn-sm gap-2 mt-4 mx-auto"
+              className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 hover:bg-muted mt-4 mx-auto"
             >
               <ArrowLeft className="w-4 h-4" />
               Voltar ao início
@@ -361,8 +361,8 @@ function LoginContent() {
 export default function LoginPage() {
   return (
     <Suspense fallback={
-      <main className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-base-100 via-base-200 to-base-100">
-        <span className="loading loading-spinner loading-lg text-primary"></span>
+      <main className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-card via-muted to-card">
+        <span className="inline-block shrink-0 animate-spin rounded-full border-2 border-current border-r-transparent h-8 w-8 text-primary"></span>
       </main>
     }>
       <LoginContent />

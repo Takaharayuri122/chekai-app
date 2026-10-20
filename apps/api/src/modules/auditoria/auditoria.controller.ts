@@ -89,10 +89,12 @@ export class AuditoriaController {
     @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; gestorId?: string },
     @Query('page') page = 1,
     @Query('limit') limit = 10,
+    @Query('clienteId', new ParseUUIDPipe({ optional: true })) clienteId?: string,
   ): Promise<PaginatedResult<Auditoria>> {
     return this.auditoriaService.listarAuditorias(
       { page, limit },
       usuario,
+      clienteId,
     );
   }
 

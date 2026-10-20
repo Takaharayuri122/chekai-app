@@ -21,6 +21,23 @@ import {
   StatusRelatorioTecnico,
 } from './entities/relatorio-tecnico.entity';
 import { RelatorioTecnicoFoto } from './entities/relatorio-tecnico-foto.entity';
+import { ModeloRelatorioTecnicoService } from './modelo-relatorio-tecnico.service';
+import {
+  ModeloSecao,
+  SECOES_CONTEUDO,
+  SecaoConfiguravel,
+  modeloPadrao,
+  secaoAtiva,
+  tituloSecao,
+} from './modelo-secoes';
+
+/** Campo HTML da entidade preenchido por cada seção de texto configurável. */
+const CAMPO_HTML_POR_SECAO: ReadonlyArray<[SecaoConfiguravel, keyof RelatorioTecnico]> = [
+  ['descricaoOcorrencia', 'descricaoOcorrenciaHtml'],
+  ['avaliacaoTecnica', 'avaliacaoTecnicaHtml'],
+  ['recomendacoesConsultora', 'recomendacoesConsultoraHtml'],
+  ['planoAcaoSugerido', 'planoAcaoSugeridoHtml'],
+];
 
 interface UsuarioAutenticado {
   id: string;
@@ -38,6 +55,7 @@ export class RelatorioTecnicoService {
     private readonly relatorioTecnicoFotoRepository: Repository<RelatorioTecnicoFoto>,
     private readonly clienteService: ClienteService,
     private readonly iaService: IaService,
+    private readonly modeloRelatorioTecnicoService: ModeloRelatorioTecnicoService,
   ) {}
 
   async criar(
@@ -47,6 +65,11 @@ export class RelatorioTecnicoService {
     await this.validarVinculoClienteUnidade(dto.clienteId, dto.unidadeId, usuario);
     const entidade = this.relatorioTecnicoRepository.create({
       ...dto,
+      descricaoOcorrenciaHtml: dto.descricaoOcorrenciaHtml ?? '',
+      avaliacaoTecnicaHtml: dto.avaliacaoTecnicaHtml ?? '',
+      acoesExecutadas: dto.acoesExecutadas ?? [],
+      recomendacoesConsultoraHtml: dto.recomendacoesConsultoraHtml ?? '',
+      planoAcaoSugeridoHtml: dto.planoAcaoSugeridoHtml ?? '',
       consultoraId: usuario.id,
       unidadeId: dto.unidadeId ?? null,
       apoioAnaliticoChekAi: dto.apoioAnaliticoChekAi ?? null,
@@ -145,13 +168,26 @@ export class RelatorioTecnicoService {
         usuario,
       );
     }
-    if (dto.status === StatusRelatorioTecnico.FINALIZADO) {
+    const jaFinalizado = relatorio.status === StatusRelatorioTecnico.FINALIZADO;
+    let snapshot: ModeloSecao[] | null = relatorio.modeloSecoes ?? null;
+    if (jaFinalizado) {
+      // RN-REL-012: relatório finalizado segue o snapshot (legado sem snapshot → padrão)
       const mesclado = this.mesclarRelatorioParaAtualizacao(relatorio, dto);
-      this.validarRelatorioMinimoParaConclusao(mesclado, 'finalizacao');
+      this.validarRelatorioMinimoParaConclusao(mesclado, 'finalizacao', snapshot ?? modeloPadrao());
+    } else if (dto.status === StatusRelatorioTecnico.FINALIZADO) {
+      // RN-REL-012: snapshot gravado somente na transição para finalizado
+      const modelo = await this.modeloRelatorioTecnicoService.obterVigente(
+        this.resolverDonoModelo(relatorio),
+      );
+      const mesclado = this.mesclarRelatorioParaAtualizacao(relatorio, dto);
+      this.validarRelatorioMinimoParaConclusao(mesclado, 'finalizacao', modelo);
+      snapshot = modelo;
     }
     Object.assign(relatorio, {
       ...dto,
       unidadeId: dto.unidadeId === undefined ? relatorio.unidadeId : dto.unidadeId ?? null,
+      // O cliente nunca dita o modelo: o snapshot vem sempre da API (RN-REL-012)
+      modeloSecoes: snapshot,
     });
     return this.relatorioTecnicoRepository.save(relatorio);
   }
@@ -168,15 +204,15 @@ export class RelatorioTecnicoService {
     usuario: UsuarioAutenticado,
   ): Promise<RelatorioTecnico> {
     const relatorio = await this.buscarPorId(id, usuario);
-    this.validarRelatorioMinimoParaConclusao(relatorio, 'apoio');
+    const modelo = await this.modeloEfetivo(relatorio);
+    if (!secaoAtiva(modelo, 'apoioAnalitico')) {
+      throw new ConflictException('O apoio analítico não está habilitado no modelo deste relatório.');
+    }
+    this.validarRelatorioMinimoParaConclusao(relatorio, 'apoio', modelo);
     const apoioAnaliticoChekAi = await this.iaService.gerarApoioAnaliticoRelatorioTecnico(
       {
         identificacao: relatorio.identificacao,
-        descricaoOcorrenciaHtml: relatorio.descricaoOcorrenciaHtml,
-        avaliacaoTecnicaHtml: relatorio.avaliacaoTecnicaHtml,
-        acoesExecutadas: relatorio.acoesExecutadas,
-        recomendacoesConsultoraHtml: relatorio.recomendacoesConsultoraHtml,
-        planoAcaoSugeridoHtml: relatorio.planoAcaoSugeridoHtml,
+        secoes: this.montarSecoesParaIa(relatorio, modelo),
         nomeConsultora: relatorio.assinaturaNomeConsultora || relatorio.consultora?.nome || '',
         contextoComplementar: promptComplementar ?? '',
       },
@@ -236,6 +272,52 @@ export class RelatorioTecnicoService {
     await this.relatorioTecnicoFotoRepository.delete({ id: foto.id });
   }
 
+  /** Seções de texto ativas, na ordem fixa, rotuladas com os títulos do modelo. */
+  private montarSecoesParaIa(
+    relatorio: RelatorioTecnico,
+    modelo: ModeloSecao[],
+  ): Array<{ titulo: string; conteudo: string }> {
+    const conteudoPorSecao: Partial<Record<SecaoConfiguravel, string>> = {
+      descricaoOcorrencia: relatorio.descricaoOcorrenciaHtml,
+      avaliacaoTecnica: relatorio.avaliacaoTecnicaHtml,
+      acoesExecutadas: (relatorio.acoesExecutadas ?? [])
+        .map((acao, index) => `${index + 1}. ${acao}`)
+        .join('\n'),
+      recomendacoesConsultora: relatorio.recomendacoesConsultoraHtml,
+      planoAcaoSugerido: relatorio.planoAcaoSugeridoHtml,
+    };
+    return SECOES_CONTEUDO.filter((secao) => secaoAtiva(modelo, secao)).map((secao) => ({
+      titulo: tituloSecao(modelo, secao),
+      conteudo: conteudoPorSecao[secao] ?? '',
+    }));
+  }
+
+  /** Modelo aplicado ao relatório: snapshot se finalizado, senão o vigente do dono. */
+  async modeloEfetivo(relatorio: RelatorioTecnico): Promise<ModeloSecao[]> {
+    if (relatorio.status === StatusRelatorioTecnico.FINALIZADO) {
+      return relatorio.modeloSecoes ?? modeloPadrao();
+    }
+    return this.modeloRelatorioTecnicoService.obterVigente(this.resolverDonoModelo(relatorio));
+  }
+
+  /** Relatório com o modelo efetivo como propriedade de resposta (nunca persistida). */
+  async buscarComModelo(
+    id: string,
+    usuario: UsuarioAutenticado,
+  ): Promise<RelatorioTecnico & { modeloEfetivo: ModeloSecao[] }> {
+    const relatorio = await this.buscarPorId(id, usuario);
+    return { ...relatorio, modeloEfetivo: await this.modeloEfetivo(relatorio) };
+  }
+
+  /** O dono do modelo é definido pela consultora do relatório, não por quem visualiza. */
+  private resolverDonoModelo(relatorio: RelatorioTecnico): string | null {
+    const consultora = relatorio.consultora;
+    if (!consultora) {
+      return null;
+    }
+    return this.modeloRelatorioTecnicoService.resolverDono(consultora);
+  }
+
   private validarAcessoRelatorio(
     relatorio: RelatorioTecnico,
     usuario: UsuarioAutenticado,
@@ -285,31 +367,27 @@ export class RelatorioTecnicoService {
   private validarRelatorioMinimoParaConclusao(
     relatorio: RelatorioTecnico,
     contexto: 'apoio' | 'finalizacao',
+    modelo: ModeloSecao[],
   ): void {
     const sufixo =
       contexto === 'apoio'
         ? 'antes de gerar o apoio analítico'
         : 'antes de finalizar o relatório';
-    const camposObrigatorios: Array<keyof RelatorioTecnico> = [
-      'identificacao',
-      'descricaoOcorrenciaHtml',
-      'avaliacaoTecnicaHtml',
-      'recomendacoesConsultoraHtml',
-      'planoAcaoSugeridoHtml',
-    ];
-    for (const campo of camposObrigatorios) {
+    if (!relatorio.identificacao || relatorio.identificacao.trim() === '') {
+      throw new ConflictException(`Preencha a seção "Identificação" ${sufixo}`);
+    }
+    for (const [secao, campo] of CAMPO_HTML_POR_SECAO) {
       const valor = relatorio[campo];
-      if (!valor || (typeof valor === 'string' && valor.trim() === '')) {
-        throw new ConflictException(
-          `Preencha o campo ${campo} ${sufixo}`,
-        );
+      if (secaoAtiva(modelo, secao) && (!valor || (typeof valor === 'string' && valor.trim() === ''))) {
+        throw new ConflictException(`Preencha a seção "${tituloSecao(modelo, secao)}" ${sufixo}`);
       }
     }
-    if (!relatorio.acoesExecutadas || relatorio.acoesExecutadas.length === 0) {
+    if (
+      secaoAtiva(modelo, 'acoesExecutadas') &&
+      (!relatorio.acoesExecutadas || relatorio.acoesExecutadas.length === 0)
+    ) {
       throw new ConflictException(
-        contexto === 'apoio'
-          ? 'Adicione ao menos uma ação executada antes de gerar o apoio analítico'
-          : 'Adicione ao menos uma ação executada antes de finalizar o relatório',
+        `Adicione ao menos um item em "${tituloSecao(modelo, 'acoesExecutadas')}" ${sufixo}`,
       );
     }
   }

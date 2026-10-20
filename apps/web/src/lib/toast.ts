@@ -73,8 +73,8 @@ export const toastService = {
       duration: 4000,
       icon: 'ℹ️',
       style: {
-        background: 'hsl(var(--in))',
-        color: 'hsl(var(--inc))',
+        background: 'hsl(var(--info))',
+        color: 'hsl(0 0% 100%)',
         borderRadius: '0.5rem',
         padding: '1rem',
       },
@@ -87,8 +87,8 @@ export const toastService = {
   loading: (message: string) => {
     return toast.loading(message, {
       style: {
-        background: 'hsl(var(--b2))',
-        color: 'hsl(var(--bc))',
+        background: 'hsl(var(--muted))',
+        color: 'hsl(var(--foreground))',
         borderRadius: '0.5rem',
         padding: '1rem',
       },

@@ -93,7 +93,7 @@ export function CheckinMapa({ pontos, altura = 260 }: CheckinMapaProps) {
 
   if (pontosValidos.length === 0) {
     return (
-      <div className="rounded-xl border border-base-300 bg-base-200/40 px-4 py-8 text-center text-sm text-base-content/60">
+      <div className="rounded-xl border border-border bg-muted/40 px-4 py-8 text-center text-sm text-muted-foreground">
         Sem coordenadas para exibir no mapa.
       </div>
     );
@@ -102,7 +102,7 @@ export function CheckinMapa({ pontos, altura = 260 }: CheckinMapaProps) {
   return (
     <div
       ref={containerRef}
-      className="relative z-0 w-full overflow-hidden rounded-xl border border-base-300"
+      className="relative z-0 w-full overflow-hidden rounded-xl border border-border"
       style={{ height: altura }}
     />
   );

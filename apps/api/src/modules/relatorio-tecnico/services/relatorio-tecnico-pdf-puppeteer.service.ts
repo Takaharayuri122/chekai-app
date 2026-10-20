@@ -5,6 +5,7 @@ import { PdfPreparacaoService } from '../../pdf/pdf-preparacao.service';
 import { registrarMetricaGeracaoPdf } from '../../pdf/pdf-geracao-metricas.util';
 import { SupabaseService } from '../../supabase/supabase.service';
 import { RelatorioTecnico } from '../entities/relatorio-tecnico.entity';
+import { ModeloSecao } from '../modelo-secoes';
 import { RelatorioTecnicoHtmlService } from './relatorio-tecnico-html.service';
 
 @Injectable()
@@ -24,7 +25,7 @@ export class RelatorioTecnicoPdfPuppeteerService {
       'relatorios';
   }
 
-  async gerarPdf(relatorio: RelatorioTecnico): Promise<Buffer> {
+  async gerarPdf(relatorio: RelatorioTecnico, modelo: ModeloSecao[]): Promise<Buffer> {
     const metricas = this.configService.get<string>('PDF_GERACAO_METRICAS') === 'true';
     const t0 = process.hrtime.bigint();
     let browser: Browser;
@@ -40,9 +41,11 @@ export class RelatorioTecnicoPdfPuppeteerService {
       page = await browser.newPage();
       await page.setViewport({ width: 1200, height: 800 });
       const preparo = await this.pdfPreparacao.prepararRelatorioTecnico(relatorio);
-      const html = this.relatorioTecnicoHtmlService.gerarHtml(relatorio, {
-        fotosPorId: preparo.fotosPorId,
-      });
+      const html = this.relatorioTecnicoHtmlService.gerarHtml(
+        relatorio,
+        { fotosPorId: preparo.fotosPorId },
+        modelo,
+      );
       await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: 60000 });
       const fotosLegadasSemEmbutir = (relatorio.fotos || []).filter(
         (f) => f.url?.startsWith('data:') && !preparo.fotosPorId[f.id],

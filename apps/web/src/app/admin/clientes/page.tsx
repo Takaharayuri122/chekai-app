@@ -24,6 +24,8 @@ import {
   type ColunaTabela,
   type AcaoTabela,
 } from '@/components';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/shadcn/tabs';
+import { AuditoriasDoCliente } from '@/components/clientes/auditorias-do-cliente';
 import { LogoCropperModal } from '@/components/ui/logo-cropper-modal';
 import {
   clienteService,
@@ -146,18 +148,18 @@ function MultiSelectAuditores({
     .filter((a) => selecionados.includes(a.id))
     .map((a) => a.nome);
 
-  const inputClass = size === 'sm' ? 'input-sm text-xs' : '';
+  const inputClass = size === 'sm' ? '!h-9 !px-2.5 !text-xs text-xs' : '';
   const labelClass = size === 'sm' ? 'text-xs' : '';
 
   return (
-    <div className="form-control" ref={ref}>
-      <label className="label py-1">
-        <span className={`label-text ${labelClass}`}>{label}</span>
+    <div className="flex flex-col" ref={ref}>
+      <label className="flex items-center justify-between gap-2 py-1">
+        <span className={`text-sm font-medium text-foreground ${labelClass}`}>{label}</span>
       </label>
       <div className="relative">
         <button
           type="button"
-          className={`input input-bordered w-full flex items-center justify-between gap-2 ${inputClass}`}
+          className={`rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-10 px-3 w-full flex items-center justify-between gap-2 ${inputClass}`}
           onClick={() => setAberto(!aberto)}
         >
           <span className="truncate text-left flex-1">
@@ -168,18 +170,18 @@ function MultiSelectAuditores({
           <ChevronDown className={`w-4 h-4 shrink-0 transition-transform ${aberto ? 'rotate-180' : ''}`} />
         </button>
         {aberto && (
-          <div className="absolute z-50 mt-1 w-full bg-base-100 border border-base-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+          <div className="absolute z-50 mt-1 w-full bg-card border border-border rounded-lg shadow-lg max-h-48 overflow-y-auto">
             {auditores.length === 0 ? (
-              <div className="p-3 text-sm text-base-content/50 text-center">Nenhum auditor disponível</div>
+              <div className="p-3 text-sm text-muted-foreground text-center">Nenhum auditor disponível</div>
             ) : (
               auditores.map((auditor) => (
                 <label
                   key={auditor.id}
-                  className="flex items-center gap-2 px-3 py-2 hover:bg-base-200 cursor-pointer"
+                  className="flex items-center gap-2 px-3 py-2 hover:bg-muted cursor-pointer"
                 >
                   <input
                     type="checkbox"
-                    className="checkbox checkbox-sm checkbox-primary"
+                    className="h-3.5 w-3.5 shrink-0 cursor-pointer rounded border-input accent-[hsl(175_100%_36%)]"
                     checked={selecionados.includes(auditor.id)}
                     onChange={() => toggleAuditor(auditor.id)}
                   />
@@ -195,7 +197,7 @@ function MultiSelectAuditores({
           {auditores
             .filter((a) => selecionados.includes(a.id))
             .map((a) => (
-              <span key={a.id} className="badge badge-sm badge-primary gap-1">
+              <span key={a.id} className="inline-flex items-center gap-1 whitespace-nowrap rounded-full font-semibold px-2 py-0.5 text-[11px] bg-primary/12 text-primary">
                 {a.nome}
                 <button type="button" onClick={() => toggleAuditor(a.id)}>
                   <X className="w-3 h-3" />
@@ -604,10 +606,10 @@ export default function ClientesPage() {
             <Building2 className="w-5 h-5 text-primary" />
           </div>
           <div className="min-w-0">
-            <div className="font-medium text-base-content truncate">
+            <div className="font-medium text-foreground truncate">
               {c.nomeFantasia || c.razaoSocial}
             </div>
-            <div className="text-xs text-base-content/50">{formatarCNPJ(c.cnpj)}</div>
+            <div className="text-xs text-muted-foreground">{formatarCNPJ(c.cnpj)}</div>
           </div>
         </div>
       ),
@@ -615,7 +617,7 @@ export default function ClientesPage() {
     {
       label: 'Tipo',
       render: (c) => (
-        <span className="badge badge-outline badge-sm">
+        <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full font-semibold px-2 py-0.5 text-[11px] border border-border bg-transparent">
           {TIPO_ATIVIDADE_LABELS[c.tipoAtividade]}
         </span>
       ),
@@ -624,8 +626,8 @@ export default function ClientesPage() {
       label: 'Auditores',
       render: (c) => (
         <div className="flex items-center gap-1">
-          <Users className="w-3.5 h-3.5 text-base-content/50" />
-          <span className="badge badge-sm badge-ghost">
+          <Users className="w-3.5 h-3.5 text-muted-foreground" />
+          <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full font-semibold px-2 py-0.5 text-[11px] bg-muted text-muted-foreground">
             {c.auditores?.length || 0}
           </span>
         </div>
@@ -634,7 +636,7 @@ export default function ClientesPage() {
     {
       label: 'Unidades',
       render: (c) => (
-        <span className="badge badge-sm badge-ghost">
+        <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full font-semibold px-2 py-0.5 text-[11px] bg-muted text-muted-foreground">
           {c.unidades?.length || 0}
         </span>
       ),
@@ -647,10 +649,684 @@ export default function ClientesPage() {
       label: 'Remover',
       icon: Trash2,
       onClick: (c) => setShowDeleteConfirm(c.id),
-      className: 'text-error',
+      className: 'text-destructive',
       isVisivel: () => isGestor() || isMaster(),
     },
   ];
+
+  // Blocos do formulário reaproveitados no cadastro (página única) e na edição (abas)
+  const blocoDados = (
+    <>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="flex flex-col">
+                  <label className="flex items-center justify-between gap-2 py-1"><span className="text-sm font-medium text-foreground">Razão Social *</span></label>
+                  <input
+                    type="text"
+                    placeholder="Razão social da empresa"
+                    className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-10 px-3"
+                    value={clienteForm.razaoSocial}
+                    onChange={(e) => setClienteForm({ ...clienteForm, razaoSocial: e.target.value })}
+                  />
+                </div>
+                <div className="flex flex-col">
+                  <label className="flex items-center justify-between gap-2 py-1"><span className="text-sm font-medium text-foreground">Nome Fantasia</span></label>
+                  <input
+                    type="text"
+                    placeholder="Nome fantasia"
+                    className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-10 px-3"
+                    value={clienteForm.nomeFantasia}
+                    onChange={(e) => setClienteForm({ ...clienteForm, nomeFantasia: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="flex flex-col">
+                  <label className="flex items-center justify-between gap-2 py-1"><span className="text-sm font-medium text-foreground">CNPJ *</span></label>
+                  <input
+                    type="text"
+                    placeholder="00.000.000/0000-00"
+                    className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-10 px-3"
+                    value={clienteForm.cnpj}
+                    onChange={(e) => setClienteForm({ ...clienteForm, cnpj: aplicarMascaraCNPJ(e.target.value) })}
+                    maxLength={18}
+                  />
+                </div>
+                <div className="flex flex-col">
+                  <label className="flex items-center justify-between gap-2 py-1"><span className="text-sm font-medium text-foreground">Tipo de Atividade</span></label>
+                  <select
+                    className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-10 px-3"
+                    value={clienteForm.tipoAtividade}
+                    onChange={(e) => setClienteForm({ ...clienteForm, tipoAtividade: e.target.value as TipoAtividade })}
+                  >
+                    {Object.entries(TIPO_ATIVIDADE_LABELS).map(([value, label]) => (
+                      <option key={value} value={value}>{label}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="flex flex-col">
+                  <label className="flex items-center justify-between gap-2 py-1"><span className="text-sm font-medium text-foreground">Telefone *</span></label>
+                  <input
+                    type="tel"
+                    placeholder="(00) 00000-0000"
+                    className="rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-10 px-3"
+                    value={clienteForm.telefone}
+                    onChange={(e) => setClienteForm({ ...clienteForm, telefone: aplicarMascaraTelefone(e.target.value) })}
+                    maxLength={15}
+                  />
+                </div>
+                <div className="flex flex-col">
+                  <label className="flex items-center justify-between gap-2 py-1">
+                    <span className="text-sm font-medium text-foreground">E-mail</span>
+                    {clienteForm.email && !emailValido(clienteForm.email) && (
+                      <span className="text-xs text-destructive">Inválido</span>
+                    )}
+                  </label>
+                  <input
+                    type="email"
+                    placeholder="email@exemplo.com"
+                    className={`rounded-md border border-input bg-card text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-10 px-3 ${clienteForm.email && !emailValido(clienteForm.email) ? '!border-destructive' : ''}`}
+                    value={clienteForm.email}
+                    onChange={(e) => setClienteForm({ ...clienteForm, email: e.target.value })}
+                  />
+                </div>
+              </div>
+    </>
+  );
+
+  const blocoEquipe = (
+    <>
+              {(isGestor() || isMaster()) && (
+                <MultiSelectAuditores
+                  auditores={auditores}
+                  selecionados={clienteForm.auditorIds}
+                  onChange={(ids) => setClienteForm({ ...clienteForm, auditorIds: ids })}
+                  label="Auditores Responsáveis"
+                />
+              )}
+    </>
+  );
+
+  const blocoLogo = (
+    <>
+              <div className="flex flex-col pt-2 border-t border-muted">
+                <label className="flex items-center justify-between gap-2 py-1"><span className="text-sm font-medium text-foreground">Logo do cliente</span></label>
+                <p className="text-sm text-muted-foreground mb-3">
+                  A logo aparece no cabeçalho dos relatórios em formato quadrado.
+                </p>
+                <input
+                  ref={logoFileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  className="hidden"
+                  onChange={handleLogoFileSelect}
+                />
+                {!pendingLogoRemover && (pendingLogoPreviewUrl || (editingCliente?.logoUrl && !pendingLogoBlob)) ? (
+                  <div className="flex flex-col items-start gap-3">
+                    <div className="w-40 h-40 rounded-lg border border-border overflow-hidden bg-muted flex-shrink-0">
+                      <img
+                        src={pendingLogoPreviewUrl || editingCliente?.logoUrl || ''}
+                        alt="Logo do cliente"
+                        className="w-full h-full object-contain"
+                      />
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <button type="button" className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 border border-input bg-card hover:bg-muted" onClick={() => logoFileInputRef.current?.click()}>
+                        <ImagePlus className="w-4 h-4" />
+                        Alterar imagem
+                      </button>
+                      <button type="button" className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 text-destructive hover:bg-destructive/10" onClick={handleRemoverLogoNoModal}>
+                        <Trash2 className="w-4 h-4" />
+                        Remover imagem
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => logoFileInputRef.current?.click()}
+                    className="w-full h-24 border-2 border-dashed border-border rounded-lg flex flex-col items-center justify-center gap-2 hover:border-primary hover:bg-primary/5 transition-colors"
+                  >
+                    <ImagePlus className="w-8 h-8 text-muted-foreground/70" />
+                    <span className="text-sm text-muted-foreground">Clique para adicionar imagem da logo</span>
+                  </button>
+                )}
+              </div>
+    </>
+  );
+
+  const blocoUnidades = (
+    <>
+              {/* Seção de Unidades */}
+              <div className="pt-2 border-t border-muted">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-foreground">Unidades *</span>
+                    {!editingCliente && (
+                      <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full font-semibold px-2 py-0.5 text-[11px] bg-muted text-muted-foreground">{unidadesPendentes.length}</span>
+                    )}
+                    {editingCliente && (
+                      <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full font-semibold px-2 py-0.5 text-[11px] bg-muted text-muted-foreground">{editingCliente.unidades?.length || 0}</span>
+                    )}
+                  </div>
+                  {!showInlineUnidadeForm && !editingUnidadeId && (
+                    <button type="button" className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 border border-input bg-card hover:bg-muted gap-1" onClick={handleAdicionarInlineUnidade}>
+                      <Plus className="w-3.5 h-3.5" />
+                      Adicionar
+                    </button>
+                  )}
+                </div>
+
+                {editingCliente ? (
+                  <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                    {!editingCliente.unidades || editingCliente.unidades.length === 0 ? (
+                      <p className="text-sm text-muted-foreground py-4 text-center">
+                        Nenhuma unidade cadastrada.
+                      </p>
+                    ) : (
+                      editingCliente.unidades.map((unidade) => (
+                        <div key={unidade.id}>
+                          {editingUnidadeId === unidade.id ? (
+                            <div className="p-3 border border-primary/30 rounded-lg bg-muted/20 space-y-3">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div className="flex flex-col">
+                                  <label className="flex items-center justify-between gap-2 py-1"><span className="font-medium text-foreground text-xs">Nome *</span></label>
+                                  <input
+                                    type="text"
+                                    placeholder="Nome da unidade"
+                                    className="rounded-md border border-input bg-card outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs"
+                                    value={editUnidadeForm.nome}
+                                    onChange={(e) => setEditUnidadeForm({ ...editUnidadeForm, nome: e.target.value })}
+                                  />
+                                </div>
+                                <div className="flex flex-col">
+                                  <label className="flex items-center justify-between gap-2 py-1"><span className="font-medium text-foreground text-xs">Endereço *</span></label>
+                                  <input
+                                    type="text"
+                                    placeholder="Rua, número, bairro"
+                                    className="rounded-md border border-input bg-card outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs"
+                                    value={editUnidadeForm.endereco}
+                                    onChange={(e) => setEditUnidadeForm({ ...editUnidadeForm, endereco: e.target.value })}
+                                  />
+                                </div>
+                              </div>
+                              <div className="grid grid-cols-3 gap-3">
+                                <div className="flex flex-col">
+                                  <label className="flex items-center justify-between gap-2 py-1"><span className="font-medium text-foreground text-xs">Cidade *</span></label>
+                                  <input
+                                    type="text"
+                                    placeholder="Cidade"
+                                    className="rounded-md border border-input bg-card outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs"
+                                    value={editUnidadeForm.cidade}
+                                    onChange={(e) => setEditUnidadeForm({ ...editUnidadeForm, cidade: e.target.value })}
+                                  />
+                                </div>
+                                <div className="flex flex-col">
+                                  <label className="flex items-center justify-between gap-2 py-1"><span className="font-medium text-foreground text-xs">Estado *</span></label>
+                                  <input
+                                    type="text"
+                                    placeholder="UF"
+                                    className="rounded-md border border-input bg-card outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs"
+                                    maxLength={2}
+                                    value={editUnidadeForm.estado}
+                                    onChange={(e) => setEditUnidadeForm({ ...editUnidadeForm, estado: e.target.value.toUpperCase() })}
+                                  />
+                                </div>
+                                <div className="flex flex-col">
+                                  <label className="flex items-center justify-between gap-2 py-1"><span className="font-medium text-foreground text-xs">CEP</span></label>
+                                  <input
+                                    type="text"
+                                    placeholder="00000-000"
+                                    className="rounded-md border border-input bg-card outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs"
+                                    value={editUnidadeForm.cep}
+                                    onChange={(e) => setEditUnidadeForm({ ...editUnidadeForm, cep: e.target.value })}
+                                  />
+                                </div>
+                              </div>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div className="flex flex-col">
+                                  <label className="flex items-center justify-between gap-2 py-1"><span className="font-medium text-foreground text-xs">E-mail da Unidade *</span></label>
+                                  <input
+                                    type="email"
+                                    placeholder="email@unidade.com"
+                                    className={`rounded-md border border-input bg-card outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs ${editUnidadeForm.email && !emailValido(editUnidadeForm.email) ? '!border-destructive' : ''}`}
+                                    value={editUnidadeForm.email}
+                                    onChange={(e) => setEditUnidadeForm({ ...editUnidadeForm, email: e.target.value })}
+                                  />
+                                </div>
+                                <div className="flex flex-col">
+                                  <label className="flex items-center justify-between gap-2 py-1"><span className="font-medium text-foreground text-xs">Responsável *</span></label>
+                                  <input
+                                    type="text"
+                                    placeholder="Nome do responsável"
+                                    className="rounded-md border border-input bg-card outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs"
+                                    value={editUnidadeForm.responsavel}
+                                    onChange={(e) => setEditUnidadeForm({ ...editUnidadeForm, responsavel: e.target.value })}
+                                  />
+                                </div>
+                              </div>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div className="flex flex-col">
+                                  <label className="flex items-center justify-between gap-2 py-1"><span className="font-medium text-foreground text-xs">WhatsApp</span></label>
+                                  <input
+                                    type="tel"
+                                    placeholder="(00) 00000-0000"
+                                    className="rounded-md border border-input bg-card outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs"
+                                    value={editUnidadeForm.whatsapp}
+                                    onChange={(e) => setEditUnidadeForm({ ...editUnidadeForm, whatsapp: aplicarMascaraTelefone(e.target.value) })}
+                                    maxLength={15}
+                                  />
+                                </div>
+                              </div>
+                              {auditoresSelecionadosCliente.length > 0 && (
+                                <MultiSelectAuditores
+                                  auditores={auditoresSelecionadosCliente}
+                                  selecionados={editUnidadeForm.auditorIds}
+                                  onChange={(ids) => setEditUnidadeForm({ ...editUnidadeForm, auditorIds: ids })}
+                                  label="Auditores da Unidade"
+                                  size="sm"
+                                />
+                              )}
+                              <div className="flex justify-end gap-2">
+                                <button
+                                  type="button"
+                                  className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 hover:bg-muted"
+                                  onClick={handleCancelarEditUnidade}
+                                  disabled={savingUnidade}
+                                >
+                                  Cancelar
+                                </button>
+                                <button
+                                  type="button"
+                                  className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 bg-primary text-primary-foreground hover:bg-primary/90 gap-1"
+                                  onClick={handleSalvarUnidadeExistente}
+                                  disabled={
+                                    savingUnidade ||
+                                    !editUnidadeForm.nome ||
+                                    !editUnidadeForm.endereco ||
+                                    !editUnidadeForm.email ||
+                                    !editUnidadeForm.responsavel ||
+                                    (editUnidadeForm.email ? !emailValido(editUnidadeForm.email) : false)
+                                  }
+                                >
+                                  {savingUnidade ? (
+                                    <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Salvando...</>
+                                  ) : (
+                                    <><Check className="w-3.5 h-3.5" /> Salvar</>
+                                  )}
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="p-2.5 bg-muted/30 rounded-lg space-y-1 group">
+                              <div className="flex items-center gap-3">
+                                <MapPin className="w-4 h-4 text-info shrink-0" />
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-medium text-sm truncate">{unidade.nome}</p>
+                                  <p className="text-xs text-muted-foreground truncate">
+                                    {unidade.endereco} — {unidade.cidade}, {unidade.estado}
+                                  </p>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => handleEditarUnidadeExistente(unidade)}
+                                  className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium disabled:pointer-events-none disabled:opacity-50 h-7 px-2 text-xs hover:bg-muted opacity-0 group-hover:opacity-100 transition-opacity"
+                                >
+                                  <Edit className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                              <div className="ml-7 flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-muted-foreground">
+                                {unidade.responsavel && <span>Responsável: {unidade.responsavel}</span>}
+                                {unidade.email && <span>E-mail: {unidade.email}</span>}
+                                {unidade.whatsapp && <span>WhatsApp: {aplicarMascaraTelefone(unidade.whatsapp)}</span>}
+                              </div>
+                              {unidade.auditores && unidade.auditores.length > 0 && (
+                                <div className="ml-7 flex flex-wrap gap-1">
+                                  {unidade.auditores.map((a) => (
+                                    <span key={a.id} className="inline-flex items-center gap-1 whitespace-nowrap rounded-full font-semibold px-1.5 py-0 text-[10px] border border-border bg-transparent">{a.nome}</span>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      ))
+                    )}
+                    {showInlineUnidadeForm && (
+                      <div className="mt-3 p-3 border border-border rounded-lg bg-muted/20 space-y-3">
+                        <p className="text-xs font-medium text-muted-foreground">Nova unidade</p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div className="flex flex-col">
+                            <label className="flex items-center justify-between gap-2 py-1"><span className="font-medium text-foreground text-xs">Nome *</span></label>
+                            <input
+                              type="text"
+                              placeholder="Nome da unidade"
+                              className="rounded-md border border-input bg-card outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs"
+                              value={inlineUnidadeForm.nome}
+                              onChange={(e) => setInlineUnidadeForm({ ...inlineUnidadeForm, nome: e.target.value })}
+                            />
+                          </div>
+                          <div className="flex flex-col">
+                            <label className="flex items-center justify-between gap-2 py-1"><span className="font-medium text-foreground text-xs">Endereço *</span></label>
+                            <input
+                              type="text"
+                              placeholder="Rua, número, bairro"
+                              className="rounded-md border border-input bg-card outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs"
+                              value={inlineUnidadeForm.endereco}
+                              onChange={(e) => setInlineUnidadeForm({ ...inlineUnidadeForm, endereco: e.target.value })}
+                            />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-3 gap-3">
+                          <div className="flex flex-col">
+                            <label className="flex items-center justify-between gap-2 py-1"><span className="font-medium text-foreground text-xs">Cidade *</span></label>
+                            <input
+                              type="text"
+                              placeholder="Cidade"
+                              className="rounded-md border border-input bg-card outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs"
+                              value={inlineUnidadeForm.cidade}
+                              onChange={(e) => setInlineUnidadeForm({ ...inlineUnidadeForm, cidade: e.target.value })}
+                            />
+                          </div>
+                          <div className="flex flex-col">
+                            <label className="flex items-center justify-between gap-2 py-1"><span className="font-medium text-foreground text-xs">Estado *</span></label>
+                            <input
+                              type="text"
+                              placeholder="UF"
+                              className="rounded-md border border-input bg-card outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs"
+                              maxLength={2}
+                              value={inlineUnidadeForm.estado}
+                              onChange={(e) => setInlineUnidadeForm({ ...inlineUnidadeForm, estado: e.target.value.toUpperCase() })}
+                            />
+                          </div>
+                          <div className="flex flex-col">
+                            <label className="flex items-center justify-between gap-2 py-1"><span className="font-medium text-foreground text-xs">CEP</span></label>
+                            <input
+                              type="text"
+                              placeholder="00000-000"
+                              className="rounded-md border border-input bg-card outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs"
+                              value={inlineUnidadeForm.cep}
+                              onChange={(e) => setInlineUnidadeForm({ ...inlineUnidadeForm, cep: e.target.value })}
+                            />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div className="flex flex-col">
+                            <label className="flex items-center justify-between gap-2 py-1"><span className="font-medium text-foreground text-xs">E-mail da Unidade *</span></label>
+                            <input
+                              type="email"
+                              placeholder="email@unidade.com"
+                              className={`rounded-md border border-input bg-card outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs ${inlineUnidadeForm.email && !emailValido(inlineUnidadeForm.email) ? '!border-destructive' : ''}`}
+                              value={inlineUnidadeForm.email}
+                              onChange={(e) => setInlineUnidadeForm({ ...inlineUnidadeForm, email: e.target.value })}
+                            />
+                          </div>
+                          <div className="flex flex-col">
+                            <label className="flex items-center justify-between gap-2 py-1"><span className="font-medium text-foreground text-xs">Responsável *</span></label>
+                            <input
+                              type="text"
+                              placeholder="Nome do responsável"
+                              className="rounded-md border border-input bg-card outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs"
+                              value={inlineUnidadeForm.responsavel}
+                              onChange={(e) => setInlineUnidadeForm({ ...inlineUnidadeForm, responsavel: e.target.value })}
+                            />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div className="flex flex-col">
+                            <label className="flex items-center justify-between gap-2 py-1"><span className="font-medium text-foreground text-xs">WhatsApp</span></label>
+                            <input
+                              type="tel"
+                              placeholder="(00) 00000-0000"
+                              className="rounded-md border border-input bg-card outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs"
+                              value={inlineUnidadeForm.whatsapp}
+                              onChange={(e) => setInlineUnidadeForm({ ...inlineUnidadeForm, whatsapp: aplicarMascaraTelefone(e.target.value) })}
+                              maxLength={15}
+                            />
+                          </div>
+                        </div>
+                        {auditoresSelecionadosCliente.length > 0 && (
+                          <MultiSelectAuditores
+                            auditores={auditoresSelecionadosCliente}
+                            selecionados={inlineUnidadeForm.auditorIds || []}
+                            onChange={(ids) => setInlineUnidadeForm({ ...inlineUnidadeForm, auditorIds: ids })}
+                            label="Auditores da Unidade"
+                            size="sm"
+                          />
+                        )}
+                        <div className="flex justify-end gap-2">
+                          <button
+                            type="button"
+                            className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 hover:bg-muted"
+                            onClick={() => {
+                              setShowInlineUnidadeForm(false);
+                              setEditingInlineUnidadeId(null);
+                              setInlineUnidadeForm({ ...INLINE_UNIDADE_INICIAL });
+                            }}
+                            disabled={savingUnidade}
+                          >
+                            Cancelar
+                          </button>
+                          <button
+                            type="button"
+                            className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 bg-primary text-primary-foreground hover:bg-primary/90 gap-1"
+                            onClick={() => handleSalvarInlineUnidade()}
+                            disabled={
+                              savingUnidade ||
+                              !inlineUnidadeForm.nome ||
+                              !inlineUnidadeForm.endereco ||
+                              !inlineUnidadeForm.cidade ||
+                              !inlineUnidadeForm.estado ||
+                              !inlineUnidadeForm.email ||
+                              !inlineUnidadeForm.responsavel ||
+                              (inlineUnidadeForm.email ? !emailValido(inlineUnidadeForm.email) : false)
+                            }
+                          >
+                            {savingUnidade ? (
+                              <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Salvando...</>
+                            ) : (
+                              <><Check className="w-3.5 h-3.5" /> Adicionar</>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    {!showInlineUnidadeForm && (editingCliente?.unidades?.length || 0) > 0 && (
+                      <button type="button" className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 border border-input bg-card hover:bg-muted gap-1 mt-2" onClick={handleAdicionarInlineUnidade}>
+                        <Plus className="w-3.5 h-3.5" />
+                        Adicionar outra unidade
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <>
+                    <div className="space-y-2 max-h-60 overflow-y-auto">
+                      {unidadesPendentes.length === 0 && !showInlineUnidadeForm && (
+                        <p className="text-sm text-muted-foreground py-4 text-center">
+                          Nenhuma unidade adicionada. Adicione pelo menos uma unidade para salvar o cliente.
+                        </p>
+                      )}
+                      {unidadesPendentes.map((unidade) => (
+                        <div key={unidade.tempId} className="p-2.5 bg-muted/30 rounded-lg group space-y-1">
+                          <div className="flex items-center gap-3">
+                            <MapPin className="w-4 h-4 text-info shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-sm truncate">{unidade.nome}</p>
+                              <p className="text-xs text-muted-foreground truncate">
+                                {unidade.endereco}{unidade.cidade ? ` — ${unidade.cidade}` : ''}{unidade.estado ? `, ${unidade.estado}` : ''}
+                              </p>
+                            </div>
+                            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button type="button" onClick={() => handleEditarInlineUnidade(unidade.tempId)} className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-7 px-2 text-xs hover:bg-muted">
+                                <Edit className="w-3.5 h-3.5" />
+                              </button>
+                              <button type="button" onClick={() => handleRemoverInlineUnidade(unidade.tempId)} className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-7 px-2 text-xs hover:bg-muted text-destructive">
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                          <div className="ml-7 flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-muted-foreground">
+                            {unidade.responsavel && <span>Responsável: {unidade.responsavel}</span>}
+                            {unidade.email && <span>E-mail: {unidade.email}</span>}
+                            {unidade.whatsapp && <span>WhatsApp: {aplicarMascaraTelefone(unidade.whatsapp)}</span>}
+                          </div>
+                          {unidade.auditorIds && unidade.auditorIds.length > 0 && (
+                            <div className="ml-7 flex flex-wrap gap-1">
+                              {auditores
+                                .filter((a) => unidade.auditorIds?.includes(a.id))
+                                .map((a) => (
+                                  <span key={a.id} className="inline-flex items-center gap-1 whitespace-nowrap rounded-full font-semibold px-1.5 py-0 text-[10px] border border-border bg-transparent">{a.nome}</span>
+                                ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    {showInlineUnidadeForm && (
+                      <div className="mt-3 p-3 border border-border rounded-lg bg-muted/20 space-y-3">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div className="flex flex-col">
+                            <label className="flex items-center justify-between gap-2 py-1"><span className="font-medium text-foreground text-xs">Nome *</span></label>
+                            <input
+                              type="text"
+                              placeholder="Nome da unidade"
+                              className="rounded-md border border-input bg-card outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs"
+                              value={inlineUnidadeForm.nome}
+                              onChange={(e) => setInlineUnidadeForm({ ...inlineUnidadeForm, nome: e.target.value })}
+                            />
+                          </div>
+                          <div className="flex flex-col">
+                            <label className="flex items-center justify-between gap-2 py-1"><span className="font-medium text-foreground text-xs">Endereço *</span></label>
+                            <input
+                              type="text"
+                              placeholder="Rua, número, bairro"
+                              className="rounded-md border border-input bg-card outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs"
+                              value={inlineUnidadeForm.endereco}
+                              onChange={(e) => setInlineUnidadeForm({ ...inlineUnidadeForm, endereco: e.target.value })}
+                            />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-3 gap-3">
+                          <div className="flex flex-col">
+                            <label className="flex items-center justify-between gap-2 py-1"><span className="font-medium text-foreground text-xs">Cidade *</span></label>
+                            <input
+                              type="text"
+                              placeholder="Cidade"
+                              className="rounded-md border border-input bg-card outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs"
+                              value={inlineUnidadeForm.cidade}
+                              onChange={(e) => setInlineUnidadeForm({ ...inlineUnidadeForm, cidade: e.target.value })}
+                            />
+                          </div>
+                          <div className="flex flex-col">
+                            <label className="flex items-center justify-between gap-2 py-1"><span className="font-medium text-foreground text-xs">Estado *</span></label>
+                            <input
+                              type="text"
+                              placeholder="UF"
+                              className="rounded-md border border-input bg-card outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs"
+                              maxLength={2}
+                              value={inlineUnidadeForm.estado}
+                              onChange={(e) => setInlineUnidadeForm({ ...inlineUnidadeForm, estado: e.target.value.toUpperCase() })}
+                            />
+                          </div>
+                          <div className="flex flex-col">
+                            <label className="flex items-center justify-between gap-2 py-1"><span className="font-medium text-foreground text-xs">CEP</span></label>
+                            <input
+                              type="text"
+                              placeholder="00000-000"
+                              className="rounded-md border border-input bg-card outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs"
+                              value={inlineUnidadeForm.cep}
+                              onChange={(e) => setInlineUnidadeForm({ ...inlineUnidadeForm, cep: e.target.value })}
+                            />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div className="flex flex-col">
+                            <label className="flex items-center justify-between gap-2 py-1"><span className="font-medium text-foreground text-xs">E-mail da Unidade *</span></label>
+                            <input
+                              type="email"
+                              placeholder="email@unidade.com"
+                              className={`rounded-md border border-input bg-card outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs ${inlineUnidadeForm.email && !emailValido(inlineUnidadeForm.email) ? '!border-destructive' : ''}`}
+                              value={inlineUnidadeForm.email}
+                              onChange={(e) => setInlineUnidadeForm({ ...inlineUnidadeForm, email: e.target.value })}
+                            />
+                          </div>
+                          <div className="flex flex-col">
+                            <label className="flex items-center justify-between gap-2 py-1"><span className="font-medium text-foreground text-xs">Responsável *</span></label>
+                            <input
+                              type="text"
+                              placeholder="Nome do responsável"
+                              className="rounded-md border border-input bg-card outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs"
+                              value={inlineUnidadeForm.responsavel}
+                              onChange={(e) => setInlineUnidadeForm({ ...inlineUnidadeForm, responsavel: e.target.value })}
+                            />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div className="flex flex-col">
+                            <label className="flex items-center justify-between gap-2 py-1"><span className="font-medium text-foreground text-xs">WhatsApp</span></label>
+                            <input
+                              type="tel"
+                              placeholder="(00) 00000-0000"
+                              className="rounded-md border border-input bg-card outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs"
+                              value={inlineUnidadeForm.whatsapp}
+                              onChange={(e) => setInlineUnidadeForm({ ...inlineUnidadeForm, whatsapp: aplicarMascaraTelefone(e.target.value) })}
+                              maxLength={15}
+                            />
+                          </div>
+                        </div>
+                        {auditoresSelecionadosCliente.length > 0 && (
+                          <MultiSelectAuditores
+                            auditores={auditoresSelecionadosCliente}
+                            selecionados={inlineUnidadeForm.auditorIds}
+                            onChange={(ids) => setInlineUnidadeForm({ ...inlineUnidadeForm, auditorIds: ids })}
+                            label="Auditores da Unidade"
+                            size="sm"
+                          />
+                        )}
+                        <div className="flex justify-end gap-2">
+                          <button
+                            type="button"
+                            className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 hover:bg-muted"
+                            onClick={() => {
+                              setShowInlineUnidadeForm(false);
+                              setEditingInlineUnidadeId(null);
+                              setInlineUnidadeForm({ ...INLINE_UNIDADE_INICIAL });
+                            }}
+                          >
+                            Cancelar
+                          </button>
+                          <button
+                            type="button"
+                            className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 bg-primary text-primary-foreground hover:bg-primary/90 gap-1"
+                            onClick={handleSalvarInlineUnidade}
+                            disabled={
+                              !inlineUnidadeForm.nome ||
+                              !inlineUnidadeForm.endereco ||
+                              !inlineUnidadeForm.cidade ||
+                              !inlineUnidadeForm.estado ||
+                              !inlineUnidadeForm.email ||
+                              !inlineUnidadeForm.responsavel ||
+                              (inlineUnidadeForm.email ? !emailValido(inlineUnidadeForm.email) : false)
+                            }
+                          >
+                            <Check className="w-3.5 h-3.5" />
+                            {editingInlineUnidadeId ? 'Atualizar' : 'Adicionar'}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    {!showInlineUnidadeForm && unidadesPendentes.length > 0 && (
+                      <button type="button" className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 border border-input bg-card hover:bg-muted gap-1 mt-2" onClick={handleAdicionarInlineUnidade}>
+                        <Plus className="w-3.5 h-3.5" />
+                        Adicionar outra unidade
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
+    </>
+  );
 
   return (
     <AppLayout>
@@ -658,7 +1334,7 @@ export default function ClientesPage() {
         title="Clientes"
         subtitle="Gerencie seus clientes e unidades"
         action={
-          <button className="btn btn-primary gap-2" onClick={handleNovoCliente}>
+          <button className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-10 px-4 bg-primary text-primary-foreground hover:bg-primary/90" onClick={handleNovoCliente}>
             <Plus className="w-4 h-4" />
             Novo Cliente
           </button>
@@ -707,13 +1383,13 @@ export default function ClientesPage() {
           setUnidadesPendentes([]);
         }}
         title={editingCliente ? 'Editar Cliente' : 'Novo Cliente'}
-        maxWidth="4xl"
+        maxWidth="3xl"
         isDirty={Boolean(clienteForm.razaoSocial || clienteForm.cnpj || clienteForm.telefone || unidadesPendentes.length > 0)}
         closeOnBackdrop={false}
         footer={
           <>
             <button
-              className="btn btn-ghost"
+              className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-10 px-4 hover:bg-muted"
               onClick={() => {
                 clearPendingLogo();
                 setShowModal(false);
@@ -725,7 +1401,7 @@ export default function ClientesPage() {
               Cancelar
             </button>
             <button
-              className="btn btn-primary"
+              className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-10 px-4 bg-primary text-primary-foreground hover:bg-primary/90"
               onClick={handleSalvarCliente}
               disabled={
                 saving ||
@@ -747,660 +1423,36 @@ export default function ClientesPage() {
         }
       >
         <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className="form-control">
-                  <label className="label"><span className="label-text">Razão Social *</span></label>
-                  <input
-                    type="text"
-                    placeholder="Razão social da empresa"
-                    className="input input-bordered"
-                    value={clienteForm.razaoSocial}
-                    onChange={(e) => setClienteForm({ ...clienteForm, razaoSocial: e.target.value })}
-                  />
-                </div>
-                <div className="form-control">
-                  <label className="label"><span className="label-text">Nome Fantasia</span></label>
-                  <input
-                    type="text"
-                    placeholder="Nome fantasia"
-                    className="input input-bordered"
-                    value={clienteForm.nomeFantasia}
-                    onChange={(e) => setClienteForm({ ...clienteForm, nomeFantasia: e.target.value })}
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className="form-control">
-                  <label className="label"><span className="label-text">CNPJ *</span></label>
-                  <input
-                    type="text"
-                    placeholder="00.000.000/0000-00"
-                    className="input input-bordered"
-                    value={clienteForm.cnpj}
-                    onChange={(e) => setClienteForm({ ...clienteForm, cnpj: aplicarMascaraCNPJ(e.target.value) })}
-                    maxLength={18}
-                  />
-                </div>
-                <div className="form-control">
-                  <label className="label"><span className="label-text">Tipo de Atividade</span></label>
-                  <select
-                    className="select select-bordered"
-                    value={clienteForm.tipoAtividade}
-                    onChange={(e) => setClienteForm({ ...clienteForm, tipoAtividade: e.target.value as TipoAtividade })}
-                  >
-                    {Object.entries(TIPO_ATIVIDADE_LABELS).map(([value, label]) => (
-                      <option key={value} value={value}>{label}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className="form-control">
-                  <label className="label"><span className="label-text">Telefone *</span></label>
-                  <input
-                    type="tel"
-                    placeholder="(00) 00000-0000"
-                    className="input input-bordered"
-                    value={clienteForm.telefone}
-                    onChange={(e) => setClienteForm({ ...clienteForm, telefone: aplicarMascaraTelefone(e.target.value) })}
-                    maxLength={15}
-                  />
-                </div>
-                <div className="form-control">
-                  <label className="label">
-                    <span className="label-text">E-mail</span>
-                    {clienteForm.email && !emailValido(clienteForm.email) && (
-                      <span className="label-text-alt text-error">Inválido</span>
-                    )}
-                  </label>
-                  <input
-                    type="email"
-                    placeholder="email@exemplo.com"
-                    className={`input input-bordered ${clienteForm.email && !emailValido(clienteForm.email) ? 'input-error' : ''}`}
-                    value={clienteForm.email}
-                    onChange={(e) => setClienteForm({ ...clienteForm, email: e.target.value })}
-                  />
-                </div>
-              </div>
-              {(isGestor() || isMaster()) && (
-                <MultiSelectAuditores
-                  auditores={auditores}
-                  selecionados={clienteForm.auditorIds}
-                  onChange={(ids) => setClienteForm({ ...clienteForm, auditorIds: ids })}
-                  label="Auditores Responsáveis"
-                />
-              )}
-              <div className="form-control pt-2 border-t border-base-200">
-                <label className="label"><span className="label-text">Logo do cliente</span></label>
-                <p className="text-sm text-base-content/60 mb-3">
-                  A logo aparece no cabeçalho dos relatórios em formato quadrado.
-                </p>
-                <input
-                  ref={logoFileInputRef}
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp,image/gif"
-                  className="hidden"
-                  onChange={handleLogoFileSelect}
-                />
-                {!pendingLogoRemover && (pendingLogoPreviewUrl || (editingCliente?.logoUrl && !pendingLogoBlob)) ? (
-                  <div className="flex flex-col items-start gap-3">
-                    <div className="w-40 h-40 rounded-lg border border-base-300 overflow-hidden bg-base-200 flex-shrink-0">
-                      <img
-                        src={pendingLogoPreviewUrl || editingCliente?.logoUrl || ''}
-                        alt="Logo do cliente"
-                        className="w-full h-full object-contain"
-                      />
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <button type="button" className="btn btn-outline btn-sm gap-2" onClick={() => logoFileInputRef.current?.click()}>
-                        <ImagePlus className="w-4 h-4" />
-                        Alterar imagem
-                      </button>
-                      <button type="button" className="btn btn-ghost btn-sm gap-2 text-error hover:bg-error/10" onClick={handleRemoverLogoNoModal}>
-                        <Trash2 className="w-4 h-4" />
-                        Remover imagem
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => logoFileInputRef.current?.click()}
-                    className="w-full h-24 border-2 border-dashed border-base-300 rounded-lg flex flex-col items-center justify-center gap-2 hover:border-primary hover:bg-primary/5 transition-colors"
-                  >
-                    <ImagePlus className="w-8 h-8 text-base-content/40" />
-                    <span className="text-sm text-base-content/60">Clique para adicionar imagem da logo</span>
-                  </button>
-                )}
-              </div>
-
-              {/* Seção de Unidades */}
-              <div className="pt-2 border-t border-base-200">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <span className="label-text font-medium">Unidades *</span>
-                    {!editingCliente && (
-                      <span className="badge badge-sm badge-ghost">{unidadesPendentes.length}</span>
-                    )}
-                    {editingCliente && (
-                      <span className="badge badge-sm badge-ghost">{editingCliente.unidades?.length || 0}</span>
-                    )}
-                  </div>
-                  {!showInlineUnidadeForm && !editingUnidadeId && (
-                    <button type="button" className="btn btn-outline btn-sm gap-1" onClick={handleAdicionarInlineUnidade}>
-                      <Plus className="w-3.5 h-3.5" />
-                      Adicionar
-                    </button>
-                  )}
-                </div>
-
-                {editingCliente ? (
-                  <div className="space-y-2 max-h-[400px] overflow-y-auto">
-                    {!editingCliente.unidades || editingCliente.unidades.length === 0 ? (
-                      <p className="text-sm text-base-content/50 py-4 text-center">
-                        Nenhuma unidade cadastrada.
-                      </p>
-                    ) : (
-                      editingCliente.unidades.map((unidade) => (
-                        <div key={unidade.id}>
-                          {editingUnidadeId === unidade.id ? (
-                            <div className="p-3 border border-primary/30 rounded-lg bg-base-200/20 space-y-3">
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                <div className="form-control">
-                                  <label className="label py-1"><span className="label-text text-xs">Nome *</span></label>
-                                  <input
-                                    type="text"
-                                    placeholder="Nome da unidade"
-                                    className="input input-bordered input-sm"
-                                    value={editUnidadeForm.nome}
-                                    onChange={(e) => setEditUnidadeForm({ ...editUnidadeForm, nome: e.target.value })}
-                                  />
-                                </div>
-                                <div className="form-control">
-                                  <label className="label py-1"><span className="label-text text-xs">Endereço *</span></label>
-                                  <input
-                                    type="text"
-                                    placeholder="Rua, número, bairro"
-                                    className="input input-bordered input-sm"
-                                    value={editUnidadeForm.endereco}
-                                    onChange={(e) => setEditUnidadeForm({ ...editUnidadeForm, endereco: e.target.value })}
-                                  />
-                                </div>
-                              </div>
-                              <div className="grid grid-cols-3 gap-3">
-                                <div className="form-control">
-                                  <label className="label py-1"><span className="label-text text-xs">Cidade *</span></label>
-                                  <input
-                                    type="text"
-                                    placeholder="Cidade"
-                                    className="input input-bordered input-sm"
-                                    value={editUnidadeForm.cidade}
-                                    onChange={(e) => setEditUnidadeForm({ ...editUnidadeForm, cidade: e.target.value })}
-                                  />
-                                </div>
-                                <div className="form-control">
-                                  <label className="label py-1"><span className="label-text text-xs">Estado *</span></label>
-                                  <input
-                                    type="text"
-                                    placeholder="UF"
-                                    className="input input-bordered input-sm"
-                                    maxLength={2}
-                                    value={editUnidadeForm.estado}
-                                    onChange={(e) => setEditUnidadeForm({ ...editUnidadeForm, estado: e.target.value.toUpperCase() })}
-                                  />
-                                </div>
-                                <div className="form-control">
-                                  <label className="label py-1"><span className="label-text text-xs">CEP</span></label>
-                                  <input
-                                    type="text"
-                                    placeholder="00000-000"
-                                    className="input input-bordered input-sm"
-                                    value={editUnidadeForm.cep}
-                                    onChange={(e) => setEditUnidadeForm({ ...editUnidadeForm, cep: e.target.value })}
-                                  />
-                                </div>
-                              </div>
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                <div className="form-control">
-                                  <label className="label py-1"><span className="label-text text-xs">E-mail da Unidade *</span></label>
-                                  <input
-                                    type="email"
-                                    placeholder="email@unidade.com"
-                                    className={`input input-bordered input-sm ${editUnidadeForm.email && !emailValido(editUnidadeForm.email) ? 'input-error' : ''}`}
-                                    value={editUnidadeForm.email}
-                                    onChange={(e) => setEditUnidadeForm({ ...editUnidadeForm, email: e.target.value })}
-                                  />
-                                </div>
-                                <div className="form-control">
-                                  <label className="label py-1"><span className="label-text text-xs">Responsável *</span></label>
-                                  <input
-                                    type="text"
-                                    placeholder="Nome do responsável"
-                                    className="input input-bordered input-sm"
-                                    value={editUnidadeForm.responsavel}
-                                    onChange={(e) => setEditUnidadeForm({ ...editUnidadeForm, responsavel: e.target.value })}
-                                  />
-                                </div>
-                              </div>
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                <div className="form-control">
-                                  <label className="label py-1"><span className="label-text text-xs">WhatsApp</span></label>
-                                  <input
-                                    type="tel"
-                                    placeholder="(00) 00000-0000"
-                                    className="input input-bordered input-sm"
-                                    value={editUnidadeForm.whatsapp}
-                                    onChange={(e) => setEditUnidadeForm({ ...editUnidadeForm, whatsapp: aplicarMascaraTelefone(e.target.value) })}
-                                    maxLength={15}
-                                  />
-                                </div>
-                              </div>
-                              {auditoresSelecionadosCliente.length > 0 && (
-                                <MultiSelectAuditores
-                                  auditores={auditoresSelecionadosCliente}
-                                  selecionados={editUnidadeForm.auditorIds}
-                                  onChange={(ids) => setEditUnidadeForm({ ...editUnidadeForm, auditorIds: ids })}
-                                  label="Auditores da Unidade"
-                                  size="sm"
-                                />
-                              )}
-                              <div className="flex justify-end gap-2">
-                                <button
-                                  type="button"
-                                  className="btn btn-ghost btn-sm"
-                                  onClick={handleCancelarEditUnidade}
-                                  disabled={savingUnidade}
-                                >
-                                  Cancelar
-                                </button>
-                                <button
-                                  type="button"
-                                  className="btn btn-primary btn-sm gap-1"
-                                  onClick={handleSalvarUnidadeExistente}
-                                  disabled={
-                                    savingUnidade ||
-                                    !editUnidadeForm.nome ||
-                                    !editUnidadeForm.endereco ||
-                                    !editUnidadeForm.email ||
-                                    !editUnidadeForm.responsavel ||
-                                    (editUnidadeForm.email ? !emailValido(editUnidadeForm.email) : false)
-                                  }
-                                >
-                                  {savingUnidade ? (
-                                    <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Salvando...</>
-                                  ) : (
-                                    <><Check className="w-3.5 h-3.5" /> Salvar</>
-                                  )}
-                                </button>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="p-2.5 bg-base-200/30 rounded-lg space-y-1 group">
-                              <div className="flex items-center gap-3">
-                                <MapPin className="w-4 h-4 text-secondary shrink-0" />
-                                <div className="flex-1 min-w-0">
-                                  <p className="font-medium text-sm truncate">{unidade.nome}</p>
-                                  <p className="text-xs text-base-content/60 truncate">
-                                    {unidade.endereco} — {unidade.cidade}, {unidade.estado}
-                                  </p>
-                                </div>
-                                <button
-                                  type="button"
-                                  onClick={() => handleEditarUnidadeExistente(unidade)}
-                                  className="btn btn-ghost btn-xs opacity-0 group-hover:opacity-100 transition-opacity"
-                                >
-                                  <Edit className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                              <div className="ml-7 flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-base-content/60">
-                                {unidade.responsavel && <span>Responsável: {unidade.responsavel}</span>}
-                                {unidade.email && <span>E-mail: {unidade.email}</span>}
-                                {unidade.whatsapp && <span>WhatsApp: {aplicarMascaraTelefone(unidade.whatsapp)}</span>}
-                              </div>
-                              {unidade.auditores && unidade.auditores.length > 0 && (
-                                <div className="ml-7 flex flex-wrap gap-1">
-                                  {unidade.auditores.map((a) => (
-                                    <span key={a.id} className="badge badge-xs badge-outline">{a.nome}</span>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      ))
-                    )}
-                    {showInlineUnidadeForm && (
-                      <div className="mt-3 p-3 border border-base-300 rounded-lg bg-base-200/20 space-y-3">
-                        <p className="text-xs font-medium text-base-content/70">Nova unidade</p>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          <div className="form-control">
-                            <label className="label py-1"><span className="label-text text-xs">Nome *</span></label>
-                            <input
-                              type="text"
-                              placeholder="Nome da unidade"
-                              className="input input-bordered input-sm"
-                              value={inlineUnidadeForm.nome}
-                              onChange={(e) => setInlineUnidadeForm({ ...inlineUnidadeForm, nome: e.target.value })}
-                            />
-                          </div>
-                          <div className="form-control">
-                            <label className="label py-1"><span className="label-text text-xs">Endereço *</span></label>
-                            <input
-                              type="text"
-                              placeholder="Rua, número, bairro"
-                              className="input input-bordered input-sm"
-                              value={inlineUnidadeForm.endereco}
-                              onChange={(e) => setInlineUnidadeForm({ ...inlineUnidadeForm, endereco: e.target.value })}
-                            />
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-3 gap-3">
-                          <div className="form-control">
-                            <label className="label py-1"><span className="label-text text-xs">Cidade *</span></label>
-                            <input
-                              type="text"
-                              placeholder="Cidade"
-                              className="input input-bordered input-sm"
-                              value={inlineUnidadeForm.cidade}
-                              onChange={(e) => setInlineUnidadeForm({ ...inlineUnidadeForm, cidade: e.target.value })}
-                            />
-                          </div>
-                          <div className="form-control">
-                            <label className="label py-1"><span className="label-text text-xs">Estado *</span></label>
-                            <input
-                              type="text"
-                              placeholder="UF"
-                              className="input input-bordered input-sm"
-                              maxLength={2}
-                              value={inlineUnidadeForm.estado}
-                              onChange={(e) => setInlineUnidadeForm({ ...inlineUnidadeForm, estado: e.target.value.toUpperCase() })}
-                            />
-                          </div>
-                          <div className="form-control">
-                            <label className="label py-1"><span className="label-text text-xs">CEP</span></label>
-                            <input
-                              type="text"
-                              placeholder="00000-000"
-                              className="input input-bordered input-sm"
-                              value={inlineUnidadeForm.cep}
-                              onChange={(e) => setInlineUnidadeForm({ ...inlineUnidadeForm, cep: e.target.value })}
-                            />
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          <div className="form-control">
-                            <label className="label py-1"><span className="label-text text-xs">E-mail da Unidade *</span></label>
-                            <input
-                              type="email"
-                              placeholder="email@unidade.com"
-                              className={`input input-bordered input-sm ${inlineUnidadeForm.email && !emailValido(inlineUnidadeForm.email) ? 'input-error' : ''}`}
-                              value={inlineUnidadeForm.email}
-                              onChange={(e) => setInlineUnidadeForm({ ...inlineUnidadeForm, email: e.target.value })}
-                            />
-                          </div>
-                          <div className="form-control">
-                            <label className="label py-1"><span className="label-text text-xs">Responsável *</span></label>
-                            <input
-                              type="text"
-                              placeholder="Nome do responsável"
-                              className="input input-bordered input-sm"
-                              value={inlineUnidadeForm.responsavel}
-                              onChange={(e) => setInlineUnidadeForm({ ...inlineUnidadeForm, responsavel: e.target.value })}
-                            />
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          <div className="form-control">
-                            <label className="label py-1"><span className="label-text text-xs">WhatsApp</span></label>
-                            <input
-                              type="tel"
-                              placeholder="(00) 00000-0000"
-                              className="input input-bordered input-sm"
-                              value={inlineUnidadeForm.whatsapp}
-                              onChange={(e) => setInlineUnidadeForm({ ...inlineUnidadeForm, whatsapp: aplicarMascaraTelefone(e.target.value) })}
-                              maxLength={15}
-                            />
-                          </div>
-                        </div>
-                        {auditoresSelecionadosCliente.length > 0 && (
-                          <MultiSelectAuditores
-                            auditores={auditoresSelecionadosCliente}
-                            selecionados={inlineUnidadeForm.auditorIds || []}
-                            onChange={(ids) => setInlineUnidadeForm({ ...inlineUnidadeForm, auditorIds: ids })}
-                            label="Auditores da Unidade"
-                            size="sm"
-                          />
-                        )}
-                        <div className="flex justify-end gap-2">
-                          <button
-                            type="button"
-                            className="btn btn-ghost btn-sm"
-                            onClick={() => {
-                              setShowInlineUnidadeForm(false);
-                              setEditingInlineUnidadeId(null);
-                              setInlineUnidadeForm({ ...INLINE_UNIDADE_INICIAL });
-                            }}
-                            disabled={savingUnidade}
-                          >
-                            Cancelar
-                          </button>
-                          <button
-                            type="button"
-                            className="btn btn-primary btn-sm gap-1"
-                            onClick={() => handleSalvarInlineUnidade()}
-                            disabled={
-                              savingUnidade ||
-                              !inlineUnidadeForm.nome ||
-                              !inlineUnidadeForm.endereco ||
-                              !inlineUnidadeForm.cidade ||
-                              !inlineUnidadeForm.estado ||
-                              !inlineUnidadeForm.email ||
-                              !inlineUnidadeForm.responsavel ||
-                              (inlineUnidadeForm.email ? !emailValido(inlineUnidadeForm.email) : false)
-                            }
-                          >
-                            {savingUnidade ? (
-                              <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Salvando...</>
-                            ) : (
-                              <><Check className="w-3.5 h-3.5" /> Adicionar</>
-                            )}
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                    {!showInlineUnidadeForm && (editingCliente?.unidades?.length || 0) > 0 && (
-                      <button type="button" className="btn btn-outline btn-sm gap-1 mt-2" onClick={handleAdicionarInlineUnidade}>
-                        <Plus className="w-3.5 h-3.5" />
-                        Adicionar outra unidade
-                      </button>
-                    )}
-                  </div>
-                ) : (
-                  <>
-                    <div className="space-y-2 max-h-60 overflow-y-auto">
-                      {unidadesPendentes.length === 0 && !showInlineUnidadeForm && (
-                        <p className="text-sm text-base-content/50 py-4 text-center">
-                          Nenhuma unidade adicionada. Adicione pelo menos uma unidade para salvar o cliente.
-                        </p>
-                      )}
-                      {unidadesPendentes.map((unidade) => (
-                        <div key={unidade.tempId} className="p-2.5 bg-base-200/30 rounded-lg group space-y-1">
-                          <div className="flex items-center gap-3">
-                            <MapPin className="w-4 h-4 text-secondary shrink-0" />
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium text-sm truncate">{unidade.nome}</p>
-                              <p className="text-xs text-base-content/60 truncate">
-                                {unidade.endereco}{unidade.cidade ? ` — ${unidade.cidade}` : ''}{unidade.estado ? `, ${unidade.estado}` : ''}
-                              </p>
-                            </div>
-                            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <button type="button" onClick={() => handleEditarInlineUnidade(unidade.tempId)} className="btn btn-ghost btn-xs">
-                                <Edit className="w-3.5 h-3.5" />
-                              </button>
-                              <button type="button" onClick={() => handleRemoverInlineUnidade(unidade.tempId)} className="btn btn-ghost btn-xs text-error">
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          </div>
-                          <div className="ml-7 flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-base-content/60">
-                            {unidade.responsavel && <span>Responsável: {unidade.responsavel}</span>}
-                            {unidade.email && <span>E-mail: {unidade.email}</span>}
-                            {unidade.whatsapp && <span>WhatsApp: {aplicarMascaraTelefone(unidade.whatsapp)}</span>}
-                          </div>
-                          {unidade.auditorIds && unidade.auditorIds.length > 0 && (
-                            <div className="ml-7 flex flex-wrap gap-1">
-                              {auditores
-                                .filter((a) => unidade.auditorIds?.includes(a.id))
-                                .map((a) => (
-                                  <span key={a.id} className="badge badge-xs badge-outline">{a.nome}</span>
-                                ))}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                    {showInlineUnidadeForm && (
-                      <div className="mt-3 p-3 border border-base-300 rounded-lg bg-base-200/20 space-y-3">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          <div className="form-control">
-                            <label className="label py-1"><span className="label-text text-xs">Nome *</span></label>
-                            <input
-                              type="text"
-                              placeholder="Nome da unidade"
-                              className="input input-bordered input-sm"
-                              value={inlineUnidadeForm.nome}
-                              onChange={(e) => setInlineUnidadeForm({ ...inlineUnidadeForm, nome: e.target.value })}
-                            />
-                          </div>
-                          <div className="form-control">
-                            <label className="label py-1"><span className="label-text text-xs">Endereço *</span></label>
-                            <input
-                              type="text"
-                              placeholder="Rua, número, bairro"
-                              className="input input-bordered input-sm"
-                              value={inlineUnidadeForm.endereco}
-                              onChange={(e) => setInlineUnidadeForm({ ...inlineUnidadeForm, endereco: e.target.value })}
-                            />
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-3 gap-3">
-                          <div className="form-control">
-                            <label className="label py-1"><span className="label-text text-xs">Cidade *</span></label>
-                            <input
-                              type="text"
-                              placeholder="Cidade"
-                              className="input input-bordered input-sm"
-                              value={inlineUnidadeForm.cidade}
-                              onChange={(e) => setInlineUnidadeForm({ ...inlineUnidadeForm, cidade: e.target.value })}
-                            />
-                          </div>
-                          <div className="form-control">
-                            <label className="label py-1"><span className="label-text text-xs">Estado *</span></label>
-                            <input
-                              type="text"
-                              placeholder="UF"
-                              className="input input-bordered input-sm"
-                              maxLength={2}
-                              value={inlineUnidadeForm.estado}
-                              onChange={(e) => setInlineUnidadeForm({ ...inlineUnidadeForm, estado: e.target.value.toUpperCase() })}
-                            />
-                          </div>
-                          <div className="form-control">
-                            <label className="label py-1"><span className="label-text text-xs">CEP</span></label>
-                            <input
-                              type="text"
-                              placeholder="00000-000"
-                              className="input input-bordered input-sm"
-                              value={inlineUnidadeForm.cep}
-                              onChange={(e) => setInlineUnidadeForm({ ...inlineUnidadeForm, cep: e.target.value })}
-                            />
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          <div className="form-control">
-                            <label className="label py-1"><span className="label-text text-xs">E-mail da Unidade *</span></label>
-                            <input
-                              type="email"
-                              placeholder="email@unidade.com"
-                              className={`input input-bordered input-sm ${inlineUnidadeForm.email && !emailValido(inlineUnidadeForm.email) ? 'input-error' : ''}`}
-                              value={inlineUnidadeForm.email}
-                              onChange={(e) => setInlineUnidadeForm({ ...inlineUnidadeForm, email: e.target.value })}
-                            />
-                          </div>
-                          <div className="form-control">
-                            <label className="label py-1"><span className="label-text text-xs">Responsável *</span></label>
-                            <input
-                              type="text"
-                              placeholder="Nome do responsável"
-                              className="input input-bordered input-sm"
-                              value={inlineUnidadeForm.responsavel}
-                              onChange={(e) => setInlineUnidadeForm({ ...inlineUnidadeForm, responsavel: e.target.value })}
-                            />
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          <div className="form-control">
-                            <label className="label py-1"><span className="label-text text-xs">WhatsApp</span></label>
-                            <input
-                              type="tel"
-                              placeholder="(00) 00000-0000"
-                              className="input input-bordered input-sm"
-                              value={inlineUnidadeForm.whatsapp}
-                              onChange={(e) => setInlineUnidadeForm({ ...inlineUnidadeForm, whatsapp: aplicarMascaraTelefone(e.target.value) })}
-                              maxLength={15}
-                            />
-                          </div>
-                        </div>
-                        {auditoresSelecionadosCliente.length > 0 && (
-                          <MultiSelectAuditores
-                            auditores={auditoresSelecionadosCliente}
-                            selecionados={inlineUnidadeForm.auditorIds}
-                            onChange={(ids) => setInlineUnidadeForm({ ...inlineUnidadeForm, auditorIds: ids })}
-                            label="Auditores da Unidade"
-                            size="sm"
-                          />
-                        )}
-                        <div className="flex justify-end gap-2">
-                          <button
-                            type="button"
-                            className="btn btn-ghost btn-sm"
-                            onClick={() => {
-                              setShowInlineUnidadeForm(false);
-                              setEditingInlineUnidadeId(null);
-                              setInlineUnidadeForm({ ...INLINE_UNIDADE_INICIAL });
-                            }}
-                          >
-                            Cancelar
-                          </button>
-                          <button
-                            type="button"
-                            className="btn btn-primary btn-sm gap-1"
-                            onClick={handleSalvarInlineUnidade}
-                            disabled={
-                              !inlineUnidadeForm.nome ||
-                              !inlineUnidadeForm.endereco ||
-                              !inlineUnidadeForm.cidade ||
-                              !inlineUnidadeForm.estado ||
-                              !inlineUnidadeForm.email ||
-                              !inlineUnidadeForm.responsavel ||
-                              (inlineUnidadeForm.email ? !emailValido(inlineUnidadeForm.email) : false)
-                            }
-                          >
-                            <Check className="w-3.5 h-3.5" />
-                            {editingInlineUnidadeId ? 'Atualizar' : 'Adicionar'}
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                    {!showInlineUnidadeForm && unidadesPendentes.length > 0 && (
-                      <button type="button" className="btn btn-outline btn-sm gap-1 mt-2" onClick={handleAdicionarInlineUnidade}>
-                        <Plus className="w-3.5 h-3.5" />
-                        Adicionar outra unidade
-                      </button>
-                    )}
-                  </>
-                )}
-              </div>
+          {editingCliente ? (
+            <Tabs defaultValue="dados">
+              <TabsList className="w-full justify-start overflow-x-auto">
+                <TabsTrigger value="dados">Dados</TabsTrigger>
+                <TabsTrigger value="unidades">Unidades ({editingCliente.unidades?.length || 0})</TabsTrigger>
+                {(isGestor() || isMaster()) && <TabsTrigger value="equipe">Equipe</TabsTrigger>}
+                <TabsTrigger value="auditorias">Auditorias</TabsTrigger>
+              </TabsList>
+              <TabsContent value="dados" className="space-y-4">
+                {blocoDados}
+                {blocoLogo}
+              </TabsContent>
+              <TabsContent value="unidades" className="space-y-4">
+                {blocoUnidades}
+              </TabsContent>
+              <TabsContent value="equipe" className="space-y-4">
+                {blocoEquipe}
+              </TabsContent>
+              <TabsContent value="auditorias" forceMount className="data-[state=inactive]:hidden">
+                <AuditoriasDoCliente clienteId={editingCliente.id} />
+              </TabsContent>
+            </Tabs>
+          ) : (
+            <>
+              {blocoDados}
+              {blocoEquipe}
+              {blocoLogo}
+              {blocoUnidades}
+            </>
+          )}
         </div>
       </FormModal>
 

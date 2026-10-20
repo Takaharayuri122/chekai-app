@@ -272,11 +272,11 @@ export default function RelatorioPage() {
       case 'medio':
         return 'text-warning';
       case 'alto':
-        return 'text-error';
+        return 'text-destructive';
       case 'critico':
-        return 'text-error';
+        return 'text-destructive';
       default:
-        return 'text-base-content';
+        return 'text-foreground';
     }
   };
 
@@ -299,7 +299,7 @@ export default function RelatorioPage() {
     return (
       <AppLayout>
         <div className="flex items-center justify-center min-h-screen">
-          <span className="loading loading-spinner loading-lg text-primary"></span>
+          <span className="inline-block shrink-0 animate-spin rounded-full border-2 border-current border-r-transparent h-8 w-8 text-primary"></span>
         </div>
       </AppLayout>
     );
@@ -678,12 +678,12 @@ export default function RelatorioPage() {
       <PageHeader title="Relatório de Auditoria" />
       <div className="px-4 py-4 lg:px-8 space-y-4">
         {/* Cabeçalho */}
-        <div className="card bg-base-100 shadow-sm border border-base-300">
-          <div className="card-body p-4 sm:p-6">
-            <div className="flex items-center justify-between gap-4 mb-4 pb-4 border-b border-base-300">
+        <div className="relative flex flex-col rounded-lg border border-border bg-card shadow-sm">
+          <div className="flex flex-1 flex-col gap-2 p-4 sm:p-6">
+            <div className="flex items-center justify-between gap-4 mb-4 pb-4 border-b border-border">
               <button
                 onClick={() => router.push('/auditorias')}
-                className="btn btn-ghost btn-sm"
+                className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 hover:bg-muted"
               >
                 <ArrowLeft className="w-4 h-4" />
                 Voltar
@@ -691,7 +691,7 @@ export default function RelatorioPage() {
               <button
                 onClick={handleBaixarPdf}
                 disabled={baixandoPdf}
-                className="btn btn-primary btn-sm"
+                className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 bg-primary text-primary-foreground hover:bg-primary/90"
               >
                 {baixandoPdf ? (
                   <>
@@ -712,10 +712,10 @@ export default function RelatorioPage() {
                   <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
                 </div>
                 <div className="min-w-0">
-                  <h1 className="text-lg sm:text-xl font-bold text-base-content truncate">
+                  <h1 className="text-lg sm:text-xl font-bold text-foreground truncate">
                     {auditoria.unidade?.nome || 'Unidade'}
                   </h1>
-                  <p className="text-base-content/60 flex items-center gap-1 mt-0.5 text-xs sm:text-sm truncate">
+                  <p className="text-muted-foreground flex items-center gap-1 mt-0.5 text-xs sm:text-sm truncate">
                     <Building2 className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
                     {auditoria.unidade?.cliente?.nomeFantasia ||
                       auditoria.unidade?.cliente?.razaoSocial ||
@@ -723,7 +723,7 @@ export default function RelatorioPage() {
                   </p>
                 </div>
               </div>
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs sm:text-sm text-base-content/70">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs sm:text-sm text-muted-foreground">
                 <span className="flex items-center gap-1.5">
                   <User className="w-3.5 h-3.5 flex-shrink-0" />
                   <span className="font-medium">Auditor:</span>
@@ -755,30 +755,30 @@ export default function RelatorioPage() {
         </div>
 
         {/* Métricas Gerais */}
-        <div className="card bg-base-100 shadow-sm border border-base-300">
-          <div className="card-body p-4 sm:p-6">
+        <div className="relative flex flex-col rounded-lg border border-border bg-card shadow-sm">
+          <div className="flex flex-1 flex-col gap-2 p-4 sm:p-6">
             <h2 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4">Métricas Gerais</h2>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6">
-              <div className="stat bg-base-200 rounded-lg p-3 sm:p-4">
-                <div className="stat-title text-xs sm:text-sm">Aproveitamento</div>
-                <div className="stat-value text-primary text-2xl sm:text-3xl">
+              <div className="flex flex-col gap-1 bg-muted rounded-lg p-3 sm:p-4">
+                <div className="text-muted-foreground text-xs sm:text-sm">Aproveitamento</div>
+                <div className="font-display font-semibold text-primary text-2xl sm:text-3xl">
                   {aproveitamentoSeguro.toFixed(2)}%
                 </div>
-                <div className="stat-desc text-xs sm:text-sm">{getClassificacao(aproveitamentoSeguro)}</div>
+                <div className="text-xs text-muted-foreground sm:text-sm">{getClassificacao(aproveitamentoSeguro)}</div>
               </div>
-              <div className="stat bg-base-200 rounded-lg p-3 sm:p-4">
-                <div className="stat-title text-xs sm:text-sm">Pontos Realizados</div>
-                <div className="stat-value text-success text-2xl sm:text-3xl">
+              <div className="flex flex-col gap-1 bg-muted rounded-lg p-3 sm:p-4">
+                <div className="text-muted-foreground text-xs sm:text-sm">Pontos Realizados</div>
+                <div className="font-display font-semibold text-success text-2xl sm:text-3xl">
                   {metricasGerais.pontosRealizados}
                 </div>
-                <div className="stat-desc text-xs sm:text-sm">de {metricasGerais.pontosPossiveis} possíveis</div>
+                <div className="text-xs text-muted-foreground sm:text-sm">de {metricasGerais.pontosPossiveis} possíveis</div>
               </div>
-              <div className="stat bg-base-200 rounded-lg p-3 sm:p-4">
-                <div className="stat-title text-xs sm:text-sm">Não Conformidades</div>
-                <div className="stat-value text-error text-2xl sm:text-3xl">
+              <div className="flex flex-col gap-1 bg-muted rounded-lg p-3 sm:p-4">
+                <div className="text-muted-foreground text-xs sm:text-sm">Não Conformidades</div>
+                <div className="font-display font-semibold text-destructive text-2xl sm:text-3xl">
                   {metricasGerais.naoConformidades}
                 </div>
-                <div className="stat-desc text-xs sm:text-sm">
+                <div className="text-xs text-muted-foreground sm:text-sm">
                   {metricasGerais.naoAplicaveis > 0 && `${metricasGerais.naoAplicaveis} não aplicáveis`}
                 </div>
               </div>
@@ -786,7 +786,7 @@ export default function RelatorioPage() {
 
             {/* Tabela de Métricas por Grupo - Desktop */}
             <div className="hidden sm:block overflow-x-auto">
-              <table className="table table-zebra">
+              <table className="w-full text-left [&_th]:text-xs [&_th]:font-medium [&_th]:uppercase [&_th]:tracking-wide [&_th]:text-muted-foreground [&_tr]:border-b [&_tr]:border-border text-sm [&_th]:px-4 [&_th]:py-3 [&_td]:px-4 [&_td]:py-3 [&_tbody_tr:nth-child(even)]:bg-muted/40">
                 <thead>
                   <tr>
                     <th>GRUPO</th>
@@ -810,15 +810,15 @@ export default function RelatorioPage() {
                       <td className="text-center">{grupo.naoAplicaveis}</td>
                       <td className="text-center">
                         {grupo.naoConformidades > 0 ? (
-                          <span className="badge badge-error badge-sm">{grupo.naoConformidades}</span>
+                          <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full font-semibold px-2 py-0.5 text-[11px] bg-destructive/12 text-[hsl(0_72%_45%)]">{grupo.naoConformidades}</span>
                         ) : (
-                          <span className="text-base-content/40">0</span>
+                          <span className="text-muted-foreground/70">0</span>
                         )}
                       </td>
                       <td className="text-center">{grupo.naoRespondidas}</td>
                     </tr>
                   ))}
-                  <tr className="font-bold bg-base-200">
+                  <tr className="font-bold bg-muted">
                     <td>GERAL</td>
                     <td className="text-center">{aproveitamentoSeguro.toFixed(2)}%</td>
                     <td className="text-center">{metricasGerais.pontosPossiveis}</td>
@@ -829,7 +829,7 @@ export default function RelatorioPage() {
                   </tr>
                 </tbody>
               </table>
-              <div className="text-xs text-base-content/60 mt-2">
+              <div className="text-xs text-muted-foreground mt-2">
                 <p>
                   <strong>AP:</strong> Aproveitamento | <strong>PP:</strong> Pontos Possíveis |{' '}
                   <strong>PR:</strong> Pontos Realizados | <strong>NA:</strong> Não Aplicáveis |{' '}
@@ -838,7 +838,7 @@ export default function RelatorioPage() {
               </div>
             </div>
 
-            <div className="mt-6 pt-6 border-t border-base-300">
+            <div className="mt-6 pt-6 border-t border-border">
               <h3 className="text-base font-bold mb-4">% de aproveitamento por grupo do formulário</h3>
               <GraficoAproveitamentoGrupos
                 grupos={gruposMetricas.map((g) => ({
@@ -862,35 +862,35 @@ export default function RelatorioPage() {
             {/* Cards de Métricas por Grupo - Mobile */}
             <div className="sm:hidden space-y-3">
               {gruposMetricas.map((grupo) => (
-                <div key={grupo.grupoId} className="bg-base-200 rounded-lg p-3 border border-base-300">
+                <div key={grupo.grupoId} className="bg-muted rounded-lg p-3 border border-border">
                   <div className="font-semibold text-sm mb-2">{grupo.nome}</div>
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     <div>
-                      <span className="text-base-content/60">AP:</span>{' '}
+                      <span className="text-muted-foreground">AP:</span>{' '}
                       <span className="font-semibold">{Number(grupo.aproveitamento || 0).toFixed(2)}%</span>
                     </div>
                     <div>
-                      <span className="text-base-content/60">PP:</span>{' '}
+                      <span className="text-muted-foreground">PP:</span>{' '}
                       <span>{grupo.pontuacaoPossivel}</span>
                     </div>
                     <div>
-                      <span className="text-base-content/60">PR:</span>{' '}
+                      <span className="text-muted-foreground">PR:</span>{' '}
                       <span>{grupo.pontuacaoObtida}</span>
                     </div>
                     <div>
-                      <span className="text-base-content/60">NA:</span>{' '}
+                      <span className="text-muted-foreground">NA:</span>{' '}
                       <span>{grupo.naoAplicaveis}</span>
                     </div>
                     <div>
-                      <span className="text-base-content/60">NC:</span>{' '}
+                      <span className="text-muted-foreground">NC:</span>{' '}
                       {grupo.naoConformidades > 0 ? (
-                        <span className="badge badge-error badge-xs">{grupo.naoConformidades}</span>
+                        <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full font-semibold px-1.5 py-0 text-[10px] bg-destructive/12 text-[hsl(0_72%_45%)]">{grupo.naoConformidades}</span>
                       ) : (
                         <span>0</span>
                       )}
                     </div>
                     <div>
-                      <span className="text-base-content/60">NR:</span>{' '}
+                      <span className="text-muted-foreground">NR:</span>{' '}
                       <span>{grupo.naoRespondidas}</span>
                     </div>
                   </div>
@@ -900,32 +900,32 @@ export default function RelatorioPage() {
                 <div className="font-bold text-sm mb-2">GERAL</div>
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div>
-                    <span className="text-base-content/60">AP:</span>{' '}
+                    <span className="text-muted-foreground">AP:</span>{' '}
                     <span className="font-semibold">{aproveitamentoSeguro.toFixed(2)}%</span>
                   </div>
                   <div>
-                    <span className="text-base-content/60">PP:</span>{' '}
+                    <span className="text-muted-foreground">PP:</span>{' '}
                     <span>{metricasGerais.pontosPossiveis}</span>
                   </div>
                   <div>
-                    <span className="text-base-content/60">PR:</span>{' '}
+                    <span className="text-muted-foreground">PR:</span>{' '}
                     <span>{metricasGerais.pontosRealizados}</span>
                   </div>
                   <div>
-                    <span className="text-base-content/60">NA:</span>{' '}
+                    <span className="text-muted-foreground">NA:</span>{' '}
                     <span>{metricasGerais.naoAplicaveis}</span>
                   </div>
                   <div>
-                    <span className="text-base-content/60">NC:</span>{' '}
+                    <span className="text-muted-foreground">NC:</span>{' '}
                     <span>{metricasGerais.naoConformidades}</span>
                   </div>
                   <div>
-                    <span className="text-base-content/60">NR:</span>{' '}
+                    <span className="text-muted-foreground">NR:</span>{' '}
                     <span>{metricasGerais.naoRespondidas}</span>
                   </div>
                 </div>
               </div>
-              <div className="text-xs text-base-content/60 mt-2">
+              <div className="text-xs text-muted-foreground mt-2">
                 <p>
                   <strong>AP:</strong> Aproveitamento | <strong>PP:</strong> Pontos Possíveis |{' '}
                   <strong>PR:</strong> Pontos Realizados | <strong>NA:</strong> Não Aplicáveis |{' '}
@@ -937,8 +937,8 @@ export default function RelatorioPage() {
         </div>
 
         {/* Histórico de evolução */}
-        <div className="card bg-base-100 shadow-sm border border-base-300">
-          <div className="card-body p-4 sm:p-6">
+        <div className="relative flex flex-col rounded-lg border border-border bg-card shadow-sm">
+          <div className="flex flex-1 flex-col gap-2 p-4 sm:p-6">
             <HistoricoEvolucao
               historico={historicoEvolucao}
               auditoriaAtualId={id}
@@ -955,16 +955,16 @@ export default function RelatorioPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: grupoIndex * 0.1 }}
-              className="card bg-base-100 shadow-sm border border-base-300"
+              className="relative flex flex-col rounded-lg border border-border bg-card shadow-sm"
             >
-              <div className="card-body p-4 sm:p-6">
+              <div className="flex flex-1 flex-col gap-2 p-4 sm:p-6">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4 mb-4">
                   <h3 className="text-base sm:text-lg font-bold">{grupo.nome}</h3>
                   <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                    <span className="text-xs sm:text-sm text-base-content/60">
+                    <span className="text-xs sm:text-sm text-muted-foreground">
                       Aproveitamento: <strong>{Number(grupo.aproveitamento || 0).toFixed(2)}%</strong>
                     </span>
-                    <div className="badge badge-outline badge-sm">
+                    <div className="inline-flex items-center gap-1 whitespace-nowrap rounded-full font-semibold px-2 py-0.5 text-[11px] border border-border bg-transparent">
                       {grupo.pontuacaoObtida}/{grupo.pontuacaoPossivel} pontos
                     </div>
                   </div>
@@ -981,10 +981,10 @@ export default function RelatorioPage() {
                         key={item.id}
                         className={`p-3 sm:p-4 rounded-lg border ${
                           isNaoConforme
-                            ? 'bg-error/5 border-error/20'
+                            ? 'bg-destructive/5 border-destructive/20'
                             : isConforme
                               ? 'bg-success/5 border-success/20'
-                              : 'bg-base-200 border-base-300'
+                              : 'bg-muted border-border'
                         }`}
                       >
                         <div className="flex items-start gap-2 sm:gap-3">
@@ -992,18 +992,18 @@ export default function RelatorioPage() {
                             {isConforme ? (
                               <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-success" />
                             ) : isNaoConforme ? (
-                              <XCircle className="w-4 h-4 sm:w-5 sm:h-5 text-error" />
+                              <XCircle className="w-4 h-4 sm:w-5 sm:h-5 text-destructive" />
                             ) : (
                               <MinusCircle className="w-4 h-4 sm:w-5 sm:h-5 text-warning" />
                             )}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="font-medium text-sm sm:text-base text-base-content mb-2">
+                            <p className="font-medium text-sm sm:text-base text-foreground mb-2">
                               {item.templateItem?.pergunta || 'Pergunta não encontrada'}
                             </p>
                             <div className="space-y-1.5 sm:space-y-2">
                               <div>
-                                <span className="text-xs sm:text-sm font-medium text-base-content/70">
+                                <span className="text-xs sm:text-sm font-medium text-muted-foreground">
                                   Resposta:
                                 </span>{' '}
                                 <span className="text-xs sm:text-sm">
@@ -1018,7 +1018,7 @@ export default function RelatorioPage() {
                               </div>
                               {item.observacao && (
                                 <div>
-                                  <span className="text-xs sm:text-sm font-medium text-base-content/70">
+                                  <span className="text-xs sm:text-sm font-medium text-muted-foreground">
                                     Observação:
                                   </span>{' '}
                                   <span className="text-xs sm:text-sm">{item.observacao}</span>
@@ -1026,7 +1026,7 @@ export default function RelatorioPage() {
                               )}
                               {item.descricaoNaoConformidade && (
                                 <div>
-                                  <span className="text-xs sm:text-sm font-medium text-error">
+                                  <span className="text-xs sm:text-sm font-medium text-destructive">
                                     Justificativa:
                                   </span>{' '}
                                   <span className="text-xs sm:text-sm">{item.descricaoNaoConformidade}</span>
@@ -1034,7 +1034,7 @@ export default function RelatorioPage() {
                               )}
                               {item.descricaoIa && (
                                 <div>
-                                  <span className="text-xs sm:text-sm font-medium text-base-content/70">
+                                  <span className="text-xs sm:text-sm font-medium text-muted-foreground">
                                     Análise IA:
                                   </span>{' '}
                                   <span className="text-xs sm:text-sm">{item.descricaoIa}</span>
@@ -1048,7 +1048,7 @@ export default function RelatorioPage() {
                                         key={foto.id}
                                         type="button"
                                         onClick={() => setFotoModal({ url: foto.url, exif: foto.exif ?? undefined })}
-                                        className="rounded border border-base-300 overflow-hidden focus:outline-none focus:ring-2 focus:ring-primary"
+                                        className="rounded border border-border overflow-hidden focus:outline-none focus:ring-2 focus:ring-primary"
                                       >
                                         <img
                                           src={foto.url}
@@ -1073,8 +1073,8 @@ export default function RelatorioPage() {
         </div>
 
         {/* Resumo Executivo */}
-        <div className="card bg-base-100 shadow-sm border border-base-300">
-          <div className="card-body p-4 sm:p-6">
+        <div className="relative flex flex-col rounded-lg border border-border bg-card shadow-sm">
+          <div className="flex flex-1 flex-col gap-2 p-4 sm:p-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-4">
               <div className="flex items-center gap-2">
                 <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
@@ -1084,7 +1084,7 @@ export default function RelatorioPage() {
                 <button
                   onClick={gerarResumoExecutivo}
                   disabled={gerandoResumo}
-                  className="btn btn-primary btn-sm w-full sm:w-auto"
+                  className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 bg-primary text-primary-foreground hover:bg-primary/90 w-full sm:w-auto"
                 >
                   {gerandoResumo ? (
                     <>
@@ -1104,14 +1104,14 @@ export default function RelatorioPage() {
             {resumoExecutivo ? (
               <div className="space-y-4 sm:space-y-6">
                 {resumoDesatualizado && (
-                  <div className="alert alert-warning">
+                  <div className="flex w-full items-start gap-3 rounded-md border p-4 text-sm border-warning/40 bg-warning/15">
                     <AlertTriangle className="w-5 h-5" />
                     <span>A auditoria foi alterada após a geração deste resumo. Gere um novo resumo para refletir as alterações.</span>
                   </div>
                 )}
                 <div>
                   <h3 className="font-semibold mb-2 text-sm sm:text-base">Resumo</h3>
-                  <p className="text-xs sm:text-sm text-base-content/80 leading-relaxed whitespace-pre-line">
+                  <p className="text-xs sm:text-sm text-foreground/80 leading-relaxed whitespace-pre-line">
                     {resumoExecutivo.resumo}
                   </p>
                 </div>
@@ -1129,11 +1129,11 @@ export default function RelatorioPage() {
                     </ul>
                   </div>
                   <div>
-                    <h3 className="font-semibold mb-2 text-error text-sm sm:text-base">Pontos Fracos</h3>
+                    <h3 className="font-semibold mb-2 text-destructive text-sm sm:text-base">Pontos Fracos</h3>
                     <ul className="space-y-1.5">
                       {resumoExecutivo.pontosFracos.map((ponto, idx) => (
                         <li key={idx} className="flex items-start gap-2 text-xs sm:text-sm">
-                          <XCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-error flex-shrink-0 mt-0.5" />
+                          <XCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-destructive flex-shrink-0 mt-0.5" />
                           <span>{ponto}</span>
                         </li>
                       ))}
@@ -1145,7 +1145,7 @@ export default function RelatorioPage() {
                   <h3 className="font-semibold mb-2 text-sm sm:text-base">Recomendações Prioritárias</h3>
                   <ul className="space-y-2">
                     {resumoExecutivo.recomendacoesPrioritarias.map((rec, idx) => (
-                      <li key={idx} className="flex items-start gap-2 p-2 sm:p-3 bg-base-200 rounded">
+                      <li key={idx} className="flex items-start gap-2 p-2 sm:p-3 bg-muted rounded">
                         <span className="font-semibold text-primary text-xs sm:text-sm">{idx + 1}.</span>
                         <span className="text-xs sm:text-sm flex-1">{rec}</span>
                       </li>
@@ -1156,7 +1156,7 @@ export default function RelatorioPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <h3 className="font-semibold mb-2 text-sm sm:text-base">Risco Geral</h3>
-                    <div className={`badge badge-md sm:badge-lg ${getRiscoColor(resumoExecutivo.riscoGeral)}`}>
+                    <div className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full font-semibold px-2.5 py-0.5 text-xs bg-muted text-foreground sm:!px-3 sm:!py-1 sm:!text-sm ${getRiscoColor(resumoExecutivo.riscoGeral)}`}>
                       {getRiscoLabel(resumoExecutivo.riscoGeral)}
                     </div>
                   </div>
@@ -1174,7 +1174,7 @@ export default function RelatorioPage() {
                 </div>
               </div>
             ) : (
-              <div className="text-center py-8 text-base-content/60">
+              <div className="text-center py-8 text-muted-foreground">
                 <Sparkles className="w-12 h-12 mx-auto mb-2 opacity-50" />
                 <p>Gere o resumo executivo para ver a análise (consome créditos).</p>
               </div>
@@ -1197,8 +1197,8 @@ export default function RelatorioPage() {
               className="w-full h-auto max-h-[70vh] object-contain mx-auto rounded"
             />
             {fotoModal.exif && Object.keys(fotoModal.exif).length > 0 && (
-              <div className="mt-4 border-t border-base-300 pt-4">
-                <h4 className="text-sm font-semibold text-base-content/80 mb-2">Metadados EXIF (auditoria)</h4>
+              <div className="mt-4 border-t border-border pt-4">
+                <h4 className="text-sm font-semibold text-foreground/80 mb-2">Metadados EXIF (auditoria)</h4>
                 <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-xs">
                   {Object.entries(fotoModal.exif).map(([key, value]) => {
                     if (value === null || value === undefined) return null;
@@ -1206,7 +1206,7 @@ export default function RelatorioPage() {
                     const display = typeof value === 'object' ? JSON.stringify(value) : String(value);
                     return (
                       <div key={key} className="flex gap-2">
-                        <dt className="text-base-content/60 shrink-0">{label}:</dt>
+                        <dt className="text-muted-foreground shrink-0">{label}:</dt>
                         <dd className="break-all">{display}</dd>
                       </div>
                     );
