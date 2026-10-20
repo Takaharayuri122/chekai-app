@@ -5,6 +5,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ArrowLeft, Building2, MapPin, Plus, Trash2, Camera, Sparkles, Save, CheckCircle2, FileDown,
+  AlertTriangle,
 } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
@@ -24,13 +25,13 @@ import {
 } from '../../../src/api/relatorio-tecnico.api';
 import { comprimirImagem } from '../../../src/utils/compressao-imagem';
 import { useAuthStore } from '../../../src/store/auth';
+import { modeloParaRelatorio } from '../../../src/store/modelo-relatorio';
+import {
+  type SecaoConfiguravel, camposFaltantes, secaoAtiva, tituloSecao,
+} from '../../../src/utils/modelo-secoes';
 
 const repo = new RelatorioTecnicoRepo();
 const fotoRepo = new RelatorioFotoRepo();
-
-function htmlVazio(html: string): boolean {
-  return html.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim().length === 0;
-}
 
 async function selecionarFoto(): Promise<string | null> {
   const permissao = await ImagePicker.requestCameraPermissionsAsync();
@@ -67,6 +68,20 @@ export default function RelatorioTecnicoFormScreen() {
   const [erro, setErro] = useState<string | null>(null);
 
   const somenteLeitura = relatorio?.status === 'finalizado';
+  const modelo = useMemo(
+    () => (relatorio ? modeloParaRelatorio(relatorio, usuario?.id) : []),
+    [relatorio, usuario?.id],
+  );
+  const ativa = (secao: SecaoConfiguravel): boolean => secaoAtiva(modelo, secao);
+  const titulo = (secao: SecaoConfiguravel): string => tituloSecao(modelo, secao);
+  const faltantes = (): string[] => camposFaltantes({
+    identificacao,
+    descricaoOcorrenciaHtml: descricao,
+    avaliacaoTecnicaHtml: avaliacao,
+    acoesExecutadas: acoes,
+    recomendacoesConsultoraHtml: recomendacoes,
+    planoAcaoSugeridoHtml: planoAcao,
+  }, modelo);
   const nomeConsultora = usuario?.nome ?? relatorio?.assinaturaNomeConsultora ?? '';
 
   const carregar = useCallback(() => {
@@ -180,13 +195,7 @@ export default function RelatorioTecnicoFormScreen() {
 
   const finalizar = async (): Promise<void> => {
     if (!id) return;
-    const faltando: string[] = [];
-    if (!identificacao.trim()) faltando.push('Identificação');
-    if (htmlVazio(descricao)) faltando.push('Descrição da ocorrência');
-    if (htmlVazio(avaliacao)) faltando.push('Avaliação técnica');
-    if (htmlVazio(recomendacoes)) faltando.push('Recomendações da consultora');
-    if (htmlVazio(planoAcao)) faltando.push('Plano de ação sugerido');
-    if (acoes.length === 0) faltando.push('Ao menos uma ação executada');
+    const faltando = faltantes();
     if (faltando.length > 0) {
       Alert.alert('Campos obrigatórios', `Preencha antes de finalizar:\n\n• ${faltando.join('\n• ')}`);
       return;
@@ -196,6 +205,7 @@ export default function RelatorioTecnicoFormScreen() {
     try {
       persistirCampos();
       repo.updateStatus(id, 'finalizado');
+      repo.setAvisoSync(id, null);
       const online = await SyncService.isOnline();
       if (online) {
         await pushRelatorioTecnico(id);
@@ -203,6 +213,12 @@ export default function RelatorioTecnicoFormScreen() {
         enqueueRelatorioPush(id);
       }
       carregar();
+      const aposEnvio = repo.findById(id);
+      if (aposEnvio?.status === 'rascunho' && aposEnvio.avisoSync) {
+        // RN-REL-013: o servidor recusou porque o modelo do gestor mudou
+        Alert.alert('Não foi possível finalizar', aposEnvio.avisoSync);
+        return;
+      }
       Alert.alert(
         'Relatório finalizado',
         online ? 'Relatório finalizado e sincronizado.' : 'Finalizado. Será enviado quando houver conexão.',
@@ -218,10 +234,9 @@ export default function RelatorioTecnicoFormScreen() {
 
   const gerarApoio = async (): Promise<void> => {
     if (!id) return;
-    const completo = !!identificacao.trim() && !htmlVazio(descricao) && !htmlVazio(avaliacao)
-      && !htmlVazio(recomendacoes) && !htmlVazio(planoAcao) && acoes.length > 0;
-    if (!completo) {
-      Alert.alert('Atenção', 'Preencha todo o relatório (e ao menos uma ação) antes de gerar o apoio analítico.');
+    const faltando = faltantes();
+    if (faltando.length > 0) {
+      Alert.alert('Atenção', `Preencha antes de gerar o apoio analítico:\n\n• ${faltando.join('\n• ')}`);
       return;
     }
     setGerandoApoio(true);
@@ -343,6 +358,18 @@ export default function RelatorioTecnicoFormScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
+        {!somenteLeitura && relatorio.avisoSync ? (
+          <View className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex-row gap-2">
+            <AlertTriangle size={18} color="#b45309" />
+            <View className="flex-1">
+              <Text className="text-amber-900 text-sm font-semibold">
+                Não foi possível finalizar: o modelo do relatório mudou.
+              </Text>
+              <Text className="text-amber-800 text-sm mt-0.5">{relatorio.avisoSync}</Text>
+            </View>
+          </View>
+        ) : null}
+
         <View>
           <Text className="text-sm font-medium text-gray-700 mb-1.5">
             Identificação<Text className="text-red-500"> *</Text>
@@ -357,150 +384,164 @@ export default function RelatorioTecnicoFormScreen() {
           />
         </View>
 
-        <RichTextEditor
-          label="Descrição da ocorrência"
-          initialValue={relatorio.descricaoOcorrenciaHtml}
-          onChange={setDescricao}
-          required
-          disabled={somenteLeitura}
-        />
+        {ativa('descricaoOcorrencia') ? (
+          <RichTextEditor
+            label={titulo('descricaoOcorrencia')}
+            initialValue={relatorio.descricaoOcorrenciaHtml}
+            onChange={setDescricao}
+            required
+            disabled={somenteLeitura}
+          />
+        ) : null}
 
-        <View className="bg-white rounded-2xl p-4 border border-gray-100">
-          <Text className="font-semibold text-neutral mb-1">Evidências fotográficas</Text>
-          <Text className="text-xs text-gray-500 mb-3">Sem análise por IA. Até {MAX_FOTOS_POR_RELATORIO} fotos.</Text>
-          <View className="flex-row flex-wrap gap-2">
-            {fotos.map((foto) => (
-              <View key={foto.id} className="relative">
-                <Image
-                  source={{ uri: foto.filePath ?? foto.url ?? '' }}
-                  className="w-24 h-24 rounded-lg bg-gray-100"
+        {ativa('evidenciasFotograficas') ? (
+          <View className="bg-white rounded-2xl p-4 border border-gray-100">
+            <Text className="font-semibold text-neutral mb-1">{titulo('evidenciasFotograficas')}</Text>
+            <Text className="text-xs text-gray-500 mb-3">Sem análise por IA. Até {MAX_FOTOS_POR_RELATORIO} fotos.</Text>
+            <View className="flex-row flex-wrap gap-2">
+              {fotos.map((foto) => (
+                <View key={foto.id} className="relative">
+                  <Image
+                    source={{ uri: foto.filePath ?? foto.url ?? '' }}
+                    className="w-24 h-24 rounded-lg bg-gray-100"
+                  />
+                  {!somenteLeitura ? (
+                    <TouchableOpacity
+                      onPress={() => removerFoto(foto)}
+                      className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-full items-center justify-center"
+                    >
+                      <Trash2 size={12} color="white" />
+                    </TouchableOpacity>
+                  ) : null}
+                </View>
+              ))}
+              {!somenteLeitura && fotos.length < MAX_FOTOS_POR_RELATORIO ? (
+                <TouchableOpacity
+                  onPress={adicionarFoto}
+                  disabled={enviandoFoto}
+                  className="w-24 h-24 border-2 border-dashed border-gray-300 rounded-lg items-center justify-center"
+                >
+                  {enviandoFoto ? (
+                    <ActivityIndicator color="#00B8A9" size="small" />
+                  ) : (
+                    <Camera size={22} color="#9CA3AF" />
+                  )}
+                </TouchableOpacity>
+              ) : null}
+            </View>
+            {fotos.length === 0 && somenteLeitura ? (
+              <Text className="text-sm text-gray-400">Nenhuma evidência adicionada.</Text>
+            ) : null}
+          </View>
+        ) : null}
+
+        {ativa('avaliacaoTecnica') ? (
+          <RichTextEditor
+            label={titulo('avaliacaoTecnica')}
+            initialValue={relatorio.avaliacaoTecnicaHtml}
+            onChange={setAvaliacao}
+            required
+            disabled={somenteLeitura}
+          />
+        ) : null}
+
+        {ativa('acoesExecutadas') ? (
+          <View className="bg-white rounded-2xl p-4 border border-gray-100">
+            <Text className="font-semibold text-neutral mb-2">
+              {titulo('acoesExecutadas')}<Text className="text-red-500"> *</Text>
+            </Text>
+            {!somenteLeitura ? (
+              <View className="flex-row gap-2 mb-3">
+                <TextInput
+                  className="flex-1 bg-gray-100 rounded-xl px-4 py-3 text-base text-neutral"
+                  placeholder="Adicionar ação executada"
+                  placeholderTextColor="#9CA3AF"
+                  value={novaAcao}
+                  onChangeText={setNovaAcao}
+                  onSubmitEditing={adicionarAcao}
                 />
-                {!somenteLeitura ? (
-                  <TouchableOpacity
-                    onPress={() => removerFoto(foto)}
-                    className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-full items-center justify-center"
-                  >
-                    <Trash2 size={12} color="white" />
-                  </TouchableOpacity>
-                ) : null}
+                <TouchableOpacity
+                  onPress={adicionarAcao}
+                  className="bg-primary rounded-xl px-4 items-center justify-center"
+                >
+                  <Plus size={20} color="white" />
+                </TouchableOpacity>
               </View>
-            ))}
-            {!somenteLeitura && fotos.length < MAX_FOTOS_POR_RELATORIO ? (
+            ) : null}
+            {acoes.length === 0 ? (
+              <Text className="text-sm text-gray-400">Nenhuma ação adicionada.</Text>
+            ) : (
+              acoes.map((acao, index) => (
+                <View key={`${acao}-${index}`} className="flex-row items-center justify-between border border-gray-100 rounded-lg p-2.5 mb-2">
+                  <Text className="text-sm text-neutral flex-1 mr-2">{acao}</Text>
+                  {!somenteLeitura ? (
+                    <TouchableOpacity onPress={() => setAcoes((prev) => prev.filter((_, i) => i !== index))}>
+                      <Trash2 size={16} color="#dc2626" />
+                    </TouchableOpacity>
+                  ) : null}
+                </View>
+              ))
+            )}
+          </View>
+        ) : null}
+
+        {ativa('recomendacoesConsultora') ? (
+          <RichTextEditor
+            label={titulo('recomendacoesConsultora')}
+            initialValue={relatorio.recomendacoesConsultoraHtml}
+            onChange={setRecomendacoes}
+            required
+            disabled={somenteLeitura}
+          />
+        ) : null}
+
+        {ativa('planoAcaoSugerido') ? (
+          <RichTextEditor
+            label={titulo('planoAcaoSugerido')}
+            initialValue={relatorio.planoAcaoSugeridoHtml}
+            onChange={setPlanoAcao}
+            required
+            disabled={somenteLeitura}
+          />
+        ) : null}
+
+        {ativa('apoioAnalitico') ? (
+          <View className="bg-white rounded-2xl p-4 border border-gray-100">
+            <View className="flex-row items-center gap-2 mb-2">
+              <Sparkles size={18} color="#0f766e" />
+              <Text className="font-semibold text-neutral flex-1">{titulo('apoioAnalitico')}</Text>
+            </View>
+            {apoioBlocos.length > 0 ? (
+              <View className="gap-2">
+                {apoioBlocos.map((bloco, index) => (
+                  <View key={index} className="bg-teal-50 border border-teal-100 rounded-xl p-3">
+                    <Text className="text-sm text-teal-900 leading-5">{bloco}</Text>
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <Text className="text-sm text-gray-400 mb-3">
+                Conteúdo somente leitura, gerado pela IA. Requer conexão e consome créditos do gestor.
+              </Text>
+            )}
+            {!somenteLeitura ? (
               <TouchableOpacity
-                onPress={adicionarFoto}
-                disabled={enviandoFoto}
-                className="w-24 h-24 border-2 border-dashed border-gray-300 rounded-lg items-center justify-center"
+                onPress={gerarApoio}
+                disabled={gerandoApoio}
+                className={`mt-3 rounded-xl py-3 flex-row items-center justify-center gap-2 ${gerandoApoio ? 'bg-gray-400' : 'bg-teal-700'}`}
               >
-                {enviandoFoto ? (
-                  <ActivityIndicator color="#00B8A9" size="small" />
+                {gerandoApoio ? (
+                  <ActivityIndicator color="white" size="small" />
                 ) : (
-                  <Camera size={22} color="#9CA3AF" />
+                  <Sparkles size={18} color="white" />
                 )}
+                <Text className="text-white font-semibold">
+                  {gerandoApoio ? 'Gerando...' : 'Gerar apoio analítico'}
+                </Text>
               </TouchableOpacity>
             ) : null}
           </View>
-          {fotos.length === 0 && somenteLeitura ? (
-            <Text className="text-sm text-gray-400">Nenhuma evidência adicionada.</Text>
-          ) : null}
-        </View>
-
-        <RichTextEditor
-          label="Avaliação técnica"
-          initialValue={relatorio.avaliacaoTecnicaHtml}
-          onChange={setAvaliacao}
-          required
-          disabled={somenteLeitura}
-        />
-
-        <View className="bg-white rounded-2xl p-4 border border-gray-100">
-          <Text className="font-semibold text-neutral mb-2">
-            Ações executadas na visita<Text className="text-red-500"> *</Text>
-          </Text>
-          {!somenteLeitura ? (
-            <View className="flex-row gap-2 mb-3">
-              <TextInput
-                className="flex-1 bg-gray-100 rounded-xl px-4 py-3 text-base text-neutral"
-                placeholder="Adicionar ação executada"
-                placeholderTextColor="#9CA3AF"
-                value={novaAcao}
-                onChangeText={setNovaAcao}
-                onSubmitEditing={adicionarAcao}
-              />
-              <TouchableOpacity
-                onPress={adicionarAcao}
-                className="bg-primary rounded-xl px-4 items-center justify-center"
-              >
-                <Plus size={20} color="white" />
-              </TouchableOpacity>
-            </View>
-          ) : null}
-          {acoes.length === 0 ? (
-            <Text className="text-sm text-gray-400">Nenhuma ação adicionada.</Text>
-          ) : (
-            acoes.map((acao, index) => (
-              <View key={`${acao}-${index}`} className="flex-row items-center justify-between border border-gray-100 rounded-lg p-2.5 mb-2">
-                <Text className="text-sm text-neutral flex-1 mr-2">{acao}</Text>
-                {!somenteLeitura ? (
-                  <TouchableOpacity onPress={() => setAcoes((prev) => prev.filter((_, i) => i !== index))}>
-                    <Trash2 size={16} color="#dc2626" />
-                  </TouchableOpacity>
-                ) : null}
-              </View>
-            ))
-          )}
-        </View>
-
-        <RichTextEditor
-          label="Recomendações da consultora"
-          initialValue={relatorio.recomendacoesConsultoraHtml}
-          onChange={setRecomendacoes}
-          required
-          disabled={somenteLeitura}
-        />
-
-        <RichTextEditor
-          label="Plano de ação sugerido"
-          initialValue={relatorio.planoAcaoSugeridoHtml}
-          onChange={setPlanoAcao}
-          required
-          disabled={somenteLeitura}
-        />
-
-        <View className="bg-white rounded-2xl p-4 border border-gray-100">
-          <View className="flex-row items-center gap-2 mb-2">
-            <Sparkles size={18} color="#0f766e" />
-            <Text className="font-semibold text-neutral flex-1">Apoio analítico ChekAi</Text>
-          </View>
-          {apoioBlocos.length > 0 ? (
-            <View className="gap-2">
-              {apoioBlocos.map((bloco, index) => (
-                <View key={index} className="bg-teal-50 border border-teal-100 rounded-xl p-3">
-                  <Text className="text-sm text-teal-900 leading-5">{bloco}</Text>
-                </View>
-              ))}
-            </View>
-          ) : (
-            <Text className="text-sm text-gray-400 mb-3">
-              Conteúdo somente leitura, gerado pela IA. Requer conexão e consome créditos do gestor.
-            </Text>
-          )}
-          {!somenteLeitura ? (
-            <TouchableOpacity
-              onPress={gerarApoio}
-              disabled={gerandoApoio}
-              className={`mt-3 rounded-xl py-3 flex-row items-center justify-center gap-2 ${gerandoApoio ? 'bg-gray-400' : 'bg-teal-700'}`}
-            >
-              {gerandoApoio ? (
-                <ActivityIndicator color="white" size="small" />
-              ) : (
-                <Sparkles size={18} color="white" />
-              )}
-              <Text className="text-white font-semibold">
-                {gerandoApoio ? 'Gerando...' : 'Gerar apoio analítico'}
-              </Text>
-            </TouchableOpacity>
-          ) : null}
-        </View>
+        ) : null}
 
         <View className="bg-white rounded-2xl p-4 border border-gray-100">
           <Text className="font-semibold text-neutral mb-3">Assinatura</Text>

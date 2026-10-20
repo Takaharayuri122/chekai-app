@@ -1,5 +1,5 @@
-import { lerModeloCache, salvarModeloCache } from '../../store/modelo-relatorio';
-import { mesclarComPadrao } from '../../utils/modelo-secoes';
+import { lerModeloCache, modeloParaRelatorio, salvarModeloCache } from '../../store/modelo-relatorio';
+import { mesclarComPadrao, modeloPadrao } from '../../utils/modelo-secoes';
 
 jest.mock('react-native-mmkv', () => {
   class MMKV {
@@ -25,5 +25,19 @@ describe('cache do modelo de relatório técnico', () => {
   it('não vaza o modelo de um usuário para outro', () => {
     salvarModeloCache('u1', modelo);
     expect(lerModeloCache('u2')).toBeNull();
+  });
+
+  it('finalizado usa o snapshot; finalizado legado usa o padrão', () => {
+    salvarModeloCache('u3', modelo);
+    const snapshot = mesclarComPadrao([{ secao: 'planoAcaoSugerido', ativa: false, titulo: '' }]);
+    expect(modeloParaRelatorio({ status: 'finalizado', modeloSecoes: snapshot }, 'u3')).toEqual(snapshot);
+    expect(modeloParaRelatorio({ status: 'finalizado', modeloSecoes: null }, 'u3')).toEqual(modeloPadrao());
+  });
+
+  it('rascunho usa o cache do usuário, ou o padrão sem cache', () => {
+    salvarModeloCache('u4', modelo);
+    expect(modeloParaRelatorio({ status: 'rascunho', modeloSecoes: null }, 'u4')).toEqual(modelo);
+    expect(modeloParaRelatorio({ status: 'rascunho', modeloSecoes: null }, 'u5')).toEqual(modeloPadrao());
+    expect(modeloParaRelatorio({ status: 'rascunho', modeloSecoes: null }, undefined)).toEqual(modeloPadrao());
   });
 });
