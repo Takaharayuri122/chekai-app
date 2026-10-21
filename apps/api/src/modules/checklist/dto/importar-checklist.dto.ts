@@ -1,6 +1,8 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsNotEmpty, IsOptional, IsString, IsEnum } from 'class-validator';
 import { TipoAtividade } from '../../cliente/entities/cliente.entity';
+import { CategoriaItem, CriticidadeItem } from '../entities/template-item.entity';
+import type { TipoRespostaLote } from '../checklist-regras';
 
 /**
  * DTO para importação de checklist.
@@ -70,6 +72,38 @@ export interface ImportacaoPreview {
   grupos: ImportacaoGrupoPreview[];
   totalPerguntas: number;
   totalGrupos: number;
+  perguntas: PerguntaImportada[];
+}
+
+/**
+ * Configuração de uma pergunta importada (colunas da planilha já interpretadas).
+ */
+export interface ConfiguracaoPerguntaImportada {
+  categoria: CategoriaItem;
+  criticidade: CriticidadeItem;
+  tipoResposta: TipoRespostaLote;
+  peso: number;
+  obrigatorio: boolean;
+  permiteFoto: boolean;
+  permiteObservacao: boolean;
+  opcoes: {
+    valor: string;
+    pontuacao: number | null;
+    fotoObrigatoria: boolean;
+    observacaoObrigatoria: boolean;
+  }[];
+}
+
+/**
+ * Pergunta importada, com chave estável `l${indiceLinha}`.
+ */
+export interface PerguntaImportada {
+  chave: string;
+  grupo: string;
+  secao?: string;
+  pergunta: string;
+  configuracao: ConfiguracaoPerguntaImportada;
+  motivoConferir?: string;
 }
 
 /**
