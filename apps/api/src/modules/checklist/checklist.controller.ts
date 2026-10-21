@@ -25,6 +25,8 @@ import {
 import { ChecklistService } from './checklist.service';
 import { ChecklistImportService } from './checklist-import.service';
 import { ChecklistIaService } from './checklist-ia.service';
+import { ChecklistLoteService } from './checklist-lote.service';
+import { ConfigurarLoteDto, ResultadoLote } from './dto/configurar-lote.dto';
 import {
   CriarChecklistTemplateDto,
   CriarTemplateItemDto,
@@ -55,6 +57,7 @@ export class ChecklistController {
     private readonly checklistService: ChecklistService,
     private readonly checklistImportService: ChecklistImportService,
     private readonly checklistIaService: ChecklistIaService,
+    private readonly checklistLoteService: ChecklistLoteService,
   ) {}
 
   @Post('templates')
@@ -148,6 +151,19 @@ export class ChecklistController {
     @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
   ): Promise<TemplateItem> {
     return this.checklistService.adicionarItem(templateId, dto, usuario);
+  }
+
+  @Put('templates/:templateId/itens/lote')
+  @UseGuards(RolesGuard)
+  @Roles(PerfilUsuario.MASTER, PerfilUsuario.GESTOR)
+  @ApiOperation({ summary: 'Configura várias perguntas do template de uma vez (suporta simulação)' })
+  @ApiResponse({ status: 200, description: 'Resultado da configuração em lote' })
+  async configurarLote(
+    @Param('templateId', ParseUUIDPipe) templateId: string,
+    @Body() dto: ConfigurarLoteDto,
+    @CurrentUser() usuario: { id: string },
+  ): Promise<ResultadoLote> {
+    return this.checklistLoteService.configurar(templateId, dto, usuario);
   }
 
   @Put('itens/:itemId')

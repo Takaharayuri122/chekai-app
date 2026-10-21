@@ -63,3 +63,43 @@ export function aplicarRegrasForcadas(item: Partial<ItemConfiguravel>): void {
     return config;
   });
 }
+
+export type TipoRespostaLote = 'padrao' | 'personalizada' | 'texto' | 'numero' | 'data';
+
+export interface OpcaoLote {
+  valor: string;
+  pontuacao?: number | null;
+  fotoObrigatoria: boolean;
+  observacaoObrigatoria: boolean;
+}
+
+/**
+ * Aplica um tipo de resposta ao item (usado pela configuração em lote).
+ * Não aplica as regras forçadas: chamar `aplicarRegrasForcadas` em seguida.
+ */
+export function aplicarTipoResposta(
+  item: Partial<ItemConfiguravel>,
+  tipo: TipoRespostaLote,
+  opcoes?: OpcaoLote[],
+): void {
+  if (tipo === 'padrao') {
+    item.usarRespostasPersonalizadas = false;
+    item.tipoRespostaCustomizada = null as unknown as TipoRespostaCustomizada;
+    item.opcoesResposta = null as unknown as string[];
+    if (opcoes) {
+      item.opcoesRespostaConfig = opcoes.filter((o) =>
+        (RESPOSTAS_PADRAO_VALORES as readonly string[]).includes(o.valor),
+      );
+    }
+    return;
+  }
+  item.usarRespostasPersonalizadas = true;
+  if (tipo === 'personalizada') {
+    item.tipoRespostaCustomizada = null as unknown as TipoRespostaCustomizada;
+    item.opcoesResposta = (opcoes || []).map((o) => o.valor);
+    item.opcoesRespostaConfig = opcoes || [];
+    return;
+  }
+  item.tipoRespostaCustomizada = tipo as TipoRespostaCustomizada;
+  item.opcoesResposta = null as unknown as string[];
+}

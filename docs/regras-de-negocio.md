@@ -99,6 +99,7 @@
 | RN-CHK-013 | Geração de templates com IA via `IaService` e RAG via legislação, com auditoria de tokens |
 | RN-CHK-014 | Pergunta com resposta em **texto** tem `permiteFoto = false`, `peso = 0`, sem opções e sem pontuação. A API força esses valores ao salvar (individual, em lote e na importação) |
 | RN-CHK-015 | `permiteFoto = false` implica `fotoObrigatoria = false` em todas as opções; `permiteObservacao = false` implica `observacaoObrigatoria = false` |
+| RN-CHK-016 | Configuração em lote (`PUT /checklists/templates/:id/itens/lote`, MASTER/GESTOR dono do template): aplica só os campos enviados a todos os itens ativos do template, de um grupo ou de `itemIds` informados (itemIds e grupoId juntos ou fora do template = 400). As regras RN-CHK-014/015 são reaplicadas; itens sem mudança são ignorados; `simular: true` devolve as contagens sem salvar |
 
 ---
 

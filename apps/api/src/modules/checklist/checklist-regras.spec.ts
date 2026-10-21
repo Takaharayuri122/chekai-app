@@ -1,4 +1,4 @@
-import { aplicarRegrasForcadas, ItemConfiguravel } from './checklist-regras';
+import { aplicarRegrasForcadas, aplicarTipoResposta, ItemConfiguravel } from './checklist-regras';
 import { TipoRespostaCustomizada } from './entities/template-item.entity';
 
 const base = (): Partial<ItemConfiguravel> => ({
@@ -81,5 +81,46 @@ describe('aplicarRegrasForcadas', () => {
       { valor: 'Sim', fotoObrigatoria: true, observacaoObrigatoria: false, pontuacao: 3 },
       { valor: 'Parcial', fotoObrigatoria: false, observacaoObrigatoria: false },
     ]);
+  });
+});
+
+describe('aplicarTipoResposta', () => {
+  const opcoes = [
+    { valor: 'conforme', fotoObrigatoria: true, observacaoObrigatoria: false, pontuacao: 2 },
+    { valor: 'outro', fotoObrigatoria: false, observacaoObrigatoria: false },
+  ];
+
+  it('padrao: limpa personalização e mantém só valores padrão das opções', () => {
+    const item: Partial<ItemConfiguravel> = {
+      usarRespostasPersonalizadas: true,
+      tipoRespostaCustomizada: TipoRespostaCustomizada.NUMERO,
+      opcoesResposta: ['A'],
+    };
+    aplicarTipoResposta(item, 'padrao', opcoes);
+    expect(item.usarRespostasPersonalizadas).toBe(false);
+    expect(item.tipoRespostaCustomizada).toBeNull();
+    expect(item.opcoesResposta).toBeNull();
+    expect(item.opcoesRespostaConfig).toEqual([opcoes[0]]);
+  });
+
+  it('personalizada: usa os valores e a config das opções', () => {
+    const item: Partial<ItemConfiguravel> = { usarRespostasPersonalizadas: false };
+    aplicarTipoResposta(item, 'personalizada', opcoes);
+    expect(item.usarRespostasPersonalizadas).toBe(true);
+    expect(item.tipoRespostaCustomizada).toBeNull();
+    expect(item.opcoesResposta).toEqual(['conforme', 'outro']);
+    expect(item.opcoesRespostaConfig).toEqual(opcoes);
+  });
+
+  it.each([
+    ['texto', TipoRespostaCustomizada.TEXTO],
+    ['numero', TipoRespostaCustomizada.NUMERO],
+    ['data', TipoRespostaCustomizada.DATA],
+  ] as const)('%s: define o tipo e limpa as opções', (tipo, esperado) => {
+    const item: Partial<ItemConfiguravel> = { opcoesResposta: ['A'] };
+    aplicarTipoResposta(item, tipo);
+    expect(item.usarRespostasPersonalizadas).toBe(true);
+    expect(item.tipoRespostaCustomizada).toBe(esperado);
+    expect(item.opcoesResposta).toBeNull();
   });
 });

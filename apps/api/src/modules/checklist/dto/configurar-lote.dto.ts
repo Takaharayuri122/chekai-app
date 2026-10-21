@@ -1,0 +1,108 @@
+import {
+  IsArray,
+  IsBoolean,
+  IsEnum,
+  IsIn,
+  IsNumber,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Max,
+  Min,
+  ValidateIf,
+  ValidateNested,
+} from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
+import { CriticidadeItem } from '../entities/template-item.entity';
+import type { TipoRespostaLote } from '../checklist-regras';
+
+export type { TipoRespostaLote };
+
+export const TIPOS_RESPOSTA_LOTE: TipoRespostaLote[] = [
+  'padrao',
+  'personalizada',
+  'texto',
+  'numero',
+  'data',
+];
+
+export class OpcaoLoteDto {
+  @IsString()
+  valor: string;
+
+  @ApiPropertyOptional({ description: 'Pontuação da opção (-10 a 10). Null = sem pontuação' })
+  @ValidateIf((o) => o.pontuacao != null)
+  @IsNumber()
+  @Min(-10)
+  @Max(10)
+  @IsOptional()
+  pontuacao?: number | null;
+
+  @IsBoolean()
+  fotoObrigatoria: boolean;
+
+  @IsBoolean()
+  observacaoObrigatoria: boolean;
+}
+
+export class AlteracoesLoteDto {
+  @ApiPropertyOptional({ enum: TIPOS_RESPOSTA_LOTE })
+  @IsOptional()
+  @IsIn(TIPOS_RESPOSTA_LOTE)
+  tipoResposta?: TipoRespostaLote;
+
+  @ApiPropertyOptional({ type: [OpcaoLoteDto] })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => OpcaoLoteDto)
+  opcoes?: OpcaoLoteDto[];
+
+  @IsOptional()
+  @IsBoolean()
+  permiteFoto?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  permiteObservacao?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  obrigatorio?: boolean;
+
+  @ApiPropertyOptional({ enum: CriticidadeItem })
+  @IsOptional()
+  @IsEnum(CriticidadeItem)
+  criticidade?: CriticidadeItem;
+}
+
+export class ConfigurarLoteDto {
+  @ApiPropertyOptional({ type: [String] })
+  @IsOptional()
+  @IsArray()
+  @IsUUID('all', { each: true })
+  itemIds?: string[];
+
+  @IsOptional()
+  @IsUUID()
+  grupoId?: string;
+
+  @ApiProperty({ type: AlteracoesLoteDto })
+  @ValidateNested()
+  @Type(() => AlteracoesLoteDto)
+  alteracoes: AlteracoesLoteDto;
+
+  @ApiPropertyOptional({ description: 'Se true, apenas calcula o impacto sem salvar' })
+  @IsOptional()
+  @IsBoolean()
+  simular?: boolean;
+}
+
+export interface ResultadoLote {
+  totalAfetados: number;
+  personalizadosSubstituidos: number;
+  ignorados: number;
+  auditoriasVinculadas: number;
+  simulado: boolean;
+}
