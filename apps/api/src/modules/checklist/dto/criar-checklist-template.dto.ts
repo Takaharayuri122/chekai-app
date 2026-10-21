@@ -95,6 +95,16 @@ export class CriarTemplateItemDto {
   @IsOptional()
   opcoesResposta?: string[];
 
+  @ApiPropertyOptional({ description: 'Permite anexar foto na pergunta', default: true })
+  @IsBoolean()
+  @IsOptional()
+  permiteFoto?: boolean;
+
+  @ApiPropertyOptional({ description: 'Permite observação na pergunta', default: true })
+  @IsBoolean()
+  @IsOptional()
+  permiteObservacao?: boolean;
+
   @ApiPropertyOptional({ description: 'Usar respostas personalizadas ao invés das padrão', default: false })
   @IsBoolean()
   @IsOptional()

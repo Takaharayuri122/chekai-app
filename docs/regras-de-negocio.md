@@ -97,6 +97,8 @@
 | RN-CHK-011 | Apenas o gestor dono do template pode editar/remover itens e grupos |
 | RN-CHK-012 | Remoção de itens e grupos é soft delete (`ativo = false`) |
 | RN-CHK-013 | Geração de templates com IA via `IaService` e RAG via legislação, com auditoria de tokens |
+| RN-CHK-014 | Pergunta com resposta em **texto** tem `permiteFoto = false`, `peso = 0`, sem opções e sem pontuação. A API força esses valores ao salvar (individual, em lote e na importação) |
+| RN-CHK-015 | `permiteFoto = false` implica `fotoObrigatoria = false` em todas as opções; `permiteObservacao = false` implica `observacaoObrigatoria = false` |
 
 ---
 
@@ -138,6 +140,7 @@
 | RN-FOT-002 | Upload: imagem obrigatória, validação de MIME type (`image/*`), compressão via sharp, extração de EXIF |
 | RN-FOT-003 | Análise por IA: campo `analiseIa` e flag `processadoPorIa` por foto |
 | RN-FOT-004 | No mobile: múltiplas seleções, upload e processamento IA em sequência (não paralelo), grid 2 colunas |
+| RN-FOT-005 | Item com `permiteFoto = false` (inclui texto) não oferece anexar foto no web. Enquanto o app mobile não for atualizado, a API aceita a foto mesmo assim e registra log de aviso, para não perder fotos de apps antigos |
 
 ---
 

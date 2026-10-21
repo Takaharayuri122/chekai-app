@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ChecklistTemplate, StatusTemplate } from './entities/checklist-template.entity';
 import { TemplateItem, TipoRespostaCustomizada } from './entities/template-item.entity';
+import { aplicarRegrasForcadas } from './checklist-regras';
 import { ChecklistGrupo } from './entities/checklist-grupo.entity';
 import { Auditoria } from '../auditoria/entities/auditoria.entity';
 import {
@@ -272,12 +273,8 @@ export class ChecklistService {
       templateId,
       ordem: dto.ordem ?? (maxOrdem?.max ?? 0) + 1,
     });
-    if (dto.tipoRespostaCustomizada === TipoRespostaCustomizada.TEXTO) {
-      item.peso = 0;
-    }
 
-    // Normalizar configs antes de salvar
-    this.normalizarOpcoesConfig(item);
+    aplicarRegrasForcadas(item);
 
     return this.itemRepository.save(item);
   }
@@ -299,12 +296,8 @@ export class ChecklistService {
       throw new ForbiddenException('Apenas o gestor responsável pode editar este checklist');
     }
     Object.assign(item, dto);
-    if (item.tipoRespostaCustomizada === TipoRespostaCustomizada.TEXTO) {
-      item.peso = 0;
-    }
 
-    // Normalizar configs antes de salvar
-    this.normalizarOpcoesConfig(item);
+    aplicarRegrasForcadas(item);
 
     return this.itemRepository.save(item);
   }
@@ -522,51 +515,4 @@ export class ChecklistService {
       await this.grupoRepository.update(grupoIds[i], { ordem: i });
     }
   }
-
-  /**
-   * Normaliza opcoesRespostaConfig para garantir sincronia com opcoesResposta.
-   * Garante que cada opção tenha uma configuração correspondente.
-   */
-  private normalizarOpcoesConfig(item: Partial<TemplateItem>): void {
-    // Respostas padrão
-    const RESPOSTAS_PADRAO = [
-      'conforme',
-      'nao_conforme',
-      'nao_aplicavel',
-      'nao_avaliado',
-    ];
-
-    const usaRespostasPersonalizadas =
-      item.usarRespostasPersonalizadas ||
-      item.tipoRespostaCustomizada === TipoRespostaCustomizada.SELECT;
-
-    if (usaRespostasPersonalizadas && item.opcoesResposta) {
-      // Para respostas personalizadas, sincronizar com opcoesResposta
-      const configExistente = item.opcoesRespostaConfig || [];
-      item.opcoesRespostaConfig = item.opcoesResposta.map((opcao) => {
-        const config = configExistente.find((c) => c.valor === opcao);
-        return (
-          config || {
-            valor: opcao,
-            fotoObrigatoria: false,
-            observacaoObrigatoria: false,
-          }
-        );
-      });
-    } else {
-      // Para respostas padrão
-      const configExistente = item.opcoesRespostaConfig || [];
-      item.opcoesRespostaConfig = RESPOSTAS_PADRAO.map((valor) => {
-        const config = configExistente.find((c) => c.valor === valor);
-        return (
-          config || {
-            valor,
-            fotoObrigatoria: false,
-            observacaoObrigatoria: false,
-          }
-        );
-      });
-    }
-  }
 }
-

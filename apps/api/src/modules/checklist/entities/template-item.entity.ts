@@ -110,6 +110,12 @@ export class TemplateItem {
   tipoRespostaCustomizada: TipoRespostaCustomizada;
 
   @Column({ default: true })
+  permiteFoto: boolean;
+
+  @Column({ default: true })
+  permiteObservacao: boolean;
+
+  @Column({ default: true })
   ativo: boolean;
 
   @ManyToOne(() => ChecklistTemplate, (template) => template.itens)
