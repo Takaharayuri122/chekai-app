@@ -29,6 +29,7 @@ import { PageLoadingOverlay } from '@/components/ui/page-loading-overlay';
 import { RevisaoIa } from '@/components/checklist/importacao/revisao-ia';
 import {
   montarConfirmacao,
+  normalizarGrupos,
   revisarEmLotes,
   type EstadoRevisao,
   type ProgressoRevisao,
@@ -118,14 +119,16 @@ export default function ImportarChecklistPage() {
 
     setErro('');
     setProgresso({ grupoAtual: 1, totalGrupos: preview.totalGrupos || 1 });
+    // Perguntas sem grupo entram em "Sem grupo" na revisão e na confirmação
+    const perguntas = normalizarGrupos(preview.perguntas);
     try {
       const r = await revisarEmLotes(
-        preview.perguntas,
+        perguntas,
         (grupo, perguntas) => checklistService.revisarImportacao(grupo, perguntas),
         setProgresso
       );
       setRevisao({
-        perguntas: preview.perguntas,
+        perguntas,
         sugestoes: r.sugestoes,
         nomesGrupos: r.nomesGrupos,
         desfeitas: new Set(),

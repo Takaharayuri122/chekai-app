@@ -1,14 +1,17 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { AlertTriangle, ChevronDown, ChevronRight, Sparkles } from 'lucide-react';
+import { AlertTriangle, ChevronDown, ChevronRight, Sparkles, Undo2 } from 'lucide-react';
 import { Button } from '@/components/ui/shadcn/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/shadcn/tabs';
-import { TooltipProvider } from '@/components/ui/shadcn/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/shadcn/tooltip';
 import {
   aceitarTodas,
   contadores,
+  desfazerNomeGrupo,
   filtrar,
+  grupoDe,
+  nomeGrupoSugerido,
   versaoFinal,
   type AbaRevisao,
   type EstadoRevisao,
@@ -45,9 +48,10 @@ export function RevisaoIa({ estado, nomeArquivo, semCreditos, falhas, onChange, 
   const grupos = useMemo(() => {
     const mapa = new Map<string, typeof visiveis>();
     for (const p of visiveis) {
-      const lista = mapa.get(p.grupo) ?? [];
+      const grupo = grupoDe(p);
+      const lista = mapa.get(grupo) ?? [];
       lista.push(p);
-      mapa.set(p.grupo, lista);
+      mapa.set(grupo, lista);
     }
     return [...mapa.entries()];
   }, [visiveis]);
@@ -130,22 +134,49 @@ export function RevisaoIa({ estado, nomeArquivo, semCreditos, falhas, onChange, 
           grupos.map(([grupo, perguntas]) => {
             const recolhido = recolhidos.has(grupo);
             const corrigidasGrupo = perguntas.filter((p) => versaoFinal(estado, p.chave).pergunta !== p.pergunta).length;
+            const nomeSugerido = nomeGrupoSugerido(estado, grupo);
             return (
               <section key={grupo} className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
-                <button
-                  type="button"
-                  onClick={() => alternarGrupo(grupo)}
-                  aria-expanded={!recolhido}
-                  className="flex w-full items-center justify-between gap-3 border-b border-border bg-muted/50 px-4 py-3 text-left sm:px-5"
-                >
-                  <span className="flex min-w-0 items-center gap-2 font-display text-sm font-semibold uppercase tracking-wide">
-                    {recolhido ? <ChevronRight className="h-4 w-4 shrink-0" /> : <ChevronDown className="h-4 w-4 shrink-0" />}
-                    <span className="truncate">{estado.nomesGrupos[grupo] ?? grupo}</span>
-                  </span>
-                  <span className="shrink-0 text-xs text-muted-foreground">
-                    {perguntas.length} perguntas · {corrigidasGrupo} corrigidas
-                  </span>
-                </button>
+                <div className="flex items-center gap-2 border-b border-border bg-muted/50 pr-2 sm:pr-3">
+                  <button
+                    type="button"
+                    onClick={() => alternarGrupo(grupo)}
+                    aria-expanded={!recolhido}
+                    className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-x-3 gap-y-1 px-4 py-3 text-left sm:px-5"
+                  >
+                    <span className="flex min-w-0 items-center gap-2 font-display text-sm font-semibold uppercase tracking-wide">
+                      {recolhido ? <ChevronRight className="h-4 w-4 shrink-0" /> : <ChevronDown className="h-4 w-4 shrink-0" />}
+                      {nomeSugerido ? (
+                        <span className="flex min-w-0 flex-wrap items-baseline gap-x-2">
+                          <span className="truncate font-normal text-muted-foreground line-through">{grupo}</span>
+                          <span className="truncate text-info">{nomeSugerido}</span>
+                        </span>
+                      ) : (
+                        <span className="truncate">{grupo}</span>
+                      )}
+                    </span>
+                    <span className="shrink-0 text-xs text-muted-foreground">
+                      {perguntas.length} perguntas · {corrigidasGrupo} corrigidas
+                    </span>
+                  </button>
+                  {nomeSugerido ? (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          className="shrink-0"
+                          aria-label={`Desfazer: manter o nome "${grupo}"`}
+                          onClick={() => onChange(desfazerNomeGrupo(estado, grupo))}
+                        >
+                          <Undo2 className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Desfazer o nome sugerido e manter o da planilha</TooltipContent>
+                    </Tooltip>
+                  ) : null}
+                </div>
                 {recolhido
                   ? null
                   : perguntas.map((p) => {

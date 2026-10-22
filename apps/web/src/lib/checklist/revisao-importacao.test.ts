@@ -2,6 +2,10 @@ import { describe, it, expect } from 'vitest';
 import {
   aceitarTodas,
   contadores,
+  desfazerNomeGrupo,
+  GRUPO_SEM_NOME,
+  nomeGrupoSugerido,
+  normalizarGrupos,
   diferencaPalavras,
   dividirEmLotes,
   filtrar,
@@ -213,5 +217,47 @@ describe('revisarEmLotes', () => {
     expect(chamadas).toBe(2);
     expect(r.semCreditos).toBe(true);
     expect(r.falhas).toBe(1);
+  });
+
+  describe('perguntas sem grupo', () => {
+    const semGrupo = [pergunta('a', ''), pergunta('b', '  '), pergunta('c', 'G1')];
+
+    it('normalizarGrupos agrupa perguntas sem grupo em "Sem grupo" sem mudar as demais', () => {
+      expect(normalizarGrupos(semGrupo).map((p) => p.grupo)).toEqual([GRUPO_SEM_NOME, GRUPO_SEM_NOME, 'G1']);
+      expect(GRUPO_SEM_NOME).toBe('Sem grupo');
+    });
+
+    it('dividirEmLotes e montarConfirmacao nunca usam nome de grupo vazio', () => {
+      expect(dividirEmLotes(semGrupo).map((l) => l.grupo)).toEqual([GRUPO_SEM_NOME, 'G1']);
+      const r = montarConfirmacao(estado({ perguntas: semGrupo }), { nomeTemplate: 'T' });
+      expect(r.grupos.map((g) => g.nome)).toEqual([GRUPO_SEM_NOME, 'G1']);
+      expect(r.grupos[0].perguntas).toHaveLength(2);
+    });
+
+    it('revisarEmLotes envia "Sem grupo" para a revisão', async () => {
+      const grupos: string[] = [];
+      await revisarEmLotes(semGrupo, async (g) => {
+        grupos.push(g);
+        return { status: 'revisado', sugestoes: [] };
+      });
+      expect(grupos).toEqual([GRUPO_SEM_NOME, 'G1']);
+    });
+  });
+
+  describe('nome de grupo sugerido', () => {
+    it('nomeGrupoSugerido só devolve quando difere do original', () => {
+      const e = estado({ nomesGrupos: { Higiene: 'Higiene', Areas: 'Áreas' } });
+      expect(nomeGrupoSugerido(e, 'Higiene')).toBeUndefined();
+      expect(nomeGrupoSugerido(e, 'Areas')).toBe('Áreas');
+      expect(nomeGrupoSugerido(e, 'Outro')).toBeUndefined();
+    });
+
+    it('desfazerNomeGrupo volta ao nome original e a confirmação usa o original', () => {
+      const e = estado({ perguntas: [pergunta('a', 'Areas')], nomesGrupos: { Areas: 'Áreas' } });
+      const desfeito = desfazerNomeGrupo(e, 'Areas');
+      expect(nomeGrupoSugerido(desfeito, 'Areas')).toBeUndefined();
+      expect(montarConfirmacao(desfeito, { nomeTemplate: 'T' }).grupos[0].nome).toBe('Areas');
+      expect(e.nomesGrupos).toEqual({ Areas: 'Áreas' });
+    });
   });
 });

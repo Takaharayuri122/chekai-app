@@ -18,6 +18,32 @@ export interface EstadoRevisao {
 
 export type AbaRevisao = 'todas' | 'correcao' | 'conferir';
 
+/** Nome usado para as perguntas da planilha que vieram sem grupo. */
+export const GRUPO_SEM_NOME = 'Sem grupo';
+
+/** Grupo da pergunta, com as perguntas sem grupo reunidas em "Sem grupo". */
+export function grupoDe(p: Pick<PerguntaImportada, 'grupo'>): string {
+  return p.grupo?.trim() ? p.grupo : GRUPO_SEM_NOME;
+}
+
+/** Reúne as perguntas sem grupo em "Sem grupo" (a revisão e a confirmação exigem um nome). */
+export function normalizarGrupos(perguntas: PerguntaImportada[]): PerguntaImportada[] {
+  return perguntas.map((p) => (grupoDe(p) === p.grupo ? p : { ...p, grupo: grupoDe(p) }));
+}
+
+/** Nome sugerido pela IA para o grupo, só quando difere do original. */
+export function nomeGrupoSugerido(e: EstadoRevisao, grupo: string): string | undefined {
+  const sugerido = e.nomesGrupos[grupo];
+  return sugerido && sugerido !== grupo ? sugerido : undefined;
+}
+
+/** Desfaz o nome sugerido para o grupo, voltando ao nome da planilha. */
+export function desfazerNomeGrupo(e: EstadoRevisao, grupo: string): EstadoRevisao {
+  const nomesGrupos = { ...e.nomesGrupos };
+  delete nomesGrupos[grupo];
+  return { ...e, nomesGrupos };
+}
+
 /** Divide as perguntas em lotes de no máximo `max`, sem misturar grupos (ordem de primeira aparição). */
 export function dividirEmLotes(
   perguntas: PerguntaImportada[],
@@ -25,9 +51,10 @@ export function dividirEmLotes(
 ): { grupo: string; perguntas: PerguntaImportada[] }[] {
   const porGrupo = new Map<string, PerguntaImportada[]>();
   for (const p of perguntas) {
-    const lista = porGrupo.get(p.grupo) ?? [];
+    const grupo = grupoDe(p);
+    const lista = porGrupo.get(grupo) ?? [];
     lista.push(p);
-    porGrupo.set(p.grupo, lista);
+    porGrupo.set(grupo, lista);
   }
   const lotes: { grupo: string; perguntas: PerguntaImportada[] }[] = [];
   for (const [grupo, lista] of porGrupo) {
@@ -122,10 +149,11 @@ export function diferencaPalavras(original: string, sugerido: string): { texto: 
 export function montarConfirmacao(e: EstadoRevisao, dados: ImportarChecklistRequest): ConfirmarImportacaoRequest {
   const grupos = new Map<string, ConfirmarImportacaoRequest['grupos'][number]>();
   for (const p of e.perguntas) {
-    let g = grupos.get(p.grupo);
+    const grupo = grupoDe(p);
+    let g = grupos.get(grupo);
     if (!g) {
-      g = { nome: e.nomesGrupos[p.grupo] ?? p.grupo, perguntas: [] };
-      grupos.set(p.grupo, g);
+      g = { nome: e.nomesGrupos[grupo] ?? grupo, perguntas: [] };
+      grupos.set(grupo, g);
     }
     const final = versaoFinal(e, p.chave);
     g.perguntas.push({ secao: p.secao, pergunta: final.pergunta, configuracao: final.configuracao });
