@@ -47,7 +47,13 @@ import { PainelConfiguracaoLote } from '@/components/checklist/painel-configurac
 import { BarraSelecao } from '@/components/checklist/barra-selecao';
 import { Checkbox } from '@/components/ui/shadcn/checkbox';
 import { Switch } from '@/components/ui/shadcn/switch';
-import { resumoRespostasGrupo, type EscopoLote } from '@/lib/checklist/configuracao-lote';
+import {
+  formGrupoAlterado,
+  pesoAoTrocarTipo,
+  resumoRespostasGrupo,
+  selecionadosAtivos,
+  type EscopoLote,
+} from '@/lib/checklist/configuracao-lote';
 import {
   checklistService,
   ChecklistTemplate,
@@ -842,6 +848,9 @@ export default function EditarTemplatePage() {
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
   const [painelEscopo, setPainelEscopo] = useState<EscopoLote | null>(null);
   const [painelAberto, setPainelAberto] = useState(false);
+  const [confirmarDescarteGrupo, setConfirmarDescarteGrupo] = useState(false);
+  // A seleção pode conter perguntas já removidas: conta só as que ainda estão ativas
+  const idsSelecionados = selecionadosAtivos(template?.itens || [], selecionados);
 
   const totalPerguntas = template?.itens?.filter((i) => i.ativo !== false).length || 0;
 
@@ -880,12 +889,11 @@ export default function EditarTemplatePage() {
   };
 
   const handleConfigurarSelecionados = () => {
-    const ids = (template?.itens || []).filter((i) => i.ativo !== false && selecionados.has(i.id)).map((i) => i.id);
-    if (ids.length === 0) return;
-    abrirPainel({ tipo: 'selecao', itemIds: ids });
+    if (idsSelecionados.length === 0) return;
+    abrirPainel({ tipo: 'selecao', itemIds: idsSelecionados });
   };
 
-  const handleConfigurarGrupoEditado = () => {
+  const abrirPainelDoGrupoEditado = () => {
     if (!editingGrupo) return;
     const total = getItensPorGrupo(editingGrupo.id).length;
     if (total === 0) return;
@@ -893,6 +901,12 @@ export default function EditarTemplatePage() {
     setShowGrupoModal(false);
     resetGrupoForm();
     abrirPainel(escopo);
+  };
+
+  const handleConfigurarGrupoEditado = () => {
+    // Abrir o painel fecha o modal do grupo: pergunta antes de perder nome/descrição não salvos
+    if (formGrupoAlterado(grupoForm, editingGrupo)) setConfirmarDescarteGrupo(true);
+    else abrirPainelDoGrupoEditado();
   };
 
   const handleLoteAplicado = async () => {
@@ -1281,7 +1295,7 @@ export default function EditarTemplatePage() {
 
         {modoSelecao && (
           <BarraSelecao
-            quantidade={selecionados.size}
+            quantidade={idsSelecionados.length}
             onLimpar={() => setSelecionados(new Set())}
             onConfigurar={handleConfigurarSelecionados}
           />
@@ -1293,7 +1307,7 @@ export default function EditarTemplatePage() {
         onClose={() => { setShowGrupoModal(false); resetGrupoForm(); }}
         title={editingGrupo ? 'Editar Grupo' : 'Novo Grupo'}
         maxWidth="md"
-        isDirty={Boolean(grupoForm.nome || grupoForm.descricao)}
+        isDirty={formGrupoAlterado(grupoForm, editingGrupo)}
         closeOnBackdrop={false}
         footer={
           <>
@@ -1587,7 +1601,7 @@ export default function EditarTemplatePage() {
                       ...itemForm,
                       tipoRespostaCustomizada: valor,
                       usarRespostasPersonalizadas: valor !== undefined,
-                      peso: valor === TipoRespostaCustomizada.TEXTO ? 0 : itemForm.peso,
+                      peso: pesoAoTrocarTipo(itemForm.tipoRespostaCustomizada, valor, itemForm.peso),
                       // Texto não recebe fotos; ao sair de texto, as fotos voltam a ser permitidas
                       permiteFoto:
                         valor === TipoRespostaCustomizada.TEXTO
@@ -1881,6 +1895,20 @@ export default function EditarTemplatePage() {
               )}
         </div>
       </FormModal>
+
+      <ConfirmDialog
+        open={confirmarDescarteGrupo}
+        onClose={() => setConfirmarDescarteGrupo(false)}
+        onConfirm={() => {
+          setConfirmarDescarteGrupo(false);
+          abrirPainelDoGrupoEditado();
+        }}
+        title="Descartar alterações do grupo?"
+        message="O nome ou a descrição do grupo foram alterados e ainda não foram salvos. Para configurar as perguntas agora, essas alterações serão descartadas."
+        confirmLabel="Descartar e continuar"
+        cancelLabel="Voltar ao grupo"
+        variant="warning"
+      />
 
       <ConfirmDialog
         open={confirmRemoverGrupo !== null}

@@ -36,6 +36,15 @@ const SECOES: SecaoLote[] = [
   'criticidade',
 ];
 
+/** Pontuação inicial de cada resposta padrão: conforme 1, não conforme 0; as demais não pontuam. */
+function pontuacaoInicial(valorPadrao: string): number | null {
+  if (valorPadrao === 'conforme') return 1;
+  if (valorPadrao === 'nao_conforme') return 0;
+  return null;
+}
+
+const SEM_PONTUACAO = ['nao_aplicavel', 'nao_avaliado'];
+
 export function estadoInicialLote(): EstadoLote {
   return {
     ligadas: {
@@ -47,12 +56,7 @@ export function estadoInicialLote(): EstadoLote {
       criticidade: false,
     },
     tipoResposta: 'padrao',
-    opcoes: RESPOSTAS_PADRAO.map((r) => ({
-      valor: r.valor,
-      pontuacao: null,
-      fotoObrigatoria: false,
-      observacaoObrigatoria: false,
-    })),
+    opcoes: opcoesParaTipo('padrao'),
     permiteFoto: true,
     permiteObservacao: true,
     obrigatorio: true,
@@ -131,14 +135,71 @@ export function montarRequisicaoLote(
 export function opcoesParaTipo(tipo: TipoRespostaLote): OpcaoLote[] {
   return RESPOSTAS_PADRAO.map((r) => ({
     valor: tipo === 'personalizada' ? r.label : r.valor,
-    pontuacao: null,
+    pontuacao: pontuacaoInicial(r.valor),
     fotoObrigatoria: false,
     observacaoObrigatoria: false,
   }));
+}
+
+/**
+ * Lê o campo "Pontos". Em branco a opção fica sem pontuação explícita (segue a pontuação padrão);
+ * só "não aplicável" e "não avaliado" do padrão ficam explicitamente sem pontuar (null).
+ */
+export function lerPontos(texto: string, valor: string, tipo: TipoRespostaLote): number | null | undefined {
+  if (texto.trim() === '') return tipo === 'padrao' && SEM_PONTUACAO.includes(valor) ? null : undefined;
+  const n = parseInt(texto, 10);
+  return Number.isNaN(n) ? undefined : n;
+}
+
+/** Troca o tipo de resposta; opções personalizadas ligam a seção de opções (a resposta exige opções). */
+export function trocarTipoLote(e: EstadoLote, tipo: TipoRespostaLote): EstadoLote {
+  const opcoes = tipo === 'padrao' || tipo === 'personalizada' ? opcoesParaTipo(tipo) : e.opcoes;
+  const ligadas = tipo === 'personalizada' ? { ...e.ligadas, opcoes: true } : e.ligadas;
+  return { ...e, tipoResposta: tipo, opcoes, ligadas };
+}
+
+/** Motivo pelo qual a configuração ainda não pode ser enviada (null quando está pronta). */
+export function motivoRequisicaoInvalida(e: EstadoLote): string | null {
+  const alteracoes = montarAlteracoes(e);
+  if (alteracoes.tipoResposta === 'personalizada' && !alteracoes.opcoes) {
+    return 'Opções personalizadas precisam da seção "Opções, pontuação e exigências" ligada.';
+  }
+  if (alteracoes.opcoes) {
+    if (!opcoesValidas(alteracoes.opcoes)) return 'Dê um nome diferente a cada opção para continuar.';
+    const foraDoIntervalo = alteracoes.opcoes.some(
+      (o) => o.pontuacao != null && (!Number.isInteger(o.pontuacao) || o.pontuacao < -10 || o.pontuacao > 10),
+    );
+    if (foraDoIntervalo) return 'Use pontos de -10 a 10.';
+  }
+  return null;
+}
+
+/** Ids selecionados que ainda existem entre as perguntas ativas (a seleção pode ficar velha após remover). */
+export function selecionadosAtivos(itens: TemplateItem[], selecionados: Set<string>): string[] {
+  return itens.filter((i) => i.ativo !== false && selecionados.has(i.id)).map((i) => i.id);
 }
 
 /** As opções só são válidas se houver ao menos uma e todas tiverem nome, sem repetição. */
 export function opcoesValidas(opcoes: OpcaoLote[]): boolean {
   const nomes = opcoes.map((o) => o.valor.trim().toLowerCase());
   return nomes.length > 0 && nomes.every(Boolean) && new Set(nomes).size === nomes.length;
+}
+
+/** Peso ao trocar o tipo de resposta: texto não pontua (0); ao sair de texto, peso 0 volta a 1. */
+export function pesoAoTrocarTipo(
+  anterior: TipoRespostaCustomizada | undefined,
+  novo: TipoRespostaCustomizada | undefined,
+  peso: number | undefined,
+): number | undefined {
+  if (novo === TipoRespostaCustomizada.TEXTO) return 0;
+  if (anterior === TipoRespostaCustomizada.TEXTO && peso === 0) return 1;
+  return peso;
+}
+
+/** O formulário de grupo tem alteração real em relação ao grupo em edição (ou a um grupo novo vazio)? */
+export function formGrupoAlterado(
+  form: { nome: string; descricao?: string },
+  grupo: { nome: string; descricao?: string | null } | null,
+): boolean {
+  return form.nome !== (grupo?.nome ?? '') || (form.descricao ?? '') !== (grupo?.descricao ?? '');
 }

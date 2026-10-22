@@ -1,7 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import {
   estadoInicialLote,
+  formGrupoAlterado,
+  lerPontos,
+  pesoAoTrocarTipo,
   montarAlteracoes,
+  motivoRequisicaoInvalida,
+  selecionadosAtivos,
+  trocarTipoLote,
   montarRequisicaoLote,
   opcoesParaTipo,
   opcoesValidas,
@@ -23,10 +29,11 @@ describe('configuracao-lote', () => {
     expect(e.opcoes).toHaveLength(4);
     expect(e.opcoes[0]).toEqual({
       valor: 'conforme',
-      pontuacao: null,
+      pontuacao: 1,
       fotoObrigatoria: false,
       observacaoObrigatoria: false,
     });
+    expect(e.opcoes.map((o) => o.pontuacao)).toEqual([1, 0, null, null]);
   });
 
   it('temAlteracao true após ligar uma seção', () => {
@@ -123,5 +130,77 @@ describe('configuracao-lote', () => {
     expect(opcoesValidas(o)).toBe(false);
     o[0].valor = 'não conforme';
     expect(opcoesValidas(o)).toBe(false);
+  });
+
+  it('opcoesParaTipo já vem com 1/0 em conforme e não conforme', () => {
+    expect(opcoesParaTipo('padrao').map((o) => o.pontuacao)).toEqual([1, 0, null, null]);
+    expect(opcoesParaTipo('personalizada').map((o) => o.pontuacao)).toEqual([1, 0, null, null]);
+  });
+
+  it('lerPontos: vazio fica sem pontuação explícita, exceto N/A e N/Av do padrão', () => {
+    expect(lerPontos('', 'conforme', 'padrao')).toBeUndefined();
+    expect(lerPontos('', 'Sim', 'personalizada')).toBeUndefined();
+    expect(lerPontos('', 'nao_aplicavel', 'padrao')).toBeNull();
+    expect(lerPontos('3', 'Sim', 'personalizada')).toBe(3);
+    expect(lerPontos('-2', 'nao_conforme', 'padrao')).toBe(-2);
+  });
+
+  it('pontos em branco não são enviados como null', () => {
+    const e = trocarTipoLote({ ...estadoInicialLote(), ligadas: { ...estadoInicialLote().ligadas, tipoResposta: true } }, 'padrao');
+    e.ligadas.opcoes = true;
+    e.opcoes[0] = { ...e.opcoes[0], pontuacao: lerPontos('', 'conforme', 'padrao') };
+    const corpo = JSON.parse(JSON.stringify(montarAlteracoes(e)));
+    expect('pontuacao' in corpo.opcoes[0]).toBe(false);
+  });
+
+  it('escolher personalizada liga as opções com ao menos uma opção', () => {
+    const inicial = estadoInicialLote();
+    inicial.ligadas.tipoResposta = true;
+    const e = trocarTipoLote(inicial, 'personalizada');
+    expect(e.tipoResposta).toBe('personalizada');
+    expect(e.ligadas.opcoes).toBe(true);
+    expect(e.opcoes.length).toBeGreaterThan(0);
+    expect(motivoRequisicaoInvalida(e)).toBeNull();
+    expect(montarAlteracoes(e).opcoes?.length).toBeGreaterThan(0);
+  });
+
+  it('personalizada sem a seção de opções ligada é inválida localmente', () => {
+    const e = trocarTipoLote({ ...estadoInicialLote(), ligadas: { ...estadoInicialLote().ligadas, tipoResposta: true } }, 'personalizada');
+    e.ligadas.opcoes = false;
+    expect(motivoRequisicaoInvalida(e)).toBeTruthy();
+    e.ligadas.opcoes = true;
+    e.opcoes = [];
+    expect(motivoRequisicaoInvalida(e)).toBeTruthy();
+  });
+
+  it('pontos fora de -10 a 10 são inválidos localmente', () => {
+    const e = trocarTipoLote({ ...estadoInicialLote(), ligadas: { ...estadoInicialLote().ligadas, tipoResposta: true } }, 'padrao');
+    e.ligadas.opcoes = true;
+    e.opcoes[0] = { ...e.opcoes[0], pontuacao: 11 };
+    expect(motivoRequisicaoInvalida(e)).toBeTruthy();
+    e.opcoes[0] = { ...e.opcoes[0], pontuacao: 10 };
+    expect(motivoRequisicaoInvalida(e)).toBeNull();
+  });
+
+  it('selecionadosAtivos ignora ids removidos ou inativos', () => {
+    const itens = [item({ id: 'a' }), item({ id: 'b', ativo: false }), item({ id: 'c' })];
+    expect(selecionadosAtivos(itens, new Set(['a', 'b', 'x']))).toEqual(['a']);
+  });
+
+  it('pesoAoTrocarTipo: texto zera; sair de texto com peso 0 volta a 1', () => {
+    expect(pesoAoTrocarTipo(undefined, TipoRespostaCustomizada.TEXTO, 3)).toBe(0);
+    expect(pesoAoTrocarTipo(TipoRespostaCustomizada.TEXTO, undefined, 0)).toBe(1);
+    expect(pesoAoTrocarTipo(TipoRespostaCustomizada.TEXTO, TipoRespostaCustomizada.NUMERO, 0)).toBe(1);
+    expect(pesoAoTrocarTipo(TipoRespostaCustomizada.TEXTO, TipoRespostaCustomizada.NUMERO, 2)).toBe(2);
+    expect(pesoAoTrocarTipo(undefined, TipoRespostaCustomizada.DATA, 0)).toBe(0);
+  });
+
+  it('formGrupoAlterado compara com o grupo em edição', () => {
+    const grupo = { nome: 'Higiene', descricao: undefined };
+    expect(formGrupoAlterado({ nome: 'Higiene', descricao: '' }, grupo)).toBe(false);
+    expect(formGrupoAlterado({ nome: 'Higiene 2', descricao: '' }, grupo)).toBe(true);
+    expect(formGrupoAlterado({ nome: 'Higiene', descricao: 'x' }, grupo)).toBe(true);
+    expect(formGrupoAlterado({ nome: '', descricao: '' }, null)).toBe(false);
+    expect(formGrupoAlterado({ nome: 'Novo', descricao: '' }, null)).toBe(true);
   });
 });

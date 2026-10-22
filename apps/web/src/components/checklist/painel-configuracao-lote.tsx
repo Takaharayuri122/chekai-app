@@ -18,11 +18,13 @@ import { Switch } from '@/components/ui/shadcn/switch';
 import { useMediaQuery } from '@/hooks/use-media-query';
 import {
   estadoInicialLote,
+  lerPontos,
   montarRequisicaoLote,
-  opcoesParaTipo,
+  motivoRequisicaoInvalida,
   opcoesValidas,
   secoesTravadas,
   temAlteracao,
+  trocarTipoLote,
   type EscopoLote,
   type EstadoLote,
   type SecaoLote,
@@ -181,11 +183,14 @@ export function PainelConfiguracaoLote({ aberto, onFechar, templateId, escopo, o
   const alterou = temAlteracao(estado);
   const opcoesAtivas = estado.ligadas.opcoes && !travadas.opcoes;
   const opcoesOk = !opcoesAtivas || opcoesValidas(estado.opcoes);
+  // Configuração que a API recusaria não é simulada nem aplicada
+  const motivoInvalido = alterou ? motivoRequisicaoInvalida(estado) : null;
+  const requisicaoOk = motivoInvalido === null;
 
   // Simulação com debounce a cada mudança.
   useEffect(() => {
     if (!aberto) return;
-    if (!alterou || !opcoesOk) {
+    if (!alterou || !requisicaoOk) {
       setSimulacao(null);
       setSimulando(false);
       return;
@@ -206,16 +211,12 @@ export function PainelConfiguracaoLote({ aberto, onFechar, templateId, escopo, o
       cancelado = true;
       clearTimeout(timer);
     };
-  }, [aberto, alterou, opcoesOk, estado, escopo, templateId]);
+  }, [aberto, alterou, requisicaoOk, estado, escopo, templateId]);
 
   const ligar = (secao: SecaoLote, v: boolean) =>
     setEstado((e) => ({ ...e, ligadas: { ...e.ligadas, [secao]: v } }));
 
-  const trocarTipo = (tipo: TipoRespostaLote) =>
-    setEstado((e) => {
-      const opcoes = tipo === 'padrao' || tipo === 'personalizada' ? opcoesParaTipo(tipo) : e.opcoes;
-      return { ...e, tipoResposta: tipo, opcoes };
-    });
+  const trocarTipo = (tipo: TipoRespostaLote) => setEstado((e) => trocarTipoLote(e, tipo));
 
   const atualizarOpcao = (idx: number, parcial: Partial<EstadoLote['opcoes'][number]>) =>
     setEstado((e) => ({ ...e, opcoes: e.opcoes.map((o, i) => (i === idx ? { ...o, ...parcial } : o)) }));
@@ -236,7 +237,7 @@ export function PainelConfiguracaoLote({ aberto, onFechar, templateId, escopo, o
   const textoAvisoAuditorias = `Este checklist tem ${avisoAuditorias} ${avisoAuditorias === 1 ? 'auditoria' : 'auditorias'}; pontuação e exigências delas passam a seguir a nova configuração.`;
 
   const afetados = simulacao?.totalAfetados ?? 0;
-  const podeAplicar = alterou && opcoesOk && !simulando && !aplicando && simulacao !== null && afetados > 0;
+  const podeAplicar = alterou && requisicaoOk && !simulando && !aplicando && simulacao !== null && afetados > 0;
 
   const aplicar = async () => {
     setAplicando(true);
@@ -327,10 +328,7 @@ export function PainelConfiguracaoLote({ aberto, onFechar, templateId, escopo, o
                 value={o.pontuacao ?? ''}
                 placeholder="—"
                 aria-label={`Pontos de ${ROTULO_PADRAO[o.valor] ?? (o.valor || `opção ${idx + 1}`)}`}
-                onChange={(e) => {
-                  const v = e.target.value === '' ? null : parseInt(e.target.value, 10);
-                  atualizarOpcao(idx, { pontuacao: v === null || Number.isNaN(v) ? null : v });
-                }}
+                onChange={(e) => atualizarOpcao(idx, { pontuacao: lerPontos(e.target.value, o.valor, estado.tipoResposta) })}
                 className="h-9 w-full rounded-md border border-input bg-card px-2 text-center text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
               />
               <Tooltip content="Foto obrigatória">
@@ -372,7 +370,7 @@ export function PainelConfiguracaoLote({ aberto, onFechar, templateId, escopo, o
               onClick={() =>
                 setEstado((e) => ({
                   ...e,
-                  opcoes: [...e.opcoes, { valor: '', pontuacao: null, fotoObrigatoria: false, observacaoObrigatoria: false }],
+                  opcoes: [...e.opcoes, { valor: '', fotoObrigatoria: false, observacaoObrigatoria: false }],
                 }))
               }
             >
@@ -458,9 +456,12 @@ export function PainelConfiguracaoLote({ aberto, onFechar, templateId, escopo, o
           <p className="font-medium text-foreground">
             {afetados === 0 ? 'Nenhuma pergunta muda com esta configuração.' : `Vai alterar ${perguntas(afetados)}`}
           </p>
-        ) : opcoesOk ? (
+        ) : !requisicaoOk ? (
+          // Nomes repetidos/vazios já são avisados junto às opções
+          opcoesOk ? <p className="text-destructive">{motivoInvalido}</p> : null
+        ) : (
           <p className="text-destructive">Não foi possível calcular o impacto. Tente novamente.</p>
-        ) : null}
+        )}
       </div>
       {temAviso && !simulando && (
         <div className="flex items-start gap-2 rounded-md bg-warning/15 p-3 text-xs text-[hsl(32_95%_34%)]">
