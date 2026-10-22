@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { AlertTriangle, Camera, Loader2, Lock, MessageSquare, Plus, Trash2 } from 'lucide-react';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { Tooltip } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/shadcn/button';
 import {
   Drawer,
@@ -288,8 +289,8 @@ export function PainelConfiguracaoLote({ aberto, onFechar, templateId, escopo, o
         <div className="grid grid-cols-[minmax(0,1fr)_64px_36px_36px] items-center gap-2 text-xs font-medium text-muted-foreground">
           <span>Opção</span>
           <span className="text-center">Pontos</span>
-          <span className="text-center" title="Foto obrigatória">Foto</span>
-          <span className="text-center" title="Observação obrigatória">Obs.</span>
+          <span className="text-center">Foto</span>
+          <span className="text-center">Obs.</span>
         </div>
         {estado.opcoes.map((o, idx) => {
           const editavel = estado.tipoResposta === 'personalizada';
@@ -305,6 +306,7 @@ export function PainelConfiguracaoLote({ aberto, onFechar, templateId, escopo, o
                     aria-label={`Nome da opção ${idx + 1}`}
                     className="h-9 min-w-0 flex-1 rounded-md border border-input bg-card px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   />
+                  <Tooltip content="Remover opção">
                   <button
                     type="button"
                     aria-label={`Remover opção ${o.valor || idx + 1}`}
@@ -313,6 +315,7 @@ export function PainelConfiguracaoLote({ aberto, onFechar, templateId, escopo, o
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
+                  </Tooltip>
                 </div>
               ) : (
                 <span className="truncate text-sm">{ROTULO_PADRAO[o.valor] ?? o.valor}</span>
@@ -330,11 +333,11 @@ export function PainelConfiguracaoLote({ aberto, onFechar, templateId, escopo, o
                 }}
                 className="h-9 w-full rounded-md border border-input bg-card px-2 text-center text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
               />
+              <Tooltip content="Foto obrigatória">
               <button
                 type="button"
                 aria-pressed={o.fotoObrigatoria}
                 aria-label="Foto obrigatória"
-                title="Foto obrigatória"
                 onClick={() => atualizarOpcao(idx, { fotoObrigatoria: !o.fotoObrigatoria })}
                 className={cn(
                   'flex h-9 w-9 items-center justify-center rounded-md border transition-colors',
@@ -343,11 +346,12 @@ export function PainelConfiguracaoLote({ aberto, onFechar, templateId, escopo, o
               >
                 <Camera className="h-4 w-4" />
               </button>
+              </Tooltip>
+              <Tooltip content="Observação obrigatória">
               <button
                 type="button"
                 aria-pressed={o.observacaoObrigatoria}
                 aria-label="Observação obrigatória"
-                title="Observação obrigatória"
                 onClick={() => atualizarOpcao(idx, { observacaoObrigatoria: !o.observacaoObrigatoria })}
                 className={cn(
                   'flex h-9 w-9 items-center justify-center rounded-md border transition-colors',
@@ -356,6 +360,7 @@ export function PainelConfiguracaoLote({ aberto, onFechar, templateId, escopo, o
               >
                 <MessageSquare className="h-4 w-4" />
               </button>
+              </Tooltip>
             </div>
           );
         })}

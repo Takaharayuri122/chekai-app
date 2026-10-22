@@ -140,12 +140,14 @@ function SortableItem({ item, index, onEdit, onRemove, onDuplicate, isDuplicatin
     >
       {modoSelecao ? (
         <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center" onClick={(e) => e.stopPropagation()}>
-          <Checkbox
-            checked={Boolean(selecionado)}
-            onCheckedChange={() => onToggleSelecao?.(item.id)}
-            aria-label={`Selecionar pergunta ${index + 1}`}
-            className="h-5 w-5"
-          />
+          <Tooltip content={selecionado ? 'Desmarcar pergunta' : 'Selecionar pergunta'}>
+            <Checkbox
+              checked={Boolean(selecionado)}
+              onCheckedChange={() => onToggleSelecao?.(item.id)}
+              aria-label={`Selecionar pergunta ${index + 1}`}
+              className="h-5 w-5"
+            />
+          </Tooltip>
         </div>
       ) : (
         <div
@@ -1079,13 +1081,15 @@ export default function EditarTemplatePage() {
                     <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
                       {modoSelecao ? (
                         <div className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
-                          <Checkbox
-                            checked={estadoSelecaoGrupo(getItensPorGrupo(grupo.id))}
-                            disabled={getItensPorGrupo(grupo.id).length === 0}
-                            onCheckedChange={() => alternarGrupoSelecionado(getItensPorGrupo(grupo.id))}
-                            aria-label={`Selecionar todas as perguntas do grupo ${grupo.nome}`}
-                            className="h-5 w-5"
-                          />
+                          <Tooltip content="Selecionar todas as perguntas do grupo">
+                            <Checkbox
+                              checked={estadoSelecaoGrupo(getItensPorGrupo(grupo.id))}
+                              disabled={getItensPorGrupo(grupo.id).length === 0}
+                              onCheckedChange={() => alternarGrupoSelecionado(getItensPorGrupo(grupo.id))}
+                              aria-label={`Selecionar todas as perguntas do grupo ${grupo.nome}`}
+                              className="h-5 w-5"
+                            />
+                          </Tooltip>
                         </div>
                       ) : (
                         <GripVertical className="w-4 h-4 text-muted-foreground/70 flex-shrink-0" />
@@ -1211,12 +1215,14 @@ export default function EditarTemplatePage() {
                 <div className="border border-border rounded-lg">
                   <div className="flex items-center gap-2 sm:gap-3 p-3 bg-muted">
                     {modoSelecao && (
+                      <Tooltip content="Selecionar todas as perguntas sem grupo">
                       <Checkbox
                         checked={estadoSelecaoGrupo(getItensSemGrupo())}
                         onCheckedChange={() => alternarGrupoSelecionado(getItensSemGrupo())}
                         aria-label="Selecionar todas as perguntas sem grupo"
                         className="h-5 w-5"
                       />
+                      </Tooltip>
                     )}
                     <HelpCircle className="w-4 h-4 sm:w-5 sm:h-5 text-warning flex-shrink-0" />
                     <span className="font-medium text-sm sm:text-base">Perguntas sem grupo</span>
