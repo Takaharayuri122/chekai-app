@@ -1,4 +1,5 @@
 import { normalizarConfiguracao } from './checklist-import-mapeamento';
+import { RESPOSTAS_PADRAO_VALORES } from './checklist-regras';
 import { TIPOS_RESPOSTA_LOTE } from './dto/configurar-lote.dto';
 import { ConfiguracaoPerguntaImportada, PerguntaImportada } from './dto/importar-checklist.dto';
 import { CategoriaItem, CriticidadeItem } from './entities/template-item.entity';
@@ -122,21 +123,52 @@ function opcoesValidas(valor: unknown): ConfiguracaoPerguntaImportada['opcoes'] 
   return resultado;
 }
 
+function reconciliarOpcoes(
+  original: ConfiguracaoPerguntaImportada,
+  tipo: ConfiguracaoPerguntaImportada['tipoResposta'],
+  opcoesIa: ConfiguracaoPerguntaImportada['opcoes'] | undefined,
+): Pick<ConfiguracaoPerguntaImportada, 'tipoResposta' | 'opcoes'> {
+  if (tipo === 'texto' || tipo === 'numero' || tipo === 'data') return { tipoResposta: tipo, opcoes: [] };
+
+  if (tipo === 'padrao') {
+    const doOriginal = original.tipoResposta === 'padrao' ? original.opcoes : [];
+    const alvo = doOriginal.length ? doOriginal.map((o) => o.valor) : [...RESPOSTAS_PADRAO_VALORES];
+    const opcoes = RESPOSTAS_PADRAO_VALORES.filter((v) => alvo.includes(v)).map(
+      (valor) =>
+        opcoesIa?.find((o) => o.valor === valor) ??
+        doOriginal.find((o) => o.valor === valor) ?? {
+          valor,
+          pontuacao: null,
+          fotoObrigatoria: false,
+          observacaoObrigatoria: false,
+        },
+    );
+    return { tipoResposta: 'padrao', opcoes };
+  }
+
+  // personalizada: exige ao menos uma opção válida; senão mantém tipo e opções originais
+  if (opcoesIa?.length) return { tipoResposta: 'personalizada', opcoes: opcoesIa };
+  return { tipoResposta: original.tipoResposta, opcoes: original.opcoes };
+}
+
 function aplicarSugestaoBruta(
   original: ConfiguracaoPerguntaImportada,
   bruto: Bruto,
 ): ConfiguracaoPerguntaImportada {
   const peso = bruto.peso;
+  const tipo = enumOuOriginal(bruto.tipoResposta, TIPOS_RESPOSTA_LOTE, original.tipoResposta);
+  const opcoesIa = opcoesValidas(bruto.opcoes);
+  // Tipo mantido e opções ausentes/inválidas: preserva as opções originais
+  const opcoesBase = tipo === original.tipoResposta && !opcoesIa ? original.opcoes : opcoesIa;
   return {
     ...original,
     categoria: enumOuOriginal(bruto.categoria, Object.values(CategoriaItem), original.categoria),
     criticidade: enumOuOriginal(bruto.criticidade, Object.values(CriticidadeItem), original.criticidade),
-    tipoResposta: enumOuOriginal(bruto.tipoResposta, TIPOS_RESPOSTA_LOTE, original.tipoResposta),
+    ...reconciliarOpcoes(original, tipo, opcoesBase),
     peso: typeof peso === 'number' && Number.isFinite(peso) && peso >= 0 ? peso : original.peso,
     permiteFoto: typeof bruto.permiteFoto === 'boolean' ? bruto.permiteFoto : original.permiteFoto,
     permiteObservacao:
       typeof bruto.permiteObservacao === 'boolean' ? bruto.permiteObservacao : original.permiteObservacao,
-    opcoes: opcoesValidas(bruto.opcoes) ?? original.opcoes,
   };
 }
 
