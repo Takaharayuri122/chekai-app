@@ -21,6 +21,11 @@ export function aceitaObservacao(item: AuditoriaItem): boolean {
   return item.templateItem?.permiteObservacao !== false;
 }
 
+/** Imagem irrelevante só exige observação quando a pergunta aceita observação (senão seria um beco sem saída). */
+export function bloqueiaPorImagemIrrelevante(item: AuditoriaItem, temImagemIrrelevante: boolean, observacao: string | undefined): boolean {
+  return temImagemIrrelevante && aceitaObservacao(item) && (!observacao || observacao.trim() === '');
+}
+
 export function estaRespondido(item: AuditoriaItem): boolean {
   const r = item.resposta;
   return Boolean(r && r.trim() !== '' && r !== 'nao_avaliado');

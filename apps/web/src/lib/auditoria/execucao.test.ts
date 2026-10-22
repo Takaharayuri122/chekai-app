@@ -3,6 +3,7 @@ import type { AuditoriaItem } from '@/lib/api';
 import {
   aceitaFoto,
   aceitaObservacao,
+  bloqueiaPorImagemIrrelevante,
   agruparPorSecao,
   customizadoPendente,
   podeFinalizar,
@@ -183,5 +184,24 @@ describe('aceitaFoto / aceitaObservacao', () => {
     const it = comTemplate({});
     expect(aceitaFoto(it)).toBe(true);
     expect(aceitaObservacao(it)).toBe(true);
+  });
+});
+
+describe('bloqueiaPorImagemIrrelevante', () => {
+  const base = item({});
+  const semObs = item({});
+  Object.assign(semObs.templateItem, { permiteObservacao: false });
+
+  it('exige observação quando há imagem irrelevante e observação é aceita', () => {
+    expect(bloqueiaPorImagemIrrelevante(base, true, '  ')).toBe(true);
+    expect(bloqueiaPorImagemIrrelevante(base, true, 'ok')).toBe(false);
+  });
+
+  it('não bloqueia quando a pergunta não aceita observação (evita beco sem saída)', () => {
+    expect(bloqueiaPorImagemIrrelevante(semObs, true, '')).toBe(false);
+  });
+
+  it('não bloqueia sem imagens irrelevantes', () => {
+    expect(bloqueiaPorImagemIrrelevante(base, false, '')).toBe(false);
   });
 });

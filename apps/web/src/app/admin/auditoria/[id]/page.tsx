@@ -39,6 +39,7 @@ import {
   podeFinalizar,
   aceitaFoto,
   aceitaObservacao,
+  bloqueiaPorImagemIrrelevante,
 } from '@/lib/auditoria/execucao';
 
 type RespostaType = 'conforme' | 'nao_conforme' | 'nao_aplicavel' | string;
@@ -604,7 +605,7 @@ export default function AuditoriaPage() {
       (f) => f.analiseIa && !f.analiseIa.imagemRelevante
     );
 
-    if (imagensNaoRelevantes.length > 0 && (!itemModal.observacao || itemModal.observacao.trim() === '')) {
+    if (bloqueiaPorImagemIrrelevante(itemModal.item, imagensNaoRelevantes.length > 0, itemModal.observacao)) {
       setActiveTab('observacao'); // Mudar para tab de observação
       toastService.error(
         'Por favor, remova as imagens inadequadas ou adicione uma observação explicando por que a imagem é relevante.'
