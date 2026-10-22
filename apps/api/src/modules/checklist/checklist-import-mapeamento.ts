@@ -64,6 +64,37 @@ export function normalizarConfiguracao(
   };
 }
 
+export const PONTUACAO_MIN = -10;
+export const PONTUACAO_MAX = 10;
+export const PESO_MAX = 100;
+const MOTIVO_PONTUACAO_AJUSTADA = 'Pontuação da planilha fora do intervalo de -10 a 10 foi ajustada.';
+
+/** Peso inteiro de 0 a PESO_MAX; valor ausente, inválido ou negativo vira 1. */
+export function normalizarPeso(bruto: number | undefined): number {
+  if (typeof bruto !== 'number' || !Number.isFinite(bruto) || bruto < 0) return 1;
+  return Math.min(PESO_MAX, Math.round(bruto));
+}
+
+/** Pontos da planilha: não numérico → ausente (pontuação padrão); fora do intervalo → ajustado. */
+function normalizarPontos(bruto: number | undefined): { pontuacao?: number; ajustada: boolean } {
+  if (typeof bruto !== 'number' || !Number.isFinite(bruto)) return { ajustada: false };
+  const pontuacao = Math.min(PONTUACAO_MAX, Math.max(PONTUACAO_MIN, bruto));
+  return { pontuacao, ajustada: pontuacao !== bruto };
+}
+
+/** Opção sem pontuação explícita: só "não aplicável" e "não avaliado" ficam sem pontuar (null). */
+function opcao(
+  valor: string,
+  pontuacao: number | undefined,
+  fotoObrigatoria: boolean,
+  observacaoObrigatoria: boolean,
+): OpcaoImportada {
+  const o: OpcaoImportada = { valor, fotoObrigatoria, observacaoObrigatoria };
+  if (pontuacao !== undefined) o.pontuacao = pontuacao;
+  else if (valor === 'nao_aplicavel' || valor === 'nao_avaliado') o.pontuacao = null;
+  return o;
+}
+
 /**
  * Converte uma linha da planilha em pergunta importada com configuração.
  */
@@ -77,20 +108,27 @@ export function mapearLinhaImportada(row: ChecklistCsvRow, indice: number): Perg
     !!flag && (!!inconformidade || nenhumaInconformidade);
 
   let opcoes: OpcaoImportada[];
+  let pontuacaoAjustada = false;
   if (tipo === 'personalizada') {
-    opcoes = opcoesPlanilha.map((o) => ({
-      valor: o.texto,
-      pontuacao: o.pontos ?? null,
-      fotoObrigatoria: exige(row.fotosObrigatorias, o.inconformidade),
-      observacaoObrigatoria: exige(row.justificativaObrigatoria, o.inconformidade),
-    }));
+    opcoes = opcoesPlanilha.map((o) => {
+      const { pontuacao, ajustada } = normalizarPontos(o.pontos);
+      pontuacaoAjustada ||= ajustada;
+      return opcao(
+        o.texto,
+        pontuacao,
+        exige(row.fotosObrigatorias, o.inconformidade),
+        exige(row.justificativaObrigatoria, o.inconformidade),
+      );
+    });
   } else if (tipo === 'padrao') {
-    opcoes = RESPOSTAS_PADRAO_VALORES.map((valor) => ({
-      valor,
-      pontuacao: null,
-      fotoObrigatoria: valor === 'nao_conforme' && !!row.fotosObrigatorias,
-      observacaoObrigatoria: valor === 'nao_conforme' && !!row.justificativaObrigatoria,
-    }));
+    opcoes = RESPOSTAS_PADRAO_VALORES.map((valor) =>
+      opcao(
+        valor,
+        undefined,
+        valor === 'nao_conforme' && !!row.fotosObrigatorias,
+        valor === 'nao_conforme' && !!row.justificativaObrigatoria,
+      ),
+    );
   } else {
     opcoes = [];
   }
@@ -99,7 +137,7 @@ export function mapearLinhaImportada(row: ChecklistCsvRow, indice: number): Perg
     categoria: inferirCategoria(row.grupo),
     criticidade: CriticidadeItem.MEDIA,
     tipoResposta: tipo,
-    peso: row.pontuacaoMaxima ?? 1,
+    peso: normalizarPeso(row.pontuacaoMaxima),
     obrigatorio: row.respostaObrigatoria ?? true,
     permiteFoto: row.permiteFotos ?? true,
     permiteObservacao: row.permiteComentario ?? true,
@@ -113,9 +151,10 @@ export function mapearLinhaImportada(row: ChecklistCsvRow, indice: number): Perg
     pergunta: row.pergunta,
     configuracao,
   };
-  if (!reconhecido) {
-    pergunta.motivoConferir = `Tipo de resposta da planilha não reconhecido: "${row.tipoResposta}"`;
-  }
+  const motivos: string[] = [];
+  if (!reconhecido) motivos.push(`Tipo de resposta da planilha não reconhecido: "${row.tipoResposta}"`);
+  if (pontuacaoAjustada) motivos.push(MOTIVO_PONTUACAO_AJUSTADA);
+  if (motivos.length) pergunta.motivoConferir = motivos.join(' ');
   return pergunta;
 }
 

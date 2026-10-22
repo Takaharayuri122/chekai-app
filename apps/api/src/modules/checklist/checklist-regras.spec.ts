@@ -124,3 +124,19 @@ describe('aplicarTipoResposta', () => {
     expect(item.opcoesResposta).toBeNull();
   });
 });
+
+describe('pontuação ausente nas opções', () => {
+  it('padrão e personalizada mantêm a pontuação ausente (não viram null)', () => {
+    for (const tipo of ['padrao', 'personalizada'] as const) {
+      const item = base();
+      aplicarTipoResposta(item, tipo, [
+        { valor: 'conforme', fotoObrigatoria: false, observacaoObrigatoria: false },
+        { valor: 'nao_aplicavel', pontuacao: null, fotoObrigatoria: false, observacaoObrigatoria: false },
+      ]);
+      aplicarRegrasForcadas(item);
+      const porValor = Object.fromEntries((item.opcoesRespostaConfig || []).map((c) => [c.valor, c]));
+      expect('pontuacao' in porValor['conforme']).toBe(false);
+      expect(porValor['nao_aplicavel'].pontuacao).toBeNull();
+    }
+  });
+});

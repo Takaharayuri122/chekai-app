@@ -1,3 +1,4 @@
+import { BadRequestException } from '@nestjs/common';
 import { ChecklistImportService } from './checklist-import.service';
 import { ConfirmarImportacaoDto } from './dto/importar-checklist.dto';
 import { PerfilUsuario } from '../usuario/entities/usuario.entity';
@@ -87,6 +88,17 @@ describe('ChecklistImportService.confirmar', () => {
     );
     expect(r.gruposCriados).toBe(1);
     expect(salvos.some((s) => s.nome === 'Vazio')).toBe(false);
+  });
+
+  it('todas as perguntas vazias → BadRequestException dentro da transação', async () => {
+    const { service, transaction } = montar();
+    await expect(
+      service.confirmar(
+        dtoBase([{ nome: 'G1', perguntas: [{ pergunta: '  ', configuracao: configTexto }] }, { nome: 'G2', perguntas: [] }]),
+        usuario,
+      ),
+    ).rejects.toThrow(new BadRequestException('Nenhuma pergunta válida para importar'));
+    expect(transaction).toHaveBeenCalledTimes(1);
   });
 
   it('erro no meio → transação não confirma', async () => {

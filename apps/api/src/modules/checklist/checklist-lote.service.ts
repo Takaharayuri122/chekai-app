@@ -46,6 +46,10 @@ export class ChecklistLoteService {
     if (temItemIds && dto.grupoId) {
       throw new BadRequestException('Informe itemIds ou grupoId, não os dois');
     }
+    // Lista vazia de itens sem grupo não pode virar "todas as perguntas do checklist"
+    if (dto.itemIds && dto.itemIds.length === 0 && !dto.grupoId) {
+      throw new BadRequestException('Selecione ao menos uma pergunta');
+    }
     if (!alteracoes || Object.values(alteracoes).every((v) => v === undefined)) {
       throw new BadRequestException('Informe ao menos uma alteração');
     }
@@ -103,8 +107,10 @@ export class ChecklistLoteService {
       const eraTexto = original.tipoRespostaCustomizada === TipoRespostaCustomizada.TEXTO;
       if (alteracoes.tipoResposta) {
         aplicarTipoResposta(item, alteracoes.tipoResposta, alteracoes.opcoes);
-        if (eraTexto && alteracoes.tipoResposta !== 'texto' && alteracoes.permiteFoto === undefined) {
-          item.permiteFoto = true;
+        if (eraTexto && alteracoes.tipoResposta !== 'texto') {
+          // Texto zera o peso e bloqueia fotos; ao sair de texto, voltam aos valores padrão
+          if (alteracoes.permiteFoto === undefined) item.permiteFoto = true;
+          if (!item.peso) item.peso = 1;
         }
       }
       if (alteracoes.permiteFoto !== undefined) item.permiteFoto = alteracoes.permiteFoto;

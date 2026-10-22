@@ -1,4 +1,4 @@
-import { normalizarConfiguracao } from './checklist-import-mapeamento';
+import { normalizarConfiguracao, PESO_MAX } from './checklist-import-mapeamento';
 import { RESPOSTAS_PADRAO_VALORES } from './checklist-regras';
 import { TIPOS_RESPOSTA_LOTE } from './dto/configurar-lote.dto';
 import { ConfiguracaoPerguntaImportada, PerguntaImportada } from './dto/importar-checklist.dto';
@@ -84,15 +84,16 @@ INSTRUÇÕES:
 - NÃO crie, remova ou reordene perguntas; use exatamente as chaves recebidas.
 - Sugira a configuração mais adequada para cada pergunta (categoria, criticidade, tipo de resposta, peso, foto, observação e opções).
 - Se mudar algo além do texto, explique brevemente em "motivo".
-- Você também pode sugerir um nome melhor para o grupo em "grupoNome".
+- Em "grupoNome", devolva o nome do grupo apenas com correção de ortografia e acentuação; não troque palavras nem o sentido. Se não houver o que corrigir, repita o nome recebido.
 
 VALORES PERMITIDOS:
 - categoria: ${Object.values(CategoriaItem).join(', ')}
 - criticidade: ${Object.values(CriticidadeItem).join(', ')}
 - tipoResposta: ${TIPOS_RESPOSTA_LOTE.join(', ')}
-- peso: número maior ou igual a 0
+- peso: número inteiro maior ou igual a 0 (no máximo ${PESO_MAX})
 - permiteFoto, permiteObservacao: true ou false
-- opcoes: lista de { "valor": string, "pontuacao": número de -10 a 10 ou null, "fotoObrigatoria": boolean, "observacaoObrigatoria": boolean }
+- opcoes: lista de { "valor": string, "pontuacao": número de -10 a 10, "fotoObrigatoria": boolean, "observacaoObrigatoria": boolean }
+- pontuacao: omita para usar a pontuação padrão; use null apenas em opções que não pontuam (como "não aplicável")
 
 Responda APENAS com JSON no formato:
 { "grupoNome": "...", "perguntas": [ { "chave": "...", "pergunta": "...", "categoria": "...", "criticidade": "...", "tipoResposta": "...", "peso": 1, "permiteFoto": true, "permiteObservacao": true, "opcoes": [], "motivo": "..." } ] }`;
@@ -113,12 +114,14 @@ function opcoesValidas(valor: unknown): ConfiguracaoPerguntaImportada['opcoes'] 
     if (!o || typeof o !== 'object' || typeof o.valor !== 'string' || !o.valor.trim()) return undefined;
     const p = o.pontuacao;
     if (p != null && (typeof p !== 'number' || !Number.isFinite(p) || p < -10 || p > 10)) return undefined;
-    resultado.push({
+    const opcao: ConfiguracaoPerguntaImportada['opcoes'][number] = {
       valor: o.valor,
-      pontuacao: p == null ? null : p,
       fotoObrigatoria: o.fotoObrigatoria === true,
       observacaoObrigatoria: o.observacaoObrigatoria === true,
-    });
+    };
+    // Ausente = pontuação padrão; null explícito = não pontua
+    if (p !== undefined) opcao.pontuacao = p as number | null;
+    resultado.push(opcao);
   }
   return resultado;
 }
@@ -136,12 +139,10 @@ function reconciliarOpcoes(
     const opcoes = RESPOSTAS_PADRAO_VALORES.filter((v) => alvo.includes(v)).map(
       (valor) =>
         opcoesIa?.find((o) => o.valor === valor) ??
-        doOriginal.find((o) => o.valor === valor) ?? {
-          valor,
-          pontuacao: null,
-          fotoObrigatoria: false,
-          observacaoObrigatoria: false,
-        },
+        doOriginal.find((o) => o.valor === valor) ??
+        (valor === 'nao_aplicavel' || valor === 'nao_avaliado'
+          ? { valor, pontuacao: null, fotoObrigatoria: false, observacaoObrigatoria: false }
+          : { valor, fotoObrigatoria: false, observacaoObrigatoria: false }),
     );
     return { tipoResposta: 'padrao', opcoes };
   }
@@ -165,7 +166,7 @@ function aplicarSugestaoBruta(
     categoria: enumOuOriginal(bruto.categoria, Object.values(CategoriaItem), original.categoria),
     criticidade: enumOuOriginal(bruto.criticidade, Object.values(CriticidadeItem), original.criticidade),
     ...reconciliarOpcoes(original, tipo, opcoesBase),
-    peso: typeof peso === 'number' && Number.isFinite(peso) && peso >= 0 ? peso : original.peso,
+    peso: typeof peso === 'number' && Number.isInteger(peso) && peso >= 0 && peso <= PESO_MAX ? peso : original.peso,
     permiteFoto: typeof bruto.permiteFoto === 'boolean' ? bruto.permiteFoto : original.permiteFoto,
     permiteObservacao:
       typeof bruto.permiteObservacao === 'boolean' ? bruto.permiteObservacao : original.permiteObservacao,

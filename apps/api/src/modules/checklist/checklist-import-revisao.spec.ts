@@ -125,7 +125,10 @@ describe('checklist-import-revisao', () => {
       ]);
       const opcoes = r.sugestoes[0].configuracaoSugerida.opcoes;
       expect(opcoes.map((o) => o.valor)).toEqual([...RESPOSTAS_PADRAO_VALORES]);
-      expect(opcoes.every((o) => o.pontuacao === null && !o.fotoObrigatoria && !o.observacaoObrigatoria)).toBe(true);
+      expect(opcoes.every((o) => !o.fotoObrigatoria && !o.observacaoObrigatoria)).toBe(true);
+      // conforme/nao_conforme sem pontuação explícita (pontuação padrão 1/0); N/A e N/Av não pontuam
+      expect(opcoes.map((o) => o.pontuacao)).toEqual([undefined, undefined, null, null]);
+      expect(opcoes.filter((o) => 'pontuacao' in o).map((o) => o.valor)).toEqual(['nao_aplicavel', 'nao_avaliado']);
     });
 
     it('numero e data limpam opcoes', () => {
@@ -138,6 +141,42 @@ describe('checklist-import-revisao', () => {
         expect(r.sugestoes[0].configuracaoSugerida.opcoes).toEqual([]);
       }
     });
+  });
+
+  it('opção da IA sem pontuação fica sem pontuação explícita (não null)', () => {
+    const r = interpretarRespostaIa(
+      resposta([
+        {
+          chave: 'l1',
+          tipoResposta: 'personalizada',
+          opcoes: [
+            { valor: 'Sim', fotoObrigatoria: false, observacaoObrigatoria: false },
+            { valor: 'Não', pontuacao: null, fotoObrigatoria: false, observacaoObrigatoria: false },
+          ],
+        },
+      ]),
+      originais,
+    );
+    const opcoes = r.sugestoes[0].configuracaoSugerida.opcoes;
+    expect('pontuacao' in opcoes[0]).toBe(false);
+    expect(opcoes[1].pontuacao).toBeNull();
+  });
+
+  it('peso não inteiro ou negativo da IA volta ao original; inteiro é aceito', () => {
+    const r = interpretarRespostaIa(resposta([{ chave: 'l1', peso: 1.5 }, { chave: 'l2', peso: -1 }]), originais);
+    expect(r.sugestoes[0].configuracaoSugerida.peso).toBe(1);
+    const r3 = interpretarRespostaIa(resposta([{ chave: 'l1', peso: 500 }]), originais);
+    expect(r3.sugestoes[0].configuracaoSugerida.peso).toBe(1);
+    expect(r.sugestoes[1].configuracaoSugerida.peso).toBe(1);
+    const r2 = interpretarRespostaIa(resposta([{ chave: 'l1', peso: 3 }]), originais);
+    expect(r2.sugestoes[0].configuracaoSugerida.peso).toBe(3);
+  });
+
+  it('prompt pede peso inteiro e restringe o nome do grupo a ortografia/acentuação', () => {
+    const prompt = montarPromptRevisao('Higiene', originais, []);
+    expect(prompt).toContain('peso: número inteiro maior ou igual a 0 (no máximo 100)');
+    expect(prompt).toMatch(/grupoNome.*apenas.*ortografia.*acentua/i);
+    expect(prompt).not.toContain('sugerir um nome melhor');
   });
 
   it('motivoConferir original faz conferir true', () => {

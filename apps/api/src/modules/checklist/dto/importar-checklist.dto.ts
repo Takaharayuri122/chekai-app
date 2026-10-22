@@ -5,10 +5,12 @@ import {
   IsBoolean,
   IsEnum,
   IsIn,
+  IsInt,
   IsNotEmpty,
-  IsNumber,
   IsOptional,
   IsString,
+  Max,
+  Min,
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
@@ -150,7 +152,9 @@ export class ConfiguracaoPerguntaImportadaDto implements ConfiguracaoPerguntaImp
   @IsIn(TIPOS_RESPOSTA_LOTE)
   tipoResposta: TipoRespostaLote;
 
-  @IsNumber()
+  @IsInt()
+  @Min(0)
+  @Max(100)
   peso: number;
 
   @IsBoolean()
@@ -187,6 +191,7 @@ export class GrupoConfirmadoDto {
   nome: string;
 
   @IsArray()
+  @ArrayMaxSize(1000)
   @ValidateNested({ each: true })
   @Type(() => PerguntaConfirmadaDto)
   perguntas: PerguntaConfirmadaDto[];
@@ -201,6 +206,7 @@ export class ConfirmarImportacaoDto {
   dados: ImportarChecklistDto;
 
   @IsArray()
+  @ArrayMaxSize(200)
   @ValidateNested({ each: true })
   @Type(() => GrupoConfirmadoDto)
   grupos: GrupoConfirmadoDto[];

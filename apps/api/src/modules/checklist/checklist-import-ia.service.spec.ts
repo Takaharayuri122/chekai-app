@@ -1,3 +1,4 @@
+import { BadRequestException } from '@nestjs/common';
 import { ChecklistImportIaService } from './checklist-import-ia.service';
 import { PerfilUsuario } from '../usuario/entities/usuario.entity';
 import { PerguntaImportada } from './dto/importar-checklist.dto';
@@ -50,10 +51,19 @@ describe('ChecklistImportIaService', () => {
   });
 
   it('sem saldo → sem_creditos e IA não chamada', async () => {
-    creditoService.validarSaldoDisponivel.mockRejectedValue(new Error('sem saldo'));
+    creditoService.validarSaldoDisponivel.mockRejectedValue(new BadRequestException('Limite de créditos excedido'));
     const r = await service.revisarGrupo({ grupo: 'Higiene', perguntas }, gestor);
     expect(r).toEqual({ status: 'sem_creditos', sugestoes: [] });
     expect(create).not.toHaveBeenCalled();
+  });
+
+  it('erro inesperado ao validar saldo → falha (não sem_creditos) e registra erro', async () => {
+    creditoService.validarSaldoDisponivel.mockRejectedValue(new Error('conexão com o banco caiu'));
+    const erro = jest.spyOn(service['logger'], 'error').mockImplementation();
+    const r = await service.revisarGrupo({ grupo: 'Higiene', perguntas }, gestor);
+    expect(r).toEqual({ status: 'falha', sugestoes: [] });
+    expect(create).not.toHaveBeenCalled();
+    expect(erro).toHaveBeenCalled();
   });
 
   it('MASTER não valida saldo nem registra uso', async () => {

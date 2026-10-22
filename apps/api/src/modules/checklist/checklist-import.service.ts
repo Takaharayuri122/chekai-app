@@ -368,6 +368,11 @@ export class ChecklistImportService {
         }
       }
 
+      if (ordemGlobal === 0) {
+        // Lançar aqui desfaz a criação do template (transação)
+        throw new BadRequestException('Nenhuma pergunta válida para importar');
+      }
+
       return {
         templateId: template.id,
         nomeTemplate: template.nome,

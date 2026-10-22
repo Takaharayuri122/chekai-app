@@ -6,7 +6,17 @@ import {
   normalizarConfiguracao,
 } from './checklist-import-mapeamento';
 import { ChecklistCsvRow, ConfiguracaoPerguntaImportada } from './dto/importar-checklist.dto';
-import { CategoriaItem, CriticidadeItem } from './entities/template-item.entity';
+import { CategoriaItem, CriticidadeItem, TemplateItem } from './entities/template-item.entity';
+import { AuditoriaService } from '../auditoria/auditoria.service';
+
+/** Mesma regra de pontuação da auditoria, aplicada ao item como ele volta do banco (JSON). */
+function pontuar(item: Partial<TemplateItem>, valor: string): number {
+  const salvo = JSON.parse(JSON.stringify(item)) as TemplateItem;
+  const proto = AuditoriaService.prototype as unknown as {
+    calcularPontuacaoOpcao: (i: TemplateItem, v: string) => number;
+  };
+  return proto.calcularPontuacaoOpcao.call(proto, salvo, valor);
+}
 
 const linha = (extra: Partial<ChecklistCsvRow> = {}): ChecklistCsvRow => ({
   grupo: 'Higiene',
@@ -90,7 +100,7 @@ describe('mapearLinhaImportada', () => {
       0,
     );
     expect(p.configuracao.tipoResposta).toBe('personalizada');
-    expect(p.configuracao.opcoes.map((o) => o.pontuacao)).toEqual([5, null]);
+    expect(p.configuracao.opcoes.map((o) => o.pontuacao)).toEqual([5, undefined]);
   });
 
   it('tipo "Texto livre" → texto, peso 0, permiteFoto false', () => {
@@ -115,6 +125,47 @@ describe('mapearLinhaImportada', () => {
       criticidade: CriticidadeItem.MEDIA,
       categoria: CategoriaItem.HIGIENE,
     });
+  });
+});
+
+describe('mapearLinhaImportada — pontuação e peso', () => {
+  it('linha padrão sem pontos pontua 1/0 na auditoria', () => {
+    const c = mapearLinhaImportada(linha(), 0).configuracao;
+    const porValor = Object.fromEntries(c.opcoes.map((o) => [o.valor, o]));
+    expect(porValor['conforme'].pontuacao).toBeUndefined();
+    expect(porValor['nao_conforme'].pontuacao).toBeUndefined();
+    const item = configuracaoParaItem(c);
+    expect(pontuar(item, 'conforme')).toBe(1);
+    expect(pontuar(item, 'nao_conforme')).toBe(0);
+  });
+
+  it('opções personalizadas sem pontos seguem a sequência padrão', () => {
+    const c = mapearLinhaImportada(linha({ opcoesResposta: [{ texto: 'Sim' }, { texto: 'Não' }] }), 0).configuracao;
+    const item = configuracaoParaItem(c);
+    expect(pontuar(item, 'Sim')).toBe(1);
+    expect(pontuar(item, 'Não')).toBe(0);
+  });
+
+  it('peso não numérico vira 1 e peso fracionado é arredondado', () => {
+    expect(mapearLinhaImportada(linha({ pontuacaoMaxima: NaN }), 0).configuracao.peso).toBe(1);
+    expect(mapearLinhaImportada(linha({ pontuacaoMaxima: 2.6 }), 0).configuracao.peso).toBe(3);
+    expect(mapearLinhaImportada(linha({ pontuacaoMaxima: -2 }), 0).configuracao.peso).toBe(1);
+    expect(mapearLinhaImportada(linha({ pontuacaoMaxima: 500 }), 0).configuracao.peso).toBe(100);
+  });
+
+  it('pontos não numéricos são descartados', () => {
+    const p = mapearLinhaImportada(linha({ opcoesResposta: [{ texto: 'Sim', pontos: NaN }, { texto: 'Não' }] }), 0);
+    expect(p.configuracao.opcoes[0].pontuacao).toBeUndefined();
+    expect(p.motivoConferir).toBeUndefined();
+  });
+
+  it('pontos fora de -10 a 10 são ajustados e marcados para conferir', () => {
+    const p = mapearLinhaImportada(
+      linha({ opcoesResposta: [{ texto: 'Sim', pontos: 15 }, { texto: 'Não', pontos: -20 }] }),
+      0,
+    );
+    expect(p.configuracao.opcoes.map((o) => o.pontuacao)).toEqual([10, -10]);
+    expect(p.motivoConferir).toBe('Pontuação da planilha fora do intervalo de -10 a 10 foi ajustada.');
   });
 });
 

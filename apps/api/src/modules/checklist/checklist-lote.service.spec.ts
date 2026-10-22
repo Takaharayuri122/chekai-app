@@ -100,6 +100,41 @@ describe('ChecklistLoteService', () => {
     expect(salvo.usarRespostasPersonalizadas).toBe(false);
   });
 
+  it('sair de texto com peso 0 restaura peso 1', async () => {
+    montarTemplate([
+      criarItem({
+        tipoRespostaCustomizada: TipoRespostaCustomizada.TEXTO,
+        usarRespostasPersonalizadas: true,
+        peso: 0,
+        permiteFoto: false,
+      }),
+    ]);
+
+    await service.configurar(TEMPLATE_ID, { alteracoes: { tipoResposta: 'numero' } }, usuario);
+
+    const [salvo] = save.mock.calls[0][1] as TemplateItem[];
+    expect(salvo.peso).toBe(1);
+  });
+
+  it('sair de texto preserva peso diferente de 0', async () => {
+    montarTemplate([
+      criarItem({ tipoRespostaCustomizada: TipoRespostaCustomizada.TEXTO, usarRespostasPersonalizadas: true, peso: 3 }),
+    ]);
+
+    await service.configurar(TEMPLATE_ID, { alteracoes: { tipoResposta: 'padrao' } }, usuario);
+
+    const [salvo] = save.mock.calls[0][1] as TemplateItem[];
+    expect(salvo.peso).toBe(3);
+  });
+
+  it('itemIds vazio sem grupoId → BadRequestException e nada é salvo', async () => {
+    montarTemplate([criarItem()]);
+    await expect(
+      service.configurar(TEMPLATE_ID, { itemIds: [], alteracoes: { obrigatorio: false } }, usuario),
+    ).rejects.toThrow('Selecione ao menos uma pergunta');
+    expect(save).not.toHaveBeenCalled();
+  });
+
   it('opcoes sem tipoResposta → BadRequestException', async () => {
     montarTemplate([criarItem()]);
     const dto: ConfigurarLoteDto = {

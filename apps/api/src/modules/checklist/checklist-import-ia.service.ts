@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
 import { CreditoService } from '../credito/credito.service';
@@ -39,8 +39,15 @@ export class ChecklistImportIaService {
       try {
         gestorId = this.creditoService.identificarGestorId(usuario);
         await this.creditoService.validarSaldoDisponivel(gestorId);
-      } catch {
-        return { status: 'sem_creditos', sugestoes: [] };
+      } catch (erro) {
+        // Erros de negócio do controle de créditos (sem assinatura, limite excedido, vínculo) = sem créditos
+        if (erro instanceof BadRequestException || erro instanceof ForbiddenException) {
+          return { status: 'sem_creditos', sugestoes: [] };
+        }
+        this.logger.error(
+          `Falha ao validar créditos para a revisão do grupo "${dto.grupo}": ${erro instanceof Error ? erro.message : 'erro desconhecido'}`,
+        );
+        return { status: 'falha', sugestoes: [] };
       }
     }
 
