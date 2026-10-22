@@ -3,6 +3,7 @@ import {
   RESPOSTAS_PADRAO,
   TipoRespostaCustomizada,
   type AlteracoesLote,
+  type ConfigurarLoteRequest,
   type OpcaoLote,
   type TemplateItem,
   type TipoRespostaLote,
@@ -107,4 +108,37 @@ export function resumoRespostasGrupo(itens: TemplateItem[]): {
     else r.padrao++;
   }
   return r;
+}
+
+export type EscopoLote =
+  | { tipo: 'selecao'; itemIds: string[] }
+  | { tipo: 'grupo'; grupoId: string; nome: string; total: number }
+  | { tipo: 'checklist'; total: number };
+
+/** Monta o corpo da requisição de lote; seleção sempre envia ids, grupo envia o grupo, checklist envia só as alterações. */
+export function montarRequisicaoLote(
+  escopo: EscopoLote,
+  estado: EstadoLote,
+  simular: boolean,
+): ConfigurarLoteRequest {
+  const req: ConfigurarLoteRequest = { alteracoes: montarAlteracoes(estado), simular };
+  if (escopo.tipo === 'selecao') req.itemIds = escopo.itemIds;
+  else if (escopo.tipo === 'grupo') req.grupoId = escopo.grupoId;
+  return req;
+}
+
+/** Opções iniciais ao trocar o tipo de resposta: padrão volta ao conjunto fixo, personalizada parte de nomes editáveis. */
+export function opcoesParaTipo(tipo: TipoRespostaLote): OpcaoLote[] {
+  return RESPOSTAS_PADRAO.map((r) => ({
+    valor: tipo === 'personalizada' ? r.label : r.valor,
+    pontuacao: null,
+    fotoObrigatoria: false,
+    observacaoObrigatoria: false,
+  }));
+}
+
+/** As opções só são válidas se houver ao menos uma e todas tiverem nome, sem repetição. */
+export function opcoesValidas(opcoes: OpcaoLote[]): boolean {
+  const nomes = opcoes.map((o) => o.valor.trim().toLowerCase());
+  return nomes.length > 0 && nomes.every(Boolean) && new Set(nomes).size === nomes.length;
 }

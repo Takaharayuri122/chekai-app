@@ -60,7 +60,7 @@ export function ConfirmDialog({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.12, ease: 'easeOut' }}
-          className="fixed inset-0 z-[70] flex items-center justify-center p-4"
+          className="pointer-events-auto fixed inset-0 z-[70] flex items-center justify-center p-4"
           role="alertdialog"
           aria-modal="true"
           onClick={(e) => e.stopPropagation()}

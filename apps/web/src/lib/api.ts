@@ -693,6 +693,8 @@ export interface CriarTemplateItemRequest {
   grupoId?: string;
   secao?: string;
   opcoesRespostaConfig?: OpcaoRespostaConfig[];
+  permiteFoto?: boolean;
+  permiteObservacao?: boolean;
 }
 
 export interface CriarGrupoRequest {

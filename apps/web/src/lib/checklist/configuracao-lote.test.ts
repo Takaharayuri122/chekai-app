@@ -2,6 +2,9 @@ import { describe, it, expect } from 'vitest';
 import {
   estadoInicialLote,
   montarAlteracoes,
+  montarRequisicaoLote,
+  opcoesParaTipo,
+  opcoesValidas,
   resumoRespostasGrupo,
   secoesTravadas,
   temAlteracao,
@@ -89,5 +92,36 @@ describe('configuracao-lote', () => {
       item({ ativo: false }),
     ]);
     expect(r).toEqual({ padrao: 2, personalizadas: 2, texto: 1, outros: 2 });
+  });
+
+  it('montarRequisicaoLote respeita o escopo', () => {
+    const e = estadoInicialLote();
+    e.ligadas.obrigatorio = true;
+    e.obrigatorio = false;
+    expect(montarRequisicaoLote({ tipo: 'selecao', itemIds: ['a', 'b'] }, e, true)).toEqual({
+      itemIds: ['a', 'b'],
+      alteracoes: { obrigatorio: false },
+      simular: true,
+    });
+    expect(montarRequisicaoLote({ tipo: 'grupo', grupoId: 'g', nome: 'G', total: 3 }, e, false)).toEqual({
+      grupoId: 'g',
+      alteracoes: { obrigatorio: false },
+      simular: false,
+    });
+    const todo = montarRequisicaoLote({ tipo: 'checklist', total: 9 }, e, false);
+    expect(todo.itemIds).toBeUndefined();
+    expect(todo.grupoId).toBeUndefined();
+  });
+
+  it('opcoesParaTipo e opcoesValidas', () => {
+    expect(opcoesParaTipo('padrao')[1].valor).toBe('nao_conforme');
+    expect(opcoesParaTipo('personalizada')[1].valor).toBe('Não Conforme');
+    expect(opcoesValidas(opcoesParaTipo('padrao'))).toBe(true);
+    expect(opcoesValidas([])).toBe(false);
+    const o = opcoesParaTipo('personalizada');
+    o[0].valor = ' ';
+    expect(opcoesValidas(o)).toBe(false);
+    o[0].valor = 'não conforme';
+    expect(opcoesValidas(o)).toBe(false);
   });
 });
