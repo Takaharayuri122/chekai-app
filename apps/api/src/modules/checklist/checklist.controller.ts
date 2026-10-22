@@ -32,7 +32,9 @@ import {
   CriarTemplateItemDto,
   CriarChecklistGrupoDto,
 } from './dto/criar-checklist-template.dto';
-import { ImportarChecklistDto, ConfirmarImportacaoDto, ImportacaoPreview, ImportacaoResultado } from './dto/importar-checklist.dto';
+import { ImportarChecklistDto, ConfirmarImportacaoDto, RevisarImportacaoDto, ImportacaoPreview, ImportacaoResultado } from './dto/importar-checklist.dto';
+import { ChecklistImportIaService } from './checklist-import-ia.service';
+import { RevisaoGrupoResultado } from './checklist-import-revisao';
 import { ConversarIaDto, RespostaConversaIa } from './dto/conversar-ia.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../core/guards/roles.guard';
@@ -57,6 +59,7 @@ export class ChecklistController {
     private readonly checklistService: ChecklistService,
     private readonly checklistImportService: ChecklistImportService,
     private readonly checklistIaService: ChecklistIaService,
+    private readonly checklistImportIaService: ChecklistImportIaService,
     private readonly checklistLoteService: ChecklistLoteService,
   ) {}
 
@@ -346,5 +349,17 @@ export class ChecklistController {
     @CurrentUser() usuario: { id: string; perfil: PerfilUsuario },
   ): Promise<ImportacaoResultado> {
     return this.checklistImportService.confirmar(dto, usuario);
+  }
+
+  @Post('importar/checklist/revisar')
+  @UseGuards(RolesGuard)
+  @Roles(PerfilUsuario.MASTER, PerfilUsuario.GESTOR)
+  @ApiOperation({ summary: 'Revisa por IA as perguntas de um grupo da importação' })
+  @ApiResponse({ status: 201, description: 'Sugestões de revisão do grupo' })
+  async revisarImportacao(
+    @Body() dto: RevisarImportacaoDto,
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
+  ): Promise<RevisaoGrupoResultado> {
+    return this.checklistImportIaService.revisarGrupo(dto, usuario);
   }
 }

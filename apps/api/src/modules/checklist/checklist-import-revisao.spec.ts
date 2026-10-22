@@ -1,0 +1,98 @@
+import { interpretarRespostaIa, montarPromptRevisao } from './checklist-import-revisao';
+import { PerguntaImportada } from './dto/importar-checklist.dto';
+import { CategoriaItem, CriticidadeItem } from './entities/template-item.entity';
+
+function pergunta(chave: string, texto: string, parcial: Partial<PerguntaImportada> = {}): PerguntaImportada {
+  return {
+    chave,
+    grupo: 'Higiene',
+    pergunta: texto,
+    configuracao: {
+      categoria: CategoriaItem.HIGIENE,
+      criticidade: CriticidadeItem.MEDIA,
+      tipoResposta: 'padrao',
+      peso: 1,
+      obrigatorio: true,
+      permiteFoto: true,
+      permiteObservacao: true,
+      opcoes: [
+        { valor: 'conforme', pontuacao: null, fotoObrigatoria: false, observacaoObrigatoria: false },
+        { valor: 'nao_conforme', pontuacao: null, fotoObrigatoria: false, observacaoObrigatoria: false },
+      ],
+    },
+    ...parcial,
+  };
+}
+
+function resposta(perguntas: Record<string, unknown>[], grupoNome?: string): string {
+  return JSON.stringify({ grupoNome, perguntas });
+}
+
+describe('checklist-import-revisao', () => {
+  const originais = [pergunta('l1', 'Lavatorio com sabao?'), pergunta('l2', 'Lixeira tampada?')];
+
+  it('JSON malformado lança erro', () => {
+    expect(() => interpretarRespostaIa('{nao eh json', originais)).toThrow();
+  });
+
+  it('chave desconhecida é descartada e pergunta sem sugestão mantém original', () => {
+    const r = interpretarRespostaIa(
+      resposta([{ chave: 'l1', pergunta: 'Lavatório com sabão?' }, { chave: 'l99', pergunta: 'Fantasma' }]),
+      originais,
+    );
+    expect(r.sugestoes.map((s) => s.chave)).toEqual(['l1', 'l2']);
+    const l2 = r.sugestoes[1];
+    expect(l2.perguntaSugerida).toBe('Lixeira tampada?');
+    expect(l2.configuracaoSugerida).toEqual(originais[1].configuracao);
+    expect(l2.alteracoes).toEqual([]);
+    expect(l2.conferir).toBe(false);
+  });
+
+  it('criticidade "altissima" volta ao valor original', () => {
+    const r = interpretarRespostaIa(resposta([{ chave: 'l1', criticidade: 'altissima' }]), originais);
+    expect(r.sugestoes[0].configuracaoSugerida.criticidade).toBe(CriticidadeItem.MEDIA);
+    expect(r.sugestoes[0].alteracoes).not.toContain('criticidade');
+  });
+
+  it('IA muda tipo para texto → permiteFoto false, peso 0, conferir true com motivo', () => {
+    const r = interpretarRespostaIa(
+      resposta([{ chave: 'l1', tipoResposta: 'texto', peso: 5, permiteFoto: true }]),
+      originais,
+    );
+    const s = r.sugestoes[0];
+    expect(s.configuracaoSugerida.tipoResposta).toBe('texto');
+    expect(s.configuracaoSugerida.permiteFoto).toBe(false);
+    expect(s.configuracaoSugerida.peso).toBe(0);
+    expect(s.configuracaoSugerida.opcoes).toEqual([]);
+    expect(s.conferir).toBe(true);
+    expect(s.motivoConferir).toBeTruthy();
+  });
+
+  it('só correção ortográfica → alteracoes [pergunta] e conferir false', () => {
+    const r = interpretarRespostaIa(
+      resposta([{ chave: 'l1', pergunta: 'Lavatório com sabão?' }], 'Higiene pessoal'),
+      originais,
+    );
+    expect(r.grupoNomeSugerido).toBe('Higiene pessoal');
+    expect(r.sugestoes[0].alteracoes).toEqual(['pergunta']);
+    expect(r.sugestoes[0].conferir).toBe(false);
+  });
+
+  it('motivoConferir original faz conferir true', () => {
+    const comMotivo = [pergunta('l1', 'Texto', { motivoConferir: 'Tipo não reconhecido' })];
+    const r = interpretarRespostaIa(resposta([]), comMotivo);
+    expect(r.sugestoes[0].conferir).toBe(true);
+    expect(r.sugestoes[0].motivoConferir).toBe('Tipo não reconhecido');
+  });
+
+  it('prompt contém todas as chaves e os enums permitidos', () => {
+    const prompt = montarPromptRevisao('Higiene', originais, ['Art. 4 texto legal']);
+    expect(prompt).toContain('l1');
+    expect(prompt).toContain('l2');
+    for (const v of ['estrutura', 'controle_pragas', 'baixa', 'critica', 'padrao', 'personalizada', 'texto', 'numero', 'data']) {
+      expect(prompt).toContain(v);
+    }
+    expect(prompt).toContain('RDC 216/2004');
+    expect(prompt).toContain('Art. 4 texto legal');
+  });
+});

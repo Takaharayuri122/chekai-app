@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
+  ArrayMaxSize,
   IsArray,
   IsBoolean,
   IsEnum,
@@ -203,4 +204,43 @@ export class ConfirmarImportacaoDto {
   @ValidateNested({ each: true })
   @Type(() => GrupoConfirmadoDto)
   grupos: GrupoConfirmadoDto[];
+}
+
+export class PerguntaRevisaoDto {
+  @IsString()
+  @IsNotEmpty()
+  chave: string;
+
+  @IsString()
+  grupo: string;
+
+  @IsOptional()
+  @IsString()
+  secao?: string;
+
+  @IsString()
+  pergunta: string;
+
+  @ValidateNested()
+  @Type(() => ConfiguracaoPerguntaImportadaDto)
+  configuracao: ConfiguracaoPerguntaImportadaDto;
+
+  @IsOptional()
+  @IsString()
+  motivoConferir?: string;
+}
+
+/**
+ * Payload da revisão por IA de um grupo (máx. 40 perguntas).
+ */
+export class RevisarImportacaoDto {
+  @IsString()
+  @IsNotEmpty()
+  grupo: string;
+
+  @IsArray()
+  @ArrayMaxSize(40)
+  @ValidateNested({ each: true })
+  @Type(() => PerguntaRevisaoDto)
+  perguntas: PerguntaRevisaoDto[];
 }
