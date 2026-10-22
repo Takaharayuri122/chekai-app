@@ -126,6 +126,28 @@ function opcoesValidas(valor: unknown): ConfiguracaoPerguntaImportada['opcoes'] 
   return resultado;
 }
 
+type Opcao = ConfiguracaoPerguntaImportada['opcoes'][number];
+
+const SEM_PONTUACAO = ['nao_aplicavel', 'nao_avaliado'];
+
+/** Remove a chave pontuacao (ausente = pontuação padrão da auditoria). */
+function semPontuacao(o: Opcao): Opcao {
+  const { pontuacao: _descartada, ...resto } = o;
+  return resto;
+}
+
+/** Padrão: null só vale para N/A e N/Av; nas demais respostas vira pontuação padrão. */
+function pontuacaoPadrao(o: Opcao): Opcao {
+  return o.pontuacao === null && !SEM_PONTUACAO.includes(o.valor) ? semPontuacao(o) : o;
+}
+
+/** Personalizada: null da IA vira ausente, salvo se a opção original já tinha null explícito. */
+function pontuacaoPersonalizada(o: Opcao, original: Opcao[]): Opcao {
+  if (o.pontuacao !== null) return o;
+  const anterior = original.find((x) => x.valor === o.valor);
+  return anterior && anterior.pontuacao === null ? o : semPontuacao(o);
+}
+
 function reconciliarOpcoes(
   original: ConfiguracaoPerguntaImportada,
   tipo: ConfiguracaoPerguntaImportada['tipoResposta'],
@@ -158,7 +180,11 @@ function aplicarSugestaoBruta(
 ): ConfiguracaoPerguntaImportada {
   const peso = bruto.peso;
   const tipo = enumOuOriginal(bruto.tipoResposta, TIPOS_RESPOSTA_LOTE, original.tipoResposta);
-  const opcoesIa = opcoesValidas(bruto.opcoes);
+  // null da IA só é aceito onde realmente não há pontuação; as opções do original ficam como estão
+  const opcoesOriginaisPersonalizadas = original.tipoResposta === 'personalizada' ? original.opcoes : [];
+  const opcoesIa = opcoesValidas(bruto.opcoes)?.map((o) =>
+    tipo === 'padrao' ? pontuacaoPadrao(o) : pontuacaoPersonalizada(o, opcoesOriginaisPersonalizadas),
+  );
   // Tipo mantido e opções ausentes/inválidas: preserva as opções originais
   const opcoesBase = tipo === original.tipoResposta && !opcoesIa ? original.opcoes : opcoesIa;
   return {

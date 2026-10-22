@@ -1,7 +1,18 @@
 import { interpretarRespostaIa, montarPromptRevisao } from './checklist-import-revisao';
 import { RESPOSTAS_PADRAO_VALORES } from './checklist-regras';
 import { PerguntaImportada } from './dto/importar-checklist.dto';
-import { CategoriaItem, CriticidadeItem } from './entities/template-item.entity';
+import { CategoriaItem, CriticidadeItem, TemplateItem } from './entities/template-item.entity';
+import { configuracaoParaItem } from './checklist-import-mapeamento';
+import { AuditoriaService } from '../auditoria/auditoria.service';
+
+/** Mesma regra de pontuação da auditoria, aplicada ao item como ele volta do banco (JSON). */
+function pontuar(item: Partial<TemplateItem>, valor: string): number {
+  const salvo = JSON.parse(JSON.stringify(item)) as TemplateItem;
+  const proto = AuditoriaService.prototype as unknown as {
+    calcularPontuacaoOpcao: (i: TemplateItem, v: string) => number;
+  };
+  return proto.calcularPontuacaoOpcao.call(proto, salvo, valor);
+}
 
 function pergunta(chave: string, texto: string, parcial: Partial<PerguntaImportada> = {}): PerguntaImportada {
   return {
@@ -159,7 +170,63 @@ describe('checklist-import-revisao', () => {
     );
     const opcoes = r.sugestoes[0].configuracaoSugerida.opcoes;
     expect('pontuacao' in opcoes[0]).toBe(false);
+    // null da IA sem null explícito no original também vira pontuação padrão
+    expect('pontuacao' in opcoes[1]).toBe(false);
+  });
+
+  it('padrão: null da IA em conforme/nao_conforme vira pontuação padrão (1/0); N/A segue null', () => {
+    const r = interpretarRespostaIa(
+      resposta([
+        {
+          chave: 'l1',
+          tipoResposta: 'padrao',
+          opcoes: [
+            { valor: 'conforme', pontuacao: null, fotoObrigatoria: false, observacaoObrigatoria: false },
+            { valor: 'nao_conforme', pontuacao: null, fotoObrigatoria: false, observacaoObrigatoria: false },
+            { valor: 'nao_aplicavel', pontuacao: null, fotoObrigatoria: false, observacaoObrigatoria: false },
+          ],
+        },
+      ]),
+      originais,
+    );
+    const c = r.sugestoes[0].configuracaoSugerida;
+    const porValor = Object.fromEntries(c.opcoes.map((o) => [o.valor, o]));
+    expect('pontuacao' in porValor['conforme']).toBe(false);
+    expect('pontuacao' in porValor['nao_conforme']).toBe(false);
+    const item = configuracaoParaItem(c);
+    expect(pontuar(item, 'conforme')).toBe(1);
+    expect(pontuar(item, 'nao_conforme')).toBe(0);
+  });
+
+  it('personalizada: null da IA vira ausente, salvo se a opção original tinha null explícito', () => {
+    const original = pergunta('l5', 'Cor?', {
+      configuracao: {
+        ...originais[0].configuracao,
+        tipoResposta: 'personalizada',
+        opcoes: [
+          { valor: 'Sim', fotoObrigatoria: false, observacaoObrigatoria: false },
+          { valor: 'Talvez', pontuacao: null, fotoObrigatoria: false, observacaoObrigatoria: false },
+        ],
+      },
+    });
+    const r = interpretarRespostaIa(
+      resposta([
+        {
+          chave: 'l5',
+          tipoResposta: 'personalizada',
+          opcoes: [
+            { valor: 'Sim', pontuacao: null, fotoObrigatoria: false, observacaoObrigatoria: false },
+            { valor: 'Talvez', pontuacao: null, fotoObrigatoria: false, observacaoObrigatoria: false },
+            { valor: 'Não', pontuacao: null, fotoObrigatoria: false, observacaoObrigatoria: false },
+          ],
+        },
+      ]),
+      [original],
+    );
+    const opcoes = r.sugestoes[0].configuracaoSugerida.opcoes;
+    expect(opcoes[0].pontuacao).toBeUndefined();
     expect(opcoes[1].pontuacao).toBeNull();
+    expect(opcoes[2].pontuacao).toBeUndefined();
   });
 
   it('peso não inteiro ou negativo da IA volta ao original; inteiro é aceito', () => {
