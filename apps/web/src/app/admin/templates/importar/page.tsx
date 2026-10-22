@@ -25,8 +25,16 @@ import {
   TIPO_ATIVIDADE_LABELS,
 } from '@/lib/api';
 import { toastService } from '@/lib/toast';
+import { PageLoadingOverlay } from '@/components/ui/page-loading-overlay';
+import { RevisaoIa } from '@/components/checklist/importacao/revisao-ia';
+import {
+  montarConfirmacao,
+  revisarEmLotes,
+  type EstadoRevisao,
+  type ProgressoRevisao,
+} from '@/lib/checklist/revisao-importacao';
 
-type Step = 'upload' | 'preview' | 'config' | 'result';
+type Step = 'upload' | 'preview' | 'revisao' | 'config' | 'result';
 
 /**
  * Página de importação de checklists.
@@ -40,6 +48,9 @@ export default function ImportarChecklistPage() {
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState('');
   const [dragOver, setDragOver] = useState(false);
+  const [revisao, setRevisao] = useState<EstadoRevisao | null>(null);
+  const [avisosRevisao, setAvisosRevisao] = useState({ semCreditos: false, falhas: 0 });
+  const [progresso, setProgresso] = useState<ProgressoRevisao | null>(null);
 
   const [formData, setFormData] = useState({
     nomeTemplate: '',
@@ -57,6 +68,7 @@ export default function ImportarChecklistPage() {
     }
 
     setFile(selectedFile);
+    setRevisao(null);
     setErro('');
     setLoading(true);
 
@@ -96,19 +108,52 @@ export default function ImportarChecklistPage() {
     setDragOver(false);
   }, []);
 
+  const handleRevisar = async () => {
+    if (!preview) return;
+    // Já revisado neste arquivo: não gasta créditos de novo ao voltar e avançar.
+    if (revisao) {
+      setStep('revisao');
+      return;
+    }
+
+    setErro('');
+    setProgresso({ grupoAtual: 1, totalGrupos: preview.totalGrupos || 1 });
+    try {
+      const r = await revisarEmLotes(
+        preview.perguntas,
+        (grupo, perguntas) => checklistService.revisarImportacao(grupo, perguntas),
+        setProgresso
+      );
+      setRevisao({
+        perguntas: preview.perguntas,
+        sugestoes: r.sugestoes,
+        nomesGrupos: r.nomesGrupos,
+        desfeitas: new Set(),
+        conferidas: new Set(),
+        edicoes: {},
+      });
+      setAvisosRevisao({ semCreditos: r.semCreditos, falhas: r.falhas });
+      setStep('revisao');
+    } finally {
+      setProgresso(null);
+    }
+  };
+
   const handleImportar = async () => {
-    if (!file || !formData.nomeTemplate.trim()) return;
+    if (!revisao || !formData.nomeTemplate.trim()) return;
 
     setLoading(true);
     setErro('');
 
     try {
-      const result = await checklistService.importarChecklist(file, {
-        nomeTemplate: formData.nomeTemplate,
-        descricao: formData.descricao,
-        tipoAtividade: formData.tipoAtividade,
-        versao: formData.versao,
-      });
+      const result = await checklistService.confirmarImportacao(
+        montarConfirmacao(revisao, {
+          nomeTemplate: formData.nomeTemplate,
+          descricao: formData.descricao,
+          tipoAtividade: formData.tipoAtividade,
+          versao: formData.versao,
+        })
+      );
       toastService.success(`Checklist importado com sucesso! ${result.itensCriados} itens criados.`);
       setResultado(result);
       setStep('result');
@@ -124,6 +169,7 @@ export default function ImportarChecklistPage() {
     setFile(null);
     setPreview(null);
     setResultado(null);
+    setRevisao(null);
     setFormData({
       nomeTemplate: '',
       descricao: '',
@@ -134,6 +180,12 @@ export default function ImportarChecklistPage() {
 
   return (
     <AppLayout>
+      <PageLoadingOverlay
+        open={progresso !== null}
+        title={progresso ? `Revisando grupo ${progresso.grupoAtual} de ${progresso.totalGrupos}` : ''}
+        subtitle="A IA está corrigindo os textos e sugerindo as configurações. Isso pode levar alguns instantes."
+      />
+
       {/* Header */}
       <div className="bg-card border-b border-border px-4 lg:px-8 py-4 sticky top-14 z-30">
         <div className="flex items-center gap-3 max-w-3xl mx-auto">
@@ -152,9 +204,10 @@ export default function ImportarChecklistPage() {
         <div className="mb-8">
           <ul className="flex w-full gap-2 steps-horizontal">
             <li className={`flex-1 text-center text-xs text-muted-foreground ${step !== 'upload' ? '!font-semibold !text-primary' : '!font-semibold !text-primary'}`}>Upload</li>
-            <li className={`flex-1 text-center text-xs text-muted-foreground ${step === 'preview' || step === 'config' || step === 'result' ? '!font-semibold !text-primary' : ''}`}>
+            <li className={`flex-1 text-center text-xs text-muted-foreground ${step !== 'upload' ? '!font-semibold !text-primary' : ''}`}>
               Preview
             </li>
+            <li className={`flex-1 text-center text-xs text-muted-foreground ${step === 'revisao' || step === 'config' || step === 'result' ? '!font-semibold !text-primary' : ''}`}>Revisão da IA</li>
             <li className={`flex-1 text-center text-xs text-muted-foreground ${step === 'config' || step === 'result' ? '!font-semibold !text-primary' : ''}`}>Configurar</li>
             <li className={`flex-1 text-center text-xs text-muted-foreground ${step === 'result' ? '!font-semibold !text-primary' : ''}`}>Concluído</li>
           </ul>
@@ -310,7 +363,7 @@ export default function ImportarChecklistPage() {
                 <button onClick={handleNovaImportacao} className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-10 px-4 hover:bg-muted">
                   Cancelar
                 </button>
-                <button onClick={() => setStep('config')} className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-10 px-4 bg-primary text-primary-foreground hover:bg-primary/90">
+                <button onClick={handleRevisar} disabled={progresso !== null} className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-10 px-4 bg-primary text-primary-foreground hover:bg-primary/90">
                   Continuar
                   <ArrowRight className="w-4 h-4" />
                 </button>
@@ -318,7 +371,27 @@ export default function ImportarChecklistPage() {
             </motion.div>
           )}
 
-          {/* Step 3: Config */}
+          {/* Step 3: Revisão da IA */}
+          {step === 'revisao' && revisao && (
+            <motion.div
+              key="revisao"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+            >
+              <RevisaoIa
+                estado={revisao}
+                nomeArquivo={preview?.nomeOriginal || file?.name || 'arquivo'}
+                semCreditos={avisosRevisao.semCreditos}
+                falhas={avisosRevisao.falhas}
+                onChange={setRevisao}
+                onVoltar={() => setStep('preview')}
+                onContinuar={() => setStep('config')}
+              />
+            </motion.div>
+          )}
+
+          {/* Step 4: Config */}
           {step === 'config' && (
             <motion.div
               key="config"
@@ -401,7 +474,7 @@ export default function ImportarChecklistPage() {
                 </div>
 
                 <div className="flex flex-wrap items-start justify-end gap-2 mt-6">
-                  <button onClick={() => setStep('preview')} className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-10 px-4 hover:bg-muted">
+                  <button onClick={() => setStep('revisao')} className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-10 px-4 hover:bg-muted">
                     Voltar
                   </button>
                   <button
@@ -426,7 +499,7 @@ export default function ImportarChecklistPage() {
             </motion.div>
           )}
 
-          {/* Step 4: Result */}
+          {/* Step 5: Result */}
           {step === 'result' && resultado && (
             <motion.div
               key="result"
