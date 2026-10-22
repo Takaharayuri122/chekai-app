@@ -32,7 +32,7 @@ import {
   CriarTemplateItemDto,
   CriarChecklistGrupoDto,
 } from './dto/criar-checklist-template.dto';
-import { ImportarChecklistDto, ImportacaoPreview, ImportacaoResultado } from './dto/importar-checklist.dto';
+import { ImportarChecklistDto, ConfirmarImportacaoDto, ImportacaoPreview, ImportacaoResultado } from './dto/importar-checklist.dto';
 import { ConversarIaDto, RespostaConversaIa } from './dto/conversar-ia.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../core/guards/roles.guard';
@@ -277,6 +277,8 @@ export class ChecklistController {
   }
 
   @Post('importar/checklist/preview')
+  @UseGuards(RolesGuard)
+  @Roles(PerfilUsuario.MASTER, PerfilUsuario.GESTOR)
   @ApiOperation({ summary: 'Faz preview de um arquivo CSV ou XLSX de checklist' })
   @ApiResponse({ status: 200, description: 'Preview da importação' })
   @ApiConsumes('multipart/form-data')
@@ -308,6 +310,8 @@ export class ChecklistController {
   }
 
   @Post('importar/checklist')
+  @UseGuards(RolesGuard)
+  @Roles(PerfilUsuario.MASTER, PerfilUsuario.GESTOR)
   @ApiOperation({ summary: 'Importa um arquivo CSV ou XLSX de checklist' })
   @ApiResponse({ status: 201, description: 'Template importado com sucesso' })
   @ApiConsumes('multipart/form-data')
@@ -331,5 +335,16 @@ export class ChecklistController {
     const csvContent = file.buffer.toString('utf-8');
     return this.checklistImportService.importar(csvContent, dto, usuario);
   }
-}
 
+  @Post('importar/checklist/confirmar')
+  @UseGuards(RolesGuard)
+  @Roles(PerfilUsuario.MASTER, PerfilUsuario.GESTOR)
+  @ApiOperation({ summary: 'Confirma a importação de checklist após a revisão' })
+  @ApiResponse({ status: 201, description: 'Template importado como rascunho' })
+  async confirmarImportacao(
+    @Body() dto: ConfirmarImportacaoDto,
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario },
+  ): Promise<ImportacaoResultado> {
+    return this.checklistImportService.confirmar(dto, usuario);
+  }
+}

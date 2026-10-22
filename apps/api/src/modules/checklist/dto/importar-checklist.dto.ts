@@ -1,5 +1,17 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsNotEmpty, IsOptional, IsString, IsEnum } from 'class-validator';
+import {
+  IsArray,
+  IsBoolean,
+  IsEnum,
+  IsIn,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  ValidateNested,
+} from 'class-validator';
+import { Type } from 'class-transformer';
+import { OpcaoLoteDto, TIPOS_RESPOSTA_LOTE } from './configurar-lote.dto';
 import { TipoAtividade } from '../../cliente/entities/cliente.entity';
 import { CategoriaItem, CriticidadeItem } from '../entities/template-item.entity';
 import type { TipoRespostaLote } from '../checklist-regras';
@@ -88,7 +100,7 @@ export interface ConfiguracaoPerguntaImportada {
   permiteObservacao: boolean;
   opcoes: {
     valor: string;
-    pontuacao: number | null;
+    pontuacao?: number | null;
     fotoObrigatoria: boolean;
     observacaoObrigatoria: boolean;
   }[];
@@ -126,3 +138,69 @@ export interface ImportacaoResultado {
   avisos: string[];
 }
 
+
+export class ConfiguracaoPerguntaImportadaDto implements ConfiguracaoPerguntaImportada {
+  @IsEnum(CategoriaItem)
+  categoria: CategoriaItem;
+
+  @IsEnum(CriticidadeItem)
+  criticidade: CriticidadeItem;
+
+  @IsIn(TIPOS_RESPOSTA_LOTE)
+  tipoResposta: TipoRespostaLote;
+
+  @IsNumber()
+  peso: number;
+
+  @IsBoolean()
+  obrigatorio: boolean;
+
+  @IsBoolean()
+  permiteFoto: boolean;
+
+  @IsBoolean()
+  permiteObservacao: boolean;
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => OpcaoLoteDto)
+  opcoes: OpcaoLoteDto[];
+}
+
+export class PerguntaConfirmadaDto {
+  @IsOptional()
+  @IsString()
+  secao?: string;
+
+  @IsString()
+  pergunta: string;
+
+  @ValidateNested()
+  @Type(() => ConfiguracaoPerguntaImportadaDto)
+  configuracao: ConfiguracaoPerguntaImportadaDto;
+}
+
+export class GrupoConfirmadoDto {
+  @IsString()
+  @IsNotEmpty()
+  nome: string;
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => PerguntaConfirmadaDto)
+  perguntas: PerguntaConfirmadaDto[];
+}
+
+/**
+ * Payload de confirmação da importação após a revisão.
+ */
+export class ConfirmarImportacaoDto {
+  @ValidateNested()
+  @Type(() => ImportarChecklistDto)
+  dados: ImportarChecklistDto;
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => GrupoConfirmadoDto)
+  grupos: GrupoConfirmadoDto[];
+}

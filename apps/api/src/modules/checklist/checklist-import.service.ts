@@ -2,7 +2,7 @@ import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as XLSX from 'xlsx';
-import { ChecklistTemplate } from './entities/checklist-template.entity';
+import { ChecklistTemplate, StatusTemplate } from './entities/checklist-template.entity';
 import { ChecklistGrupo } from './entities/checklist-grupo.entity';
 import { TemplateItem } from './entities/template-item.entity';
 import { configuracaoParaItem, mapearLinhaImportada } from './checklist-import-mapeamento';
@@ -10,6 +10,7 @@ import { TipoAtividade } from '../cliente/entities/cliente.entity';
 import { PerfilUsuario } from '../usuario/entities/usuario.entity';
 import {
   ImportarChecklistDto,
+  ConfirmarImportacaoDto,
   ChecklistCsvRow,
   ImportacaoPreview,
   ImportacaoGrupoPreview,
@@ -306,5 +307,74 @@ export class ChecklistImportService {
       itensCriados: ordemGlobal,
       avisos,
     };
+  }
+
+  /**
+   * Confirma a importação a partir das perguntas revisadas, em uma única transação.
+   * Cria o template como rascunho, os grupos (com ao menos uma pergunta) e os itens.
+   */
+  async confirmar(
+    dto: ConfirmarImportacaoDto,
+    usuario: { id: string; perfil: PerfilUsuario },
+  ): Promise<ImportacaoResultado> {
+    const avisos: string[] = [];
+
+    return this.templateRepository.manager.transaction(async (manager) => {
+      const template = await manager.save(
+        ChecklistTemplate,
+        manager.create(ChecklistTemplate, {
+          nome: dto.dados.nomeTemplate,
+          descricao: dto.dados.descricao,
+          tipoAtividade: dto.dados.tipoAtividade || TipoAtividade.OUTRO,
+          versao: dto.dados.versao || '1.0',
+          status: StatusTemplate.RASCUNHO,
+          gestorId: usuario.id,
+        }),
+      );
+
+      let gruposCriados = 0;
+      let ordemGlobal = 0;
+
+      for (const grupoDto of dto.grupos) {
+        const perguntas = grupoDto.perguntas.filter((p) => {
+          if (p.pergunta?.trim()) return true;
+          avisos.push(`Pergunta vazia ignorada no grupo "${grupoDto.nome}"`);
+          return false;
+        });
+        if (perguntas.length === 0) continue;
+
+        const grupo = await manager.save(
+          ChecklistGrupo,
+          manager.create(ChecklistGrupo, {
+            nome: grupoDto.nome,
+            templateId: template.id,
+            ordem: gruposCriados,
+          }),
+        );
+        gruposCriados++;
+
+        for (const p of perguntas) {
+          await manager.save(
+            TemplateItem,
+            manager.create(TemplateItem, {
+              ...configuracaoParaItem(p.configuracao),
+              pergunta: p.pergunta.trim(),
+              templateId: template.id,
+              grupoId: grupo.id,
+              secao: p.secao || undefined,
+              ordem: ordemGlobal++,
+            }),
+          );
+        }
+      }
+
+      return {
+        templateId: template.id,
+        nomeTemplate: template.nome,
+        gruposCriados,
+        itensCriados: ordemGlobal,
+        avisos,
+      };
+    });
   }
 }
