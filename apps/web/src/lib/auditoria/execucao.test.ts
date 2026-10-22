@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { AuditoriaItem } from '@/lib/api';
 import {
+  aceitaFoto,
+  aceitaObservacao,
   agruparPorSecao,
   customizadoPendente,
   podeFinalizar,
@@ -155,5 +157,31 @@ describe('customizadoPendente', () => {
   it('data, seleção e respostas padrão nunca ficam pendentes (salvam ao alterar)', () => {
     expect(customizadoPendente(item({ resposta: '', tipoCustom: 'data' }), '2026-10-17')).toBe(false);
     expect(customizadoPendente(item({ resposta: 'conforme' }), 'x')).toBe(false);
+  });
+});
+
+describe('aceitaFoto / aceitaObservacao', () => {
+  function comTemplate(extra: Record<string, unknown>): AuditoriaItem {
+    const it = item({});
+    Object.assign(it.templateItem, extra);
+    return it;
+  }
+
+  it('texto não aceita foto mesmo com permiteFoto indefinido', () => {
+    expect(aceitaFoto(comTemplate({ tipoRespostaCustomizada: 'texto' }))).toBe(false);
+  });
+
+  it('permiteFoto false não aceita foto', () => {
+    expect(aceitaFoto(comTemplate({ permiteFoto: false }))).toBe(false);
+  });
+
+  it('permiteObservacao false não aceita observação', () => {
+    expect(aceitaObservacao(comTemplate({ permiteObservacao: false }))).toBe(false);
+  });
+
+  it('campos ausentes (itens antigos) aceitam foto e observação', () => {
+    const it = comTemplate({});
+    expect(aceitaFoto(it)).toBe(true);
+    expect(aceitaObservacao(it)).toBe(true);
   });
 });

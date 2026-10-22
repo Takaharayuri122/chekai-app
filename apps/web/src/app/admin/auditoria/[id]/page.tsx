@@ -37,6 +37,8 @@ import {
   vizinhos,
   customizadoPendente,
   podeFinalizar,
+  aceitaFoto,
+  aceitaObservacao,
 } from '@/lib/auditoria/execucao';
 
 type RespostaType = 'conforme' | 'nao_conforme' | 'nao_aplicavel' | string;
@@ -528,6 +530,24 @@ export default function AuditoriaPage() {
   };
 
   const getOpcaoConfig = (item: AuditoriaItem, resposta: string) => {
+    const base = getOpcaoConfigBruta(item, resposta);
+    return {
+      ...base,
+      fotoObrigatoria: aceitaFoto(item) ? base.fotoObrigatoria : false,
+      observacaoObrigatoria: aceitaObservacao(item) ? base.observacaoObrigatoria : false,
+    };
+  };
+
+  /** Aba efetiva do modal: evita ficar numa aba oculta quando a pergunta não aceita foto/observação. */
+  const abaEfetiva = (item: AuditoriaItem): 'fotos' | 'observacao' => {
+    const mostraFotos = aceitaFoto(item) || (itemModal?.fotos.length ?? 0) > 0;
+    const mostraObs = aceitaObservacao(item) || Boolean(itemModal?.observacao);
+    if (activeTab === 'fotos' && !mostraFotos && mostraObs) return 'observacao';
+    if (activeTab === 'observacao' && !mostraObs && mostraFotos) return 'fotos';
+    return activeTab;
+  };
+
+  const getOpcaoConfigBruta = (item: AuditoriaItem, resposta: string) => {
     const configs = item.templateItem.opcoesRespostaConfig;
 
 
@@ -887,9 +907,11 @@ export default function AuditoriaPage() {
                     const opcaoConfigModal = getOpcaoConfig(itemModal.item, itemModal.item.resposta || '');
                     const fotoObrigatoria = opcaoConfigModal?.fotoObrigatoria || false;
 
+                    if (!aceitaFoto(itemModal.item) && itemModal.fotos.length === 0) return null;
+
                     return (
                       <button
-                        className={`-mb-px inline-flex h-10 cursor-pointer items-center gap-2 border-b-2 border-transparent px-3 text-sm text-muted-foreground hover:text-foreground ${activeTab === 'fotos' ? '!border-primary !font-medium !text-foreground' : ''}`}
+                        className={`-mb-px inline-flex h-10 cursor-pointer items-center gap-2 border-b-2 border-transparent px-3 text-sm text-muted-foreground hover:text-foreground ${abaEfetiva(itemModal.item) === 'fotos' ? '!border-primary !font-medium !text-foreground' : ''}`}
                         onClick={() => setActiveTab('fotos')}
                         title="Alt+1 para alternar"
                         aria-keyshortcuts="Alt+1"
@@ -910,9 +932,11 @@ export default function AuditoriaPage() {
                     const opcaoConfigModal = getOpcaoConfig(itemModal.item, itemModal.item.resposta || '');
                     const observacaoObrigatoria = opcaoConfigModal?.observacaoObrigatoria || false;
 
+                    if (!aceitaObservacao(itemModal.item) && !itemModal.observacao) return null;
+
                     return (
                       <button
-                        className={`-mb-px inline-flex h-10 cursor-pointer items-center gap-2 border-b-2 border-transparent px-3 text-sm text-muted-foreground hover:text-foreground ${activeTab === 'observacao' ? '!border-primary !font-medium !text-foreground' : ''}`}
+                        className={`-mb-px inline-flex h-10 cursor-pointer items-center gap-2 border-b-2 border-transparent px-3 text-sm text-muted-foreground hover:text-foreground ${abaEfetiva(itemModal.item) === 'observacao' ? '!border-primary !font-medium !text-foreground' : ''}`}
                         onClick={() => setActiveTab('observacao')}
                         title="Alt+2 para alternar"
                         aria-keyshortcuts="Alt+2"
@@ -930,7 +954,7 @@ export default function AuditoriaPage() {
                 {/* Tab Content */}
                 <div className="bg-card border-x border-b border-border rounded-b-lg p-6 min-h-[300px]">
                   {/* Tab Fotos - sempre visível; fotoObrigatoria só define se exige pelo menos uma imagem */}
-                  {activeTab === 'fotos' && (() => {
+                  {abaEfetiva(itemModal.item) === 'fotos' && (() => {
                     const opcaoConfigModal = getOpcaoConfig(itemModal.item, itemModal.item.resposta || '');
                     const fotoObrigatoria = opcaoConfigModal?.fotoObrigatoria || false;
 
@@ -989,7 +1013,7 @@ export default function AuditoriaPage() {
                                   )}
                                 </>
                               )}
-                              {auditoria.status !== 'finalizada' && (
+                              {auditoria.status !== 'finalizada' && aceitaFoto(itemModal.item) && (
                                 <button
                                   onClick={() => handleRemoveFoto(index)}
                                   className="absolute top-1 right-1 inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-7 w-7 px-0 rounded-full bg-destructive text-destructive-foreground hover:bg-destructive/90"
@@ -1002,7 +1026,7 @@ export default function AuditoriaPage() {
                         </div>
 
                         {/* Botão para adicionar fotos */}
-                        {itemModal.fotos.length < MAX_FOTOS_POR_ITEM && auditoria.status !== 'finalizada' && (
+                        {aceitaFoto(itemModal.item) && itemModal.fotos.length < MAX_FOTOS_POR_ITEM && auditoria.status !== 'finalizada' && (
                           <button
                             onClick={() => fileInputRef.current?.click()}
                             className="w-full mt-3 h-20 border-2 border-dashed border-border rounded-lg flex flex-col items-center justify-center gap-2 hover:border-primary hover:bg-primary/5 transition-colors"
@@ -1041,7 +1065,7 @@ export default function AuditoriaPage() {
                   })()}
 
                   {/* Tab Observação */}
-                  {activeTab === 'observacao' && (() => {
+                  {abaEfetiva(itemModal.item) === 'observacao' && (() => {
                     const opcaoConfigModal = getOpcaoConfig(itemModal.item, itemModal.item.resposta || '');
                     const observacaoObrigatoria = opcaoConfigModal?.observacaoObrigatoria || false;
                     const imagensNaoRelevantes = itemModal?.fotos.some((f) => f.analiseIa && !f.analiseIa.imagemRelevante) || false;
@@ -1063,8 +1087,8 @@ export default function AuditoriaPage() {
                           rows={8}
                           value={itemModal.observacao}
                           onChange={(e) => setItemModal((prev) => prev ? { ...prev, observacao: e.target.value } : null)}
-                          disabled={auditoria.status === 'finalizada'}
-                          readOnly={auditoria.status === 'finalizada'}
+                          disabled={auditoria.status === 'finalizada' || !aceitaObservacao(itemModal.item)}
+                          readOnly={auditoria.status === 'finalizada' || !aceitaObservacao(itemModal.item)}
                         />
                         {observacaoObrigatoria && (!itemModal.observacao || itemModal.observacao.trim() === '') && (
                           <label className="flex items-center justify-between gap-2 py-1">

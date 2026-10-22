@@ -70,6 +70,7 @@
 | Resumo executivo (IA) | ok | ok | parcial | Mobile recebe no push de volta |
 | PDF de relatório | ok | ok | - | Mobile não gera/visualiza PDF |
 | Histórico por unidade | ok | ok | - | |
+| Respeitar permiteFoto/permiteObservacao na execução | ok | ok | pendente | Mobile: respeitar permiteFoto/permiteObservacao (texto nunca aceita foto) |
 
 ## Relatório Técnico
 

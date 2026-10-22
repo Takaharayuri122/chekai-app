@@ -2,6 +2,7 @@
 
 import { Camera, ChevronLeft, ChevronRight, MessageSquare, Sparkles } from 'lucide-react';
 import type { AuditoriaItem } from '@/lib/api';
+import { aceitaFoto, aceitaObservacao } from '@/lib/auditoria/execucao';
 import { Button } from '@/components/ui/shadcn/button';
 
 interface PainelItemProps {
@@ -18,6 +19,11 @@ interface PainelItemProps {
 
 export function PainelItem({ item, numero, total, anterior, proximo, somenteLeitura, respostas, onNavegar, onDocumentar }: PainelItemProps) {
   const t = item.templateItem;
+  const fotoOk = aceitaFoto(item);
+  const obsOk = aceitaObservacao(item);
+  const temRegistro = (item.fotos?.length ?? 0) > 0 || Boolean(item.observacao);
+  const mostrarBotao = fotoOk || obsOk || temRegistro;
+  const rotulo = fotoOk && obsOk ? 'Fotos e observação' : obsOk ? 'Observação' : fotoOk ? 'Fotos' : 'Fotos e observação';
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col">
       <div className="min-h-0 flex-1 space-y-5 overflow-y-auto">
@@ -32,6 +38,7 @@ export function PainelItem({ item, numero, total, anterior, proximo, somenteLeit
 
         {respostas}
 
+        {mostrarBotao && (
         <div className="rounded-lg border border-border">
           <button
             type="button"
@@ -40,7 +47,7 @@ export function PainelItem({ item, numero, total, anterior, proximo, somenteLeit
           >
             <span className="flex items-center gap-2 text-sm font-medium">
               <Camera className="h-4 w-4 text-primary" />
-              {somenteLeitura ? 'Ver fotos e observação' : 'Fotos e observação'}
+              {somenteLeitura || (!fotoOk && !obsOk) ? `Ver ${rotulo.toLowerCase()}` : rotulo}
             </span>
             <span className="flex items-center gap-2 text-xs text-muted-foreground">
               {item.fotos?.length > 0 && `${item.fotos.length} foto(s)`}
@@ -70,6 +77,7 @@ export function PainelItem({ item, numero, total, anterior, proximo, somenteLeit
             </details>
           )}
         </div>
+        )}
       </div>
 
       <div className="mt-4 flex items-center gap-2 border-t border-border pt-4">
