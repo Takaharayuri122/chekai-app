@@ -22,6 +22,8 @@ import {
   MessageSquare,
   Star,
   HelpCircle,
+  ListChecks,
+  Lock,
 } from 'lucide-react';
 import {
   DndContext,
@@ -41,6 +43,17 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { AppLayout, Tooltip, ConfirmDialog, FormModal } from '@/components';
+import { PainelConfiguracaoLote } from '@/components/checklist/painel-configuracao-lote';
+import { BarraSelecao } from '@/components/checklist/barra-selecao';
+import { Checkbox } from '@/components/ui/shadcn/checkbox';
+import { Switch } from '@/components/ui/shadcn/switch';
+import {
+  formGrupoAlterado,
+  pesoAoTrocarTipo,
+  resumoRespostasGrupo,
+  selecionadosAtivos,
+  type EscopoLote,
+} from '@/lib/checklist/configuracao-lote';
 import {
   checklistService,
   ChecklistTemplate,
@@ -101,9 +114,12 @@ interface SortableItemProps {
   onDuplicate: (itemId: string) => void;
   isDuplicating?: boolean;
   isHighlighted?: boolean;
+  modoSelecao?: boolean;
+  selecionado?: boolean;
+  onToggleSelecao?: (itemId: string) => void;
 }
 
-function SortableItem({ item, index, onEdit, onRemove, onDuplicate, isDuplicating, isHighlighted }: SortableItemProps) {
+function SortableItem({ item, index, onEdit, onRemove, onDuplicate, isDuplicating, isHighlighted, modoSelecao, selecionado, onToggleSelecao }: SortableItemProps) {
   const {
     attributes,
     listeners,
@@ -111,7 +127,7 @@ function SortableItem({ item, index, onEdit, onRemove, onDuplicate, isDuplicatin
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: item.id });
+  } = useSortable({ id: item.id, disabled: modoSelecao });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -125,17 +141,30 @@ function SortableItem({ item, index, onEdit, onRemove, onDuplicate, isDuplicatin
       style={style}
       className={`flex items-start gap-2 sm:gap-3 p-2 sm:p-3 bg-card rounded-lg border group hover:border-primary/30 transition-all cursor-pointer ${
         isHighlighted ? 'border-info shadow-lg shadow-info/20 ring-2 ring-info/30' : 'border-muted'
-      }`}
-      onClick={() => onEdit(item)}
+      } ${selecionado ? '!border-primary bg-primary/5' : ''}`}
+      onClick={() => (modoSelecao ? onToggleSelecao?.(item.id) : onEdit(item))}
     >
-      <div
-        {...attributes}
-        {...listeners}
-        className="cursor-grab active:cursor-grabbing text-muted-foreground/70 hover:text-muted-foreground transition-colors flex-shrink-0 flex items-center justify-center w-6 h-6"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <GripVertical className="w-5 h-5" />
-      </div>
+      {modoSelecao ? (
+        <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center" onClick={(e) => e.stopPropagation()}>
+          <Tooltip content={selecionado ? 'Desmarcar pergunta' : 'Selecionar pergunta'}>
+            <Checkbox
+              checked={Boolean(selecionado)}
+              onCheckedChange={() => onToggleSelecao?.(item.id)}
+              aria-label={`Selecionar pergunta ${index + 1}`}
+              className="h-5 w-5"
+            />
+          </Tooltip>
+        </div>
+      ) : (
+        <div
+          {...attributes}
+          {...listeners}
+          className="cursor-grab active:cursor-grabbing text-muted-foreground/70 hover:text-muted-foreground transition-colors flex-shrink-0 flex items-center justify-center w-6 h-6"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <GripVertical className="w-5 h-5" />
+        </div>
+      )}
       <span className="text-xs sm:text-sm font-bold text-muted-foreground/70 min-w-[20px] sm:min-w-[24px] flex-shrink-0">{index + 1}.</span>
       <div className="flex-1 min-w-0">
         <p className="text-xs sm:text-sm leading-relaxed break-words">{item.pergunta}</p>
@@ -252,6 +281,8 @@ export default function EditarTemplatePage() {
     tipoRespostaCustomizada: undefined,
     grupoId: undefined,
     secao: '',
+    permiteFoto: true,
+    permiteObservacao: true,
   });
   const [novaOpcaoResposta, setNovaOpcaoResposta] = useState('');
 
@@ -530,6 +561,8 @@ export default function EditarTemplatePage() {
       })),
       grupoId: undefined,
       secao: '',
+      permiteFoto: true,
+      permiteObservacao: true,
     });
     setNovaOpcaoResposta('');
     setEditingItem(null);
@@ -579,6 +612,8 @@ export default function EditarTemplatePage() {
       opcoesRespostaConfig: configs,
       grupoId: item.grupoId,
       secao: item.secao || '',
+      permiteFoto: item.tipoRespostaCustomizada === TipoRespostaCustomizada.TEXTO ? false : item.permiteFoto ?? true,
+      permiteObservacao: item.permiteObservacao ?? true,
     });
     setShowItemModal(true);
   };
@@ -601,6 +636,8 @@ export default function EditarTemplatePage() {
         opcoesRespostaConfig: itemForm.opcoesRespostaConfig,
         grupoId: itemForm.grupoId || undefined,
         secao: itemForm.secao || undefined,
+        permiteFoto: itemForm.tipoRespostaCustomizada === TipoRespostaCustomizada.TEXTO ? false : itemForm.permiteFoto,
+        permiteObservacao: itemForm.permiteObservacao,
       };
       if (editingItem) {
         const itemAtualizado = await checklistService.atualizarItem(editingItem.id, dadosItem);
@@ -806,6 +843,78 @@ export default function EditarTemplatePage() {
     return template?.itens?.filter((i) => !i.grupoId && i.ativo !== false) || [];
   };
 
+  // Modo seleção e configuração em lote
+  const [modoSelecao, setModoSelecao] = useState(false);
+  const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
+  const [painelEscopo, setPainelEscopo] = useState<EscopoLote | null>(null);
+  const [painelAberto, setPainelAberto] = useState(false);
+  const [confirmarDescarteGrupo, setConfirmarDescarteGrupo] = useState(false);
+  // A seleção pode conter perguntas já removidas: conta só as que ainda estão ativas
+  const idsSelecionados = selecionadosAtivos(template?.itens || [], selecionados);
+
+  const totalPerguntas = template?.itens?.filter((i) => i.ativo !== false).length || 0;
+
+  const alternarModoSelecao = () => {
+    setModoSelecao((atual) => !atual);
+    setSelecionados(new Set());
+  };
+
+  const alternarItemSelecionado = (itemId: string) => {
+    setSelecionados((prev) => {
+      const novo = new Set(prev);
+      if (novo.has(itemId)) novo.delete(itemId);
+      else novo.add(itemId);
+      return novo;
+    });
+  };
+
+  const estadoSelecaoGrupo = (itens: TemplateItem[]): boolean | 'indeterminate' => {
+    const marcados = itens.filter((i) => selecionados.has(i.id)).length;
+    if (marcados === 0) return false;
+    return marcados === itens.length ? true : 'indeterminate';
+  };
+
+  const alternarGrupoSelecionado = (itens: TemplateItem[]) => {
+    setSelecionados((prev) => {
+      const novo = new Set(prev);
+      const todos = itens.length > 0 && itens.every((i) => novo.has(i.id));
+      itens.forEach((i) => (todos ? novo.delete(i.id) : novo.add(i.id)));
+      return novo;
+    });
+  };
+
+  const abrirPainel = (escopo: EscopoLote) => {
+    setPainelEscopo(escopo);
+    setPainelAberto(true);
+  };
+
+  const handleConfigurarSelecionados = () => {
+    if (idsSelecionados.length === 0) return;
+    abrirPainel({ tipo: 'selecao', itemIds: idsSelecionados });
+  };
+
+  const abrirPainelDoGrupoEditado = () => {
+    if (!editingGrupo) return;
+    const total = getItensPorGrupo(editingGrupo.id).length;
+    if (total === 0) return;
+    const escopo: EscopoLote = { tipo: 'grupo', grupoId: editingGrupo.id, nome: editingGrupo.nome, total };
+    setShowGrupoModal(false);
+    resetGrupoForm();
+    abrirPainel(escopo);
+  };
+
+  const handleConfigurarGrupoEditado = () => {
+    // Abrir o painel fecha o modal do grupo: pergunta antes de perder nome/descrição não salvos
+    if (formGrupoAlterado(grupoForm, editingGrupo)) setConfirmarDescarteGrupo(true);
+    else abrirPainelDoGrupoEditado();
+  };
+
+  const handleLoteAplicado = async () => {
+    setSelecionados(new Set());
+    setModoSelecao(false);
+    await loadTemplate();
+  };
+
   // Agrupar itens por seção dentro do grupo
   const getItensPorSecao = (itens: TemplateItem[]) => {
     const porSecao: Record<string, TemplateItem[]> = {};
@@ -936,7 +1045,25 @@ export default function EditarTemplatePage() {
                   ({template?.grupos?.length || 0} grupos, {template?.itens?.filter(i => i.ativo !== false).length || 0} perguntas)
                 </span>
               </h2>
-              <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+              <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 w-full sm:w-auto">
+                <button
+                  onClick={() => abrirPainel({ tipo: 'checklist', total: totalPerguntas })}
+                  disabled={totalPerguntas === 0}
+                  className="inline-flex items-center justify-center whitespace-nowrap rounded-md border border-border bg-card text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 hover:bg-muted gap-1 w-full sm:w-auto"
+                >
+                  <Settings className="w-4 h-4" />
+                  <span className="whitespace-nowrap">Configurar todo o checklist</span>
+                </button>
+                <button
+                  onClick={alternarModoSelecao}
+                  disabled={totalPerguntas === 0}
+                  className={`inline-flex items-center justify-center whitespace-nowrap rounded-md border text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 gap-1 w-full sm:w-auto ${
+                    modoSelecao ? 'border-primary bg-primary/10 text-primary hover:bg-primary/15' : 'border-border bg-card hover:bg-muted'
+                  }`}
+                >
+                  {modoSelecao ? <X className="w-4 h-4" /> : <ListChecks className="w-4 h-4" />}
+                  <span className="whitespace-nowrap">{modoSelecao ? 'Sair da seleção' : 'Selecionar perguntas'}</span>
+                </button>
                 <button onClick={handleAbrirModalNovoGrupo} className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 bg-info text-white hover:bg-info/90 gap-1 w-full sm:w-auto">
                   <FolderOpen className="w-4 h-4" />
                   <span className="whitespace-nowrap">Novo Grupo</span>
@@ -966,10 +1093,29 @@ export default function EditarTemplatePage() {
                     onClick={() => toggleGrupoExpanded(grupo.id)}
                   >
                     <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
-                      <GripVertical className="w-4 h-4 text-muted-foreground/70 flex-shrink-0" />
+                      {modoSelecao ? (
+                        <div className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                          <Tooltip content="Selecionar todas as perguntas do grupo">
+                            <Checkbox
+                              checked={estadoSelecaoGrupo(getItensPorGrupo(grupo.id))}
+                              disabled={getItensPorGrupo(grupo.id).length === 0}
+                              onCheckedChange={() => alternarGrupoSelecionado(getItensPorGrupo(grupo.id))}
+                              aria-label={`Selecionar todas as perguntas do grupo ${grupo.nome}`}
+                              className="h-5 w-5"
+                            />
+                          </Tooltip>
+                        </div>
+                      ) : (
+                        <GripVertical className="w-4 h-4 text-muted-foreground/70 flex-shrink-0" />
+                      )}
                       <FolderOpen className="w-5 h-5 text-info flex-shrink-0" />
                       <div className="flex-1 min-w-0">
                         <p className="font-medium truncate">{grupo.nome}</p>
+                        {modoSelecao && getItensPorGrupo(grupo.id).length > 0 && (
+                          <p className="text-xs text-muted-foreground">
+                            {getItensPorGrupo(grupo.id).filter((i) => selecionados.has(i.id)).length} de {getItensPorGrupo(grupo.id).length} selecionadas
+                          </p>
+                        )}
                         {grupo.descricao && <p className="text-xs sm:text-sm text-muted-foreground line-clamp-1">{grupo.descricao}</p>}
                       </div>
                     </div>
@@ -1047,6 +1193,9 @@ export default function EditarTemplatePage() {
                                             onDuplicate={handleDuplicarItem}
                                             isDuplicating={duplicatingItemId === item.id}
                                             isHighlighted={highlightedItemId === item.id}
+                                            modoSelecao={modoSelecao}
+                                            selecionado={selecionados.has(item.id)}
+                                            onToggleSelecao={alternarItemSelecionado}
                                           />
                                         </div>
                                       );
@@ -1079,6 +1228,16 @@ export default function EditarTemplatePage() {
               {getItensSemGrupo().length > 0 && (
                 <div className="border border-border rounded-lg">
                   <div className="flex items-center gap-2 sm:gap-3 p-3 bg-muted">
+                    {modoSelecao && (
+                      <Tooltip content="Selecionar todas as perguntas sem grupo">
+                      <Checkbox
+                        checked={estadoSelecaoGrupo(getItensSemGrupo())}
+                        onCheckedChange={() => alternarGrupoSelecionado(getItensSemGrupo())}
+                        aria-label="Selecionar todas as perguntas sem grupo"
+                        className="h-5 w-5"
+                      />
+                      </Tooltip>
+                    )}
                     <HelpCircle className="w-4 h-4 sm:w-5 sm:h-5 text-warning flex-shrink-0" />
                     <span className="font-medium text-sm sm:text-base">Perguntas sem grupo</span>
                     <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full font-semibold px-2 py-0.5 text-[11px] bg-warning/15 text-[hsl(32_95%_34%)] sm:!px-2.5 sm:!py-0.5 sm:!text-xs">{getItensSemGrupo().length}</span>
@@ -1107,6 +1266,9 @@ export default function EditarTemplatePage() {
                                 onDuplicate={handleDuplicarItem}
                                 isDuplicating={duplicatingItemId === item.id}
                                 isHighlighted={highlightedItemId === item.id}
+                                modoSelecao={modoSelecao}
+                                selecionado={selecionados.has(item.id)}
+                                onToggleSelecao={alternarItemSelecionado}
                               />
                             </div>
                           ))}
@@ -1130,6 +1292,14 @@ export default function EditarTemplatePage() {
             </div>
           </div>
         </motion.div>
+
+        {modoSelecao && (
+          <BarraSelecao
+            quantidade={idsSelecionados.length}
+            onLimpar={() => setSelecionados(new Set())}
+            onConfigurar={handleConfigurarSelecionados}
+          />
+        )}
       </div>
 
       <FormModal
@@ -1137,7 +1307,7 @@ export default function EditarTemplatePage() {
         onClose={() => { setShowGrupoModal(false); resetGrupoForm(); }}
         title={editingGrupo ? 'Editar Grupo' : 'Novo Grupo'}
         maxWidth="md"
-        isDirty={Boolean(grupoForm.nome || grupoForm.descricao)}
+        isDirty={formGrupoAlterado(grupoForm, editingGrupo)}
         closeOnBackdrop={false}
         footer={
           <>
@@ -1169,8 +1339,53 @@ export default function EditarTemplatePage() {
               onChange={(e) => setGrupoForm({ ...grupoForm, descricao: e.target.value })}
             />
           </div>
+          {editingGrupo && (() => {
+            const itensDoGrupo = getItensPorGrupo(editingGrupo.id);
+            const resumo = resumoRespostasGrupo(itensDoGrupo);
+            const chips: string[] = [];
+            if (resumo.padrao > 0) chips.push(`${resumo.padrao} no padrão`);
+            if (resumo.personalizadas > 0) chips.push(resumo.personalizadas === 1 ? '1 personalizada' : `${resumo.personalizadas} personalizadas`);
+            if (resumo.texto > 0) chips.push(`${resumo.texto} em texto`);
+            if (resumo.outros > 0) chips.push(resumo.outros === 1 ? '1 em número ou data' : `${resumo.outros} em número ou data`);
+            return (
+              <div className="rounded-lg border border-border bg-muted/40 p-4">
+                <h3 className="text-sm font-semibold text-foreground">Respostas das perguntas deste grupo</h3>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {itensDoGrupo.length === 0
+                    ? 'Este grupo ainda não tem perguntas.'
+                    : `Defina de uma vez as opções de resposta, pontuação, fotos e observação ${itensDoGrupo.length === 1 ? 'da pergunta' : `das ${itensDoGrupo.length} perguntas`}.`}
+                </p>
+                {chips.length > 0 && (
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    {chips.map((c) => (
+                      <span key={c} className="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-foreground">{c}</span>
+                    ))}
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={handleConfigurarGrupoEditado}
+                  disabled={itensDoGrupo.length === 0}
+                  className="mt-3 inline-flex h-9 items-center justify-center gap-2 whitespace-nowrap rounded-md border border-border bg-card px-3 text-sm font-medium transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-50"
+                >
+                  <Settings className="w-4 h-4" />
+                  {itensDoGrupo.length === 1 ? 'Configurar a pergunta' : `Configurar as ${itensDoGrupo.length} perguntas`}
+                </button>
+              </div>
+            );
+          })()}
         </div>
       </FormModal>
+
+      {painelEscopo && (
+        <PainelConfiguracaoLote
+          aberto={painelAberto}
+          onFechar={() => setPainelAberto(false)}
+          templateId={templateId}
+          escopo={painelEscopo}
+          onAplicado={handleLoteAplicado}
+        />
+      )}
 
       <FormModal
         open={showItemModal}
@@ -1297,6 +1512,41 @@ export default function EditarTemplatePage() {
                 </div>
               </div>
 
+              {/* Fotos e observação */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+                <div className="flex flex-col gap-1 rounded-lg bg-muted/50 p-3">
+                  <label className="flex cursor-pointer items-center justify-between gap-3">
+                    <span className="flex items-center gap-2 text-xs font-medium text-foreground sm:text-sm">
+                      <Camera className="h-4 w-4 text-muted-foreground" />
+                      Permitir fotos
+                    </span>
+                    <Switch
+                      checked={itemForm.permiteFoto ?? true}
+                      disabled={itemForm.tipoRespostaCustomizada === TipoRespostaCustomizada.TEXTO}
+                      onCheckedChange={(v) => setItemForm({ ...itemForm, permiteFoto: v })}
+                    />
+                  </label>
+                  {itemForm.tipoRespostaCustomizada === TipoRespostaCustomizada.TEXTO && (
+                    <p className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <Lock className="h-3 w-3 shrink-0" aria-hidden />
+                      Desativado: respostas em texto não recebem fotos
+                    </p>
+                  )}
+                </div>
+                <div className="flex flex-col gap-1 rounded-lg bg-muted/50 p-3">
+                  <label className="flex cursor-pointer items-center justify-between gap-3">
+                    <span className="flex items-center gap-2 text-xs font-medium text-foreground sm:text-sm">
+                      <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                      Permitir observação
+                    </span>
+                    <Switch
+                      checked={itemForm.permiteObservacao ?? true}
+                      onCheckedChange={(v) => setItemForm({ ...itemForm, permiteObservacao: v })}
+                    />
+                  </label>
+                </div>
+              </div>
+
               {/* Legislação */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                 <div className="flex flex-col">
@@ -1351,7 +1601,14 @@ export default function EditarTemplatePage() {
                       ...itemForm,
                       tipoRespostaCustomizada: valor,
                       usarRespostasPersonalizadas: valor !== undefined,
-                      peso: valor === TipoRespostaCustomizada.TEXTO ? 0 : itemForm.peso,
+                      peso: pesoAoTrocarTipo(itemForm.tipoRespostaCustomizada, valor, itemForm.peso),
+                      // Texto não recebe fotos; ao sair de texto, as fotos voltam a ser permitidas
+                      permiteFoto:
+                        valor === TipoRespostaCustomizada.TEXTO
+                          ? false
+                          : itemForm.tipoRespostaCustomizada === TipoRespostaCustomizada.TEXTO
+                            ? true
+                            : itemForm.permiteFoto,
                     });
                   }}
                 >
@@ -1638,6 +1895,20 @@ export default function EditarTemplatePage() {
               )}
         </div>
       </FormModal>
+
+      <ConfirmDialog
+        open={confirmarDescarteGrupo}
+        onClose={() => setConfirmarDescarteGrupo(false)}
+        onConfirm={() => {
+          setConfirmarDescarteGrupo(false);
+          abrirPainelDoGrupoEditado();
+        }}
+        title="Descartar alterações do grupo?"
+        message="O nome ou a descrição do grupo foram alterados e ainda não foram salvos. Para configurar as perguntas agora, essas alterações serão descartadas."
+        confirmLabel="Descartar e continuar"
+        cancelLabel="Voltar ao grupo"
+        variant="warning"
+      />
 
       <ConfirmDialog
         open={confirmRemoverGrupo !== null}

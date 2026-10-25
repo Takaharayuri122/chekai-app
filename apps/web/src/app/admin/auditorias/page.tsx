@@ -148,7 +148,7 @@ export default function AuditoriasPage() {
         title="Auditorias"
         subtitle={loading ? 'Carregando…' : `${filtradas.length} de ${auditorias.length} avaliações`}
         action={
-          <Button asChild className="hidden md:inline-flex">
+          <Button asChild>
             <Link href="/admin/auditoria/nova">
               <Plus className="h-4 w-4" />
               Nova auditoria
@@ -183,9 +183,7 @@ export default function AuditoriasPage() {
           <EmptyState
             icon={ClipboardCheck}
             title="Nenhuma auditoria encontrada"
-            description={ativos || filtros.busca ? 'Ajuste a busca ou os filtros.' : 'Inicie sua primeira auditoria.'}
-            actionLabel={ativos || filtros.busca ? undefined : 'Nova auditoria'}
-            actionHref="/admin/auditoria/nova"
+            description={ativos || filtros.busca ? 'Ajuste a busca ou os filtros.' : 'Inicie sua primeira auditoria pelo botão no topo.'}
           />
         ) : (
           <>

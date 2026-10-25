@@ -2,13 +2,15 @@ import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as XLSX from 'xlsx';
-import { ChecklistTemplate } from './entities/checklist-template.entity';
+import { ChecklistTemplate, StatusTemplate } from './entities/checklist-template.entity';
 import { ChecklistGrupo } from './entities/checklist-grupo.entity';
-import { TemplateItem, CategoriaItem, CriticidadeItem } from './entities/template-item.entity';
+import { TemplateItem } from './entities/template-item.entity';
+import { configuracaoParaItem, mapearLinhaImportada } from './checklist-import-mapeamento';
 import { TipoAtividade } from '../cliente/entities/cliente.entity';
 import { PerfilUsuario } from '../usuario/entities/usuario.entity';
 import {
   ImportarChecklistDto,
+  ConfirmarImportacaoDto,
   ChecklistCsvRow,
   ImportacaoPreview,
   ImportacaoGrupoPreview,
@@ -121,9 +123,9 @@ export class ChecklistImportService {
   /**
    * Parse de valores booleanos do CSV.
    */
-  private parseBool(value: string | undefined): boolean {
-    if (!value) return false;
-    const v = value.toLowerCase().trim();
+  private parseBool(value: string | undefined): boolean | undefined {
+    const v = (value ?? '').toLowerCase().trim();
+    if (!v) return undefined;
     return v === 'sim' || v === 'yes' || v === 'true' || v === '1';
   }
 
@@ -138,7 +140,7 @@ export class ChecklistImportService {
       if (texto) {
         opcoes.push({
           texto,
-          inconformidade: this.parseBool(cols[baseIndex + 1]),
+          inconformidade: this.parseBool(cols[baseIndex + 1]) ?? false,
           pontos: cols[baseIndex + 2] ? parseFloat(cols[baseIndex + 2]) : undefined,
         });
       }
@@ -157,7 +159,7 @@ export class ChecklistImportService {
       if (texto) {
         opcoes.push({
           texto,
-          inconformidade: this.parseBool(row[baseIndex + 1]?.toString()),
+          inconformidade: this.parseBool(row[baseIndex + 1]?.toString()) ?? false,
           pontos: row[baseIndex + 2] ? parseFloat(row[baseIndex + 2].toString()) : undefined,
         });
       }
@@ -220,6 +222,7 @@ export class ChecklistImportService {
       grupos,
       totalPerguntas: rows.length,
       totalGrupos: grupos.length,
+      perguntas: rows.map((row, indice) => mapearLinhaImportada(row, indice)),
     };
   }
 
@@ -284,28 +287,16 @@ export class ChecklistImportService {
       
       const grupoId = row.grupo ? grupoIdMap.get(row.grupo) : undefined;
       
-      // Determina categoria baseada no grupo
-      const categoria = this.inferirCategoria(row.grupo);
-      
-      // Extrai opções de resposta
-      const opcoesResposta = row.opcoesResposta?.length 
-        ? row.opcoesResposta.map((o) => o.texto)
-        : undefined;
-      
+      const { configuracao } = mapearLinhaImportada(row, ordemGlobal);
       const item = this.itemRepository.create({
+        ...configuracaoParaItem(configuracao),
         pergunta: row.pergunta,
         templateId: savedTemplate.id,
         grupoId,
         secao: row.secao || undefined,
-        categoria,
-        criticidade: CriticidadeItem.MEDIA,
-        peso: row.pontuacaoMaxima || 1,
         ordem: ordemGlobal++,
-        obrigatorio: row.respostaObrigatoria ?? true,
-        opcoesResposta,
-        usarRespostasPersonalizadas: opcoesResposta && opcoesResposta.length > 0,
       });
-      
+
       await this.itemRepository.save(item);
     }
     
@@ -319,23 +310,76 @@ export class ChecklistImportService {
   }
 
   /**
-   * Infere a categoria baseada no nome do grupo.
+   * Confirma a importação a partir das perguntas revisadas, em uma única transação.
+   * Cria o template como rascunho, os grupos (com ao menos uma pergunta) e os itens.
    */
-  private inferirCategoria(grupo: string): CategoriaItem {
-    if (!grupo) return CategoriaItem.OUTRO;
-    
-    const grupoLower = grupo.toLowerCase();
-    
-    if (grupoLower.includes('estrutura')) return CategoriaItem.ESTRUTURA;
-    if (grupoLower.includes('higiene') || grupoLower.includes('higienização')) return CategoriaItem.HIGIENE;
-    if (grupoLower.includes('manipula') || grupoLower.includes('colaborador') || grupoLower.includes('funcionário')) return CategoriaItem.MANIPULADORES;
-    if (grupoLower.includes('documento') || grupoLower.includes('responsáve')) return CategoriaItem.DOCUMENTACAO;
-    if (grupoLower.includes('estoque') || grupoLower.includes('armazen')) return CategoriaItem.ARMAZENAMENTO;
-    if (grupoLower.includes('prepara') || grupoLower.includes('produção')) return CategoriaItem.PREPARACAO;
-    if (grupoLower.includes('praga') || grupoLower.includes('controle')) return CategoriaItem.CONTROLE_PRAGAS;
-    if (grupoLower.includes('equipamento')) return CategoriaItem.EQUIPAMENTOS;
-    
-    return CategoriaItem.OUTRO;
+  async confirmar(
+    dto: ConfirmarImportacaoDto,
+    usuario: { id: string; perfil: PerfilUsuario },
+  ): Promise<ImportacaoResultado> {
+    const avisos: string[] = [];
+
+    return this.templateRepository.manager.transaction(async (manager) => {
+      const template = await manager.save(
+        ChecklistTemplate,
+        manager.create(ChecklistTemplate, {
+          nome: dto.dados.nomeTemplate,
+          descricao: dto.dados.descricao,
+          tipoAtividade: dto.dados.tipoAtividade || TipoAtividade.OUTRO,
+          versao: dto.dados.versao || '1.0',
+          status: StatusTemplate.RASCUNHO,
+          gestorId: usuario.id,
+        }),
+      );
+
+      let gruposCriados = 0;
+      let ordemGlobal = 0;
+
+      for (const grupoDto of dto.grupos) {
+        const perguntas = grupoDto.perguntas.filter((p) => {
+          if (p.pergunta?.trim()) return true;
+          avisos.push(`Pergunta vazia ignorada no grupo "${grupoDto.nome}"`);
+          return false;
+        });
+        if (perguntas.length === 0) continue;
+
+        const grupo = await manager.save(
+          ChecklistGrupo,
+          manager.create(ChecklistGrupo, {
+            nome: grupoDto.nome,
+            templateId: template.id,
+            ordem: gruposCriados,
+          }),
+        );
+        gruposCriados++;
+
+        for (const p of perguntas) {
+          await manager.save(
+            TemplateItem,
+            manager.create(TemplateItem, {
+              ...configuracaoParaItem(p.configuracao),
+              pergunta: p.pergunta.trim(),
+              templateId: template.id,
+              grupoId: grupo.id,
+              secao: p.secao || undefined,
+              ordem: ordemGlobal++,
+            }),
+          );
+        }
+      }
+
+      if (ordemGlobal === 0) {
+        // Lançar aqui desfaz a criação do template (transação)
+        throw new BadRequestException('Nenhuma pergunta válida para importar');
+      }
+
+      return {
+        templateId: template.id,
+        nomeTemplate: template.nome,
+        gruposCriados,
+        itensCriados: ordemGlobal,
+        avisos,
+      };
+    });
   }
 }
-

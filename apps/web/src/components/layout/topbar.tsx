@@ -2,12 +2,18 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { Plus, Search } from 'lucide-react';
 import { Button } from '@/components/ui/shadcn/button';
+import { useAuthStore } from '@/lib/store';
 import { MenuConta } from './menu-conta';
-import { HREF_NOVA_AUDITORIA } from './navegacao';
+import { HREF_NOVA_AUDITORIA, mostrarAtalhoNovaAuditoria } from './navegacao';
 
 export function Topbar({ onAbrirBusca }: { onAbrirBusca: () => void }) {
+  const pathname = usePathname();
+  const perfil = useAuthStore((s) => s.usuario?.perfil);
+  const mostrarNova = perfil ? mostrarAtalhoNovaAuditoria(pathname, perfil) : false;
+
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-card/95 px-4 backdrop-blur safe-top lg:px-8 print:hidden">
       <Link href="/admin/dashboard" className="md:hidden" aria-label="Início">
@@ -28,12 +34,14 @@ export function Topbar({ onAbrirBusca }: { onAbrirBusca: () => void }) {
         <Button variant="ghost" size="icon" className="h-11 w-11 md:hidden" onClick={onAbrirBusca} aria-label="Buscar">
           <Search className="h-5 w-5" />
         </Button>
-        <Button asChild className="hidden md:inline-flex">
-          <Link href={HREF_NOVA_AUDITORIA}>
-            <Plus className="h-4 w-4" />
-            Nova auditoria
-          </Link>
-        </Button>
+        {mostrarNova && (
+          <Button asChild className="hidden md:inline-flex">
+            <Link href={HREF_NOVA_AUDITORIA}>
+              <Plus className="h-4 w-4" />
+              Nova auditoria
+            </Link>
+          </Button>
+        )}
         <div className="md:hidden">
           <MenuConta variante="compacto" />
         </div>

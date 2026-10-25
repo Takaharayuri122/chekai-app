@@ -227,9 +227,7 @@ export default function PlanosAcaoPage() {
           emptyState={{
             icon: ListChecks,
             title: 'Nenhuma tarefa encontrada',
-            description: 'Crie tarefas para acompanhar as correções das não conformidades.',
-            actionLabel: 'Nova tarefa',
-            actionOnClick: abrirNovo,
+            description: 'Crie uma tarefa pelo botão no topo para acompanhar as correções.',
           }}
         />
       </div>

@@ -97,6 +97,10 @@
 | RN-CHK-011 | Apenas o gestor dono do template pode editar/remover itens e grupos |
 | RN-CHK-012 | Remoção de itens e grupos é soft delete (`ativo = false`) |
 | RN-CHK-013 | Geração de templates com IA via `IaService` e RAG via legislação, com auditoria de tokens |
+| RN-CHK-014 | Pergunta com resposta em **texto** tem `permiteFoto = false`, `peso = 0`, sem opções e sem pontuação. A API força esses valores ao salvar (individual, em lote e na importação) |
+| RN-CHK-015 | `permiteFoto = false` implica `fotoObrigatoria = false` em todas as opções; `permiteObservacao = false` implica `observacaoObrigatoria = false` |
+| RN-CHK-016 | Configuração em lote (`PUT /checklists/templates/:id/itens/lote`, MASTER/GESTOR dono do template): aplica só os campos enviados a todos os itens ativos do template, de um grupo ou de `itemIds` informados (itemIds e grupoId juntos ou fora do template = 400). As regras RN-CHK-014/015 são reaplicadas; itens sem mudança são ignorados; `simular: true` devolve as contagens sem salvar |
+| RN-CHK-017 | Revisão por IA da importação (`POST /checklists/importar/checklist/revisar`, MASTER/GESTOR): um grupo por chamada (máx. 40 perguntas), com RAG de legislação e auditoria de tokens (`metodoChamado = checklistImport.revisao`). A IA só sugere (corrige texto e propõe configuração) — não cria, remove nem reordena perguntas; valores inválidos voltam ao original e RN-CHK-014/015 são reaplicadas. Alterações em tipo de resposta, peso, foto, observação ou opções, ou conflito vindo da planilha, marcam a pergunta como "conferir". Sem saldo → `sem_creditos`; erro → `falha` (a importação segue sem revisão) |
 
 ---
 
@@ -138,6 +142,7 @@
 | RN-FOT-002 | Upload: imagem obrigatória, validação de MIME type (`image/*`), compressão via sharp, extração de EXIF |
 | RN-FOT-003 | Análise por IA: campo `analiseIa` e flag `processadoPorIa` por foto |
 | RN-FOT-004 | No mobile: múltiplas seleções, upload e processamento IA em sequência (não paralelo), grid 2 colunas |
+| RN-FOT-005 | Item com `permiteFoto = false` (inclui texto) não oferece anexar foto no web. Enquanto o app mobile não for atualizado, a API aceita a foto mesmo assim e registra log de aviso, para não perder fotos de apps antigos |
 
 ---
 

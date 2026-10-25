@@ -639,6 +639,8 @@ export interface TemplateItem {
   opcoesRespostaConfig?: OpcaoRespostaConfig[];
   usarRespostasPersonalizadas: boolean;
   tipoRespostaCustomizada?: TipoRespostaCustomizada;
+  permiteFoto?: boolean;
+  permiteObservacao?: boolean;
   grupoId?: string;
   grupo?: ChecklistGrupo;
   secao?: string;
@@ -692,6 +694,8 @@ export interface CriarTemplateItemRequest {
   grupoId?: string;
   secao?: string;
   opcoesRespostaConfig?: OpcaoRespostaConfig[];
+  permiteFoto?: boolean;
+  permiteObservacao?: boolean;
 }
 
 export interface CriarGrupoRequest {
@@ -709,6 +713,98 @@ export interface ImportacaoPreview {
   grupos: ImportacaoGrupoPreview[];
   totalPerguntas: number;
   totalGrupos: number;
+  perguntas: PerguntaImportada[];
+}
+
+export type TipoRespostaLote = 'padrao' | 'personalizada' | 'texto' | 'numero' | 'data';
+
+export interface OpcaoLote {
+  valor: string;
+  pontuacao?: number | null;
+  fotoObrigatoria: boolean;
+  observacaoObrigatoria: boolean;
+}
+
+export interface AlteracoesLote {
+  tipoResposta?: TipoRespostaLote;
+  opcoes?: OpcaoLote[];
+  permiteFoto?: boolean;
+  permiteObservacao?: boolean;
+  obrigatorio?: boolean;
+  criticidade?: CriticidadeItem;
+}
+
+export interface ConfigurarLoteRequest {
+  itemIds?: string[];
+  grupoId?: string;
+  alteracoes: AlteracoesLote;
+  simular?: boolean;
+}
+
+export interface ResultadoLote {
+  totalAfetados: number;
+  personalizadosSubstituidos: number;
+  ignorados: number;
+  auditoriasVinculadas: number;
+  simulado: boolean;
+}
+
+export interface ConfiguracaoPerguntaImportada {
+  categoria: CategoriaItem;
+  criticidade: CriticidadeItem;
+  tipoResposta: TipoRespostaLote;
+  peso: number;
+  obrigatorio: boolean;
+  permiteFoto: boolean;
+  permiteObservacao: boolean;
+  opcoes: OpcaoLote[];
+}
+
+export interface PerguntaImportada {
+  chave: string;
+  grupo: string;
+  secao?: string;
+  pergunta: string;
+  configuracao: ConfiguracaoPerguntaImportada;
+  motivoConferir?: string;
+}
+
+export type CampoRevisado =
+  | 'pergunta'
+  | 'categoria'
+  | 'criticidade'
+  | 'tipoResposta'
+  | 'peso'
+  | 'permiteFoto'
+  | 'permiteObservacao'
+  | 'opcoes';
+
+export interface SugestaoPergunta {
+  chave: string;
+  perguntaSugerida: string;
+  configuracaoSugerida: ConfiguracaoPerguntaImportada;
+  alteracoes: CampoRevisado[];
+  motivo?: string;
+  conferir: boolean;
+  motivoConferir?: string;
+}
+
+export interface RevisaoGrupoResultado {
+  status: 'revisado' | 'sem_creditos' | 'falha';
+  grupoNomeSugerido?: string;
+  sugestoes: SugestaoPergunta[];
+}
+
+export interface ConfirmarImportacaoRequest {
+  dados: ImportarChecklistRequest;
+  grupos: {
+    nome: string;
+    perguntas: {
+      secao?: string;
+      pergunta: string;
+      configuracao: ConfiguracaoPerguntaImportada;
+    }[];
+  }[];
 }
 
 export interface ImportacaoGrupoPreview {
@@ -819,6 +915,21 @@ export const checklistService = {
 
   async duplicarItem(itemId: string): Promise<TemplateItem> {
     const response = await api.post(`/checklists/itens/${itemId}/duplicar`);
+    return response.data.data;
+  },
+
+  async configurarLote(templateId: string, req: ConfigurarLoteRequest): Promise<ResultadoLote> {
+    const response = await api.put(`/checklists/templates/${templateId}/itens/lote`, req);
+    return response.data.data;
+  },
+
+  async revisarImportacao(grupo: string, perguntas: PerguntaImportada[]): Promise<RevisaoGrupoResultado> {
+    const response = await api.post('/checklists/importar/checklist/revisar', { grupo, perguntas });
+    return response.data.data;
+  },
+
+  async confirmarImportacao(req: ConfirmarImportacaoRequest): Promise<ImportacaoResultado> {
+    const response = await api.post('/checklists/importar/checklist/confirmar', req);
     return response.data.data;
   },
 

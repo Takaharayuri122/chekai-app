@@ -11,6 +11,7 @@ import {
   getItensMais,
   isRotaAtiva,
   itensBuscaAuditorias,
+  mostrarAtalhoNovaAuditoria,
 } from './navegacao';
 
 const labels = (perfil: PerfilUsuario) =>
@@ -63,6 +64,20 @@ describe('getItensMais', () => {
   it('exclui itens da barra inferior e inclui conta', () => {
     const mais = getItensMais(PerfilUsuario.AUDITOR).map((i) => i.label);
     expect(mais).toEqual(['Planos de ação', 'Relatórios técnicos', 'Meu perfil']);
+  });
+});
+
+describe('mostrarAtalhoNovaAuditoria', () => {
+  it('esconde o atalho onde a tela já tem o botão', () => {
+    expect(mostrarAtalhoNovaAuditoria('/admin/auditorias', PerfilUsuario.GESTOR)).toBe(false);
+    expect(mostrarAtalhoNovaAuditoria('/admin/auditoria/nova', PerfilUsuario.AUDITOR)).toBe(false);
+    expect(mostrarAtalhoNovaAuditoria('/admin/dashboard', PerfilUsuario.AUDITOR)).toBe(false);
+  });
+
+  it('mantém o atalho nas demais telas e no início do gestor', () => {
+    expect(mostrarAtalhoNovaAuditoria('/admin/clientes', PerfilUsuario.GESTOR)).toBe(true);
+    expect(mostrarAtalhoNovaAuditoria('/admin/dashboard', PerfilUsuario.GESTOR)).toBe(true);
+    expect(mostrarAtalhoNovaAuditoria('/admin/auditoria/abc', PerfilUsuario.AUDITOR)).toBe(true);
   });
 });
 

@@ -8,6 +8,8 @@ import { Auditoria } from '../auditoria/entities/auditoria.entity';
 import { ChecklistService } from './checklist.service';
 import { ChecklistImportService } from './checklist-import.service';
 import { ChecklistIaService } from './checklist-ia.service';
+import { ChecklistImportIaService } from './checklist-import-ia.service';
+import { ChecklistLoteService } from './checklist-lote.service';
 import { ChecklistController } from './checklist.controller';
 import { LegislacaoModule } from '../legislacao/legislacao.module';
 import { CreditoModule } from '../credito/credito.module';
@@ -25,7 +27,7 @@ import { CreditoModule } from '../credito/credito.module';
     CreditoModule,
   ],
   controllers: [ChecklistController],
-  providers: [ChecklistService, ChecklistImportService, ChecklistIaService],
+  providers: [ChecklistService, ChecklistImportService, ChecklistIaService, ChecklistLoteService, ChecklistImportIaService],
   exports: [ChecklistService, ChecklistImportService],
 })
 export class ChecklistModule {}

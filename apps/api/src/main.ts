@@ -1,4 +1,5 @@
 import { NestFactory } from '@nestjs/core';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
@@ -8,7 +9,9 @@ import { AppModule } from './app.module';
  * Configura validação global, CORS e documentação Swagger.
  */
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  // A confirmação da importação envia todas as perguntas de uma vez; o limite padrão (100 KB) não comporta.
+  app.useBodyParser('json', { limit: '5mb' });
 
   app.enableCors({
     origin: (origin, callback) => {

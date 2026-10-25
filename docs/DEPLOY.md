@@ -58,6 +58,14 @@ Configuração do serviço web:
 - **Start**: `npm run start --workspace=@meta-app/web` (`next start --hostname 0.0.0.0`; a porta vem de `PORT`)
 - **Arquivo**: `apps/web/railway.json`
 
+## Scripts SQL antes do deploy da API
+
+O `synchronize` do TypeORM fica desligado: colunas novas entram por scripts em `scripts/`, rodados no banco **antes** de publicar a API que depende delas. Se a API subir antes, as consultas falham por coluna inexistente.
+
+| Release | Script | Observação |
+|---------|--------|------------|
+| Permitir foto/observação por pergunta, configuração em lote e importação revisada pela IA | `scripts/adicionar-permite-foto-observacao.sql` | Adiciona `"permiteFoto"` e `"permiteObservacao"` em `template_itens` e ajusta os itens de texto. Pode ser rodado mais de uma vez. Rodar antes do deploy da API. |
+
 ## Deploy do Backend (Railway)
 
 1. Serviço `@meta-app/api` no projeto ChekAI-PRD, repo `Takaharayuri122/chekai-app@master`

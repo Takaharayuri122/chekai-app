@@ -286,10 +286,8 @@ export default function UsuariosPage() {
             description={
               busca || filtroPerfil !== 'todos'
                 ? 'Tente ajustar os filtros de busca.'
-                : 'Comece convidando um novo usuário'
+                : 'Convide um usuário pelo botão no topo.'
             }
-            actionLabel={!busca && filtroPerfil === 'todos' ? 'Convidar Usuário' : undefined}
-            actionOnClick={() => setShowModal(true)}
           />
         ) : (
           <div className="relative flex flex-col rounded-lg border border-border bg-card shadow-sm overflow-hidden">

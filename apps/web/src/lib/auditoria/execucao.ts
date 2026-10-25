@@ -1,4 +1,4 @@
-import type { AuditoriaItem } from '@/lib/api';
+import { TipoRespostaCustomizada, type AuditoriaItem } from '@/lib/api';
 
 export type StatusItem = 'pendente' | 'conforme' | 'nao_conforme' | 'neutro' | 'respondido';
 
@@ -10,6 +10,21 @@ export interface SecaoExecucao {
 }
 
 const OPCOES_PADRAO = ['conforme', 'nao_conforme', 'nao_aplicavel', 'nao_avaliado'];
+
+/** Itens antigos sem os campos novos aceitam foto; resposta em texto nunca aceita foto. */
+export function aceitaFoto(item: AuditoriaItem): boolean {
+  const t = item.templateItem;
+  return t?.permiteFoto !== false && t?.tipoRespostaCustomizada !== TipoRespostaCustomizada.TEXTO;
+}
+
+export function aceitaObservacao(item: AuditoriaItem): boolean {
+  return item.templateItem?.permiteObservacao !== false;
+}
+
+/** Imagem irrelevante só exige observação quando a pergunta aceita observação (senão seria um beco sem saída). */
+export function bloqueiaPorImagemIrrelevante(item: AuditoriaItem, temImagemIrrelevante: boolean, observacao: string | undefined): boolean {
+  return temImagemIrrelevante && aceitaObservacao(item) && (!observacao || observacao.trim() === '');
+}
 
 export function estaRespondido(item: AuditoriaItem): boolean {
   const r = item.resposta;

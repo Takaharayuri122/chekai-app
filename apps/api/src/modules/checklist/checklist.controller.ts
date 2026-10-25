@@ -25,12 +25,16 @@ import {
 import { ChecklistService } from './checklist.service';
 import { ChecklistImportService } from './checklist-import.service';
 import { ChecklistIaService } from './checklist-ia.service';
+import { ChecklistLoteService } from './checklist-lote.service';
+import { ConfigurarLoteDto, ResultadoLote } from './dto/configurar-lote.dto';
 import {
   CriarChecklistTemplateDto,
   CriarTemplateItemDto,
   CriarChecklistGrupoDto,
 } from './dto/criar-checklist-template.dto';
-import { ImportarChecklistDto, ImportacaoPreview, ImportacaoResultado } from './dto/importar-checklist.dto';
+import { ImportarChecklistDto, ConfirmarImportacaoDto, RevisarImportacaoDto, ImportacaoPreview, ImportacaoResultado } from './dto/importar-checklist.dto';
+import { ChecklistImportIaService } from './checklist-import-ia.service';
+import { RevisaoGrupoResultado } from './checklist-import-revisao';
 import { ConversarIaDto, RespostaConversaIa } from './dto/conversar-ia.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../core/guards/roles.guard';
@@ -55,6 +59,8 @@ export class ChecklistController {
     private readonly checklistService: ChecklistService,
     private readonly checklistImportService: ChecklistImportService,
     private readonly checklistIaService: ChecklistIaService,
+    private readonly checklistImportIaService: ChecklistImportIaService,
+    private readonly checklistLoteService: ChecklistLoteService,
   ) {}
 
   @Post('templates')
@@ -148,6 +154,19 @@ export class ChecklistController {
     @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
   ): Promise<TemplateItem> {
     return this.checklistService.adicionarItem(templateId, dto, usuario);
+  }
+
+  @Put('templates/:templateId/itens/lote')
+  @UseGuards(RolesGuard)
+  @Roles(PerfilUsuario.MASTER, PerfilUsuario.GESTOR)
+  @ApiOperation({ summary: 'Configura várias perguntas do template de uma vez (suporta simulação)' })
+  @ApiResponse({ status: 200, description: 'Resultado da configuração em lote' })
+  async configurarLote(
+    @Param('templateId', ParseUUIDPipe) templateId: string,
+    @Body() dto: ConfigurarLoteDto,
+    @CurrentUser() usuario: { id: string },
+  ): Promise<ResultadoLote> {
+    return this.checklistLoteService.configurar(templateId, dto, usuario);
   }
 
   @Put('itens/:itemId')
@@ -261,6 +280,8 @@ export class ChecklistController {
   }
 
   @Post('importar/checklist/preview')
+  @UseGuards(RolesGuard)
+  @Roles(PerfilUsuario.MASTER, PerfilUsuario.GESTOR)
   @ApiOperation({ summary: 'Faz preview de um arquivo CSV ou XLSX de checklist' })
   @ApiResponse({ status: 200, description: 'Preview da importação' })
   @ApiConsumes('multipart/form-data')
@@ -292,6 +313,8 @@ export class ChecklistController {
   }
 
   @Post('importar/checklist')
+  @UseGuards(RolesGuard)
+  @Roles(PerfilUsuario.MASTER, PerfilUsuario.GESTOR)
   @ApiOperation({ summary: 'Importa um arquivo CSV ou XLSX de checklist' })
   @ApiResponse({ status: 201, description: 'Template importado com sucesso' })
   @ApiConsumes('multipart/form-data')
@@ -315,5 +338,28 @@ export class ChecklistController {
     const csvContent = file.buffer.toString('utf-8');
     return this.checklistImportService.importar(csvContent, dto, usuario);
   }
-}
 
+  @Post('importar/checklist/confirmar')
+  @UseGuards(RolesGuard)
+  @Roles(PerfilUsuario.MASTER, PerfilUsuario.GESTOR)
+  @ApiOperation({ summary: 'Confirma a importação de checklist após a revisão' })
+  @ApiResponse({ status: 201, description: 'Template importado como rascunho' })
+  async confirmarImportacao(
+    @Body() dto: ConfirmarImportacaoDto,
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario },
+  ): Promise<ImportacaoResultado> {
+    return this.checklistImportService.confirmar(dto, usuario);
+  }
+
+  @Post('importar/checklist/revisar')
+  @UseGuards(RolesGuard)
+  @Roles(PerfilUsuario.MASTER, PerfilUsuario.GESTOR)
+  @ApiOperation({ summary: 'Revisa por IA as perguntas de um grupo da importação' })
+  @ApiResponse({ status: 201, description: 'Sugestões de revisão do grupo' })
+  async revisarImportacao(
+    @Body() dto: RevisarImportacaoDto,
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
+  ): Promise<RevisaoGrupoResultado> {
+    return this.checklistImportIaService.revisarGrupo(dto, usuario);
+  }
+}

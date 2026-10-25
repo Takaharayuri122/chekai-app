@@ -1,6 +1,23 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsNotEmpty, IsOptional, IsString, IsEnum } from 'class-validator';
+import {
+  ArrayMaxSize,
+  IsArray,
+  IsBoolean,
+  IsEnum,
+  IsIn,
+  IsInt,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  Max,
+  Min,
+  ValidateNested,
+} from 'class-validator';
+import { Type } from 'class-transformer';
+import { OpcaoLoteDto, TIPOS_RESPOSTA_LOTE } from './configurar-lote.dto';
 import { TipoAtividade } from '../../cliente/entities/cliente.entity';
+import { CategoriaItem, CriticidadeItem } from '../entities/template-item.entity';
+import type { TipoRespostaLote } from '../checklist-regras';
 
 /**
  * DTO para importação de checklist.
@@ -70,6 +87,38 @@ export interface ImportacaoPreview {
   grupos: ImportacaoGrupoPreview[];
   totalPerguntas: number;
   totalGrupos: number;
+  perguntas: PerguntaImportada[];
+}
+
+/**
+ * Configuração de uma pergunta importada (colunas da planilha já interpretadas).
+ */
+export interface ConfiguracaoPerguntaImportada {
+  categoria: CategoriaItem;
+  criticidade: CriticidadeItem;
+  tipoResposta: TipoRespostaLote;
+  peso: number;
+  obrigatorio: boolean;
+  permiteFoto: boolean;
+  permiteObservacao: boolean;
+  opcoes: {
+    valor: string;
+    pontuacao?: number | null;
+    fotoObrigatoria: boolean;
+    observacaoObrigatoria: boolean;
+  }[];
+}
+
+/**
+ * Pergunta importada, com chave estável `l${indiceLinha}`.
+ */
+export interface PerguntaImportada {
+  chave: string;
+  grupo: string;
+  secao?: string;
+  pergunta: string;
+  configuracao: ConfiguracaoPerguntaImportada;
+  motivoConferir?: string;
 }
 
 /**
@@ -92,3 +141,112 @@ export interface ImportacaoResultado {
   avisos: string[];
 }
 
+
+export class ConfiguracaoPerguntaImportadaDto implements ConfiguracaoPerguntaImportada {
+  @IsEnum(CategoriaItem)
+  categoria: CategoriaItem;
+
+  @IsEnum(CriticidadeItem)
+  criticidade: CriticidadeItem;
+
+  @IsIn(TIPOS_RESPOSTA_LOTE)
+  tipoResposta: TipoRespostaLote;
+
+  @IsInt()
+  @Min(0)
+  @Max(100)
+  peso: number;
+
+  @IsBoolean()
+  obrigatorio: boolean;
+
+  @IsBoolean()
+  permiteFoto: boolean;
+
+  @IsBoolean()
+  permiteObservacao: boolean;
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => OpcaoLoteDto)
+  opcoes: OpcaoLoteDto[];
+}
+
+export class PerguntaConfirmadaDto {
+  @IsOptional()
+  @IsString()
+  secao?: string;
+
+  @IsString()
+  pergunta: string;
+
+  @ValidateNested()
+  @Type(() => ConfiguracaoPerguntaImportadaDto)
+  configuracao: ConfiguracaoPerguntaImportadaDto;
+}
+
+export class GrupoConfirmadoDto {
+  @IsString()
+  @IsNotEmpty()
+  nome: string;
+
+  @IsArray()
+  @ArrayMaxSize(1000)
+  @ValidateNested({ each: true })
+  @Type(() => PerguntaConfirmadaDto)
+  perguntas: PerguntaConfirmadaDto[];
+}
+
+/**
+ * Payload de confirmação da importação após a revisão.
+ */
+export class ConfirmarImportacaoDto {
+  @ValidateNested()
+  @Type(() => ImportarChecklistDto)
+  dados: ImportarChecklistDto;
+
+  @IsArray()
+  @ArrayMaxSize(200)
+  @ValidateNested({ each: true })
+  @Type(() => GrupoConfirmadoDto)
+  grupos: GrupoConfirmadoDto[];
+}
+
+export class PerguntaRevisaoDto {
+  @IsString()
+  @IsNotEmpty()
+  chave: string;
+
+  @IsString()
+  grupo: string;
+
+  @IsOptional()
+  @IsString()
+  secao?: string;
+
+  @IsString()
+  pergunta: string;
+
+  @ValidateNested()
+  @Type(() => ConfiguracaoPerguntaImportadaDto)
+  configuracao: ConfiguracaoPerguntaImportadaDto;
+
+  @IsOptional()
+  @IsString()
+  motivoConferir?: string;
+}
+
+/**
+ * Payload da revisão por IA de um grupo (máx. 40 perguntas).
+ */
+export class RevisarImportacaoDto {
+  @IsString()
+  @IsNotEmpty()
+  grupo: string;
+
+  @IsArray()
+  @ArrayMaxSize(40)
+  @ValidateNested({ each: true })
+  @Type(() => PerguntaRevisaoDto)
+  perguntas: PerguntaRevisaoDto[];
+}

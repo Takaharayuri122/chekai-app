@@ -331,16 +331,9 @@ export default function LegislacaoDetalhesPage() {
               <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-3">
                 <BookOpen className="w-8 h-8 text-primary" />
               </div>
-              <p className="text-primary/70 mb-4">
-                Nenhum chunk cadastrado ainda
+              <p className="text-primary/70">
+                Nenhum trecho cadastrado ainda. Use Adicionar acima.
               </p>
-              <button
-                onClick={() => setShowChunkModal(true)}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-primary/20 hover:bg-primary/30 text-primary rounded-xl transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-                Adicionar primeiro chunk
-              </button>
             </div>
           ) : (
             <div className="space-y-3">

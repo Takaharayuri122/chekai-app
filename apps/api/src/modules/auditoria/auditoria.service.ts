@@ -318,9 +318,19 @@ export class AuditoriaService {
     }
     const item = await this.itemRepository.findOne({
       where: { id: itemId, auditoriaId },
+      relations: ['templateItem'],
     });
     if (!item) {
       throw new NotFoundException('Item não encontrado');
+    }
+    // RN-FOT-005: aceita a foto (apps antigos), mas registra aviso.
+    if (
+      item.templateItem?.permiteFoto === false ||
+      item.templateItem?.tipoRespostaCustomizada === TipoRespostaCustomizada.TEXTO
+    ) {
+      this.logger.warn(
+        `Foto recebida em item sem permissão de foto (auditoria ${auditoriaId}, item ${itemId})`,
+      );
     }
     const nomeOriginalSanitizado = fotoData.nomeOriginal
       ?.replace(/\0/g, '')

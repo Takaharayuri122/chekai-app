@@ -16,12 +16,12 @@ import {
   User,
   Calendar,
   Download,
-  ArrowLeft,
   Sparkles,
   Loader2,
   Image as ImageIcon,
 } from 'lucide-react';
 import { AppLayout, PageHeader, FormModal, PageLoadingOverlay, PdfAberturaBloqueadaModal } from '@/components';
+import { Button } from '@/components/ui/shadcn/button';
 import { GraficoAproveitamentoGrupos } from '@/components/relatorio/grafico-aproveitamento-grupos';
 import { GraficoDistribuicaoPontos } from '@/components/relatorio/grafico-distribuicao-pontos';
 import { HistoricoEvolucao } from '@/components/relatorio/historico-evolucao';
@@ -675,37 +675,21 @@ export default function RelatorioPage() {
         title="Gerando o relatório"
         subtitle="Aguarde enquanto o PDF é preparado. Isso pode levar alguns instantes."
       />
-      <PageHeader title="Relatório de Auditoria" />
+      <PageHeader
+        title="Relatório de Auditoria"
+        backHref="/admin/auditorias"
+        action={
+          <Button onClick={handleBaixarPdf} disabled={baixandoPdf}>
+            {baixandoPdf ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+            <span className="hidden sm:inline">Exportar PDF</span>
+            <span className="sm:hidden">PDF</span>
+          </Button>
+        }
+      />
       <div className="px-4 py-4 lg:px-8 space-y-4">
         {/* Cabeçalho */}
         <div className="relative flex flex-col rounded-lg border border-border bg-card shadow-sm">
           <div className="flex flex-1 flex-col gap-2 p-4 sm:p-6">
-            <div className="flex items-center justify-between gap-4 mb-4 pb-4 border-b border-border">
-              <button
-                onClick={() => router.push('/auditorias')}
-                className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 hover:bg-muted"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                Voltar
-              </button>
-              <button
-                onClick={handleBaixarPdf}
-                disabled={baixandoPdf}
-                className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 bg-primary text-primary-foreground hover:bg-primary/90"
-              >
-                {baixandoPdf ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Gerando…
-                  </>
-                ) : (
-                  <>
-                    <Download className="w-4 h-4" />
-                    Exportar PDF
-                  </>
-                )}
-              </button>
-            </div>
             <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6">
               <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
                 <div className="w-10 h-10 sm:w-12 sm:h-12 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">

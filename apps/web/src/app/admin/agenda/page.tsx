@@ -270,8 +270,7 @@ export default function AgendaPage() {
           emptyState={{
             icon: CalendarClock,
             title: 'Nenhum agendamento encontrado',
-            description: 'Agende auditorias para não perder os prazos de visita.',
-            ...(!ehAuditor ? { actionLabel: 'Agendar', actionOnClick: () => abrirNovo() } : {}),
+            description: ehAuditor ? 'Nenhum agendamento encontrado para os filtros atuais.' : 'Agende uma visita pelo botão no topo.',
           }}
         />
         </>

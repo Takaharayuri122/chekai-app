@@ -38,6 +38,13 @@ export interface GrupoNavegacao {
 export const HREF_NOVA_AUDITORIA = '/admin/auditoria/nova';
 
 const { AUDITOR, GESTOR, MASTER } = PerfilUsuario;
+
+/** O atalho global some quando a própria tela já oferece "Nova auditoria". */
+export function mostrarAtalhoNovaAuditoria(pathname: string, perfil: PerfilUsuario): boolean {
+  if (pathname === '/admin/auditorias' || pathname.startsWith(HREF_NOVA_AUDITORIA)) return false;
+  if (pathname === '/admin/dashboard' && perfil === AUDITOR) return false;
+  return true;
+}
 const TODOS = [AUDITOR, GESTOR, MASTER];
 const GESTAO = [GESTOR, MASTER];
 const SO_MASTER = [MASTER];
