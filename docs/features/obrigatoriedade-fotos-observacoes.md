@@ -22,29 +22,24 @@ Sistema de configuração granular que permite definir obrigatoriedade de fotos 
 
 ## Interface de Auditoria
 
-### Tabs de Fotos e Observações
+### Botões separados de Fotos e Observação
 
-Durante a auditoria, fotos e observações são organizadas em abas (tabs) separadas:
+Na tela da pergunta, abaixo das respostas, há dois botões lado a lado (RN-AUD-015):
 
-- **Tab Fotos**: Aparece apenas se alguma opção de resposta exigir foto
-  - Badge "Obrigatório" quando foto é necessária e não foi adicionada
-  - Contador mostra quantas fotos foram adicionadas
-  - Atalho: Alt+1
-
-- **Tab Observação**: Sempre visível
-  - Badge "Obrigatório" quando observação é necessária e está vazia
-  - Atalho: Alt+2
+- **Fotos**: mostra quantas fotos já foram registradas e o aviso "Obrigatória" quando a resposta exige foto. Abre uma janela só com as fotos e a análise da IA.
+- **Observação**: mostra um sinal quando já há texto e o aviso "Obrigatória" quando a resposta exige observação. Abre uma janela só com a observação.
+- Se a pergunta não aceita foto ou observação, o botão correspondente não aparece (ou aparece só para consulta, se já houver registro).
 
 ### Validação Automática
 
-- Sistema valida automaticamente ao tentar salvar
-- Se campo obrigatório estiver vazio, muda automaticamente para a tab correspondente
+- Cada janela só cobra o que é dela: a de fotos não pede observação, e a de observação não pede foto
+- Exceção: foto marcada como não relevante leva para a observação, que passa a ser exigida
 - Mensagem de erro clara indica o que está faltando
 
 ### Relatório
 
 - No relatório (visualização), fotos e observações continuam em layout linear
-- Tabs são usadas apenas durante a edição/auditoria
+- Os botões separados são usados apenas durante a edição/auditoria
 
 ## Arquitetura
 

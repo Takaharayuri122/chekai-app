@@ -6,9 +6,12 @@ import {
   UpdateDateColumn,
   ManyToOne,
   JoinColumn,
+  ManyToMany,
+  JoinTable,
 } from 'typeorm';
 import { ChecklistTemplate } from './checklist-template.entity';
 import { ChecklistGrupo } from './checklist-grupo.entity';
+import { Legislacao } from '../../legislacao/entities/legislacao.entity';
 
 /**
  * Enum para categorias de itens do checklist.
@@ -76,8 +79,16 @@ export class TemplateItem {
   @Column({ type: 'int', default: 0 })
   ordem: number;
 
-  @Column({ length: 50, nullable: true })
+  @Column({ type: 'text', nullable: true })
   legislacaoReferencia: string;
+
+  @ManyToMany(() => Legislacao)
+  @JoinTable({
+    name: 'template_item_legislacoes',
+    joinColumn: { name: 'template_item_id' },
+    inverseJoinColumn: { name: 'legislacao_id' },
+  })
+  legislacoes: Legislacao[];
 
   @Column({ length: 100, nullable: true })
   artigo: string;

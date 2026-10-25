@@ -71,6 +71,9 @@ export class Usuario {
   @Column({ name: 'tenant_id', type: 'uuid', nullable: true })
   tenantId: string | null;
 
+  @Column({ name: 'pode_gerenciar_legislacoes', type: 'boolean', default: false })
+  podeGerenciarLegislacoes: boolean;
+
   @Column({ name: 'logo_url', type: 'text', nullable: true })
   logoUrl: string | null;
 

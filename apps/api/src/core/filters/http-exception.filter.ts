@@ -15,6 +15,8 @@ interface ErrorResponse {
   method: string;
   message: string | string[];
   error?: string;
+  /** Dados extras da exceção, ex.: `id` do registro existente num 409. */
+  id?: string;
 }
 
 /**
@@ -52,6 +54,13 @@ export class HttpExceptionFilter implements ExceptionFilter {
       method: request.method,
       message,
     };
+    if (
+      typeof exceptionResponse === 'object' &&
+      exceptionResponse !== null &&
+      typeof (exceptionResponse as { id?: unknown }).id === 'string'
+    ) {
+      errorResponse.id = (exceptionResponse as { id: string }).id;
+    }
 
     if (status === HttpStatus.INTERNAL_SERVER_ERROR) {
       this.logger.error(

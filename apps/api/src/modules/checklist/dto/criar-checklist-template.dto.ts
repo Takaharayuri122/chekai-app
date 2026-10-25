@@ -10,6 +10,8 @@ import {
   Min,
   Max,
   ValidateIf,
+  ArrayMaxSize,
+  IsUUID,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
@@ -70,6 +72,13 @@ export class CriarTemplateItemDto {
   @IsString()
   @IsOptional()
   legislacaoReferencia?: string;
+
+  @ApiPropertyOptional({ description: 'IDs das legislações cadastradas ligadas ao item (até 10)', type: [String] })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(10)
+  @IsUUID('4', { each: true })
+  legislacaoIds?: string[];
 
   @ApiPropertyOptional({ description: 'Artigo/inciso específico', example: 'Art. 4.1.3' })
   @IsString()

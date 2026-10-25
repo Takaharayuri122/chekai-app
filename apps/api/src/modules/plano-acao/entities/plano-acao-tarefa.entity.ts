@@ -48,6 +48,9 @@ export class PlanoAcaoTarefa {
   @Column({ name: 'criado_por_id', type: 'uuid' })
   criadoPorId: string;
 
+  @Column({ name: 'referencia_legal', type: 'text', nullable: true })
+  referenciaLegal: string | null;
+
   @Column({ type: 'date' })
   prazo: string;
 

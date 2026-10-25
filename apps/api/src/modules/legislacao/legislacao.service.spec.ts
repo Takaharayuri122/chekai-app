@@ -1,0 +1,329 @@
+import { BadRequestException, ConflictException } from '@nestjs/common';
+import { LegislacaoService } from './legislacao.service';
+import { Legislacao, TipoLegislacao } from './entities/legislacao.entity';
+import { LegislacaoChunk } from './entities/legislacao-chunk.entity';
+import { LinkInvalidoError } from './lib/url-segura';
+
+describe('LegislacaoService', () => {
+  let service: LegislacaoService;
+  let repo: {
+    find: jest.Mock;
+    findOne: jest.Mock;
+    query: jest.Mock;
+    remove: jest.Mock;
+    save: jest.Mock;
+    update: jest.Mock;
+    create: jest.Mock;
+    createQueryBuilder: jest.Mock;
+    manager: { transaction: jest.Mock };
+  };
+  let manager: { query: jest.Mock; delete: jest.Mock };
+  let leitura: { validarLink: jest.Mock; iniciar: jest.Mock; disparar: jest.Mock };
+  let qbGetOne: jest.Mock;
+  let chunkRepo: { delete: jest.Mock; findOne: jest.Mock; find: jest.Mock; create: jest.Mock; save: jest.Mock };
+
+  beforeEach(() => {
+    qbGetOne = jest.fn().mockResolvedValue(null);
+    manager = { query: jest.fn(), delete: jest.fn().mockResolvedValue(undefined) };
+    repo = {
+      find: jest.fn(),
+      findOne: jest.fn(),
+      query: jest.fn(),
+      remove: jest.fn().mockResolvedValue(undefined),
+      save: jest.fn().mockImplementation((l) => Promise.resolve(l)),
+      update: jest.fn().mockResolvedValue({ affected: 1 }),
+      manager: { transaction: jest.fn().mockImplementation((fn) => fn(manager)) },
+      create: jest.fn().mockImplementation((d) => ({ ...d })),
+      createQueryBuilder: jest.fn().mockImplementation(() => {
+        const qb = { select: () => qb, where: () => qb, andWhere: () => qb, getOne: qbGetOne };
+        return qb;
+      }),
+    };
+    chunkRepo = {
+      delete: jest.fn().mockResolvedValue(undefined),
+      findOne: jest.fn(),
+      find: jest.fn(),
+      create: jest.fn().mockImplementation((d) => d),
+      save: jest.fn(),
+    };
+    const config = { get: jest.fn().mockReturnValue('sk-teste') };
+    leitura = {
+      validarLink: jest.fn().mockResolvedValue(undefined),
+      iniciar: jest.fn().mockImplementation((id) => Promise.resolve({ id, statusLeitura: 'lendo' })),
+      disparar: jest.fn(),
+    };
+    service = new LegislacaoService(
+      repo as never,
+      chunkRepo as never,
+      {} as never,
+      config as never,
+      leitura as never,
+    );
+  });
+
+  it('listarOpcoes devolve só ativas, ordenadas pelo nome curto', async () => {
+    repo.find.mockResolvedValue([
+      { id: '1', tipo: TipoLegislacao.RDC, numero: '216', ano: 2004, titulo: 'Boas Práticas', situacao: 'vigente' },
+      { id: '2', tipo: TipoLegislacao.LEI, numero: '8078', ano: 1990, titulo: 'Código do Consumidor', situacao: null },
+      { id: '3', tipo: TipoLegislacao.DECRETO, numero: '10', ano: 2000, titulo: 'Decreto X', situacao: null },
+    ]);
+    const opcoes = await service.listarOpcoes();
+    expect(repo.find).toHaveBeenCalledWith({ where: { ativo: true } });
+    expect(opcoes.map((o) => o.nome)).toEqual(['Decreto 10/2000', 'Lei 8078/1990', 'RDC 216/2004']);
+    expect(opcoes[0]).toEqual({ id: '3', nome: 'Decreto 10/2000', titulo: 'Decreto X', situacao: null });
+  });
+
+  it('remover com vínculo dá 409 com a mensagem da spec, sem apagar nada', async () => {
+    repo.findOne.mockResolvedValue({ id: 'l1' });
+    manager.query.mockResolvedValue([{ total: '2' }]);
+    const chamada = service.remover('l1');
+    await expect(chamada).rejects.toThrow(ConflictException);
+    await expect(service.remover('l1')).rejects.toThrow(
+      'Esta legislação está ligada a perguntas ou não conformidades. Desative em vez de remover.',
+    );
+    expect(manager.delete).not.toHaveBeenCalled();
+  });
+
+  it('remover sem vínculo conta e apaga trechos e legislação na mesma transação', async () => {
+    repo.findOne.mockResolvedValue({ id: 'l1' });
+    manager.query.mockResolvedValue([{ total: '0' }]);
+    await service.remover('l1');
+    expect(repo.manager.transaction).toHaveBeenCalledTimes(1);
+    expect(manager.query).toHaveBeenCalledWith(expect.stringContaining('template_item_legislacoes'), ['l1']);
+    expect(manager.delete).toHaveBeenNthCalledWith(1, LegislacaoChunk, { legislacaoId: 'l1' });
+    expect(manager.delete).toHaveBeenNthCalledWith(2, Legislacao, { id: 'l1' });
+    expect(repo.query).not.toHaveBeenCalled();
+    expect(repo.remove).not.toHaveBeenCalled();
+  });
+
+  it('buscarPorIds falha com 400 se algum id não existir', async () => {
+    repo.find.mockResolvedValue([{ id: 'a' }]);
+    await expect(service.buscarPorIds(['a', 'b'])).rejects.toThrow(BadRequestException);
+    await expect(service.buscarPorIds(['a', 'b'])).rejects.toThrow('Legislação não encontrada.');
+  });
+
+  it('buscarPorIds aceita legislações desativadas (não filtra por ativo)', async () => {
+    repo.find.mockResolvedValue([{ id: 'a', ativo: false }, { id: 'b', ativo: true }]);
+    const r = await service.buscarPorIds(['a', 'b', 'a']);
+    expect(r).toHaveLength(2);
+    expect(repo.find.mock.calls[0][0].where).not.toHaveProperty('ativo');
+  });
+
+  it('buscarLegislacaoPorId não carrega os trechos', async () => {
+    repo.findOne.mockResolvedValue({ id: 'l1' });
+    await service.buscarLegislacaoPorId('l1');
+    expect(repo.findOne).toHaveBeenCalledWith({ where: { id: 'l1' } });
+  });
+
+  it('alterarAtivo grava só a coluna ativo (sem save) e devolve a legislação relida', async () => {
+    repo.findOne
+      .mockResolvedValueOnce({ id: 'l1', ativo: true, statusLeitura: 'lendo' })
+      .mockResolvedValueOnce({ id: 'l1', ativo: false, statusLeitura: 'concluida' });
+    const l = await service.alterarAtivo('l1', false);
+    expect(repo.update).toHaveBeenCalledWith('l1', { ativo: false });
+    expect(repo.save).not.toHaveBeenCalled();
+    expect(l).toEqual({ id: 'l1', ativo: false, statusLeitura: 'concluida' });
+  });
+
+  it('buscarPorIds preserva a ordem dos ids enviados', async () => {
+    repo.find.mockResolvedValue([{ id: 'a' }, { id: 'b' }]);
+    const r = await service.buscarPorIds(['b', 'a']);
+    expect(r.map((l) => l.id)).toEqual(['b', 'a']);
+  });
+
+  it('criarLegislacao normaliza o link, valida antes de gravar, já grava lendo e dispara a leitura', async () => {
+    repo.save.mockImplementation((l) => Promise.resolve({ ...l, id: 'nova' }));
+    const usuario = { id: 'u1', perfil: 'gestor' } as never;
+    const l = await service.criarLegislacao({ linkOficial: ' https://X.gov.br/a/#topo ', titulo: 'T' }, usuario);
+    expect(leitura.validarLink).toHaveBeenCalledWith('https://x.gov.br/a');
+    expect(repo.create).toHaveBeenCalledWith(
+      expect.objectContaining({ linkOficial: 'https://x.gov.br/a', criadoPorId: 'u1', titulo: 'T', statusLeitura: 'lendo' }),
+    );
+    expect(leitura.disparar).toHaveBeenCalledWith('nova', usuario, { tipo: 'link' });
+    expect(leitura.iniciar).not.toHaveBeenCalled();
+    expect(l).toMatchObject({ id: 'nova', statusLeitura: 'lendo' });
+  });
+
+  it('criarLegislacao com link longo demais (após normalizar) dá 400 sem gravar', async () => {
+    const link = `https://x.gov.br/${'a'.repeat(490)}`;
+    const chamada = service.criarLegislacao({ linkOficial: link, titulo: 'T' }, { id: 'u1' } as never);
+    await expect(chamada).rejects.toThrow(BadRequestException);
+    await expect(
+      service.criarLegislacao({ linkOficial: link, titulo: 'T' }, { id: 'u1' } as never),
+    ).rejects.toThrow('O link é longo demais.');
+    expect(leitura.validarLink).not.toHaveBeenCalled();
+    expect(repo.save).not.toHaveBeenCalled();
+  });
+
+  it('criarLegislacao com link já cadastrado dá 409 com o id', async () => {
+    qbGetOne.mockResolvedValue({ id: 'existente' });
+    const chamada = service.criarLegislacao({ linkOficial: 'https://x.gov.br/a/', titulo: 'T' }, { id: 'u1' } as never);
+    await expect(chamada).rejects.toThrow(ConflictException);
+    await chamada.catch((e: ConflictException) => {
+      expect(e.getResponse()).toEqual({ message: 'Esta legislação já está cadastrada.', id: 'existente' });
+    });
+    expect(repo.save).not.toHaveBeenCalled();
+  });
+
+  it('criarLegislacao com link não público dá 400 sem gravar', async () => {
+    leitura.validarLink.mockRejectedValue(new LinkInvalidoError('Este link não é um endereço público permitido.'));
+    await expect(
+      service.criarLegislacao({ linkOficial: 'http://10.0.0.1/a', titulo: 'T' }, { id: 'u1' } as never),
+    ).rejects.toThrow(BadRequestException);
+    expect(repo.save).not.toHaveBeenCalled();
+  });
+
+  describe('atualizarLegislacao com link', () => {
+    beforeEach(() => repo.findOne.mockResolvedValue({ id: 'l1', linkOficial: 'https://x.gov.br/velho' }));
+
+    it('normaliza e valida o novo link e grava só as colunas enviadas', async () => {
+      await service.atualizarLegislacao('l1', { linkOficial: 'https://X.gov.br/novo/' });
+      expect(leitura.validarLink).toHaveBeenCalledWith('https://x.gov.br/novo');
+      expect(repo.update).toHaveBeenCalledWith('l1', { linkOficial: 'https://x.gov.br/novo' });
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+
+    it('devolve a legislação relida (sem trechos)', async () => {
+      repo.findOne
+        .mockResolvedValueOnce({ id: 'l1', titulo: 'Velho' })
+        .mockResolvedValueOnce({ id: 'l1', titulo: 'Novo', statusLeitura: 'lendo' });
+      const l = await service.atualizarLegislacao('l1', { titulo: 'Novo' });
+      expect(l).toEqual({ id: 'l1', titulo: 'Novo', statusLeitura: 'lendo' });
+      expect(repo.findOne).toHaveBeenLastCalledWith({ where: { id: 'l1' } });
+    });
+
+    it('null em situação, data de publicação e ano grava null', async () => {
+      await service.atualizarLegislacao('l1', { situacao: null, dataPublicacao: null, ano: null });
+      expect(repo.update).toHaveBeenCalledWith('l1', { situacao: null, dataPublicacao: null, ano: null });
+    });
+
+    it('link null tira o link sem validar', async () => {
+      await service.atualizarLegislacao('l1', { linkOficial: null });
+      expect(leitura.validarLink).not.toHaveBeenCalled();
+      expect(repo.update).toHaveBeenCalledWith('l1', { linkOficial: null });
+    });
+
+    it('link longo demais dá 400', async () => {
+      await expect(
+        service.atualizarLegislacao('l1', { linkOficial: `https://x.gov.br/${'a'.repeat(490)}` }),
+      ).rejects.toThrow('O link é longo demais.');
+      expect(repo.update).not.toHaveBeenCalled();
+    });
+
+    it('409 com id se outro registro já usa o link', async () => {
+      qbGetOne.mockResolvedValue({ id: 'outra' });
+      const chamada = service.atualizarLegislacao('l1', { linkOficial: 'https://x.gov.br/novo' });
+      await expect(chamada).rejects.toThrow(ConflictException);
+      await chamada.catch((e: ConflictException) => {
+        expect(e.getResponse()).toEqual({ message: 'Esta legislação já está cadastrada.', id: 'outra' });
+      });
+      expect(repo.update).not.toHaveBeenCalled();
+    });
+
+    it('ignora a própria legislação na checagem', async () => {
+      const andWhere = jest.fn();
+      repo.createQueryBuilder.mockImplementation(() => {
+        const qb = { select: () => qb, where: () => qb, andWhere: (...a: unknown[]) => (andWhere(...a), qb), getOne: qbGetOne };
+        return qb;
+      });
+      await service.atualizarLegislacao('l1', { linkOficial: 'https://x.gov.br/velho' });
+      expect(andWhere).toHaveBeenCalledWith('legislacao.id <> :ignorarId', { ignorarId: 'l1' });
+    });
+
+    it('link não público dá 400', async () => {
+      leitura.validarLink.mockRejectedValue(new LinkInvalidoError('Este link não é um endereço público permitido.'));
+      await expect(service.atualizarLegislacao('l1', { linkOficial: 'http://10.0.0.1/' })).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('sem link no corpo não valida', async () => {
+      await service.atualizarLegislacao('l1', { titulo: 'Novo' });
+      expect(leitura.validarLink).not.toHaveBeenCalled();
+    });
+  });
+
+  it('adicionarChunks continua a ordem a partir do maior existente', async () => {
+    repo.findOne.mockResolvedValue({ id: 'l1' });
+    chunkRepo.findOne.mockResolvedValue({ ordem: 4 });
+    jest.spyOn(service, 'gerarEmbedding').mockResolvedValue([0.1]);
+    await service.adicionarChunks('l1', [{ conteudo: 'a' }, { conteudo: 'b' }]);
+    expect(chunkRepo.create.mock.calls.map((c) => c[0].ordem)).toEqual([5, 6]);
+  });
+
+  describe('contexto RAG com legislações escolhidas', () => {
+    const linha = (id: string, extra: object = {}) => ({
+      id,
+      conteudo: `texto ${id}`,
+      artigo: 'Art. 1',
+      tipo: 'rdc',
+      numero: '216',
+      ano: 2004,
+      titulo: 'Boas Práticas',
+      legislacao_id: 'L1',
+      link_oficial: 'https://x',
+      similaridade: 0.9,
+      ...extra,
+    });
+    let rpc: jest.Mock;
+
+    beforeEach(() => {
+      rpc = jest.fn();
+      service = new LegislacaoService(
+        repo as never,
+        chunkRepo as never,
+        { getClient: () => ({ rpc }) } as never,
+        { get: jest.fn().mockReturnValue('sk-teste') } as never,
+        leitura as never,
+      );
+      jest.spyOn(service, 'gerarEmbedding').mockResolvedValue([0.1]);
+    });
+
+    it('com filtro e >= 3 trechos, chama a RPC uma vez com filtro_legislacao_ids', async () => {
+      rpc.mockResolvedValue({ data: [linha('a'), linha('b'), linha('c')], error: null });
+      const ctx = await service.gerarContextoRag('q', { legislacaoIds: ['L1'] });
+      expect(rpc).toHaveBeenCalledTimes(1);
+      expect(rpc).toHaveBeenCalledWith('buscar_chunks_similares', {
+        query_embedding: [0.1],
+        match_limit: 5,
+        filtro_legislacao_ids: ['L1'],
+      });
+      expect(ctx).toContain('[RDC 216/2004, Art. 1]: texto a');
+    });
+
+    it('com < 3 trechos filtrados, completa sem filtro, sem repetir e com limite 5', async () => {
+      rpc
+        .mockResolvedValueOnce({ data: [linha('a')], error: null })
+        .mockResolvedValueOnce({
+          data: [linha('a'), linha('b'), linha('c'), linha('d'), linha('e'), linha('f')],
+          error: null,
+        });
+      const ctx = await service.gerarContextoRag('q', { legislacaoIds: ['L1'] });
+      expect(rpc).toHaveBeenCalledTimes(2);
+      expect(rpc.mock.calls[1][1]).not.toHaveProperty('filtro_legislacao_ids');
+      const textos = ctx.split('\n\n').map((t) => t.split(': ')[1]);
+      expect(textos).toEqual(['texto a', 'texto b', 'texto c', 'texto d', 'texto e']);
+    });
+
+    it('sem ids não envia filtro; rótulo usa o nome curto (sem "null/null")', async () => {
+      rpc.mockResolvedValue({
+        data: [linha('a', { tipo: 'outro', numero: null, ano: null, titulo: 'Norma Interna', artigo: null })],
+        error: null,
+      });
+      const ctx = await service.gerarContextoRag('q');
+      expect(rpc.mock.calls[0][1]).not.toHaveProperty('filtro_legislacao_ids');
+      expect(ctx).toBe('[Norma Interna]: texto a');
+    });
+
+    it('listarParaPrompt limita a 80 e devolve nome curto + ementa', async () => {
+      repo.find.mockResolvedValue(
+        Array.from({ length: 90 }, (_, i) => ({
+          id: String(i), tipo: TipoLegislacao.RDC, numero: String(i + 1), ano: 2000, titulo: 't', ementa: 'em',
+        })),
+      );
+      const lista = await service.listarParaPrompt();
+      expect(lista).toHaveLength(80);
+      expect(lista[0]).toEqual({ nome: 'RDC 1/2000', ementa: 'em' });
+    });
+  });
+});

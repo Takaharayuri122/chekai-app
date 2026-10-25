@@ -1,198 +1,375 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
-import { useRouter, useParams } from 'next/navigation';
-import { motion, AnimatePresence } from 'framer-motion';
-import {
-  Save,
-  Scale,
-  Building,
-  Link as LinkIcon,
-  FileText,
-  Hash,
-  Calendar,
-  Plus,
-  Trash2,
-  Layers,
-  ExternalLink,
-  Edit3,
-  X,
-  BookOpen,
-} from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
+import { useParams, useRouter } from 'next/navigation';
+import { AlertTriangle, ExternalLink, FileText, Loader2, RefreshCw, Save, ClipboardPaste } from 'lucide-react';
 import { useAuthStore } from '@/lib/store';
-import { AppLayout, PageHeader } from '@/components';
+import { AppLayout, ConfirmDialog, PageHeader, StatusChip } from '@/components';
 import { Button } from '@/components/ui/shadcn/button';
+import { Input } from '@/components/ui/shadcn/input';
+import { Label } from '@/components/ui/shadcn/label';
+import { Textarea } from '@/components/ui/shadcn/textarea';
+import { ListaTrechos } from '@/components/legislacao/lista-trechos';
+import { ModalColarTexto } from '@/components/legislacao/modal-colar-texto';
+import { ModalEnviarPdf } from '@/components/legislacao/modal-enviar-pdf';
+import { SemPermissaoLegislacoes } from '@/components/legislacao/sem-permissao';
 import {
   legislacaoService,
   Legislacao,
   LegislacaoChunk,
+  SituacaoLegislacao,
   TipoLegislacao,
   TIPO_LEGISLACAO_LABELS,
-  CriarChunkRequest,
 } from '@/lib/api';
+import { nomeCurtoLegislacao } from '@/lib/legislacao/nome-legislacao';
+import { FormularioLegislacao, montarAtualizacao, paraFormulario } from '@/lib/legislacao/formulario';
+import { resetarOpcoesLegislacao } from '@/lib/legislacao/use-opcoes-legislacao';
+import {
+  OPCOES_SITUACAO,
+  continuarAcompanhando,
+  deveAtualizar,
+  formatarDataPtBr,
+  idExistenteDoErro,
+  mensagemDoErro,
+  statusHttpDoErro,
+  rotuloSituacao,
+  rotuloStatusLeitura,
+  statusChipLeitura,
+} from '@/lib/legislacao/leitura';
 import { toastService } from '@/lib/toast';
 
+const INTERVALO_ATUALIZACAO_MS = 3000;
+const TEXTO_RELER = 'Os dados lidos e os trechos serão substituídos pelo conteúdo atual da página.';
+const CLASSE_SELECT =
+  'h-11 w-full rounded-md border border-input bg-card px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring md:h-10';
+
 /**
- * Página de detalhes e edição de legislação.
+ * Detalhe da legislação: estado da leitura, dados lidos editáveis e trechos.
  */
 export default function LegislacaoDetalhesPage() {
   const router = useRouter();
   const params = useParams();
   const id = params.id as string;
   const { isAuthenticated } = useAuthStore();
-  const [legislacao, setLegislacao] = useState<Legislacao | null>(null);
-  const [chunks, setChunks] = useState<LegislacaoChunk[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [showChunkModal, setShowChunkModal] = useState(false);
-  const [formData, setFormData] = useState<Partial<Legislacao>>({});
-  const [novoChunk, setNovoChunk] = useState<CriarChunkRequest>({
-    conteudo: '',
-    artigo: '',
-    inciso: '',
-    paragrafo: '',
-  });
 
-  const loadData = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const [leg, chunkList] = await Promise.all([
-        legislacaoService.buscarPorId(id),
-        legislacaoService.listarChunks(id),
-      ]);
-      setLegislacao(leg);
-      setChunks(chunkList);
-      setFormData(leg);
-    } catch (error) {
-      // Erro já é tratado pelo interceptor
-      router.push('/admin/legislacoes');
-    } finally {
-      setIsLoading(false);
+  const [legislacao, setLegislacao] = useState<Legislacao | null>(null);
+  const [trechos, setTrechos] = useState<LegislacaoChunk[]>([]);
+  const [form, setForm] = useState<FormularioLegislacao | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [semPermissao, setSemPermissao] = useState(false);
+  const [salvando, setSalvando] = useState(false);
+  const [confirmarReleitura, setConfirmarReleitura] = useState(false);
+  const [processando, setProcessando] = useState(false);
+  const [modalPdf, setModalPdf] = useState(false);
+  const [modalTexto, setModalTexto] = useState(false);
+  const [idExistente, setIdExistente] = useState<string | null>(null);
+  const [falhasPolling, setFalhasPolling] = useState(0);
+  const statusAnterior = useRef<string | null>(null);
+
+  const aplicar = useCallback(async (leg: Legislacao) => {
+    setLegislacao(leg);
+    // Só reinicia o formulário quando chega um estado novo, para não apagar edições em andamento
+    if (statusAnterior.current !== 'concluida' || leg.statusLeitura !== 'concluida') {
+      setForm(paraFormulario(leg));
     }
-  }, [id, router]);
+    if (leg.statusLeitura === 'concluida') {
+      if (statusAnterior.current !== 'concluida') {
+        // Leitura recém-concluída muda o nome curto usado nos seletores
+        if (statusAnterior.current) resetarOpcoesLegislacao();
+        try {
+          setTrechos(await legislacaoService.listarChunks(id));
+        } catch (erro) {
+          setTrechos([]);
+          toastService.error(mensagemDoErro(erro));
+        }
+      }
+    } else {
+      setTrechos([]);
+    }
+    statusAnterior.current = leg.statusLeitura;
+  }, [id]);
+
+  const carregar = useCallback(async (silencioso = false) => {
+    try {
+      if (!silencioso) setLoading(true);
+      await aplicar(await legislacaoService.buscarPorId(id));
+      if (silencioso) setFalhasPolling(0);
+    } catch (error) {
+      if (statusHttpDoErro(error) === 403) {
+        setSemPermissao(true);
+      } else if (!silencioso) {
+        toastService.error(mensagemDoErro(error));
+        router.push('/admin/legislacoes');
+      } else {
+        // falha momentânea no acompanhamento: o efeito de polling tenta de novo (até o limite)
+        setFalhasPolling((n) => n + 1);
+      }
+    } finally {
+      if (!silencioso) setLoading(false);
+    }
+  }, [id, aplicar, router]);
 
   useEffect(() => {
     if (!isAuthenticated) {
       router.push('/login');
       return;
     }
-    loadData();
-  }, [isAuthenticated, router, loadData]);
+    carregar();
+  }, [isAuthenticated, router, carregar]);
 
-  const handleSave = async () => {
-    try {
-      setIsSaving(true);
-      await legislacaoService.atualizar(id, formData);
-      toastService.success('Legislação atualizada com sucesso!');
-      setIsEditing(false);
-      loadData();
-    } catch (error) {
-      // Erro já é tratado pelo interceptor
-    } finally {
-      setIsSaving(false);
-    }
+  // Enquanto a leitura roda, consulta de novo a cada 3 s; limpa ao desmontar, ao concluir
+  // ou depois de 5 falhas seguidas (aí a tela oferece "Atualizar")
+  const status = legislacao?.statusLeitura;
+  useEffect(() => {
+    if (semPermissao || !status || !continuarAcompanhando(status, falhasPolling)) return;
+    const timer = setTimeout(() => carregar(true), INTERVALO_ATUALIZACAO_MS);
+    return () => clearTimeout(timer);
+  }, [status, legislacao, falhasPolling, semPermissao, carregar]);
+
+  const retomarAcompanhamento = () => {
+    setFalhasPolling(0);
+    void carregar(true);
   };
 
-  const handleAddChunk = async () => {
-    if (!novoChunk.conteudo.trim()) {
-      toastService.warning('Preencha o conteúdo do chunk');
+  /** 403 vira estado sem permissão; 409 e demais erros mostram a mensagem da API. */
+  const tratarErro = (erro: unknown) => {
+    if (statusHttpDoErro(erro) === 403) {
+      setSemPermissao(true);
       return;
     }
+    if (statusHttpDoErro(erro) === 409) setIdExistente(idExistenteDoErro(erro) ?? null);
+    toastService.error(mensagemDoErro(erro));
+  };
+
+  const alterar = <K extends keyof FormularioLegislacao>(campo: K, valor: FormularioLegislacao[K]) =>
+    setForm((atual) => (atual ? { ...atual, [campo]: valor } : atual));
+
+  const salvar = async () => {
+    if (!form || !legislacao) return;
+    if (!form.titulo.trim()) {
+      toastService.warning('Preencha o título.');
+      return;
+    }
+    setIdExistente(null);
     try {
-      setIsSaving(true);
-      await legislacaoService.adicionarChunks(id, [novoChunk]);
-      toastService.success('Chunk adicionado com sucesso!');
-      setNovoChunk({ conteudo: '', artigo: '', inciso: '', paragrafo: '' });
-      setShowChunkModal(false);
-      loadData();
-    } catch (error) {
-      // Erro já é tratado pelo interceptor
+      setSalvando(true);
+      const atualizada = await legislacaoService.atualizar(id, montarAtualizacao(form, legislacao.linkOficial));
+      resetarOpcoesLegislacao();
+      setLegislacao((atual) => (atual ? { ...atual, ...atualizada } : atualizada));
+      setForm(paraFormulario(atualizada));
+      toastService.success('Legislação atualizada.');
+    } catch (erro) {
+      tratarErro(erro);
     } finally {
-      setIsSaving(false);
+      setSalvando(false);
     }
   };
 
-  const handleRemoveChunk = async (chunkId: string) => {
-    if (!confirm('Tem certeza que deseja remover este chunk?')) return;
+  /** Dispara uma ação que reinicia a leitura e volta a acompanhar o andamento. */
+  const reiniciar = async (acao: () => Promise<Legislacao>) => {
+    const atualizada = await acao();
+    resetarOpcoesLegislacao();
+    statusAnterior.current = null;
+    setFalhasPolling(0);
+    await aplicar(atualizada);
+  };
+
+  /** Para os modais: mostra o erro na tela e repassa, mantendo o modal aberto. */
+  const enviarComRetorno = async (acao: () => Promise<Legislacao>) => {
     try {
-      await legislacaoService.removerChunk(chunkId);
-      toastService.success('Chunk removido com sucesso!');
-      loadData();
-    } catch (error) {
-      // Erro já é tratado pelo interceptor
+      await reiniciar(acao);
+    } catch (erro) {
+      tratarErro(erro);
+      throw erro;
     }
   };
 
-  if (isLoading) {
+  const tentarDeNovo = async () => {
+    try {
+      setProcessando(true);
+      await reiniciar(() => legislacaoService.lerNovamente(id));
+    } catch (erro) {
+      tratarErro(erro);
+    } finally {
+      setProcessando(false);
+    }
+  };
+
+  const confirmarRelerAgora = async () => {
+    await tentarDeNovo();
+    setConfirmarReleitura(false);
+  };
+
+  if (semPermissao) {
     return (
       <AppLayout>
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <div className="w-10 h-10 border-3 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
+        <PageHeader title="Legislação" backHref="/admin/legislacoes" />
+        <SemPermissaoLegislacoes />
       </AppLayout>
     );
   }
 
-  if (!legislacao) return null;
+  if (loading || !legislacao || !form) {
+    return (
+      <AppLayout>
+        <PageHeader title="Legislação" backHref="/admin/legislacoes" />
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </AppLayout>
+    );
+  }
+
+  const rotuloDaSituacao = rotuloSituacao(legislacao.situacao);
+  const lendo = deveAtualizar(legislacao.statusLeitura);
+  const acompanhamentoParado = lendo && !continuarAcompanhando(legislacao.statusLeitura, falhasPolling);
+  const temLink = Boolean(legislacao.linkOficial?.trim());
+  const semAndamento = legislacao.statusLeitura === 'falhou' || legislacao.statusLeitura === 'pendente';
 
   return (
     <AppLayout>
       <PageHeader
-        title={`${TIPO_LEGISLACAO_LABELS[legislacao.tipo]} ${legislacao.numero}/${legislacao.ano}`}
-        subtitle={legislacao.orgaoEmissor || 'Legislação'}
+        title={nomeCurtoLegislacao(legislacao)}
+        subtitle={legislacao.titulo}
         backHref="/admin/legislacoes"
         action={
-          !isEditing ? (
-            <Button variant="outline" onClick={() => setIsEditing(true)}>
-              <Edit3 className="h-4 w-4" />
-              Editar
-            </Button>
-          ) : (
-            <Button onClick={handleSave} disabled={isSaving}>
-              <Save className="h-4 w-4" />
-              {isSaving ? 'Salvando…' : 'Salvar'}
-            </Button>
+          legislacao.statusLeitura === 'concluida' && (
+            <>
+              {temLink && (
+                <Button variant="outline" onClick={() => setConfirmarReleitura(true)} className="hidden sm:inline-flex">
+                  <RefreshCw className="h-4 w-4" />
+                  Ler novamente
+                </Button>
+              )}
+              <Button onClick={salvar} disabled={salvando}>
+                {salvando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                Salvar
+              </Button>
+            </>
           )
         }
       />
 
-      <div className="px-6 py-6 space-y-6 pb-32">
-        {/* Informações da Legislação */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-card rounded-2xl border border-primary/20 p-6 backdrop-blur-sm space-y-4"
-        >
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
-              <Scale className="w-5 h-5 text-primary" />
-              Informações
-            </h2>
-            {legislacao.linkOficial && (
-              <a
-                href={legislacao.linkOficial}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1 text-sm text-primary hover:text-primary transition-colors"
-              >
-                <ExternalLink className="w-4 h-4" />
-                Abrir link oficial
-              </a>
-            )}
+      <div className="mx-auto max-w-3xl space-y-4 px-4 py-4 lg:px-8">
+        {/* Resumo e estado da leitura */}
+        <section className="space-y-3 rounded-lg border border-border bg-card p-4 shadow-sm">
+          <div className="flex flex-wrap items-center gap-2">
+            <StatusChip
+              status={statusChipLeitura(legislacao.statusLeitura)}
+              label={rotuloStatusLeitura(legislacao.statusLeitura)}
+            />
+            {rotuloDaSituacao &&
+              (legislacao.situacao === 'revogada' ? (
+                <StatusChip status="nao_conforme" label={rotuloDaSituacao} />
+              ) : (
+                <span className="text-sm">{rotuloDaSituacao}</span>
+              ))}
+            {!legislacao.ativo && <span className="text-sm text-muted-foreground">Inativa</span>}
           </div>
+          <dl className="grid grid-cols-1 gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
+            <div className="flex gap-2">
+              <dt className="text-muted-foreground">Publicada em:</dt>
+              <dd>{formatarDataPtBr(legislacao.dataPublicacao)}</dd>
+            </div>
+            <div className="flex gap-2">
+              <dt className="text-muted-foreground">Última leitura:</dt>
+              <dd>{formatarDataPtBr(legislacao.lidoEm)}</dd>
+            </div>
+          </dl>
+          {legislacao.linkOficial && (
+            <a
+              href={legislacao.linkOficial}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
+            >
+              <ExternalLink className="h-4 w-4" />
+              Abrir link oficial
+            </a>
+          )}
+        </section>
 
-          {isEditing ? (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-primary mb-2">
-                    Tipo
-                  </label>
+        {lendo && !acompanhamentoParado && (
+          <section
+            role="status"
+            className="flex items-center gap-3 rounded-lg border border-border bg-card p-4 shadow-sm"
+          >
+            <Loader2 className="h-5 w-5 shrink-0 animate-spin text-primary" />
+            <p className="text-sm text-muted-foreground">
+              O sistema está lendo a legislação. Isso pode levar alguns instantes; esta tela atualiza sozinha.
+            </p>
+          </section>
+        )}
+
+        {acompanhamentoParado && (
+          <section className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4 shadow-sm sm:flex-row sm:items-center">
+            <AlertTriangle className="h-5 w-5 shrink-0 text-warning" />
+            <p className="flex-1 text-sm text-muted-foreground">
+              Não foi possível acompanhar a leitura agora. Ela continua em andamento; atualize para ver o resultado.
+            </p>
+            <Button variant="outline" className="h-11 sm:h-10" onClick={retomarAcompanhamento}>
+              <RefreshCw className="h-4 w-4" />
+              Atualizar
+            </Button>
+          </section>
+        )}
+
+        {semAndamento && (
+          <section className="space-y-3 rounded-lg border border-destructive/40 bg-destructive/5 p-4">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" />
+              <p className="text-sm">
+                {legislacao.statusLeitura === 'pendente'
+                  ? 'A leitura desta legislação não foi iniciada.'
+                  : legislacao.erroLeitura || 'Não foi possível ler esta legislação.'}
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {temLink && (
+                <Button onClick={tentarDeNovo} disabled={processando}>
+                  {processando ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                  Tentar de novo
+                </Button>
+              )}
+              <Button variant="outline" onClick={() => setModalPdf(true)}>
+                <FileText className="h-4 w-4" />
+                Enviar PDF
+              </Button>
+              <Button variant="outline" onClick={() => setModalTexto(true)}>
+                <ClipboardPaste className="h-4 w-4" />
+                Colar texto
+              </Button>
+            </div>
+          </section>
+        )}
+
+        {legislacao.statusLeitura === 'concluida' && (
+          <>
+            {idExistente && (
+              <p role="alert" className="text-sm text-destructive">
+                Esta legislação já está cadastrada.{' '}
+                <Link href={`/admin/legislacoes/${idExistente}`} className="font-medium underline">
+                  Abrir a existente
+                </Link>
+              </p>
+            )}
+            <section className="space-y-4 rounded-lg border border-border bg-card p-4 shadow-sm">
+              <h2 className="font-display text-base font-semibold">Dados da legislação</h2>
+
+              <div className="space-y-2">
+                <Label htmlFor="titulo">Título *</Label>
+                <Input id="titulo" value={form.titulo} onChange={(e) => alterar('titulo', e.target.value)} className="h-11 md:h-10" />
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <div className="space-y-2">
+                  <Label htmlFor="tipo">Tipo</Label>
                   <select
-                    value={formData.tipo || TipoLegislacao.RDC}
-                    onChange={(e) => setFormData({ ...formData, tipo: e.target.value as TipoLegislacao })}
-                    className="w-full px-4 py-3 bg-muted border border-primary/20 rounded-xl text-foreground focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+                    id="tipo"
+                    value={form.tipo}
+                    onChange={(e) => alterar('tipo', e.target.value as TipoLegislacao)}
+                    className={CLASSE_SELECT}
                   >
                     {Object.values(TipoLegislacao).map((tipo) => (
                       <option key={tipo} value={tipo}>
@@ -201,298 +378,136 @@ export default function LegislacaoDetalhesPage() {
                     ))}
                   </select>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-primary mb-2">
-                    Número
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.numero || ''}
-                    onChange={(e) => setFormData({ ...formData, numero: e.target.value })}
-                    className="w-full px-4 py-3 bg-muted border border-primary/20 rounded-xl text-foreground focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
-                  />
+                <div className="space-y-2">
+                  <Label htmlFor="numero">Número</Label>
+                  <Input id="numero" value={form.numero} onChange={(e) => alterar('numero', e.target.value)} className="h-11 md:h-10" />
                 </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-primary mb-2">
-                    Ano
-                  </label>
-                  <input
+                <div className="space-y-2">
+                  <Label htmlFor="ano">Ano</Label>
+                  <Input
+                    id="ano"
                     type="number"
-                    value={formData.ano || ''}
-                    onChange={(e) => setFormData({ ...formData, ano: parseInt(e.target.value, 10) })}
-                    className="w-full px-4 py-3 bg-muted border border-primary/20 rounded-xl text-foreground focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-primary mb-2">
-                    Órgão Emissor
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.orgaoEmissor || ''}
-                    onChange={(e) => setFormData({ ...formData, orgaoEmissor: e.target.value })}
-                    className="w-full px-4 py-3 bg-muted border border-primary/20 rounded-xl text-foreground focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+                    inputMode="numeric"
+                    value={form.ano}
+                    onChange={(e) => alterar('ano', e.target.value)}
+                    className="h-11 md:h-10"
                   />
                 </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-primary mb-2">
-                  Título
-                </label>
-                <input
-                  type="text"
-                  value={formData.titulo || ''}
-                  onChange={(e) => setFormData({ ...formData, titulo: e.target.value })}
-                  className="w-full px-4 py-3 bg-muted border border-primary/20 rounded-xl text-foreground focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-primary mb-2">
-                  Ementa
-                </label>
-                <textarea
-                  value={formData.ementa || ''}
-                  onChange={(e) => setFormData({ ...formData, ementa: e.target.value })}
-                  rows={3}
-                  className="w-full px-4 py-3 bg-muted border border-primary/20 rounded-xl text-foreground focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all resize-none"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-primary mb-2">
-                  Link Oficial
-                </label>
-                <input
-                  type="url"
-                  value={formData.linkOficial || ''}
-                  onChange={(e) => setFormData({ ...formData, linkOficial: e.target.value })}
-                  className="w-full px-4 py-3 bg-muted border border-primary/20 rounded-xl text-foreground focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
-                />
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              <div>
-                <h3 className="text-foreground font-medium">{legislacao.titulo}</h3>
-                {legislacao.ementa && (
-                  <p className="text-primary/70 text-sm mt-2">{legislacao.ementa}</p>
-                )}
-              </div>
-              <div className="flex flex-wrap gap-3 text-sm">
-                <span className="px-2 py-1 bg-primary/20 text-primary rounded-lg">
-                  {TIPO_LEGISLACAO_LABELS[legislacao.tipo]}
-                </span>
-                <span className="flex items-center gap-1 text-primary/70">
-                  <Hash className="w-3.5 h-3.5" />
-                  {legislacao.numero}
-                </span>
-                <span className="flex items-center gap-1 text-primary/70">
-                  <Calendar className="w-3.5 h-3.5" />
-                  {legislacao.ano}
-                </span>
-                {legislacao.orgaoEmissor && (
-                  <span className="flex items-center gap-1 text-primary/70">
-                    <Building className="w-3.5 h-3.5" />
-                    {legislacao.orgaoEmissor}
-                  </span>
-                )}
-              </div>
-            </div>
-          )}
-        </motion.div>
 
-        {/* Chunks RAG */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="bg-card rounded-2xl border border-primary/20 p-6 backdrop-blur-sm"
-        >
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
-              <Layers className="w-5 h-5 text-primary" />
-              Chunks RAG
-              <span className="px-2 py-0.5 bg-primary/20 text-primary text-xs rounded-lg">
-                {chunks.length}
-              </span>
-            </h2>
-            <button
-              onClick={() => setShowChunkModal(true)}
-              className="flex items-center gap-2 px-3 py-2 bg-primary/20 hover:bg-primary/30 text-primary rounded-xl transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-              Adicionar
-            </button>
-          </div>
-
-          {chunks.length === 0 ? (
-            <div className="text-center py-8">
-              <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-3">
-                <BookOpen className="w-8 h-8 text-primary" />
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="orgao">Órgão emissor</Label>
+                  <Input id="orgao" value={form.orgaoEmissor} onChange={(e) => alterar('orgaoEmissor', e.target.value)} className="h-11 md:h-10" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="dataPublicacao">Data de publicação</Label>
+                  <Input
+                    id="dataPublicacao"
+                    type="date"
+                    lang="pt-BR"
+                    value={form.dataPublicacao}
+                    onChange={(e) => alterar('dataPublicacao', e.target.value)}
+                    className="h-11 md:h-10"
+                  />
+                </div>
               </div>
-              <p className="text-primary/70">
-                Nenhum trecho cadastrado ainda. Use Adicionar acima.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {chunks.map((chunk, index) => (
-                <motion.div
-                  key={chunk.id}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.03 }}
-                  className="bg-muted/60 rounded-xl p-4 border border-primary/10 group"
+
+              <div className="space-y-2">
+                <Label htmlFor="situacao">Situação</Label>
+                <select
+                  id="situacao"
+                  value={form.situacao}
+                  onChange={(e) => alterar('situacao', e.target.value as SituacaoLegislacao | '')}
+                  className={CLASSE_SELECT}
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1">
-                      {(chunk.artigo || chunk.inciso || chunk.paragrafo) && (
-                        <div className="flex flex-wrap gap-2 mb-2">
-                          {chunk.artigo && (
-                            <span className="px-2 py-0.5 bg-primary/20 text-primary text-xs rounded">
-                              {chunk.artigo}
-                            </span>
-                          )}
-                          {chunk.inciso && (
-                            <span className="px-2 py-0.5 bg-info/20 text-info text-xs rounded">
-                              {chunk.inciso}
-                            </span>
-                          )}
-                          {chunk.paragrafo && (
-                            <span className="px-2 py-0.5 bg-primary/20 text-primary text-xs rounded">
-                              {chunk.paragrafo}
-                            </span>
-                          )}
-                        </div>
-                      )}
-                      <p className="text-primary/90 text-sm leading-relaxed line-clamp-4">
-                        {chunk.conteudo}
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => handleRemoveChunk(chunk.id)}
-                      className="p-2 hover:bg-red-500/10 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
-                    >
-                      <Trash2 className="w-4 h-4 text-red-400" />
-                    </button>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          )}
-        </motion.div>
+                  <option value="">Não informada</option>
+                  {OPCOES_SITUACAO.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+                {form.situacao === 'revogada' && (
+                  <p className="text-xs text-destructive">Esta legislação está revogada.</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="ementa">Ementa</Label>
+                <Textarea id="ementa" value={form.ementa} onChange={(e) => alterar('ementa', e.target.value)} rows={4} />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="informacoes">Informações</Label>
+                <Textarea id="informacoes" value={form.informacoes} onChange={(e) => alterar('informacoes', e.target.value)} rows={3} />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="linkOficial">Link oficial (opcional)</Label>
+                <Input
+                  id="linkOficial"
+                  type="url"
+                  inputMode="url"
+                  value={form.linkOficial}
+                  onChange={(e) => alterar('linkOficial', e.target.value)}
+                  className="h-11 md:h-10"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Trocar o link não lê a página de novo; use &quot;Ler novamente&quot; para isso.
+                </p>
+              </div>
+
+            </section>
+
+            <section className="space-y-3 rounded-lg border border-border bg-card p-4 shadow-sm">
+              <h2 className="font-display text-base font-semibold">Ler de novo</h2>
+              <p className="text-sm text-muted-foreground">
+                Os dados lidos e os trechos são substituídos pelo novo conteúdo. Título e informações são mantidos.
+              </p>
+              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                {temLink && (
+                  <Button variant="outline" onClick={() => setConfirmarReleitura(true)} className="h-11 sm:hidden">
+                    <RefreshCw className="h-4 w-4" />
+                    Ler novamente
+                  </Button>
+                )}
+                <Button variant="outline" onClick={() => setModalPdf(true)} className="h-11 sm:h-10">
+                  <FileText className="h-4 w-4" />
+                  Enviar PDF
+                </Button>
+                <Button variant="outline" onClick={() => setModalTexto(true)} className="h-11 sm:h-10">
+                  <ClipboardPaste className="h-4 w-4" />
+                  Colar texto
+                </Button>
+              </div>
+            </section>
+
+            <ListaTrechos trechos={trechos} />
+          </>
+        )}
       </div>
 
-      {/* Modal Adicionar Chunk */}
-      <AnimatePresence>
-        {showChunkModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end justify-center p-4"
-            onClick={() => setShowChunkModal(false)}
-          >
-            <motion.div
-              initial={{ y: 100, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: 100, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-              className="bg-card rounded-t-3xl rounded-b-xl border border-primary/20 p-6 w-full max-w-lg max-h-[85vh] overflow-y-auto"
-            >
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-lg font-semibold text-foreground">Adicionar Chunk</h3>
-                <button
-                  onClick={() => setShowChunkModal(false)}
-                  className="p-2 hover:bg-muted rounded-lg transition-colors"
-                >
-                  <X className="w-5 h-5 text-primary" />
-                </button>
-              </div>
-
-              <div className="space-y-4">
-                <div className="grid grid-cols-3 gap-3">
-                  <div>
-                    <label className="block text-sm font-medium text-primary mb-2">
-                      Artigo
-                    </label>
-                    <input
-                      type="text"
-                      value={novoChunk.artigo || ''}
-                      onChange={(e) => setNovoChunk({ ...novoChunk, artigo: e.target.value })}
-                      placeholder="Art. 5º"
-                      className="w-full px-3 py-2 bg-muted border border-primary/20 rounded-lg text-foreground text-sm placeholder-primary/50 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-primary mb-2">
-                      Inciso
-                    </label>
-                    <input
-                      type="text"
-                      value={novoChunk.inciso || ''}
-                      onChange={(e) => setNovoChunk({ ...novoChunk, inciso: e.target.value })}
-                      placeholder="I"
-                      className="w-full px-3 py-2 bg-muted border border-primary/20 rounded-lg text-foreground text-sm placeholder-primary/50 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-primary mb-2">
-                      Parágrafo
-                    </label>
-                    <input
-                      type="text"
-                      value={novoChunk.paragrafo || ''}
-                      onChange={(e) => setNovoChunk({ ...novoChunk, paragrafo: e.target.value })}
-                      placeholder="§1º"
-                      className="w-full px-3 py-2 bg-muted border border-primary/20 rounded-lg text-foreground text-sm placeholder-primary/50 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-primary mb-2">
-                    Conteúdo *
-                  </label>
-                  <textarea
-                    value={novoChunk.conteudo}
-                    onChange={(e) => setNovoChunk({ ...novoChunk, conteudo: e.target.value })}
-                    placeholder="Cole aqui o trecho da legislação que será usado para consultas RAG..."
-                    rows={6}
-                    className="w-full px-4 py-3 bg-muted border border-primary/20 rounded-xl text-foreground placeholder-primary/50 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all resize-none"
-                  />
-                </div>
-
-                <div className="bg-primary/10 border border-primary/20 rounded-xl p-3">
-                  <p className="text-xs text-primary/70">
-                    💡 Divida o texto em chunks menores (até ~500 palavras) para melhor precisão nas buscas.
-                  </p>
-                </div>
-
-                <div className="flex gap-3 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowChunkModal(false)}
-                    className="flex-1 px-4 py-3 bg-muted text-primary rounded-xl font-medium hover:bg-muted transition-colors"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    onClick={handleAddChunk}
-                    disabled={isSaving || !novoChunk.conteudo.trim()}
-                    className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-primary to-primary/80 text-white rounded-xl font-medium disabled:opacity-50"
-                  >
-                    <Plus className="w-5 h-5" />
-                    {isSaving ? 'Adicionando...' : 'Adicionar'}
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <ModalEnviarPdf
+        open={modalPdf}
+        onOpenChange={setModalPdf}
+        onEnviar={(arquivo) => enviarComRetorno(() => legislacaoService.enviarArquivo(id, arquivo))}
+      />
+      <ModalColarTexto
+        open={modalTexto}
+        onOpenChange={setModalTexto}
+        onEnviar={(texto) => enviarComRetorno(() => legislacaoService.enviarTexto(id, texto))}
+      />
+      <ConfirmDialog
+        open={confirmarReleitura}
+        onClose={() => setConfirmarReleitura(false)}
+        onConfirm={confirmarRelerAgora}
+        title="Ler novamente"
+        message={TEXTO_RELER}
+        confirmLabel="Ler novamente"
+        variant="warning"
+        loading={processando}
+      />
     </AppLayout>
   );
 }
-

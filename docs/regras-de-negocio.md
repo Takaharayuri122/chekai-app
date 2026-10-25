@@ -134,6 +134,7 @@
 | RN-AUD-012 | Remoção de auditoria: apenas MASTER e GESTOR; o gestor/master deve ser o consultor ou o consultor deve estar vinculado a ele; remove cascata (itens e fotos) |
 | RN-AUD-013 | Resumo executivo: gerado por IA apenas para auditorias finalizadas; agrupado por grupo de itens com pontuação e não conformidades; salvo como JSON na auditoria |
 | RN-AUD-014 | PDF: gerado via Puppeteer; cache — só regenera se auditoria foi atualizada após último `pdfGeradoEm`; armazenado no Supabase Storage |
+| RN-AUD-015 | Execução (web): fotos e observação são registradas por botões e janelas separados. Cada janela só exige o que é dela (foto obrigatória na de fotos, observação obrigatória na de observação), conforme a resposta escolhida; foto marcada como não relevante sempre leva à observação. Sem resposta, cada janela salva se tiver o próprio registro (foto ou observação) |
 
 ### Fotos
 
@@ -240,10 +241,27 @@
 
 | ID | Regra |
 |----|-------|
-| RN-LEG-001 | Legislações são cadastradas com tipo, número, ano, título, texto integral |
-| RN-LEG-002 | Texto é quebrado em chunks com embedding vetorial (pgvector) para busca semântica |
-| RN-LEG-003 | Cada chunk possui referência ao artigo/inciso de origem |
-| RN-LEG-004 | RAG alimenta a geração de templates e análise de auditorias via `IaService` |
+| RN-LEG-001 | Existe uma única base de legislações, global para o sistema (sem separação por gestor ou unidade); a IA usa a base inteira. O cadastro informa link oficial, título e informações (opcional); tipo, número, ano, órgão, ementa, data de publicação e situação (`vigente`, `vigente_com_alteracoes`, `revogada`; nulo = não identificada) são lidos pelo sistema e podem ser editados |
+| RN-LEG-002 | Texto é quebrado em trechos (por artigo e, em anexos, por itens numerados) com embedding vetorial (pgvector) para busca semântica |
+| RN-LEG-003 | Cada trecho possui referência ao artigo/item de origem |
+| RN-LEG-004 | RAG alimenta a geração de templates e análise de auditorias via `IaService`; quando a pergunta tem legislações escolhidas, a busca começa nelas e completa com a base toda se vierem menos de 3 trechos |
+| RN-LEG-005 | Gerenciam a base (menu Legislações; criar, editar, desativar/ativar, remover, reler, enviar PDF/texto, trechos) o MASTER e o GESTOR com a permissão "Pode gerenciar legislações" (`podeGerenciarLegislacoes`); AUDITOR nunca. A regra é imposta na API (403 "Você não tem permissão para gerenciar legislações.") |
+| RN-LEG-006 | Só o MASTER concede ou retira a permissão, e só para usuários GESTOR (na criação ou por `PATCH /usuarios/:id/permissao-legislacoes`); a edição genérica de usuário ignora o campo. A API respeita a mudança na hora; o GESTOR vê o menu depois de entrar de novo no sistema |
+| RN-LEG-007 | Qualquer usuário logado escolhe legislações da base nos seletores (checklist e não conformidade) por `GET /legislacoes/opcoes`, que devolve só as ativas |
+| RN-LEG-008 | Cada pergunta do checklist e cada item de auditoria aceita várias legislações (até 10), apenas a norma, sem artigo; ids inexistentes são recusados. Duplicar grupo/item copia os vínculos |
+| RN-LEG-009 | Ao gravar a lista de legislações de um item, o texto legado (`legislacaoReferencia` da pergunta e `referenciaLegal` da não conformidade) é regravado com os nomes curtos separados por "; " (ex.: "RDC 216/2004; Lei 8078/1990"); lista vazia apaga o texto. O app de celular continua usando esse texto, e o texto enviado sem lista de legislações segue aceito |
+| RN-LEG-010 | Nome curto da legislação: `SIGLA número/ano` (RDC, Portaria, IN, Lei, Decreto); para tipo `outro` ou sem número usa o título |
+| RN-LEG-011 | Não conformidade sem legislações próprias herda as da pergunta na exibição e nos relatórios (a herança não é gravada) |
+| RN-LEG-012 | Na auditoria, a IA sugere legislações para a não conformidade (`legislacaoIds`, obtidos casando a norma citada com a base); a sugestão só é aplicada se o usuário não tiver escolhido manualmente |
+| RN-LEG-013 | Relatórios (PDF, tela de relatório, plano de ação) mostram só o nome da norma em "Legislação: …", sem ementa ou lista: próprias do item, depois herdadas da pergunta, depois o texto `referenciaLegal` como último recurso |
+| RN-LEG-014 | Leitura automática pelo link: aceita só páginas públicas (`http`/`https`); endereços internos, privados ou reservados são recusados (também nos redirecionamentos). Aceita HTML e PDF; texto útil com menos de 500 caracteres falha com orientação para o plano B |
+| RN-LEG-015 | Plano B: anexar PDF (até 20 MB) ou colar o texto (de 500 a 2.000.000 de caracteres); disponível quando a leitura falha ou não foi iniciada e também com a legislação pronta (releitura por outra fonte). "Ler novamente"/"Tentar de novo" pelo link só aparecem quando a legislação tem link |
+| RN-LEG-016 | A leitura roda em segundo plano (`statusLeitura`: `pendente`, `lendo`, `concluida`, `falhou`); o cadastro já nasce em `lendo`. Não é possível pedir nova leitura enquanto uma está em andamento. Ao reiniciar o servidor, legislação em `lendo` ou `pendente` sem mudança há mais de 10 minutos vira `falhou` e pode ser repetida |
+| RN-LEG-017 | "Ler novamente" substitui os dados lidos e os trechos pelo conteúdo atual, preservando título e informações; quando a IA não identifica um campo na releitura, o valor anterior é mantido. Se a leitura falhar, trechos e dados anteriores ficam intactos |
+| RN-LEG-018 | A leitura consome créditos de IA de quem a disparou (extração de dados e embeddings), conforme RN-CRD-001/002/007: MASTER isento; GESTOR paga da própria conta; sem saldo a leitura falha com "Sem créditos de IA para ler a legislação." |
+| RN-LEG-019 | Não há legislação repetida por link: o link é normalizado (sem espaços, `#fragmento` ou barra final) e, se já existir, o cadastro é recusado (409) apontando a existente. Não há deduplicação por número/ano. Link com mais de 500 caracteres é recusado (400). Na edição o link é opcional (vazio tira o link) |
+| RN-LEG-020 | Quando uma leitura conclui, perguntas e itens de auditoria sem vínculo cujo texto livre cita a norma (tipo + número + ano) ganham o vínculo; o texto livre não é alterado |
+| RN-LEG-021 | Legislação ligada a perguntas ou não conformidades não pode ser removida (409); deve ser desativada. Desativada deixa de aparecer nos seletores, mas os vínculos existentes são mantidos e o item que já a tem continua podendo ser salvo com ela |
 
 ---
 
@@ -346,3 +364,6 @@
 | 2026-04-11 | Documento inicial compilado a partir do código-fonte da API, mobile e web | platform-orchestrator |
 | 2026-10-16 | Adicionada seção 16 (Planos de Ação) | Claude |
 | 2026-10-16 | Adicionadas seções 17 (Agenda) e RN-PAC-008 | Claude |
+| 2026-10-25 | Seção 12 reescrita para a legislação automática (RN-LEG-001 a RN-LEG-021) | Claude |
+| 2026-10-25 | RN-LEG-015/016/019/021 ajustadas ao comportamento final (releitura por PDF/texto com legislação pronta, cadastro já em leitura, limite do link, desativadas aceitas em itens já ligados) | Claude |
+| 2026-10-25 | RN-AUD-015: fotos e observação separadas na execução do checklist (web) | Claude |

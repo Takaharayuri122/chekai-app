@@ -6,6 +6,7 @@ import { EmailService } from '../email/email.service';
 import { AssinaturaService } from '../plano/assinatura.service';
 import { PlanoService } from '../plano/plano.service';
 import { PerfilUsuario, StatusUsuario } from '../usuario/entities/usuario.entity';
+import { podeGerenciarLegislacoes } from '../legislacao/lib/permissao';
 import { LoginDto, LoginResponse } from './dto/login.dto';
 import { SolicitarOtpDto } from './dto/solicitar-otp.dto';
 import { ValidarOtpDto } from './dto/validar-otp.dto';
@@ -95,6 +96,7 @@ export class AuthService {
         perfil: usuario.perfil,
         gestorId: usuario.gestorId ?? undefined,
         tenantId: usuario.tenantId ?? undefined,
+        podeGerenciarLegislacoes: podeGerenciarLegislacoes(usuario),
       },
     };
   }
@@ -152,6 +154,7 @@ export class AuthService {
         perfil: usuario.perfil,
         gestorId: usuario.gestorId ?? undefined,
         tenantId: usuario.tenantId ?? undefined,
+        podeGerenciarLegislacoes: podeGerenciarLegislacoes(usuario),
       },
     };
   }

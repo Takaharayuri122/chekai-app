@@ -23,7 +23,7 @@
 | Check-in | 0 | 1 | Módulo inteiro ausente |
 | Planos / Assinaturas | 0 | 1 | Admin = fora de escopo; ver limites = opcional |
 | Créditos IA | 2 | 1 | Auditoria de tokens é obrigatória |
-| Legislação | 0 | 0 | Admin/RAG interno = fora de escopo mobile |
+| Legislação | 0 | 0 | Gestão e seletor de legislações só na web; mobile usa o texto de referência (ver OK) |
 | Sincronização | 2 | 1 | Pull/push core OK; automação/fila divergem |
 | Perfil | 1 | 0 | Edição de perfil ausente (web também tem gap) |
 
@@ -301,6 +301,7 @@
 - **Auditorias — upload de foto:** `POST /auditorias/:id/itens/:itemId/fotos` (multipart `file`) — mesmo endpoint; mobile via `FileSystem.uploadAsync`.
 - **Clientes/Unidades — leitura para auditoria:** `GET /clientes` com isolamento por perfil aplicado na API; mobile usa pull readonly (ressalva de paginação no AJUSTE).
 - **Templates — seleção para auditoria:** `GET /checklists/templates` (relation `itens`); mobile pull readonly (ressalva de filtro `ativo` no AJUSTE).
+- **Legislações (texto de referência):** as telas de gestão (`/legislacoes`) e o seletor de legislações da pergunta e da não conformidade (`GET /legislacoes/opcoes` + `legislacaoIds`) existem só na web. O mobile continua lendo e enviando o texto `legislacaoReferencia` (pergunta) e `referenciaLegal` (item de auditoria e respostas de `/ia/*`), que a API mantém preenchido com os nomes curtos das legislações escolhidas (RN-LEG-009). Mobile não envia `legislacaoIds`; sem ação necessária.
 - **Sincronização (núcleo):** ordem push→pull (RN-SYN-003), pull respeitando FKs e `sync_status='pending'` (RN-SYN-006/007/008), mapeamento `finalizada→concluida` (RN-SYN-009), fila SQLite `sync_queue` (ressalvas de fila/automação nos AJUSTES).
 
 ---

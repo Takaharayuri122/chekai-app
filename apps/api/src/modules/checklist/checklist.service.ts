@@ -3,6 +3,10 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ChecklistTemplate, StatusTemplate } from './entities/checklist-template.entity';
 import { TemplateItem, TipoRespostaCustomizada } from './entities/template-item.entity';
+import { LegislacaoService } from '../legislacao/legislacao.service';
+import { LegislacaoVinculoService } from '../legislacao/legislacao-vinculo.service';
+import { validarLegislacaoIds } from '../legislacao/lib/validar-legislacao-ids';
+import { resumirLegislacoes } from '../legislacao/lib/resumo-legislacao';
 import { aplicarRegrasForcadas } from './checklist-regras';
 import { ChecklistGrupo } from './entities/checklist-grupo.entity';
 import { Auditoria } from '../auditoria/entities/auditoria.entity';
@@ -22,6 +26,27 @@ import {
 /**
  * Serviço responsável pela gestão de checklists.
  */
+/**
+ * Chaves que o corpo da edição de item não pode tocar: identidade, dono, relações e o texto
+ * derivado das legislações (que só muda via `legislacaoIds`). O corpo chega sem validação de DTO.
+ */
+const CHAVES_PROTEGIDAS_ITEM = [
+  'id',
+  'templateId',
+  'template',
+  'grupo',
+  'legislacoes',
+  'legislacaoReferencia',
+  'criadoEm',
+  'atualizadoEm',
+];
+
+function camposEditaveisDoItem(campos: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(campos).filter(([chave]) => !CHAVES_PROTEGIDAS_ITEM.includes(chave)),
+  );
+}
+
 @Injectable()
 export class ChecklistService {
   constructor(
@@ -33,7 +58,22 @@ export class ChecklistService {
     private readonly grupoRepository: Repository<ChecklistGrupo>,
     @InjectRepository(Auditoria)
     private readonly auditoriaRepository: Repository<Auditoria>,
+    private readonly legislacaoService: LegislacaoService,
+    private readonly legislacaoVinculoService: LegislacaoVinculoService,
   ) {}
+
+  /**
+   * Aplica `legislacaoIds` ao item: grava os vínculos e o texto de compatibilidade derivado.
+   * Sem `legislacaoIds` no DTO, não toca nos vínculos nem no texto.
+   */
+  private async aplicarLegislacoes(item: TemplateItem, legislacaoIds?: string[]): Promise<void> {
+    if (legislacaoIds === undefined) {
+      return;
+    }
+    const legislacoes = await this.legislacaoService.buscarPorIds(validarLegislacaoIds(legislacaoIds));
+    item.legislacoes = legislacoes;
+    item.legislacaoReferencia = this.legislacaoVinculoService.textoDerivado(legislacoes) as string;
+  }
 
   /**
    * Cria um novo template de checklist.
@@ -55,13 +95,16 @@ export class ChecklistService {
     });
     const savedTemplate = await this.templateRepository.save(template);
     if (dto.itens && dto.itens.length > 0) {
-      const itens = dto.itens.map((item, index) =>
-        this.itemRepository.create({
-          ...item,
+      const itens: TemplateItem[] = [];
+      for (const [index, { legislacaoIds, ...campos }] of dto.itens.entries()) {
+        const novo = this.itemRepository.create({
+          ...campos,
           templateId: savedTemplate.id,
-          ordem: item.ordem ?? index,
-        }),
-      );
+          ordem: campos.ordem ?? index,
+        });
+        await this.aplicarLegislacoes(novo, legislacaoIds);
+        itens.push(novo);
+      }
       await this.itemRepository.save(itens);
     }
     return this.buscarTemplatePorId(savedTemplate.id, usuarioAutenticado);
@@ -85,7 +128,7 @@ export class ChecklistService {
     }
     const [items, total] = await this.templateRepository.findAndCount({
       where,
-      relations: ['itens'],
+      relations: ['itens', 'itens.legislacoes'],
       skip: (params.page - 1) * params.limit,
       take: params.limit,
       order: { criadoEm: 'DESC' },
@@ -93,6 +136,7 @@ export class ChecklistService {
     items.forEach((template) => {
       if (template.itens) {
         template.itens = template.itens.filter((i) => i.ativo !== false);
+        resumirLegislacoes(template.itens);
       }
     });
     return createPaginatedResult(items, total, params.page, params.limit);
@@ -116,12 +160,13 @@ export class ChecklistService {
     }
     const templates = await this.templateRepository.find({
       where,
-      relations: ['itens'],
+      relations: ['itens', 'itens.legislacoes'],
       order: { nome: 'ASC' },
     });
     templates.forEach((template) => {
       if (template.itens) {
         template.itens = template.itens.filter((i) => i.ativo !== false);
+        resumirLegislacoes(template.itens);
       }
     });
     return templates;
@@ -136,7 +181,7 @@ export class ChecklistService {
   ): Promise<ChecklistTemplate> {
     const template = await this.templateRepository.findOne({
       where: { id },
-      relations: ['itens', 'itens.grupo', 'grupos'],
+      relations: ['itens', 'itens.grupo', 'itens.legislacoes', 'grupos'],
     });
     if (!template) {
       throw new NotFoundException('Template não encontrado');
@@ -154,6 +199,7 @@ export class ChecklistService {
     if (template.itens) {
       template.itens = template.itens.filter((i) => i.ativo !== false);
       template.itens.sort((a, b) => a.ordem - b.ordem);
+      resumirLegislacoes(template.itens);
     }
     if (template.grupos) {
       template.grupos = template.grupos.filter((g) => g.ativo !== false);
@@ -268,15 +314,19 @@ export class ChecklistService {
       .where('item.template_id = :templateId', { templateId })
       .select('MAX(item.ordem)', 'max')
       .getRawOne();
+    const { legislacaoIds, ...campos } = dto;
     const item = this.itemRepository.create({
-      ...dto,
+      ...campos,
       templateId,
       ordem: dto.ordem ?? (maxOrdem?.max ?? 0) + 1,
     });
+    await this.aplicarLegislacoes(item, legislacaoIds);
 
     aplicarRegrasForcadas(item);
 
-    return this.itemRepository.save(item);
+    const salvo = await this.itemRepository.save(item);
+    resumirLegislacoes([salvo]);
+    return salvo;
   }
 
   /**
@@ -287,7 +337,7 @@ export class ChecklistService {
     dto: Partial<CriarTemplateItemDto>,
     usuarioAutenticado?: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
   ): Promise<TemplateItem> {
-    const item = await this.itemRepository.findOne({ where: { id: itemId } });
+    const item = await this.itemRepository.findOne({ where: { id: itemId }, relations: ['legislacoes'] });
     if (!item) {
       throw new NotFoundException('Item não encontrado');
     }
@@ -295,11 +345,18 @@ export class ChecklistService {
     if (usuarioAutenticado && template.gestorId !== usuarioAutenticado.id) {
       throw new ForbiddenException('Apenas o gestor responsável pode editar este checklist');
     }
-    Object.assign(item, dto);
+    const { legislacaoIds, ...campos } = dto;
+    Object.assign(item, camposEditaveisDoItem(campos));
+    if (legislacaoIds !== undefined) {
+      // Só carrega a relação quando o DTO a traz; do contrário o save não a toca
+      await this.aplicarLegislacoes(item, legislacaoIds);
+    }
 
     aplicarRegrasForcadas(item);
 
-    return this.itemRepository.save(item);
+    const salvo = await this.itemRepository.save(item);
+    resumirLegislacoes([salvo]);
+    return salvo;
   }
 
   /**
@@ -428,6 +485,7 @@ export class ChecklistService {
     const grupoSalvo = await this.grupoRepository.save(novoGrupo);
     const itensDoGrupo = await this.itemRepository.find({
       where: { grupoId, templateId: grupoOriginal.templateId, ativo: true },
+      relations: ['legislacoes'],
       order: { ordem: 'ASC' },
     });
     for (const item of itensDoGrupo) {
@@ -450,6 +508,7 @@ export class ChecklistService {
         templateId: grupoOriginal.templateId,
         grupoId: grupoSalvo.id,
         secao: item.secao,
+        legislacoes: item.legislacoes ?? [],
       });
       await this.itemRepository.save(novoItem);
     }
@@ -463,7 +522,10 @@ export class ChecklistService {
     itemId: string,
     usuarioAutenticado?: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
   ): Promise<TemplateItem> {
-    const itemOriginal = await this.itemRepository.findOne({ where: { id: itemId } });
+    const itemOriginal = await this.itemRepository.findOne({
+      where: { id: itemId },
+      relations: ['legislacoes'],
+    });
     if (!itemOriginal) {
       throw new NotFoundException('Item não encontrado');
     }
@@ -495,8 +557,11 @@ export class ChecklistService {
       templateId: itemOriginal.templateId,
       grupoId: itemOriginal.grupoId,
       secao: itemOriginal.secao,
+      legislacoes: itemOriginal.legislacoes ?? [],
     });
-    return this.itemRepository.save(novoItem);
+    const salvo = await this.itemRepository.save(novoItem);
+    resumirLegislacoes([salvo]);
+    return salvo;
   }
 
   /**

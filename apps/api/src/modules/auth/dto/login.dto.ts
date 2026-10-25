@@ -29,6 +29,7 @@ export interface LoginResponse {
     perfil: PerfilUsuario;
     gestorId?: string;
     tenantId?: string;
+    podeGerenciarLegislacoes: boolean;
   };
 }
 

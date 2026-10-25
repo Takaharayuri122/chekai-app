@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/shadcn/dropdown-menu';
 import { getItensConta } from './navegacao';
+import { podeGerenciarLegislacoes } from '@/lib/legislacao/permissao';
 
 const PERFIL_LABEL: Record<string, string> = { master: 'Administrador', gestor: 'Gestor', auditor: 'Auditor' };
 
@@ -60,7 +61,7 @@ export function MenuConta({ variante, recolhida = false }: { variante: 'sidebar'
           <span className="block truncate text-xs text-muted-foreground">{usuario.email}</span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        {getItensConta(usuario.perfil).map((item) => (
+        {getItensConta(usuario.perfil, { podeGerenciarLegislacoes: podeGerenciarLegislacoes(usuario) }).map((item) => (
           <DropdownMenuItem key={item.href} asChild>
             <Link href={item.href}>
               <item.icon className="h-4 w-4" />

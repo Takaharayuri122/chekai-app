@@ -65,6 +65,7 @@ O `synchronize` do TypeORM fica desligado: colunas novas entram por scripts em `
 | Release | Script | Observação |
 |---------|--------|------------|
 | Permitir foto/observação por pergunta, configuração em lote e importação revisada pela IA | `scripts/adicionar-permite-foto-observacao.sql` | Adiciona `"permiteFoto"` e `"permiteObservacao"` em `template_itens` e ajusta os itens de texto. Pode ser rodado mais de uma vez. Rodar antes do deploy da API. |
+| Legislação automática | `scripts/legislacao-automatica.sql` | Legislação automática: permissão, leitura, vínculos e busca filtrada. Rodar antes do deploy da API. |
 
 ## Deploy do Backend (Railway)
 

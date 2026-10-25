@@ -31,6 +31,7 @@ import {
 import { toastService } from '@/lib/toast';
 import { planoAcaoService } from '@/lib/services/plano-acao.service';
 import { getPontuacaoMaximaItem } from '@/lib/utils';
+import { nomesLegislacoesDoItem } from '@/lib/legislacao/legislacoes-do-item';
 
 const RespostaItem = {
   CONFORME: 'conforme',
@@ -1002,6 +1003,7 @@ export default function RelatorioPage() {
                         {ncs.map((item) => (
                           <li key={item.id} className="rounded-md border border-destructive/20 bg-destructive/5 p-3 text-sm">
                             <p className="font-medium">{item.templateItem?.pergunta}</p>
+                            {nomesLegislacoesDoItem(item) && <p className="mt-1 text-muted-foreground">Legislação: {nomesLegislacoesDoItem(item)}</p>}
                             {item.observacao && <p className="mt-1 text-muted-foreground">Observação: {item.observacao}</p>}
                             {item.descricaoIa && <p className="mt-1 text-muted-foreground">Análise da imagem: {item.descricaoIa}</p>}
                             {item.fotos?.length > 0 && (

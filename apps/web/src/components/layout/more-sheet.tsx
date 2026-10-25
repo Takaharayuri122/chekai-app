@@ -5,6 +5,7 @@ import { LogOut } from 'lucide-react';
 import { useAuthStore } from '@/lib/store';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/shadcn/drawer';
 import { getItensMais } from './navegacao';
+import { podeGerenciarLegislacoes } from '@/lib/legislacao/permissao';
 
 export function MoreSheet({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const { usuario, logout } = useAuthStore();
@@ -17,7 +18,7 @@ export function MoreSheet({ open, onOpenChange }: { open: boolean; onOpenChange:
           <DrawerTitle>Mais opções</DrawerTitle>
         </DrawerHeader>
         <div className="grid grid-cols-3 gap-2 px-4">
-          {getItensMais(usuario.perfil).map((item) => (
+          {getItensMais(usuario.perfil, { podeGerenciarLegislacoes: podeGerenciarLegislacoes(usuario) }).map((item) => (
             <Link
               key={item.href}
               href={item.href}

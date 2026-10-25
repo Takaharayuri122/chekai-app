@@ -27,6 +27,12 @@ export interface ItemNavegacao {
   label: string;
   icon: LucideIcon;
   perfis: PerfilUsuario[];
+  /** Permissão extra além do perfil. */
+  requer?: 'gerenciarLegislacoes';
+}
+
+export interface OpcoesNavegacao {
+  podeGerenciarLegislacoes?: boolean;
 }
 
 export interface GrupoNavegacao {
@@ -48,6 +54,12 @@ export function mostrarAtalhoNovaAuditoria(pathname: string, perfil: PerfilUsuar
 const TODOS = [AUDITOR, GESTOR, MASTER];
 const GESTAO = [GESTOR, MASTER];
 const SO_MASTER = [MASTER];
+
+function visivel(item: ItemNavegacao, perfil: PerfilUsuario, opcoes?: OpcoesNavegacao): boolean {
+  if (!item.perfis.includes(perfil)) return false;
+  if (item.requer === 'gerenciarLegislacoes') return Boolean(opcoes?.podeGerenciarLegislacoes);
+  return true;
+}
 
 const INICIO: ItemNavegacao = { href: '/admin/dashboard', label: 'Início', icon: Home, perfis: TODOS };
 const AUDITORIAS: ItemNavegacao = { href: '/admin/auditorias', label: 'Auditorias', icon: ClipboardCheck, perfis: TODOS };
@@ -74,7 +86,7 @@ const GRUPOS: GrupoNavegacao[] = [
       { href: '/admin/clientes', label: 'Clientes', icon: Building2, perfis: GESTAO },
       { href: '/admin/templates', label: 'Checklists', icon: FileText, perfis: GESTAO },
       { href: '/admin/usuarios', label: 'Equipe', icon: Users, perfis: GESTAO },
-      { href: '/admin/legislacoes', label: 'Legislações', icon: BookOpen, perfis: SO_MASTER },
+      { href: '/admin/legislacoes', label: 'Legislações', icon: BookOpen, perfis: GESTAO, requer: 'gerenciarLegislacoes' },
     ],
   },
   {
@@ -101,24 +113,24 @@ const ROTAS_RELACIONADAS: Record<string, string[]> = {
   '/admin/auditorias': ['/admin/auditoria'],
 };
 
-export function getGruposNavegacao(perfil: PerfilUsuario): GrupoNavegacao[] {
-  return GRUPOS.map((grupo) => ({ ...grupo, itens: grupo.itens.filter((i) => i.perfis.includes(perfil)) })).filter(
+export function getGruposNavegacao(perfil: PerfilUsuario, opcoes?: OpcoesNavegacao): GrupoNavegacao[] {
+  return GRUPOS.map((grupo) => ({ ...grupo, itens: grupo.itens.filter((i) => visivel(i, perfil, opcoes)) })).filter(
     (grupo) => grupo.itens.length > 0,
   );
 }
 
-export function getItensConta(perfil: PerfilUsuario): ItemNavegacao[] {
-  return CONTA.filter((i) => i.perfis.includes(perfil));
+export function getItensConta(perfil: PerfilUsuario, opcoes?: OpcoesNavegacao): ItemNavegacao[] {
+  return CONTA.filter((i) => visivel(i, perfil, opcoes));
 }
 
 export function getBarraInferior(perfil: PerfilUsuario): ItemNavegacao[] {
   return [INICIO, AUDITORIAS, perfil === AUDITOR ? AGENDA : PLANOS_ACAO];
 }
 
-export function getItensMais(perfil: PerfilUsuario): ItemNavegacao[] {
+export function getItensMais(perfil: PerfilUsuario, opcoes?: OpcoesNavegacao): ItemNavegacao[] {
   const naBarra = new Set(getBarraInferior(perfil).map((i) => i.href));
-  const navegacao = getGruposNavegacao(perfil).flatMap((g) => g.itens);
-  return [...navegacao, ...getItensConta(perfil)].filter((i) => !naBarra.has(i.href));
+  const navegacao = getGruposNavegacao(perfil, opcoes).flatMap((g) => g.itens);
+  return [...navegacao, ...getItensConta(perfil, opcoes)].filter((i) => !naBarra.has(i.href));
 }
 
 function casa(pathname: string, base: string): boolean {

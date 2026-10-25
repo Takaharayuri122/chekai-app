@@ -8,6 +8,7 @@ import { useAuthStore } from '@/lib/store';
 import { cn } from '@/lib/cn';
 import { MoreSheet } from './more-sheet';
 import { HREF_NOVA_AUDITORIA, getBarraInferior, getItensMais, isRotaAtiva, mostrarAtalhoNovaAuditoria, type ItemNavegacao } from './navegacao';
+import { podeGerenciarLegislacoes } from '@/lib/legislacao/permissao';
 
 const classeAba = 'flex min-h-[56px] flex-1 flex-col items-center justify-center gap-1 text-[11px] font-medium';
 
@@ -18,7 +19,7 @@ export function BottomBar() {
   if (!usuario) return null;
 
   const [primeiro, segundo, terceiro] = getBarraInferior(usuario.perfil);
-  const maisAtivo = getItensMais(usuario.perfil).some((i) => isRotaAtiva(pathname, i.href));
+  const maisAtivo = getItensMais(usuario.perfil, { podeGerenciarLegislacoes: podeGerenciarLegislacoes(usuario) }).some((i) => isRotaAtiva(pathname, i.href));
   const mostrarNova = mostrarAtalhoNovaAuditoria(pathname, usuario.perfil);
 
   const aba = (item: ItemNavegacao) => {

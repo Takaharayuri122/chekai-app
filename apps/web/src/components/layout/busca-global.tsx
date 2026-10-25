@@ -21,6 +21,7 @@ import {
   itensBuscaAuditorias,
   type ResultadoBusca,
 } from './navegacao';
+import { podeGerenciarLegislacoes } from '@/lib/legislacao/permissao';
 
 export function BuscaGlobal({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const router = useRouter();
@@ -43,6 +44,8 @@ export function BuscaGlobal({ open, onOpenChange }: { open: boolean; onOpenChang
     router.push(href);
   };
 
+  const opcoesNav = { podeGerenciarLegislacoes: podeGerenciarLegislacoes(usuario) };
+
   return (
     <CommandDialog open={open} onOpenChange={onOpenChange} filter={filtroBusca}>
       <CommandInput placeholder="Buscar telas, unidades ou clientes…" />
@@ -54,7 +57,7 @@ export function BuscaGlobal({ open, onOpenChange }: { open: boolean; onOpenChang
             Nova auditoria
           </CommandItem>
         </CommandGroup>
-        {getGruposNavegacao(usuario.perfil).map((grupo) => (
+        {getGruposNavegacao(usuario.perfil, opcoesNav).map((grupo) => (
           <CommandGroup key={grupo.id} heading={grupo.titulo ?? 'Geral'}>
             {grupo.itens.map((item) => (
               <CommandItem key={item.href} value={item.label} onSelect={() => ir(item.href)}>
@@ -65,7 +68,7 @@ export function BuscaGlobal({ open, onOpenChange }: { open: boolean; onOpenChang
           </CommandGroup>
         ))}
         <CommandGroup heading="Conta">
-          {getItensConta(usuario.perfil).map((item) => (
+          {getItensConta(usuario.perfil, opcoesNav).map((item) => (
             <CommandItem key={item.href} value={item.label} onSelect={() => ir(item.href)}>
               <item.icon className="h-4 w-4" />
               {item.label}

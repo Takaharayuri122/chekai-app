@@ -22,7 +22,7 @@ import {
 import { IaService } from './ia.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../../core/decorators/current-user.decorator';
-import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { ArrayMaxSize, IsArray, IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 /**
@@ -44,6 +44,16 @@ class GerarTextoDto {
   @IsString()
   @IsOptional()
   tipoEstabelecimento?: string;
+
+  @ApiPropertyOptional({
+    description: 'Legislações da pergunta, priorizadas no apoio da IA',
+    type: [String],
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(10)
+  @IsUUID('4', { each: true })
+  legislacaoIds?: string[];
 }
 
 /**
@@ -82,6 +92,48 @@ class AnalisarImagemChecklistDto {
   @IsString()
   @IsOptional()
   tipoEstabelecimento?: string;
+
+  @ApiPropertyOptional({
+    description: 'Legislações da pergunta, priorizadas no apoio da IA',
+    type: [String],
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(10)
+  @IsUUID('4', { each: true })
+  legislacaoIds?: string[];
+}
+
+const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+/**
+ * Lê `legislacaoIds` de um corpo multipart: campo repetido, lista JSON ou separado por vírgula.
+ * Valida UUIDs e o máximo de 10 (400 se inválido).
+ */
+export function lerLegislacaoIdsMultipart(valor: unknown): string[] | undefined {
+  if (valor === undefined || valor === null || valor === '') return undefined;
+  let lista: unknown[];
+  if (Array.isArray(valor)) {
+    lista = valor;
+  } else if (typeof valor === 'string') {
+    const texto = valor.trim();
+    if (texto.startsWith('[')) {
+      try {
+        const json = JSON.parse(texto);
+        lista = Array.isArray(json) ? json : [];
+      } catch {
+        throw new BadRequestException('legislacaoIds inválido');
+      }
+    } else {
+      lista = texto.split(',').map((v) => v.trim()).filter(Boolean);
+    }
+  } else {
+    throw new BadRequestException('legislacaoIds inválido');
+  }
+  if (lista.length > 10 || !lista.every((v) => typeof v === 'string' && UUID_V4.test(v))) {
+    throw new BadRequestException('legislacaoIds inválido');
+  }
+  return lista as string[];
 }
 
 /**
@@ -172,6 +224,11 @@ export class IaController {
           type: 'string',
           description: 'Tipo de estabelecimento',
         },
+        legislacaoIds: {
+          type: 'array',
+          items: { type: 'string', format: 'uuid' },
+          description: 'Legislações da pergunta (opcional, até 10)',
+        },
       },
       required: ['imagem', 'perguntaChecklist'],
     },
@@ -191,12 +248,14 @@ export class IaController {
     @Body('categoria') categoria?: string,
     @Body('tipoEstabelecimento') tipoEstabelecimento?: string,
     @CurrentUser() usuario?: { id: string; perfil: any; gestorId?: string | null },
+    @Body('legislacaoIds') legislacaoIds?: unknown,
   ): Promise<{
     descricaoIa: string;
     tipoNaoConformidade: string;
     gravidade: string;
     sugestoes: string[];
     referenciaLegal: string;
+    legislacaoIds: string[];
     imagemRelevante: boolean;
   }> {
     if (!file) {
@@ -212,6 +271,7 @@ export class IaController {
       categoria || 'geral',
       tipoEstabelecimento || 'serviço de alimentação',
       usuario,
+      { legislacaoIds: lerLegislacaoIdsMultipart(legislacaoIds) },
     );
   }
 
@@ -224,6 +284,7 @@ export class IaController {
   ): Promise<{
     descricaoTecnica: string;
     referenciaLegal: string;
+    legislacaoIds: string[];
     riscoEnvolvido: string;
     planoAcao: {
       acoesCorretivas: string[];
@@ -236,6 +297,7 @@ export class IaController {
       dto.descricao,
       dto.tipoEstabelecimento || 'serviço de alimentação',
       usuario,
+      { legislacaoIds: dto.legislacaoIds },
     );
   }
 

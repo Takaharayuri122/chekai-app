@@ -96,6 +96,10 @@ export class UsuarioService {
       telefone: dto.telefone || undefined,
       gestorId: dto.gestorId || undefined,
       tenantId: undefined,
+      podeGerenciarLegislacoes:
+        usuarioCriador?.perfil === PerfilUsuario.MASTER &&
+        (dto.perfil || PerfilUsuario.GESTOR) === PerfilUsuario.GESTOR &&
+        dto.podeGerenciarLegislacoes === true,
       tokenConvite,
       tokenConviteExpiresAt,
     }) as Usuario;
@@ -172,7 +176,7 @@ export class UsuarioService {
   async buscarPorEmail(email: string): Promise<Usuario | null> {
     return this.usuarioRepository.findOne({
       where: { email },
-      select: ['id', 'nome', 'email', 'senhaHash', 'perfil', 'status', 'gestorId', 'tenantId', 'otpCode', 'otpExpiresAt'],
+      select: ['id', 'nome', 'email', 'senhaHash', 'perfil', 'status', 'gestorId', 'tenantId', 'podeGerenciarLegislacoes', 'otpCode', 'otpExpiresAt'],
     });
   }
 
@@ -196,7 +200,21 @@ export class UsuarioService {
         throw new ConflictException('E-mail já cadastrado');
       }
     }
-    Object.assign(usuario, dto);
+    // A permissão de legislações só muda pelo endpoint próprio (apenas Master)
+    const { podeGerenciarLegislacoes: _ignorado, ...dados } = dto;
+    Object.assign(usuario, dados);
+    return this.usuarioRepository.save(usuario);
+  }
+
+  /**
+   * Concede ou retira a permissão de gerenciar legislações de um gestor.
+   */
+  async alterarPermissaoLegislacoes(id: string, podeGerenciarLegislacoes: boolean): Promise<Usuario> {
+    const usuario = await this.buscarPorId(id);
+    if (usuario.perfil !== PerfilUsuario.GESTOR) {
+      throw new BadRequestException('A permissão de legislações vale só para gestores.');
+    }
+    usuario.podeGerenciarLegislacoes = podeGerenciarLegislacoes;
     return this.usuarioRepository.save(usuario);
   }
 

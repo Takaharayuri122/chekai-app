@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Put,
+  Patch,
   Delete,
   Body,
   Param,
@@ -27,6 +28,7 @@ import { ParseFilePipe, MaxFileSizeValidator, FileTypeValidator } from '@nestjs/
 import { UsuarioService } from './usuario.service';
 import { CriarUsuarioDto } from './dto/criar-usuario.dto';
 import { AtualizarUsuarioDto } from './dto/atualizar-usuario.dto';
+import { AlterarPermissaoLegislacoesDto } from './dto/alterar-permissao-legislacoes.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../core/guards/roles.guard';
 import { Roles } from '../../core/decorators/roles.decorator';
@@ -179,6 +181,20 @@ export class UsuarioController {
       throw new ForbiddenException('Apenas o próprio gestor ou Master pode remover a logo');
     }
     return this.usuarioService.atualizar(id, { logoUrl: null });
+  }
+
+  @Patch(':id/permissao-legislacoes')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(PerfilUsuario.MASTER)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Concede ou retira a permissão de gerenciar legislações de um gestor (apenas Master)' })
+  @ApiResponse({ status: 200, description: 'Permissão atualizada' })
+  @ApiResponse({ status: 400, description: 'O usuário não é gestor' })
+  async alterarPermissaoLegislacoes(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: AlterarPermissaoLegislacoesDto,
+  ): Promise<Usuario> {
+    return this.usuarioService.alterarPermissaoLegislacoes(id, dto.podeGerenciarLegislacoes);
   }
 
   @Put(':id')

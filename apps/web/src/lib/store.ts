@@ -16,6 +16,7 @@ export interface Usuario {
   gestorId?: string;
   tenantId?: string;
   logoUrl?: string | null;
+  podeGerenciarLegislacoes?: boolean;
 }
 
 interface AuthState {

@@ -11,16 +11,19 @@ interface ResponsiveDialogProps {
   description?: string;
   children: React.ReactNode;
   footer?: React.ReactNode;
+  /** Sobe acima de outro modal já aberto (ex.: seletor dentro de formulário em modal). */
+  elevado?: boolean;
 }
 
 /** Dialog centralizado no desktop e folha inferior no mobile, com cabeçalho e rodapé fixos e conteúdo rolável. */
-export function ResponsiveDialog({ open, onOpenChange, title, description, children, footer }: ResponsiveDialogProps) {
+export function ResponsiveDialog({ open, onOpenChange, title, description, children, footer, elevado }: ResponsiveDialogProps) {
   const desktop = useMediaQuery('(min-width: 768px)');
+  const z = elevado ? 'z-[70]' : undefined;
 
   if (desktop) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="flex max-h-[90vh] flex-col gap-0 p-0 sm:max-w-lg">
+        <DialogContent overlayClassName={z} className={`flex max-h-[90vh] flex-col gap-0 p-0 sm:max-w-lg ${z ?? ''}`}>
           <DialogHeader className="border-b border-border px-6 py-4">
             <DialogTitle>{title}</DialogTitle>
             {description && <DialogDescription>{description}</DialogDescription>}
@@ -34,7 +37,7 @@ export function ResponsiveDialog({ open, onOpenChange, title, description, child
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent className="flex max-h-[92vh] flex-col">
+      <DrawerContent overlayClassName={z} className={`flex max-h-[92vh] flex-col ${z ?? ''}`}>
         <DrawerHeader className="border-b border-border text-left">
           <DrawerTitle>{title}</DrawerTitle>
           {description && <DrawerDescription>{description}</DrawerDescription>}
