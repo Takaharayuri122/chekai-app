@@ -107,6 +107,14 @@ describe('checklist-import-revisao', () => {
       expect(r.sugestoes[0].alteracoes).not.toContain('tipoResposta');
     });
 
+    it('opção da IA com mais de 100 caracteres é inválida e volta às opções originais', () => {
+      const r = interpretarRespostaIa(
+        resposta([{ chave: 'l3', tipoResposta: 'personalizada', opcoes: [opc('Azul'), opc('a'.repeat(101))] }]),
+        [personalizada],
+      );
+      expect(r.sugestoes[0].configuracaoSugerida.opcoes.map((o) => o.valor)).toEqual(['Azul', 'Verde']);
+    });
+
     it('personalizada com opcoes [] volta ao tipo e opcoes originais', () => {
       const r = interpretarRespostaIa(
         resposta([{ chave: 'l3', tipoResposta: 'personalizada', opcoes: [] }]),

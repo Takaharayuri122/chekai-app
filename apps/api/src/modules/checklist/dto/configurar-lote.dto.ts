@@ -8,6 +8,7 @@ import {
   IsString,
   IsUUID,
   Max,
+  MaxLength,
   Min,
   ValidateIf,
   ValidateNested,
@@ -27,9 +28,22 @@ export const TIPOS_RESPOSTA_LOTE: TipoRespostaLote[] = [
   'data',
 ];
 
+/** Mesmo limite de `auditoria_itens.resposta` (varchar 100), onde a resposta escolhida é gravada. */
+export const TAMANHO_MAXIMO_OPCAO = 100;
+
 export class OpcaoLoteDto {
   @IsString()
+  @MaxLength(TAMANHO_MAXIMO_OPCAO, { message: 'Cada resposta pode ter até 100 caracteres' })
   valor: string;
+
+  @ApiPropertyOptional({
+    description:
+      'Valor que a opção tinha antes da edição (ausente = opção nova). Usado para renomear respostas já dadas (RN-CHK-018)',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(TAMANHO_MAXIMO_OPCAO)
+  valorOriginal?: string;
 
   @ApiPropertyOptional({ description: 'Pontuação da opção (-10 a 10). Null = sem pontuação' })
   @ValidateIf((o) => o.pontuacao != null)
@@ -105,4 +119,6 @@ export interface ResultadoLote {
   ignorados: number;
   auditoriasVinculadas: number;
   simulado: boolean;
+  /** Respostas personalizadas atuais já usadas em auditorias (auditorias distintas por valor). */
+  respostasEmUso: { valor: string; auditorias: number }[];
 }

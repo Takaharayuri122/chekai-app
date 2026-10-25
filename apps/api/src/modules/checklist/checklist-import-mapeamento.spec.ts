@@ -167,6 +167,29 @@ describe('mapearLinhaImportada — pontuação e peso', () => {
     expect(p.configuracao.opcoes.map((o) => o.pontuacao)).toEqual([10, -10]);
     expect(p.motivoConferir).toBe('Pontuação da planilha fora do intervalo de -10 a 10 foi ajustada.');
   });
+
+  it('opções com mais de 100 caracteres são encurtadas e marcadas para conferir', () => {
+    const longa = '  ' + 'a'.repeat(120) + '  ';
+    const p = mapearLinhaImportada(linha({ opcoesResposta: [{ texto: longa }, { texto: ' Não ' }] }), 0);
+    expect(p.configuracao.opcoes.map((o) => o.valor)).toEqual(['a'.repeat(100), 'Não']);
+    expect(p.motivoConferir).toBe('Uma resposta da planilha passou de 100 caracteres e foi encurtada.');
+  });
+
+  it('o aviso de resposta encurtada se soma a um motivo já existente', () => {
+    const p = mapearLinhaImportada(
+      linha({ opcoesResposta: [{ texto: 'a'.repeat(101), pontos: 15 }, { texto: 'Não' }] }),
+      0,
+    );
+    expect(p.motivoConferir).toBe(
+      'Pontuação da planilha fora do intervalo de -10 a 10 foi ajustada. Uma resposta da planilha passou de 100 caracteres e foi encurtada.',
+    );
+  });
+
+  it('opção com exatamente 100 caracteres não é marcada', () => {
+    const p = mapearLinhaImportada(linha({ opcoesResposta: [{ texto: 'a'.repeat(100) }, { texto: 'Não' }] }), 0);
+    expect(p.configuracao.opcoes[0].valor).toHaveLength(100);
+    expect(p.motivoConferir).toBeUndefined();
+  });
 });
 
 describe('mapearTipoResposta', () => {

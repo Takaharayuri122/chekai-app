@@ -621,13 +621,18 @@ function HomePageContent() {
               viewport={{ once: true }}
               className="rounded-2xl overflow-hidden shadow-xl border border-border bg-card"
             >
-              <div className="aspect-video bg-gradient-to-br from-primary/10 to-info/10 flex items-center justify-center">
-                <div className="text-center">
-                  <FileCheck className="w-16 h-16 text-primary/40 mx-auto mb-4" />
-                  <p className="text-muted-foreground">Checklists, normas e cadastros no painel web</p>
-                  <p className="text-sm text-muted-foreground/70 mt-2">Imagem sugerida: tela do painel 1200×800px</p>
-                </div>
-              </div>
+              <Image
+                src="/images/landing/interface-web-checklists.png"
+                alt="Editor de checklist no painel web e auditoria no aplicativo"
+                width={3200}
+                height={1800}
+                sizes="(min-width: 768px) 50vw, 100vw"
+                className="aspect-video h-auto w-full"
+              />
+              <p className="flex items-center gap-2 px-5 py-4 text-sm text-muted-foreground">
+                <FileCheck className="h-4 w-4 text-primary" />
+                Checklists, normas e cadastros no painel web
+              </p>
             </motion.div>
 
             <motion.div
@@ -636,13 +641,18 @@ function HomePageContent() {
               viewport={{ once: true }}
               className="rounded-2xl overflow-hidden shadow-xl border border-border bg-card"
             >
-              <div className="aspect-video bg-gradient-to-br from-info/10 to-primary/10 flex items-center justify-center">
-                <div className="text-center">
-                  <BarChart3 className="w-16 h-16 text-info/40 mx-auto mb-4" />
-                  <p className="text-muted-foreground">Relatórios, PDFs e indicadores para o cliente</p>
-                  <p className="text-sm text-muted-foreground/70 mt-2">Imagem sugerida: relatório ou dashboard 1200×800px</p>
-                </div>
-              </div>
+              <Image
+                src="/images/landing/interface-relatorios.png"
+                alt="Relatório da auditoria no painel web e sincronização no aplicativo"
+                width={3200}
+                height={1800}
+                sizes="(min-width: 768px) 50vw, 100vw"
+                className="aspect-video h-auto w-full"
+              />
+              <p className="flex items-center gap-2 px-5 py-4 text-sm text-muted-foreground">
+                <BarChart3 className="h-4 w-4 text-info" />
+                Relatórios, PDFs e indicadores para o cliente
+              </p>
             </motion.div>
           </div>
         </div>

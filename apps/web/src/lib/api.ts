@@ -720,6 +720,8 @@ export type TipoRespostaLote = 'padrao' | 'personalizada' | 'texto' | 'numero' |
 
 export interface OpcaoLote {
   valor: string;
+  /** Valor da opção antes da edição (ausente = opção nova); usado para atualizar respostas já dadas. */
+  valorOriginal?: string;
   pontuacao?: number | null;
   fotoObrigatoria: boolean;
   observacaoObrigatoria: boolean;
@@ -747,6 +749,13 @@ export interface ResultadoLote {
   ignorados: number;
   auditoriasVinculadas: number;
   simulado: boolean;
+  /** Respostas personalizadas atuais já usadas em auditorias. */
+  respostasEmUso: RespostaEmUso[];
+}
+
+export interface RespostaEmUso {
+  valor: string;
+  auditorias: number;
 }
 
 export interface ConfiguracaoPerguntaImportada {

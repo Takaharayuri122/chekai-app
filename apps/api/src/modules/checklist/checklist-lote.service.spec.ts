@@ -34,6 +34,8 @@ describe('ChecklistLoteService', () => {
   let templateRepository: { findOne: jest.Mock };
   let auditoriaRepository: { count: jest.Mock };
   let save: jest.Mock;
+  let updateQuery: jest.Mock;
+  let consulta: jest.Mock;
   const usuario = { id: 'gestor-1' };
 
   function montarTemplate(itens: TemplateItem[], gestorId = 'gestor-1') {
@@ -47,10 +49,12 @@ describe('ChecklistLoteService', () => {
 
   beforeEach(() => {
     save = jest.fn().mockImplementation((_alvo, itens) => Promise.resolve(itens));
+    updateQuery = jest.fn().mockResolvedValue(undefined);
+    consulta = jest.fn().mockResolvedValue([]);
     templateRepository = { findOne: jest.fn() };
     auditoriaRepository = { count: jest.fn().mockResolvedValue(0) };
     const itemRepository = {
-      manager: { transaction: jest.fn((cb) => cb({ save })) },
+      manager: { transaction: jest.fn((cb) => cb({ save, query: updateQuery })), query: consulta },
     };
     service = new ChecklistLoteService(
       templateRepository as never,
@@ -235,6 +239,7 @@ describe('ChecklistLoteService', () => {
       ignorados: 1,
       auditoriasVinculadas: 3,
       simulado: true,
+      respostasEmUso: [],
     });
   });
 
@@ -244,5 +249,182 @@ describe('ChecklistLoteService', () => {
       service.configurar(TEMPLATE_ID, { alteracoes: { obrigatorio: false } }, usuario),
     ).rejects.toThrow(ForbiddenException);
     expect(save).not.toHaveBeenCalled();
+  });
+
+  describe('respostas personalizadas (RN-CHK-018)', () => {
+    const opcao = (valor: string, valorOriginal?: string) => ({
+      valor,
+      ...(valorOriginal !== undefined ? { valorOriginal } : {}),
+      pontuacao: null,
+      fotoObrigatoria: false,
+      observacaoObrigatoria: false,
+    });
+
+    function itemPersonalizado(id: string, valores: string[]) {
+      return criarItem({
+        id,
+        usarRespostasPersonalizadas: true,
+        opcoesResposta: valores,
+        opcoesRespostaConfig: valores.map((valor) => ({
+          valor,
+          pontuacao: null,
+          fotoObrigatoria: false,
+          observacaoObrigatoria: false,
+        })),
+      });
+    }
+
+    function lote(opcoes: ReturnType<typeof opcao>[], simular = false): ConfigurarLoteDto {
+      return { simular, alteracoes: { tipoResposta: 'personalizada', opcoes } };
+    }
+
+    it('renomear propaga às respostas já dadas com um único UPDATE em CASE, na transação', async () => {
+      montarTemplate([itemPersonalizado('item-1', ['Sim', 'Não']), itemPersonalizado('item-2', ['Sim', 'Não'])]);
+
+      await service.configurar(TEMPLATE_ID, lote([opcao('Conforme', 'Sim'), opcao('Não', 'Não')]), usuario);
+
+      expect(save).toHaveBeenCalledTimes(1);
+      expect(updateQuery).toHaveBeenCalledTimes(1);
+      const [sql, params] = updateQuery.mock.calls[0];
+      expect(sql).toMatch(/UPDATE auditoria_itens SET resposta = CASE/);
+      expect(sql).toMatch(/WHEN resposta = \$1 AND template_item_id = ANY\(\$2\) THEN \$3/);
+      expect(sql).toMatch(/ELSE resposta END/);
+      expect(sql).toMatch(/WHERE template_item_id = ANY\(\$4\) AND resposta = ANY\(\$5\)/);
+      expect(params).toEqual(['Sim', ['item-1', 'item-2'], 'Conforme', ['item-1', 'item-2'], ['Sim']]);
+      const salvos = save.mock.calls[0][1] as TemplateItem[];
+      expect(salvos[0].opcoesResposta).toEqual(['Conforme', 'Não']);
+      expect(salvos[0].opcoesRespostaConfig.map((c) => c.valor)).toEqual(['Conforme', 'Não']);
+      expect(salvos[0].opcoesRespostaConfig[0]).not.toHaveProperty('valorOriginal');
+    });
+
+    it('troca A↔B em um só UPDATE', async () => {
+      montarTemplate([itemPersonalizado('item-1', ['A', 'B'])]);
+
+      await service.configurar(TEMPLATE_ID, lote([opcao('B', 'A'), opcao('A', 'B')]), usuario);
+
+      expect(updateQuery).toHaveBeenCalledTimes(1);
+      const [sql, params] = updateQuery.mock.calls[0];
+      expect(sql).toMatch(/THEN \$3 WHEN resposta = \$4 AND template_item_id = ANY\(\$5\) THEN \$6/);
+      expect(params).toEqual(['A', ['item-1'], 'B', 'B', ['item-1'], 'A', ['item-1'], ['A', 'B']]);
+    });
+
+    it('sem renomeação não executa UPDATE nas auditorias', async () => {
+      montarTemplate([itemPersonalizado('item-1', ['A', 'B'])]);
+      await service.configurar(TEMPLATE_ID, lote([opcao('B', 'B'), opcao('A', 'A')]), usuario);
+      expect(save).toHaveBeenCalled();
+      expect(updateQuery).not.toHaveBeenCalled();
+    });
+
+    it('remover resposta já usada → 400 e nada é salvo', async () => {
+      montarTemplate([itemPersonalizado('item-1', ['Sim', 'Não', 'Talvez'])]);
+      consulta.mockResolvedValue([
+        { templateItemId: 'item-1', resposta: 'Talvez', auditoriaId: 'aud-1' },
+        { templateItemId: 'item-1', resposta: 'Talvez', auditoriaId: 'aud-2' },
+      ]);
+
+      await expect(
+        service.configurar(TEMPLATE_ID, lote([opcao('Sim', 'Sim'), opcao('Não', 'Não')]), usuario),
+      ).rejects.toThrow('A resposta "Talvez" já foi usada em 2 auditorias e não pode ser removida.');
+      expect(save).not.toHaveBeenCalled();
+      expect(updateQuery).not.toHaveBeenCalled();
+    });
+
+    it('na simulação, remover resposta usada não bloqueia: só informa respostasEmUso', async () => {
+      montarTemplate([itemPersonalizado('item-1', ['Sim', 'Não', 'Talvez'])]);
+      consulta.mockResolvedValue([{ templateItemId: 'item-1', resposta: 'Talvez', auditoriaId: 'aud-1' }]);
+
+      const r = await service.configurar(
+        TEMPLATE_ID,
+        lote([opcao('Sim', 'Sim'), opcao('Não', 'Não')], true),
+        usuario,
+      );
+
+      expect(r.respostasEmUso).toEqual([{ valor: 'Talvez', auditorias: 1 }]);
+    });
+
+    it('remover resposta não usada é permitido', async () => {
+      montarTemplate([itemPersonalizado('item-1', ['Sim', 'Não', 'Talvez'])]);
+      consulta.mockResolvedValue([{ templateItemId: 'item-1', resposta: 'Sim', auditoriaId: 'aud-1' }]);
+
+      const r = await service.configurar(TEMPLATE_ID, lote([opcao('Sim', 'Sim'), opcao('Não', 'Não')]), usuario);
+
+      expect(r.totalAfetados).toBe(1);
+      expect((save.mock.calls[0][1] as TemplateItem[])[0].opcoesResposta).toEqual(['Sim', 'Não']);
+    });
+
+    it('simulação devolve respostasEmUso com auditorias distintas', async () => {
+      montarTemplate([itemPersonalizado('item-1', ['Sim', 'Não']), itemPersonalizado('item-2', ['Sim', 'Não'])]);
+      consulta.mockResolvedValue([
+        { templateItemId: 'item-1', resposta: 'Sim', auditoriaId: 'aud-1' },
+        { templateItemId: 'item-2', resposta: 'Sim', auditoriaId: 'aud-1' },
+        { templateItemId: 'item-2', resposta: 'Sim', auditoriaId: 'aud-2' },
+        { templateItemId: 'item-1', resposta: 'Não', auditoriaId: 'aud-3' },
+      ]);
+
+      const r = await service.configurar(
+        TEMPLATE_ID,
+        lote([opcao('Sim', 'Sim'), opcao('Não', 'Não'), opcao('Talvez')], true),
+        usuario,
+      );
+
+      expect(consulta).toHaveBeenCalledWith(expect.stringMatching(/FROM auditoria_itens/), [
+        ['item-1', 'item-2'],
+        ['Sim', 'Não'],
+      ]);
+      expect(r.respostasEmUso).toEqual([
+        { valor: 'Sim', auditorias: 2 },
+        { valor: 'Não', auditorias: 1 },
+      ]);
+      expect(save).not.toHaveBeenCalled();
+    });
+
+    it('respostasEmUso é vazio e não consulta quando nenhum item é personalizado', async () => {
+      montarTemplate([criarItem()]);
+      const r = await service.configurar(TEMPLATE_ID, { alteracoes: { permiteFoto: false } }, usuario);
+      expect(r.respostasEmUso).toEqual([]);
+      expect(consulta).not.toHaveBeenCalled();
+    });
+
+    it('item padrão que vira personalizado não dispara bloqueio nem renomeação', async () => {
+      montarTemplate([criarItem()]);
+      consulta.mockResolvedValue([{ templateItemId: 'item-1', resposta: 'conforme', auditoriaId: 'aud-1' }]);
+
+      await service.configurar(TEMPLATE_ID, lote([opcao('Sim', 'conforme'), opcao('Não')]), usuario);
+
+      expect(save).toHaveBeenCalled();
+      expect(updateQuery).not.toHaveBeenCalled();
+    });
+
+    it('personalizada com menos de 2 respostas → 400', async () => {
+      montarTemplate([itemPersonalizado('item-1', ['Sim', 'Não'])]);
+      await expect(service.configurar(TEMPLATE_ID, lote([opcao('Sim', 'Sim')]), usuario)).rejects.toThrow(
+        BadRequestException,
+      );
+      expect(save).not.toHaveBeenCalled();
+    });
+
+    it('resposta com texto vazio → 400', async () => {
+      montarTemplate([itemPersonalizado('item-1', ['Sim', 'Não'])]);
+      await expect(
+        service.configurar(TEMPLATE_ID, lote([opcao('Sim', 'Sim'), opcao('   ', 'Não')]), usuario),
+      ).rejects.toThrow(BadRequestException);
+      expect(save).not.toHaveBeenCalled();
+    });
+
+    it('respostas duplicadas (ignorando espaços e maiúsculas) → 400', async () => {
+      montarTemplate([itemPersonalizado('item-1', ['Sim', 'Não'])]);
+      await expect(
+        service.configurar(TEMPLATE_ID, lote([opcao('Sim', 'Sim'), opcao(' sim ', 'Não')]), usuario),
+      ).rejects.toThrow(BadRequestException);
+      expect(save).not.toHaveBeenCalled();
+    });
+
+    it('valorOriginal duplicado → 400', async () => {
+      montarTemplate([itemPersonalizado('item-1', ['Sim', 'Não'])]);
+      await expect(
+        service.configurar(TEMPLATE_ID, lote([opcao('Sim', 'Sim'), opcao('Talvez', 'Sim')]), usuario),
+      ).rejects.toThrow(BadRequestException);
+      expect(save).not.toHaveBeenCalled();
+    });
   });
 });
