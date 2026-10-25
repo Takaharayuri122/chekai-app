@@ -8,6 +8,9 @@ interface LandingVideoSectionProps {
   titulo: string;
   subtitulo: string;
   embedUrl: string;
+  /** Vídeo próprio servido em /public; usado quando não há embedUrl. */
+  videoSrc?: string;
+  posterSrc?: string;
   placeholderHint: string;
   instrucaoEnv: string;
   className?: string;
@@ -18,11 +21,14 @@ export function LandingVideoSection({
   titulo,
   subtitulo,
   embedUrl,
+  videoSrc,
+  posterSrc,
   placeholderHint,
   instrucaoEnv,
   className = 'bg-card',
 }: LandingVideoSectionProps) {
   const hasVideo = embedUrl.trim().length > 0;
+  const hasVideoProprio = !hasVideo && Boolean(videoSrc);
   return (
     <section id={sectionId} className={`px-4 py-20 lg:px-8 relative ${className}`}>
       <div className="max-w-7xl mx-auto">
@@ -63,6 +69,16 @@ export function LandingVideoSection({
                 allowFullScreen
               />
             </div>
+          ) : hasVideoProprio ? (
+            <video
+              className="aspect-video w-full bg-muted"
+              src={videoSrc}
+              poster={posterSrc}
+              controls
+              playsInline
+              preload="metadata"
+              aria-label={titulo}
+            />
           ) : (
             <div className="aspect-video bg-gradient-to-br from-primary/10 to-info/10 flex items-center justify-center">
               <div className="text-center px-4">

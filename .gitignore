@@ -50,3 +50,6 @@ Thumbs.db
 # Worktrees locais
 .worktrees/
 .superpowers/
+
+# Vídeos gerados (fontes e quadros)
+brag-output*/
