@@ -10,7 +10,17 @@ import {
   Query,
   UseGuards,
   ParseUUIDPipe,
+  UseInterceptors,
+  UploadedFile,
+  BadRequestException,
+  HttpCode,
+  Injectable,
+  ExecutionContext,
+  CallHandler,
+  PayloadTooLargeException,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { Observable } from 'rxjs';
 import {
   ApiTags,
   ApiOperation,
@@ -27,6 +37,29 @@ import { AtualizarLegislacaoDto } from './dto/atualizar-legislacao.dto';
 import { AlterarAtivoDto } from './dto/alterar-ativo.dto';
 import { ListarLegislacoesQueryDto } from './dto/listar-legislacoes-query.dto';
 import { AdicionarChunksDto, BuscaRagDto } from './dto/chunks.dto';
+import { LerTextoDto } from './dto/ler-texto.dto';
+import { LegislacaoLeituraService, UsuarioAutenticado } from './legislacao-leitura.service';
+import { ehPdf } from './lib/extrair-texto';
+
+const MAX_PDF_BYTES = 20 * 1024 * 1024;
+const MSG_PDF = 'Envie um arquivo PDF de até 20 MB.';
+
+/**
+ * Upload do PDF da legislação (campo `arquivo`); arquivo acima de 20 MB vira 400 com a mensagem da tela.
+ */
+@Injectable()
+class ArquivoPdfInterceptor extends FileInterceptor('arquivo', { limits: { fileSize: MAX_PDF_BYTES } }) {
+  async intercept(context: ExecutionContext, next: CallHandler): Promise<Observable<unknown>> {
+    try {
+      return await super.intercept(context, next);
+    } catch (erro) {
+      if (erro instanceof PayloadTooLargeException) {
+        throw new BadRequestException(MSG_PDF);
+      }
+      throw erro;
+    }
+  }
+}
 
 /**
  * Controller para gestão de legislações e RAG.
@@ -36,7 +69,10 @@ import { AdicionarChunksDto, BuscaRagDto } from './dto/chunks.dto';
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class LegislacaoController {
-  constructor(private readonly legislacaoService: LegislacaoService) {}
+  constructor(
+    private readonly legislacaoService: LegislacaoService,
+    private readonly leituraService: LegislacaoLeituraService,
+  ) {}
 
   @Get('opcoes')
   @ApiOperation({ summary: 'Opções de legislações ativas para os seletores (qualquer usuário logado)' })
@@ -47,13 +83,56 @@ export class LegislacaoController {
 
   @Post()
   @UseGuards(PodeGerenciarLegislacoesGuard)
-  @ApiOperation({ summary: 'Cadastra uma nova legislação' })
-  @ApiResponse({ status: 201, description: 'Legislação criada' })
+  @ApiOperation({ summary: 'Cadastra uma legislação pelo link e inicia a leitura' })
+  @ApiResponse({ status: 201, description: 'Legislação criada, leitura em andamento' })
+  @ApiResponse({ status: 409, description: 'Link já cadastrado (traz o id da existente)' })
   async criarLegislacao(
     @Body() dto: CriarLegislacaoDto,
-    @CurrentUser() usuario: { id: string },
+    @CurrentUser() usuario: UsuarioAutenticado,
   ): Promise<Legislacao> {
-    return this.legislacaoService.criarLegislacao(dto, usuario.id);
+    return this.legislacaoService.criarLegislacao(dto, usuario);
+  }
+
+  @Post(':id/ler-novamente')
+  @HttpCode(200)
+  @UseGuards(PodeGerenciarLegislacoesGuard)
+  @ApiOperation({ summary: 'Lê de novo a legislação pelo link oficial' })
+  @ApiResponse({ status: 200, description: 'Leitura iniciada' })
+  async lerNovamente(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() usuario: UsuarioAutenticado,
+  ): Promise<Legislacao> {
+    return this.leituraService.iniciar(id, usuario, { tipo: 'link' });
+  }
+
+  @Post(':id/arquivo')
+  @HttpCode(200)
+  @UseGuards(PodeGerenciarLegislacoesGuard)
+  @UseInterceptors(ArquivoPdfInterceptor)
+  @ApiOperation({ summary: 'Lê a legislação a partir do PDF enviado' })
+  @ApiResponse({ status: 200, description: 'Leitura iniciada' })
+  async lerArquivo(
+    @Param('id', ParseUUIDPipe) id: string,
+    @UploadedFile() arquivo: Express.Multer.File,
+    @CurrentUser() usuario: UsuarioAutenticado,
+  ): Promise<Legislacao> {
+    if (!arquivo?.buffer?.length || arquivo.size > MAX_PDF_BYTES || !ehPdf(arquivo.buffer, null)) {
+      throw new BadRequestException(MSG_PDF);
+    }
+    return this.leituraService.iniciar(id, usuario, { tipo: 'pdf', buffer: arquivo.buffer });
+  }
+
+  @Post(':id/texto')
+  @HttpCode(200)
+  @UseGuards(PodeGerenciarLegislacoesGuard)
+  @ApiOperation({ summary: 'Lê a legislação a partir do texto colado' })
+  @ApiResponse({ status: 200, description: 'Leitura iniciada' })
+  async lerTexto(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: LerTextoDto,
+    @CurrentUser() usuario: UsuarioAutenticado,
+  ): Promise<Legislacao> {
+    return this.leituraService.iniciar(id, usuario, { tipo: 'texto', texto: dto.texto });
   }
 
   @Get()

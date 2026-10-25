@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException } from '@nestjs/common';
 import { LegislacaoService } from './legislacao.service';
 import { TipoLegislacao } from './entities/legislacao.entity';
+import { LinkInvalidoError } from './lib/url-segura';
 
 describe('LegislacaoService', () => {
   let service: LegislacaoService;
@@ -11,10 +12,14 @@ describe('LegislacaoService', () => {
     remove: jest.Mock;
     save: jest.Mock;
     create: jest.Mock;
+    createQueryBuilder: jest.Mock;
   };
+  let leitura: { validarLink: jest.Mock; iniciar: jest.Mock };
+  let qbGetOne: jest.Mock;
   let chunkRepo: { delete: jest.Mock; findOne: jest.Mock; find: jest.Mock; create: jest.Mock; save: jest.Mock };
 
   beforeEach(() => {
+    qbGetOne = jest.fn().mockResolvedValue(null);
     repo = {
       find: jest.fn(),
       findOne: jest.fn(),
@@ -22,6 +27,10 @@ describe('LegislacaoService', () => {
       remove: jest.fn().mockResolvedValue(undefined),
       save: jest.fn().mockImplementation((l) => Promise.resolve(l)),
       create: jest.fn().mockImplementation((d) => ({ ...d })),
+      createQueryBuilder: jest.fn().mockImplementation(() => {
+        const qb = { select: () => qb, where: () => qb, getOne: qbGetOne };
+        return qb;
+      }),
     };
     chunkRepo = {
       delete: jest.fn().mockResolvedValue(undefined),
@@ -31,7 +40,17 @@ describe('LegislacaoService', () => {
       save: jest.fn(),
     };
     const config = { get: jest.fn().mockReturnValue('sk-teste') };
-    service = new LegislacaoService(repo as never, chunkRepo as never, {} as never, config as never);
+    leitura = {
+      validarLink: jest.fn().mockResolvedValue(undefined),
+      iniciar: jest.fn().mockImplementation((id) => Promise.resolve({ id, statusLeitura: 'lendo' })),
+    };
+    service = new LegislacaoService(
+      repo as never,
+      chunkRepo as never,
+      {} as never,
+      config as never,
+      leitura as never,
+    );
   });
 
   it('listarOpcoes devolve só ativas, ordenadas pelo nome curto', async () => {
@@ -75,9 +94,34 @@ describe('LegislacaoService', () => {
     await expect(service.buscarPorIds(['a', 'b', 'a'])).resolves.toHaveLength(2);
   });
 
-  it('criarLegislacao cria pendente', async () => {
-    const l = await service.criarLegislacao({ linkOficial: 'https://x.gov.br/a', titulo: 'T' }, 'u1');
-    expect(l).toMatchObject({ statusLeitura: 'pendente', criadoPorId: 'u1', titulo: 'T' });
+  it('criarLegislacao normaliza o link, valida antes de gravar e dispara a leitura', async () => {
+    repo.save.mockImplementation((l) => Promise.resolve({ ...l, id: 'nova' }));
+    const usuario = { id: 'u1', perfil: 'gestor' } as never;
+    const l = await service.criarLegislacao({ linkOficial: ' https://X.gov.br/a/#topo ', titulo: 'T' }, usuario);
+    expect(leitura.validarLink).toHaveBeenCalledWith('https://x.gov.br/a');
+    expect(repo.create).toHaveBeenCalledWith(
+      expect.objectContaining({ linkOficial: 'https://x.gov.br/a', criadoPorId: 'u1', titulo: 'T' }),
+    );
+    expect(leitura.iniciar).toHaveBeenCalledWith('nova', usuario, { tipo: 'link' });
+    expect(l).toMatchObject({ id: 'nova', statusLeitura: 'lendo' });
+  });
+
+  it('criarLegislacao com link já cadastrado dá 409 com o id', async () => {
+    qbGetOne.mockResolvedValue({ id: 'existente' });
+    const chamada = service.criarLegislacao({ linkOficial: 'https://x.gov.br/a/', titulo: 'T' }, { id: 'u1' } as never);
+    await expect(chamada).rejects.toThrow(ConflictException);
+    await chamada.catch((e: ConflictException) => {
+      expect(e.getResponse()).toEqual({ message: 'Esta legislação já está cadastrada.', id: 'existente' });
+    });
+    expect(repo.save).not.toHaveBeenCalled();
+  });
+
+  it('criarLegislacao com link não público dá 400 sem gravar', async () => {
+    leitura.validarLink.mockRejectedValue(new LinkInvalidoError('Este link não é um endereço público permitido.'));
+    await expect(
+      service.criarLegislacao({ linkOficial: 'http://10.0.0.1/a', titulo: 'T' }, { id: 'u1' } as never),
+    ).rejects.toThrow(BadRequestException);
+    expect(repo.save).not.toHaveBeenCalled();
   });
 
   it('adicionarChunks continua a ordem a partir do maior existente', async () => {

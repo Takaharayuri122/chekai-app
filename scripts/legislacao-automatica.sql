@@ -22,6 +22,18 @@ ALTER TABLE legislacoes ADD COLUMN IF NOT EXISTS "origemTexto" varchar(10);
 ALTER TABLE legislacoes ADD COLUMN IF NOT EXISTS "criadoPorId" uuid;
 
 -- Dedupe por link (a API normaliza o link antes de comparar).
+-- Bases antigas podem ter links repetidos: mantém o link só na legislação mais antiga.
+UPDATE legislacoes l
+   SET "linkOficial" = NULL
+  FROM (
+    SELECT id,
+           row_number() OVER (PARTITION BY lower("linkOficial") ORDER BY "criadoEm", id) AS posicao
+      FROM legislacoes
+     WHERE "linkOficial" IS NOT NULL
+  ) d
+ WHERE l.id = d.id
+   AND d.posicao > 1;
+
 CREATE UNIQUE INDEX IF NOT EXISTS legislacoes_link_unico
   ON legislacoes (lower("linkOficial"))
   WHERE "linkOficial" IS NOT NULL;

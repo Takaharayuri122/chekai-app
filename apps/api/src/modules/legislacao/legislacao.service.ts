@@ -15,6 +15,8 @@ import { CriarLegislacaoDto } from './dto/criar-legislacao.dto';
 import { AtualizarLegislacaoDto } from './dto/atualizar-legislacao.dto';
 import { ListarLegislacoesQueryDto } from './dto/listar-legislacoes-query.dto';
 import { LegislacaoChunk } from './entities/legislacao-chunk.entity';
+import { LegislacaoLeituraService, UsuarioAutenticado } from './legislacao-leitura.service';
+import { LinkInvalidoError, normalizarLink } from './lib/url-segura';
 
 interface ChunkInput {
   conteudo: string;
@@ -57,6 +59,7 @@ export class LegislacaoService {
     private readonly chunkRepository: Repository<LegislacaoChunk>,
     private readonly supabaseService: SupabaseService,
     private readonly configService: ConfigService,
+    private readonly leituraService: LegislacaoLeituraService,
   ) {
     const apiKey = this.configService.get<string>('OPENAI_API_KEY');
     if (!apiKey) {
@@ -68,20 +71,54 @@ export class LegislacaoService {
   }
 
   /**
-   * Cadastra uma legislação (ainda sem leitura do conteúdo).
+   * Cadastra uma legislação pelo link oficial e dispara a leitura em segundo plano.
+   * Link inválido ou não público → 400; link já cadastrado → 409 com o id da existente.
    */
   async criarLegislacao(
     data: CriarLegislacaoDto,
-    criadoPorId?: string,
+    usuario: UsuarioAutenticado,
   ): Promise<Legislacao> {
+    let linkOficial: string;
+    try {
+      linkOficial = normalizarLink(data.linkOficial);
+      await this.leituraService.validarLink(linkOficial);
+    } catch (erro) {
+      if (erro instanceof LinkInvalidoError) {
+        throw new BadRequestException(erro.message);
+      }
+      throw erro;
+    }
+    await this.garantirLinkNovo(linkOficial);
+
     const legislacao = this.legislacaoRepository.create({
-      linkOficial: data.linkOficial,
+      linkOficial,
       titulo: data.titulo,
       informacoes: data.informacoes ?? null,
       statusLeitura: StatusLeitura.PENDENTE,
-      criadoPorId: criadoPorId ?? null,
+      criadoPorId: usuario.id,
     });
-    return this.legislacaoRepository.save(legislacao);
+    let salva: Legislacao;
+    try {
+      salva = await this.legislacaoRepository.save(legislacao);
+    } catch (erro) {
+      // Corrida com outro cadastro do mesmo link (índice único legislacoes_link_unico).
+      if ((erro as { code?: string })?.code === '23505') {
+        await this.garantirLinkNovo(linkOficial);
+      }
+      throw erro;
+    }
+    return this.leituraService.iniciar(salva.id, usuario, { tipo: 'link' });
+  }
+
+  private async garantirLinkNovo(linkOficial: string): Promise<void> {
+    const existente = await this.legislacaoRepository
+      .createQueryBuilder('legislacao')
+      .select(['legislacao.id'])
+      .where('lower(legislacao.linkOficial) = lower(:linkOficial)', { linkOficial })
+      .getOne();
+    if (existente) {
+      throw new ConflictException({ message: 'Esta legislação já está cadastrada.', id: existente.id });
+    }
   }
 
   /**
