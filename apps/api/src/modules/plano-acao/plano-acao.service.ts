@@ -2,6 +2,7 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException 
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, SelectQueryBuilder } from 'typeorm';
 import { AuditoriaItem } from '../auditoria/entities/auditoria-item.entity';
+import { nomesLegislacoesDoItem } from '../legislacao/lib/legislacoes-do-item';
 import { PerfilUsuario, Usuario } from '../usuario/entities/usuario.entity';
 import { PlanoAcaoTarefa, StatusTarefaPlanoAcao } from './entities/plano-acao-tarefa.entity';
 import {
@@ -87,7 +88,7 @@ export class PlanoAcaoService {
     await this.validarAuditoria(auditoriaId, usuario);
     const itens = await this.itemRepo.find({
       where: { auditoriaId, resposta: 'nao_conforme' },
-      relations: ['templateItem'],
+      relations: ['templateItem', 'legislacoes', 'templateItem.legislacoes'],
     });
     const existentes = await this.repo.find({ where: { auditoriaId }, select: ['titulo'] });
     const titulosExistentes = new Set(existentes.map((t) => t.titulo));
@@ -107,6 +108,7 @@ export class PlanoAcaoService {
           descricao:
             item.planoAcaoFinal || item.planoAcaoSugerido || item.descricaoNaoConformidade || null,
           prazo,
+          referenciaLegal: nomesLegislacoesDoItem(item),
         }),
       );
     if (novas.length > 0) await this.repo.save(novas);

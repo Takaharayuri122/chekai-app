@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Auditoria } from '../entities/auditoria.entity';
 import { AuditoriaItem, RespostaItem } from '../entities/auditoria-item.entity';
+import { nomesLegislacoesDoItem } from '../../legislacao/lib/legislacoes-do-item';
 
 interface GrupoMetricas {
   nome: string;
@@ -1006,6 +1007,8 @@ export class RelatorioHtmlService {
                 ? 'Não Aplicável'
                 : this.escapeHtml(resposta);
 
+        const legislacaoItem = isNaoConforme ? nomesLegislacoesDoItem(item) : null;
+
         html += `
           <div class="item-card ${classeCard}">
             <div class="item-header">
@@ -1029,6 +1032,12 @@ export class RelatorioHtmlService {
                     ? `<div class="item-detail">
                         <span class="item-detail-label item-detail-error">Justificativa: </span>
                         <span class="item-detail-value">${this.escapeHtml(item.descricaoNaoConformidade)}</span>
+                      </div>`
+                    : ''}
+                  ${legislacaoItem
+                    ? `<div class="item-detail">
+                        <span class="item-detail-label">Legislação: </span>
+                        <span class="item-detail-value">${this.escapeHtml(legislacaoItem)}</span>
                       </div>`
                     : ''}
                   ${item.descricaoIa
