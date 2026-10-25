@@ -261,9 +261,7 @@ export default function TemplatesPage() {
           emptyState={{
             icon: FileText,
             title: 'Nenhum checklist encontrado',
-            description: 'Ajuste os filtros ou crie um novo checklist.',
-            actionLabel: 'Criar Checklist',
-            actionHref: '/admin/templates/novo',
+            description: 'Ajuste os filtros ou crie um checklist pelo botão no topo.',
           }}
         />
       </div>

@@ -1366,9 +1366,7 @@ export default function ClientesPage() {
           emptyState={{
             icon: Building2,
             title: 'Nenhum cliente encontrado',
-            description: 'Ajuste os filtros ou cadastre um novo cliente.',
-            actionLabel: 'Novo Cliente',
-            actionOnClick: handleNovoCliente,
+            description: 'Ajuste os filtros ou cadastre um novo cliente pelo botão no topo.',
           }}
         />
       </div>

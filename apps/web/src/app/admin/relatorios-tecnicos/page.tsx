@@ -102,9 +102,7 @@ export default function RelatoriosTecnicosPage() {
           <EmptyState
             icon={FileText}
             title="Nenhum relatório técnico encontrado"
-            description={busca || filtroStatus !== 'todos' ? 'Tente ajustar os filtros.' : 'Crie seu primeiro relatório técnico.'}
-            actionLabel={!busca && filtroStatus === 'todos' ? 'Novo relatório técnico' : undefined}
-            actionHref="/admin/relatorios-tecnicos/novo"
+            description={busca || filtroStatus !== 'todos' ? 'Tente ajustar os filtros.' : 'Crie um relatório pelo botão no topo.'}
           />
         ) : (
           <ul className="space-y-2">

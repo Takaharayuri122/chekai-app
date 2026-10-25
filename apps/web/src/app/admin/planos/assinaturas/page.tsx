@@ -152,9 +152,7 @@ export default function AssinaturasPage() {
           <EmptyState
             icon={UserCheck}
             title="Nenhuma assinatura encontrada"
-            description="Comece criando uma nova assinatura"
-            actionLabel="Nova Assinatura"
-            actionOnClick={() => setShowModal(true)}
+            description="Crie uma assinatura pelo botão no topo."
           />
         ) : (
           <div className="relative flex flex-col rounded-lg border border-border bg-card shadow-sm overflow-hidden">

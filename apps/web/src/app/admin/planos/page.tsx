@@ -179,13 +179,7 @@ export default function PlanosPage() {
           <EmptyState
             icon={Package}
             title="Nenhum plano encontrado"
-            description={
-              busca
-                ? 'Tente ajustar a busca.'
-                : 'Comece criando um novo plano'
-            }
-            actionLabel={!busca ? 'Novo Plano' : undefined}
-            actionOnClick={() => setShowModal(true)}
+            description={busca ? 'Tente ajustar a busca.' : 'Crie um plano pelo botão no topo.'}
           />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

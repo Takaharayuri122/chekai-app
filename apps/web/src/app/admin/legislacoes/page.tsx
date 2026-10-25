@@ -145,18 +145,11 @@ export default function LegislacoesPage() {
             <h3 className="text-lg font-semibold text-foreground mb-2">
               Nenhuma legislação encontrada
             </h3>
-            <p className="text-primary/70 mb-6">
+            <p className="text-primary/70">
               {searchTerm
                 ? 'Tente buscar com outros termos'
-                : 'Adicione legislações para alimentar a base de conhecimento'}
+                : 'Adicione uma legislação pelo botão no topo.'}
             </p>
-            <Link
-              href="/admin/legislacoes/nova"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-primary to-primary text-white rounded-xl font-medium"
-            >
-              <Plus className="w-4 h-4" />
-              Adicionar Legislação
-            </Link>
           </motion.div>
         ) : (
           <div className="space-y-3">
