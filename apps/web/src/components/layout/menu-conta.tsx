@@ -60,7 +60,7 @@ export function MenuConta({ variante, recolhida = false }: { variante: 'sidebar'
           <span className="block truncate text-xs text-muted-foreground">{usuario.email}</span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        {getItensConta(usuario.perfil).map((item) => (
+        {getItensConta(usuario.perfil, { podeGerenciarLegislacoes: usuario.podeGerenciarLegislacoes }).map((item) => (
           <DropdownMenuItem key={item.href} asChild>
             <Link href={item.href}>
               <item.icon className="h-4 w-4" />

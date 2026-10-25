@@ -19,18 +19,28 @@ import {
   legislacaoService,
   TipoLegislacao,
   TIPO_LEGISLACAO_LABELS,
-  CriarLegislacaoRequest,
 } from '@/lib/api';
 import { toastService } from '@/lib/toast';
 
 /**
  * Página de criação de nova legislação.
  */
+// Formulário legado; a tela é refeita na Task 9 (cadastro só pelo link).
+interface FormularioLegislacao {
+  tipo: TipoLegislacao;
+  numero: string;
+  ano: number;
+  titulo: string;
+  ementa: string;
+  orgaoEmissor: string;
+  linkOficial: string;
+}
+
 export default function NovaLegislacaoPage() {
   const router = useRouter();
   const { isAuthenticated } = useAuthStore();
   const [isLoading, setIsLoading] = useState(false);
-  const [formData, setFormData] = useState<CriarLegislacaoRequest>({
+  const [formData, setFormData] = useState<FormularioLegislacao>({
     tipo: TipoLegislacao.RDC,
     numero: '',
     ano: new Date().getFullYear(),
@@ -47,13 +57,13 @@ export default function NovaLegislacaoPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.numero || !formData.titulo) {
+    if (!formData.linkOficial || !formData.titulo) {
       toastService.warning('Preencha os campos obrigatórios');
       return;
     }
     try {
       setIsLoading(true);
-      const legislacao = await legislacaoService.criar(formData);
+      const legislacao = await legislacaoService.criar({ linkOficial: formData.linkOficial, titulo: formData.titulo });
       toastService.success('Legislação criada com sucesso!');
       router.push(`/admin/legislacoes/${legislacao.id}`);
     } catch (error) {
@@ -63,7 +73,7 @@ export default function NovaLegislacaoPage() {
     }
   };
 
-  const handleChange = (field: keyof CriarLegislacaoRequest, value: string | number) => {
+  const handleChange = (field: keyof FormularioLegislacao, value: string | number) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 

@@ -33,8 +33,17 @@ describe('getGruposNavegacao', () => {
     ]);
   });
 
-  it('master vê Legislações e Administração', () => {
-    const grupos = labels(PerfilUsuario.MASTER);
+  it('gestor com a permissão vê Legislações; auditor nunca', () => {
+    const comFlag = getGruposNavegacao(PerfilUsuario.GESTOR, { podeGerenciarLegislacoes: true });
+    expect(comFlag.find((g) => g.id === 'gestao')?.itens.map((i) => i.label)).toEqual(['Clientes', 'Checklists', 'Equipe', 'Legislações']);
+    const auditor = getGruposNavegacao(PerfilUsuario.AUDITOR, { podeGerenciarLegislacoes: true });
+    expect(auditor.flatMap((g) => g.itens.map((i) => i.label))).not.toContain('Legislações');
+    expect(getItensMais(PerfilUsuario.GESTOR, { podeGerenciarLegislacoes: true }).map((i) => i.label)).toContain('Legislações');
+    expect(getItensMais(PerfilUsuario.GESTOR).map((i) => i.label)).not.toContain('Legislações');
+  });
+
+  it('master vê Legislações (flag efetiva da API) e Administração', () => {
+    const grupos = getGruposNavegacao(PerfilUsuario.MASTER, { podeGerenciarLegislacoes: true }).map((g) => ({ id: g.id, itens: g.itens.map((i) => i.label) }));
     expect(grupos.find((g) => g.id === 'gestao')?.itens).toEqual(['Clientes', 'Checklists', 'Equipe', 'Legislações']);
     expect(grupos.find((g) => g.id === 'administracao')?.itens).toEqual([
       'Lista de espera', 'Planos', 'Assinaturas', 'Créditos', 'Consumo de IA',

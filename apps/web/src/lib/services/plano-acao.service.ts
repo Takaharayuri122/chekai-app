@@ -13,6 +13,7 @@ export interface TarefaPlanoAcao {
   id: string;
   titulo: string;
   descricao?: string | null;
+  referenciaLegal?: string | null;
   prazo: string;
   status: StatusTarefaPlanoAcao;
   concluidaEm?: string | null;

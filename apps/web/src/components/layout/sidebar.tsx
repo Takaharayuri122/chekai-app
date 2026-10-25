@@ -40,7 +40,7 @@ export function Sidebar({ recolhida, onAlternar }: { recolhida: boolean; onAlter
   const pathname = usePathname();
   const { usuario } = useAuthStore();
   if (!usuario) return null;
-  const grupos = getGruposNavegacao(usuario.perfil);
+  const grupos = getGruposNavegacao(usuario.perfil, { podeGerenciarLegislacoes: usuario.podeGerenciarLegislacoes });
   const hrefAtivo = getHrefAtivo(pathname, grupos.flatMap((g) => g.itens));
 
   return (

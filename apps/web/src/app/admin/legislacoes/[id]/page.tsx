@@ -83,7 +83,16 @@ export default function LegislacaoDetalhesPage() {
   const handleSave = async () => {
     try {
       setIsSaving(true);
-      await legislacaoService.atualizar(id, formData);
+      const { numero, ano, ementa, orgaoEmissor, linkOficial, tipo, titulo } = formData;
+      await legislacaoService.atualizar(id, {
+        tipo,
+        numero: numero ?? undefined,
+        ano: ano ?? undefined,
+        titulo,
+        ementa,
+        orgaoEmissor,
+        linkOficial,
+      });
       toastService.success('Legislação atualizada com sucesso!');
       setIsEditing(false);
       loadData();

@@ -23,6 +23,7 @@ import {
   StatusUsuario,
   CriarUsuarioRequest,
 } from '@/lib/api';
+import { Switch } from '@/components/ui/shadcn/switch';
 import { useAuthStore } from '@/lib/store';
 import { toastService } from '@/lib/toast';
 
@@ -59,6 +60,7 @@ export default function UsuariosPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [reenviandoConviteId, setReenviandoConviteId] = useState<string | null>(null);
+  const [permissaoInicial, setPermissaoInicial] = useState(false);
 
   const [usuarioForm, setUsuarioForm] = useState<CriarUsuarioRequest>({
     nome: '',
@@ -130,15 +132,39 @@ export default function UsuariosPage() {
     setSaving(true);
     try {
       if (editingUsuario) {
+        // A permissão tem endpoint próprio (só MASTER) e não vai no PUT genérico.
+        const { podeGerenciarLegislacoes, ...dadosUsuario } = usuarioForm;
         const dadosParaEnviar: Partial<CriarUsuarioRequest> = {
-          ...usuarioForm,
+          ...dadosUsuario,
           telefone: usuarioForm.telefone ? removerMascaraTelefone(usuarioForm.telefone) : undefined,
         };
-        await usuarioService.atualizar(editingUsuario.id, dadosParaEnviar);
+        const mudouPermissao =
+          mostrarPermissaoLegislacoes && Boolean(podeGerenciarLegislacoes) !== permissaoInicial;
+        let falhou = false;
+        try {
+          await usuarioService.atualizar(editingUsuario.id, dadosParaEnviar);
+        } catch {
+          falhou = true;
+        }
+        if (mudouPermissao) {
+          try {
+            await usuarioService.alterarPermissaoLegislacoes(editingUsuario.id, Boolean(podeGerenciarLegislacoes));
+          } catch {
+            falhou = true;
+          }
+        }
+        if (falhou) {
+          await carregarUsuarios();
+          return;
+        }
         toastService.success('Usuário atualizado com sucesso!');
       } else {
+        const { podeGerenciarLegislacoes, ...dadosCriacao } = usuarioForm;
         const dadosParaEnviar: CriarUsuarioRequest = {
-          ...usuarioForm,
+          ...dadosCriacao,
+          ...(isMaster() && usuarioForm.perfil === PerfilUsuario.GESTOR
+            ? { podeGerenciarLegislacoes: Boolean(podeGerenciarLegislacoes) }
+            : {}),
           gestorId: isGestor() && !isMaster() && usuarioForm.perfil === PerfilUsuario.AUDITOR
             ? (usuarioForm.gestorId || usuario?.id)
             : usuarioForm.gestorId,
@@ -166,7 +192,9 @@ export default function UsuariosPage() {
       }
     }
     setEditingUsuario(usuarioItem);
+    setPermissaoInicial(Boolean(usuarioItem.podeGerenciarLegislacoes));
     setUsuarioForm({
+      podeGerenciarLegislacoes: Boolean(usuarioItem.podeGerenciarLegislacoes),
       nome: usuarioItem.nome,
       email: usuarioItem.email,
       telefone: usuarioItem.telefone ? aplicarMascaraTelefone(usuarioItem.telefone) : '',
@@ -229,6 +257,8 @@ export default function UsuariosPage() {
   if (!isMaster() && !isGestor()) {
     return null;
   }
+
+  const mostrarPermissaoLegislacoes = isMaster() && usuarioForm.perfil === PerfilUsuario.GESTOR;
 
   return (
     <AppLayout>
@@ -571,6 +601,23 @@ export default function UsuariosPage() {
                   </option>
                 ))}
               </select>
+            </div>
+          )}
+          {mostrarPermissaoLegislacoes && (
+            <div className="flex items-start justify-between gap-4 rounded-md border border-border p-3">
+              <div className="space-y-0.5">
+                <label htmlFor="permissao-legislacoes" className="text-sm font-medium text-foreground">
+                  Pode gerenciar legislações
+                </label>
+                <p className="text-xs text-muted-foreground">
+                  Cadastra e mantém a base de legislações usada pela IA e nos checklists
+                </p>
+              </div>
+              <Switch
+                id="permissao-legislacoes"
+                checked={Boolean(usuarioForm.podeGerenciarLegislacoes)}
+                onCheckedChange={(valor) => setUsuarioForm({ ...usuarioForm, podeGerenciarLegislacoes: valor })}
+              />
             </div>
           )}
           {!editingUsuario && (

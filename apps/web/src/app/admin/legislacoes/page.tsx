@@ -71,7 +71,7 @@ export default function LegislacoesPage() {
   const legislacoesFiltradas = legislacoes.filter(
     (leg) =>
       leg.titulo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      leg.numero.includes(searchTerm) ||
+      leg.numero?.includes(searchTerm) ||
       leg.orgaoEmissor?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 

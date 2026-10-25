@@ -17,7 +17,7 @@ export function MoreSheet({ open, onOpenChange }: { open: boolean; onOpenChange:
           <DrawerTitle>Mais opções</DrawerTitle>
         </DrawerHeader>
         <div className="grid grid-cols-3 gap-2 px-4">
-          {getItensMais(usuario.perfil).map((item) => (
+          {getItensMais(usuario.perfil, { podeGerenciarLegislacoes: usuario.podeGerenciarLegislacoes }).map((item) => (
             <Link
               key={item.href}
               href={item.href}

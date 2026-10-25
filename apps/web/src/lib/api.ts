@@ -161,6 +161,7 @@ export interface LoginResponse {
     perfil: PerfilUsuario;
     gestorId?: string;
     tenantId?: string;
+    podeGerenciarLegislacoes?: boolean;
   };
 }
 
@@ -183,6 +184,7 @@ export interface CriarUsuarioRequest {
   perfil?: PerfilUsuario;
   gestorId?: string;
   planoId?: string;
+  podeGerenciarLegislacoes?: boolean;
 }
 
 export const authService = {
@@ -222,7 +224,7 @@ export const authService = {
     return response.data.data;
   },
 
-  async me(): Promise<{ id: string; email: string; perfil: string }> {
+  async me(): Promise<{ id: string; email: string; perfil: string; podeGerenciarLegislacoes: boolean }> {
     const response = await api.get('/auth/me');
     return response.data.data;
   },
@@ -275,6 +277,7 @@ export interface Usuario {
   gestorId?: string;
   tenantId?: string;
   logoUrl?: string | null;
+  podeGerenciarLegislacoes?: boolean;
   criadoEm: string;
   atualizadoEm: string;
 }
@@ -309,6 +312,11 @@ export const usuarioService = {
 
   async atualizar(id: string, data: Partial<CriarUsuarioRequest>): Promise<Usuario> {
     const response = await api.put(`/usuarios/${id}`, data);
+    return response.data.data;
+  },
+
+  async alterarPermissaoLegislacoes(id: string, podeGerenciarLegislacoes: boolean): Promise<Usuario> {
+    const response = await api.patch(`/usuarios/${id}/permissao-legislacoes`, { podeGerenciarLegislacoes });
     return response.data.data;
   },
 
@@ -644,6 +652,7 @@ export interface TemplateItem {
   grupoId?: string;
   grupo?: ChecklistGrupo;
   secao?: string;
+  legislacoes?: LegislacaoResumo[];
   ativo: boolean;
 }
 
@@ -696,6 +705,7 @@ export interface CriarTemplateItemRequest {
   opcoesRespostaConfig?: OpcaoRespostaConfig[];
   permiteFoto?: boolean;
   permiteObservacao?: boolean;
+  legislacaoIds?: string[];
 }
 
 export interface CriarGrupoRequest {
@@ -1011,6 +1021,7 @@ export interface AuditoriaItem {
   complementoDescricao: string;
   planoAcaoSugerido: string;
   referenciaLegal: string;
+  legislacoes?: LegislacaoResumo[];
   templateItem: TemplateItem;
   fotos: { id: string; url: string; analiseIa?: string; exif?: Record<string, unknown> | null }[];
 }
@@ -1022,6 +1033,7 @@ export interface AnaliseChecklistResponse {
   sugestoes: string[];
   referenciaLegal: string;
   imagemRelevante: boolean;
+  legislacaoIds?: string[];
 }
 
 export const auditoriaService = {
@@ -1062,6 +1074,7 @@ export const auditoriaService = {
       complementoDescricao?: string;
       planoAcaoSugerido?: string;
       referenciaLegal?: string;
+      legislacaoIds?: string[];
     }
   ): Promise<AuditoriaItem> {
     const response = await api.put(`/auditorias/${auditoriaId}/itens/${itemId}`, {
@@ -1183,29 +1196,75 @@ export interface LegislacaoChunk {
   ordem: number;
 }
 
+export type SituacaoLegislacao = 'vigente' | 'vigente_com_alteracoes' | 'revogada';
+export type StatusLeitura = 'pendente' | 'lendo' | 'concluida' | 'falhou';
+export type OrigemTexto = 'link' | 'pdf' | 'texto';
+
 export interface Legislacao {
   id: string;
   tipo: TipoLegislacao;
-  numero: string;
-  ano: number;
+  numero: string | null;
+  ano: number | null;
   titulo: string;
   ementa?: string;
   orgaoEmissor?: string;
   linkOficial?: string;
+  informacoes?: string | null;
+  situacao: SituacaoLegislacao | null;
+  dataPublicacao: string | null;
+  statusLeitura: StatusLeitura;
+  erroLeitura?: string | null;
+  lidoEm?: string | null;
+  origemTexto: OrigemTexto | null;
   ativo: boolean;
+  /** Presente na listagem. */
+  totalTrechos?: number;
   chunks?: LegislacaoChunk[];
   criadoEm: string;
   atualizadoEm: string;
 }
 
+/** Opção dos seletores de legislação (apenas ativas). */
+export interface LegislacaoOpcao {
+  id: string;
+  nome: string;
+  titulo: string;
+  situacao: SituacaoLegislacao | null;
+}
+
+/** Resumo da legislação vinculada a um item de checklist ou de auditoria. */
+export interface LegislacaoResumo {
+  id: string;
+  tipo: TipoLegislacao;
+  numero: string | null;
+  ano: number | null;
+  titulo: string;
+  situacao: SituacaoLegislacao | null;
+}
+
 export interface CriarLegislacaoRequest {
+  linkOficial: string;
+  titulo: string;
+  informacoes?: string;
+}
+
+export type AtualizarLegislacaoRequest = Partial<{
   tipo: TipoLegislacao;
   numero: string;
   ano: number;
   titulo: string;
-  ementa?: string;
-  orgaoEmissor?: string;
-  linkOficial?: string;
+  ementa: string;
+  orgaoEmissor: string;
+  linkOficial: string;
+  informacoes: string;
+  situacao: SituacaoLegislacao;
+  dataPublicacao: string;
+}>;
+
+export interface FiltrosLegislacoes {
+  busca?: string;
+  statusLeitura?: StatusLeitura;
+  ativo?: boolean;
 }
 
 export interface CriarChunkRequest {
@@ -1216,8 +1275,17 @@ export interface CriarChunkRequest {
 }
 
 export const legislacaoService = {
-  async listar(): Promise<Legislacao[]> {
-    const response = await api.get('/legislacoes');
+  async opcoes(): Promise<LegislacaoOpcao[]> {
+    const response = await api.get('/legislacoes/opcoes');
+    return response.data.data;
+  },
+
+  async listar(filtros: FiltrosLegislacoes = {}): Promise<Legislacao[]> {
+    const params: Record<string, string> = {};
+    if (filtros.busca) params.busca = filtros.busca;
+    if (filtros.statusLeitura) params.statusLeitura = filtros.statusLeitura;
+    if (filtros.ativo !== undefined) params.ativo = String(filtros.ativo);
+    const response = await api.get('/legislacoes', { params });
     return response.data.data;
   },
 
@@ -1231,8 +1299,32 @@ export const legislacaoService = {
     return response.data.data;
   },
 
-  async atualizar(id: string, data: Partial<CriarLegislacaoRequest>): Promise<Legislacao> {
+  async atualizar(id: string, data: AtualizarLegislacaoRequest): Promise<Legislacao> {
     const response = await api.put(`/legislacoes/${id}`, data);
+    return response.data.data;
+  },
+
+  async lerNovamente(id: string): Promise<Legislacao> {
+    const response = await api.post(`/legislacoes/${id}/ler-novamente`);
+    return response.data.data;
+  },
+
+  async enviarArquivo(id: string, arquivo: File): Promise<Legislacao> {
+    const formData = new FormData();
+    formData.append('arquivo', arquivo);
+    const response = await api.post(`/legislacoes/${id}/arquivo`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data.data;
+  },
+
+  async enviarTexto(id: string, texto: string): Promise<Legislacao> {
+    const response = await api.post(`/legislacoes/${id}/texto`, { texto });
+    return response.data.data;
+  },
+
+  async alterarAtivo(id: string, ativo: boolean): Promise<Legislacao> {
+    const response = await api.patch(`/legislacoes/${id}/ativo`, { ativo });
     return response.data.data;
   },
 
@@ -1269,6 +1361,7 @@ export interface AnaliseImagemResponse {
 export interface GeracaoTextoResponse {
   descricaoTecnica: string;
   referenciaLegal: string;
+  legislacaoIds?: string[];
   riscoEnvolvido: string;
   planoAcao: {
     acoesCorretivas: string[];
@@ -1584,6 +1677,7 @@ export const iaService = {
     perguntaChecklist: string,
     categoria?: string,
     tipoEstabelecimento?: string,
+    legislacaoIds?: string[],
   ): Promise<AnaliseChecklistResponse> {
     const formData = new FormData();
     formData.append('imagem', file);
@@ -1594,6 +1688,7 @@ export const iaService = {
     if (tipoEstabelecimento) {
       formData.append('tipoEstabelecimento', tipoEstabelecimento);
     }
+    legislacaoIds?.forEach((id) => formData.append('legislacaoIds', id));
     const response = await api.post('/ia/analisar-checklist', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
@@ -1602,10 +1697,11 @@ export const iaService = {
     return response.data.data;
   },
 
-  async gerarTexto(descricao: string, tipoEstabelecimento?: string): Promise<GeracaoTextoResponse> {
+  async gerarTexto(descricao: string, tipoEstabelecimento?: string, legislacaoIds?: string[]): Promise<GeracaoTextoResponse> {
     const response = await api.post('/ia/gerar-texto', {
       descricao,
       tipoEstabelecimento,
+      ...(legislacaoIds?.length ? { legislacaoIds } : {}),
     });
     return response.data.data;
   },

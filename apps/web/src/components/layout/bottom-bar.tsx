@@ -18,7 +18,7 @@ export function BottomBar() {
   if (!usuario) return null;
 
   const [primeiro, segundo, terceiro] = getBarraInferior(usuario.perfil);
-  const maisAtivo = getItensMais(usuario.perfil).some((i) => isRotaAtiva(pathname, i.href));
+  const maisAtivo = getItensMais(usuario.perfil, { podeGerenciarLegislacoes: usuario.podeGerenciarLegislacoes }).some((i) => isRotaAtiva(pathname, i.href));
   const mostrarNova = mostrarAtalhoNovaAuditoria(pathname, usuario.perfil);
 
   const aba = (item: ItemNavegacao) => {
