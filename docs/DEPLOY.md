@@ -58,9 +58,15 @@ Configuração do serviço web:
 - **Start**: `npm run start --workspace=@meta-app/web` (`next start --hostname 0.0.0.0`; a porta vem de `PORT`)
 - **Arquivo**: `apps/web/railway.json`
 
-## Scripts SQL antes do deploy da API
+## Alterações no banco (Supabase)
 
-O `synchronize` do TypeORM fica desligado: colunas novas entram por scripts em `scripts/`, rodados no banco **antes** de publicar a API que depende delas. Se a API subir antes, as consultas falham por coluna inexistente.
+O `synchronize` do TypeORM fica desligado. Toda alteração no banco entra como migration em `supabase/migrations/`, com o nome `<AAAAMMDDHHMMSS>_<nome>.sql` (ex.: `20261025120000_legislacao_automatica.sql`), e roda automaticamente. O SQL deve poder rodar mais de uma vez (`IF NOT EXISTS`, `CREATE OR REPLACE`).
+
+A migration precisa estar aplicada **antes** de a API que depende dela entrar no ar; se a API subir antes, as consultas falham por coluna inexistente.
+
+### Scripts antigos em `scripts/`
+
+Os scripts abaixo são de antes dessa regra e foram rodados à mão. Ficam só como histórico; não criar novos em `scripts/`.
 
 | Release | Script | Observação |
 |---------|--------|------------|

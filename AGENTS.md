@@ -10,7 +10,7 @@
 - Interfaces de checklist: tooltips em todas as ações, ícones sempre visíveis (não só hover), botões `btn-square`, ordem: duplicar → editar → remover; exclusões com `ConfirmDialog`, não `confirm()` nativo
 - PDFs e downloads: preferir abrir/visualizar no navegador (nova aba) quando a intenção for "ver o arquivo"; tratar bloqueio de pop-up com orientação ao usuário e download manual; durante geração de PDF de relatório, usar overlay de carregamento em tela cheia alinhado ao padrão visual dos modais
 - Fotos em itens de auditoria: permitir múltiplas seleções, upload e processamento de IA em sequência (não paralelo), feedback visual imediato, grid de duas colunas no mobile
-- Para mudanças de schema no banco, preferir scripts SQL em `scripts/` em vez de migrations do TypeORM
+- Toda alteração no banco (Supabase: tabelas, colunas, índices, funções/RPC, policies) vai em `supabase/migrations/<AAAAMMDDHHMMSS>_<nome>.sql` para rodar automaticamente — nunca migrations do TypeORM nem scripts soltos em `scripts/` (pasta legada, só para consulta); escrever o SQL idempotente (`IF NOT EXISTS`, `CREATE OR REPLACE`) e terminar com `NOTIFY pgrst, 'reload schema'` quando mexer em colunas ou funções expostas
 - Isolamento e autorização de dados devem ser garantidos na API (não só no front); regras de vínculo gestor/consultor/tenant prevalecem para todos os perfis
 - Ocultar o FAB de check-in/checkout nas áreas de checklist, auditoria e relatórios para evitar controles duplicados
 - Quando funcionalidade envolver IA, respeitar auditoria de tokens e regras do projeto (`.cursor/rules/auditoria-tokens.mdc`)
