@@ -21,6 +21,7 @@ import {
   itensBuscaAuditorias,
   type ResultadoBusca,
 } from './navegacao';
+import { podeGerenciarLegislacoes } from '@/lib/legislacao/permissao';
 
 export function BuscaGlobal({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const router = useRouter();
@@ -43,7 +44,7 @@ export function BuscaGlobal({ open, onOpenChange }: { open: boolean; onOpenChang
     router.push(href);
   };
 
-  const opcoesNav = { podeGerenciarLegislacoes: usuario.podeGerenciarLegislacoes };
+  const opcoesNav = { podeGerenciarLegislacoes: podeGerenciarLegislacoes(usuario) };
 
   return (
     <CommandDialog open={open} onOpenChange={onOpenChange} filter={filtroBusca}>

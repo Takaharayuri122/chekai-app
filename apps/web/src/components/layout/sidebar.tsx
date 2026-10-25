@@ -9,6 +9,7 @@ import { cn } from '@/lib/cn';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/shadcn/tooltip';
 import { MenuConta } from './menu-conta';
 import { getGruposNavegacao, getHrefAtivo, type ItemNavegacao } from './navegacao';
+import { podeGerenciarLegislacoes } from '@/lib/legislacao/permissao';
 
 function LinkSidebar({ item, ativo, recolhida }: { item: ItemNavegacao; ativo: boolean; recolhida: boolean }) {
   const link = (
@@ -40,7 +41,7 @@ export function Sidebar({ recolhida, onAlternar }: { recolhida: boolean; onAlter
   const pathname = usePathname();
   const { usuario } = useAuthStore();
   if (!usuario) return null;
-  const grupos = getGruposNavegacao(usuario.perfil, { podeGerenciarLegislacoes: usuario.podeGerenciarLegislacoes });
+  const grupos = getGruposNavegacao(usuario.perfil, { podeGerenciarLegislacoes: podeGerenciarLegislacoes(usuario) });
   const hrefAtivo = getHrefAtivo(pathname, grupos.flatMap((g) => g.itens));
 
   return (
