@@ -26,6 +26,60 @@ export function bloqueiaPorImagemIrrelevante(item: AuditoriaItem, temImagemIrrel
   return temImagemIrrelevante && aceitaObservacao(item) && (!observacao || observacao.trim() === '');
 }
 
+export type SecaoRegistro = 'fotos' | 'observacao';
+
+export interface ExigenciasResposta {
+  fotoObrigatoria: boolean;
+  observacaoObrigatoria: boolean;
+}
+
+/** Sem configs vale a regra antiga (observação obrigatória); nunca exige o que a pergunta não aceita. */
+export function exigenciasDaResposta(item: AuditoriaItem, resposta = item.resposta ?? ''): ExigenciasResposta {
+  if (!resposta || resposta === 'nao_avaliado') return { fotoObrigatoria: false, observacaoObrigatoria: false };
+  const configs = item.templateItem?.opcoesRespostaConfig;
+  const base = !configs || configs.length === 0
+    ? { fotoObrigatoria: false, observacaoObrigatoria: true }
+    : configs.find((c) => c.valor === resposta) ?? { fotoObrigatoria: false, observacaoObrigatoria: false };
+  return {
+    fotoObrigatoria: aceitaFoto(item) && Boolean(base.fotoObrigatoria),
+    observacaoObrigatoria: aceitaObservacao(item) && Boolean(base.observacaoObrigatoria),
+  };
+}
+
+export interface EstadoRegistro {
+  fotos: number;
+  observacao: string;
+  temImagemIrrelevante: boolean;
+}
+
+/**
+ * O que impede salvar a janela aberta (null = pode salvar). Cada janela cobra só o que é dela;
+ * a foto irrelevante é a exceção e sempre leva para a observação.
+ */
+export function pendenciaDoRegistro(
+  item: AuditoriaItem,
+  secao: SecaoRegistro,
+  estado: EstadoRegistro,
+): { secao: SecaoRegistro; mensagem: string } | null {
+  const temObservacao = estado.observacao.trim() !== '';
+  const respondido = Boolean(item.resposta && item.resposta !== 'nao_avaliado');
+  const exige = exigenciasDaResposta(item);
+  if (secao === 'fotos') {
+    if (!respondido && estado.fotos === 0) return { secao, mensagem: 'Adicione pelo menos uma foto ou selecione uma resposta' };
+    if (exige.fotoObrigatoria && estado.fotos === 0) return { secao, mensagem: 'Esta resposta requer pelo menos uma foto' };
+  } else {
+    if (!respondido && !temObservacao) return { secao, mensagem: 'Escreva a observação ou selecione uma resposta' };
+    if (exige.observacaoObrigatoria && !temObservacao) return { secao, mensagem: 'Esta resposta requer uma observação' };
+  }
+  if (bloqueiaPorImagemIrrelevante(item, estado.temImagemIrrelevante, estado.observacao)) {
+    return {
+      secao: 'observacao',
+      mensagem: 'Por favor, remova as imagens inadequadas ou adicione uma observação explicando por que a imagem é relevante.',
+    };
+  }
+  return null;
+}
+
 export function estaRespondido(item: AuditoriaItem): boolean {
   const r = item.resposta;
   return Boolean(r && r.trim() !== '' && r !== 'nao_avaliado');

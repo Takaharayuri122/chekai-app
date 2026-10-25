@@ -39,7 +39,9 @@ import {
   podeFinalizar,
   aceitaFoto,
   aceitaObservacao,
-  bloqueiaPorImagemIrrelevante,
+  pendenciaDoRegistro,
+  exigenciasDaResposta,
+  type SecaoRegistro,
   statusItem,
 } from '@/lib/auditoria/execucao';
 import { SeletorLegislacoes } from '@/components/legislacao/seletor-legislacoes';
@@ -98,7 +100,7 @@ export default function AuditoriaPage() {
 
   // Modal de foto + IA
   const [itemModal, setItemModal] = useState<ItemModalState | null>(null);
-  const [activeTab, setActiveTab] = useState<'fotos' | 'observacao'>('fotos');
+  const [secaoModal, setSecaoModal] = useState<SecaoRegistro>('fotos');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const desktop = useMediaQuery('(min-width: 1024px)');
   const [selecionadoId, setSelecionadoId] = useState<string | null>(null);
@@ -121,7 +123,6 @@ export default function AuditoriaPage() {
     }
   }, [itemModal, voltarAoPainel]);
 
-  const prevItemIdRef = useRef<string | null>(null);
 
   const formatarHora = (data: Date) => {
     return data.toLocaleTimeString('pt-BR', {
@@ -152,37 +153,6 @@ export default function AuditoriaPage() {
   useEffect(() => {
     carregarAuditoria();
   }, [carregarAuditoria]);
-
-  // Quando abrir modal, definir tab inicial (sempre fotos; obrigatoriedade não esconde a tab)
-  useEffect(() => {
-    if (itemModal) {
-      if (prevItemIdRef.current !== itemModal.item.id) {
-        setActiveTab('fotos');
-        prevItemIdRef.current = itemModal.item.id;
-      }
-    } else {
-      prevItemIdRef.current = null;
-    }
-  }, [itemModal]);
-
-  // Keyboard shortcuts for tab navigation
-  useEffect(() => {
-    const handleKeyPress = (e: KeyboardEvent) => {
-      if (!itemModal) return;
-
-      // Alt+1 = Fotos, Alt+2 = Observação
-      if (e.altKey && e.key === '1') {
-        e.preventDefault();
-        setActiveTab('fotos');
-      } else if (e.altKey && e.key === '2') {
-        e.preventDefault();
-        setActiveTab('observacao');
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyPress);
-    return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [itemModal]);
 
   useEffect(() => {
     if (!auditoria || selecionadoId) return;
@@ -279,7 +249,8 @@ export default function AuditoriaPage() {
     }
   };
 
-  const openPhotoModal = (item: AuditoriaItem) => {
+  const openPhotoModal = (item: AuditoriaItem, secao: SecaoRegistro) => {
+    setSecaoModal(secao);
     const isFinalizada = auditoria?.status === 'finalizada';
     // Carregar fotos existentes do item com suas análises
     const fotosExistentes: FotoPreview[] = (item.fotos || []).map((foto) => {
@@ -555,46 +526,11 @@ export default function AuditoriaPage() {
     }
   };
 
-  const getOpcaoConfig = (item: AuditoriaItem, resposta: string) => {
-    const base = getOpcaoConfigBruta(item, resposta);
-    return {
-      ...base,
-      fotoObrigatoria: aceitaFoto(item) ? base.fotoObrigatoria : false,
-      observacaoObrigatoria: aceitaObservacao(item) ? base.observacaoObrigatoria : false,
-    };
-  };
-
-  /** Aba efetiva do modal: evita ficar numa aba oculta quando a pergunta não aceita foto/observação. */
-  const abaEfetiva = (item: AuditoriaItem): 'fotos' | 'observacao' => {
-    const mostraFotos = aceitaFoto(item) || (itemModal?.fotos.length ?? 0) > 0;
-    const mostraObs = aceitaObservacao(item) || Boolean(itemModal?.observacao);
-    if (activeTab === 'fotos' && !mostraFotos && mostraObs) return 'observacao';
-    if (activeTab === 'observacao' && !mostraObs && mostraFotos) return 'fotos';
-    return activeTab;
-  };
-
-  const getOpcaoConfigBruta = (item: AuditoriaItem, resposta: string) => {
-    const configs = item.templateItem.opcoesRespostaConfig;
-
-
-    if (!configs || configs.length === 0) {
-      console.log('⚠️ Usando comportamento legado (sem configs)');
-      // Comportamento legado: observação sempre obrigatória, foto opcional
-      return {
-        fotoObrigatoria: false,
-        observacaoObrigatoria: true,
-      };
-    }
-
-    const config = configs.find(c => c.valor === resposta);
-
-    const resultado = config || {
-      fotoObrigatoria: false,
-      observacaoObrigatoria: false,
-    };
-
-    return resultado;
-  };
+  const estadoRegistro = (modal: ItemModalState) => ({
+    fotos: modal.fotos.length,
+    observacao: modal.observacao,
+    temImagemIrrelevante: modal.fotos.some((f) => f.analiseIa && !f.analiseIa.imagemRelevante),
+  });
 
   const handleSaveItemModal = async () => {
     if (!itemModal || !auditoria) return;
@@ -604,37 +540,10 @@ export default function AuditoriaPage() {
       return;
     }
 
-    const temResposta = Boolean(itemModal.item.resposta && itemModal.item.resposta !== 'nao_avaliado');
-    const temFotos = itemModal.fotos.length > 0;
-    if (!temResposta && !temFotos) {
-      toastService.error('Adicione pelo menos uma foto ou selecione uma resposta');
-      return;
-    }
-
-    if (temResposta) {
-      const opcaoConfig = getOpcaoConfig(itemModal.item, itemModal.item.resposta);
-      if (opcaoConfig.fotoObrigatoria && itemModal.fotos.length === 0) {
-        setActiveTab('fotos');
-        toastService.error('Esta resposta requer pelo menos uma foto');
-        return;
-      }
-      if (opcaoConfig.observacaoObrigatoria && (!itemModal.observacao || itemModal.observacao.trim() === '')) {
-        setActiveTab('observacao');
-        toastService.error('Esta resposta requer uma observação');
-        return;
-      }
-    }
-
-    // Validar imagens não relevantes
-    const imagensNaoRelevantes = itemModal.fotos.filter(
-      (f) => f.analiseIa && !f.analiseIa.imagemRelevante
-    );
-
-    if (bloqueiaPorImagemIrrelevante(itemModal.item, imagensNaoRelevantes.length > 0, itemModal.observacao)) {
-      setActiveTab('observacao'); // Mudar para tab de observação
-      toastService.error(
-        'Por favor, remova as imagens inadequadas ou adicione uma observação explicando por que a imagem é relevante.'
-      );
+    const pendencia = pendenciaDoRegistro(itemModal.item, secaoModal, estadoRegistro(itemModal));
+    if (pendencia) {
+      setSecaoModal(pendencia.secao);
+      toastService.error(pendencia.mensagem);
       return;
     }
 
@@ -756,16 +665,16 @@ export default function AuditoriaPage() {
     if (!desktop) setPainelMobileAberto(true);
   };
 
-  const documentar = (item: NonNullable<typeof selecionado>) => {
+  const documentar = (item: NonNullable<typeof selecionado>, secao: SecaoRegistro) => {
     salvarCustomizadoPendente();
     if (desktop) {
-      openPhotoModal(item);
+      openPhotoModal(item, secao);
       return;
     }
     setPainelMobileAberto(false);
     setVoltarAoPainel(true);
     // aguarda a folha terminar de fechar e liberar o foco/toques da página antes de abrir o modal
-    window.setTimeout(() => openPhotoModal(item), 350);
+    window.setTimeout(() => openPhotoModal(item, secao), 350);
   };
 
   const painel = selecionado && nav && (
@@ -777,7 +686,7 @@ export default function AuditoriaPage() {
       proximo={nav.proximo}
       somenteLeitura={somenteLeitura}
       onNavegar={navegar}
-      onDocumentar={() => documentar(selecionado)}
+      onDocumentar={(secao) => documentar(selecionado, secao)}
       respostas={
         <RespostasItem
           key={selecionado.id}
@@ -869,21 +778,12 @@ export default function AuditoriaPage() {
       <FormModal
         open={Boolean(itemModal)}
         onClose={() => setItemModal(null)}
-        title={auditoria.status === 'finalizada' ? 'Visualizar Item' : 'Documentar Item'}
+        title={secaoModal === 'fotos' ? (auditoria.status === 'finalizada' ? 'Ver fotos' : 'Fotos') : (auditoria.status === 'finalizada' ? 'Ver observação' : 'Observação')}
         maxWidth="5xl"
         isDirty={Boolean(itemModal && (itemModal.fotos.length > 0 || itemModal.observacao || itemModal.legislacaoAlterada))}
         closeOnBackdrop={false}
         footer={itemModal ? (() => {
-          const temResposta = Boolean(itemModal.item.resposta && itemModal.item.resposta !== 'nao_avaliado');
-          const temFotos = itemModal.fotos.length > 0;
-          const opcaoConfigModal = getOpcaoConfig(itemModal.item, itemModal.item.resposta || '');
-          const imagensNaoRelevantes = itemModal.fotos.some((f) => f.analiseIa && !f.analiseIa.imagemRelevante) || false;
-          const faltaObservacaoParaImagens = imagensNaoRelevantes && (!itemModal.observacao || itemModal.observacao.trim() === '');
-          const isDisabled = temResposta
-            ? (opcaoConfigModal?.observacaoObrigatoria && (!itemModal.observacao || itemModal.observacao.trim() === '')) ||
-              (opcaoConfigModal?.fotoObrigatoria && !temFotos) ||
-              faltaObservacaoParaImagens
-            : !temFotos || faltaObservacaoParaImagens;
+          const isDisabled = pendenciaDoRegistro(itemModal.item, secaoModal, estadoRegistro(itemModal)) !== null;
           return auditoria.status !== 'finalizada' ? (
             <>
               <button className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-10 px-4 hover:bg-muted" onClick={() => setItemModal(null)}>
@@ -902,7 +802,7 @@ export default function AuditoriaPage() {
                 ) : (
                   <>
                     <Save className="w-4 h-4" />
-                    Salvar Resposta
+                    Salvar
                   </>
                 )}
               </button>
@@ -943,63 +843,12 @@ export default function AuditoriaPage() {
                 </div>
               )}
 
-              {/* Tabs para Fotos e Observação */}
+              {/* Uma janela por registro: fotos ou observação */}
               <div className="mb-6">
-                {/* Tab Headers */}
-                <div className="flex items-center gap-1 border-b border-border">
-                  {(() => {
-                    const opcaoConfigModal = getOpcaoConfig(itemModal.item, itemModal.item.resposta || '');
-                    const fotoObrigatoria = opcaoConfigModal?.fotoObrigatoria || false;
-
-                    if (!aceitaFoto(itemModal.item) && itemModal.fotos.length === 0) return null;
-
-                    return (
-                      <button
-                        className={`-mb-px inline-flex h-10 cursor-pointer items-center gap-2 border-b-2 border-transparent px-3 text-sm text-muted-foreground hover:text-foreground ${abaEfetiva(itemModal.item) === 'fotos' ? '!border-primary !font-medium !text-foreground' : ''}`}
-                        onClick={() => setActiveTab('fotos')}
-                        title="Alt+1 para alternar"
-                        aria-keyshortcuts="Alt+1"
-                      >
-                        <Camera className="w-4 h-4" />
-                        Fotos
-                        {itemModal.fotos.length > 0 && (
-                          <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full font-semibold px-2 py-0.5 text-[11px] bg-sidebar text-white">{itemModal.fotos.length}</span>
-                        )}
-                        {fotoObrigatoria && itemModal.fotos.length === 0 && (
-                          <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full font-semibold px-2 py-0.5 text-[11px] bg-destructive/12 text-[hsl(0_72%_45%)]">Obrigatório</span>
-                        )}
-                      </button>
-                    );
-                  })()}
-
-                  {(() => {
-                    const opcaoConfigModal = getOpcaoConfig(itemModal.item, itemModal.item.resposta || '');
-                    const observacaoObrigatoria = opcaoConfigModal?.observacaoObrigatoria || false;
-
-                    if (!aceitaObservacao(itemModal.item) && !itemModal.observacao) return null;
-
-                    return (
-                      <button
-                        className={`-mb-px inline-flex h-10 cursor-pointer items-center gap-2 border-b-2 border-transparent px-3 text-sm text-muted-foreground hover:text-foreground ${abaEfetiva(itemModal.item) === 'observacao' ? '!border-primary !font-medium !text-foreground' : ''}`}
-                        onClick={() => setActiveTab('observacao')}
-                        title="Alt+2 para alternar"
-                        aria-keyshortcuts="Alt+2"
-                      >
-                        <MessageSquare className="w-4 h-4" />
-                        Observação
-                        {observacaoObrigatoria && (!itemModal.observacao || itemModal.observacao.trim() === '') && (
-                          <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full font-semibold px-2 py-0.5 text-[11px] bg-destructive/12 text-[hsl(0_72%_45%)]">Obrigatório</span>
-                        )}
-                      </button>
-                    );
-                  })()}
-                </div>
-
-                {/* Tab Content */}
-                <div className="bg-card border-x border-b border-border rounded-b-lg p-6 min-h-[300px]">
-                  {/* Tab Fotos - sempre visível; fotoObrigatoria só define se exige pelo menos uma imagem */}
-                  {abaEfetiva(itemModal.item) === 'fotos' && (() => {
-                    const opcaoConfigModal = getOpcaoConfig(itemModal.item, itemModal.item.resposta || '');
+                <div className="rounded-lg border border-border bg-card p-4 sm:p-6">
+                  {/* Fotos; fotoObrigatoria só define se exige pelo menos uma imagem */}
+                  {secaoModal === 'fotos' && (() => {
+                    const opcaoConfigModal = exigenciasDaResposta(itemModal.item);
                     const fotoObrigatoria = opcaoConfigModal?.fotoObrigatoria || false;
 
                     return (
@@ -1108,9 +957,9 @@ export default function AuditoriaPage() {
                     );
                   })()}
 
-                  {/* Tab Observação */}
-                  {abaEfetiva(itemModal.item) === 'observacao' && (() => {
-                    const opcaoConfigModal = getOpcaoConfig(itemModal.item, itemModal.item.resposta || '');
+                  {/* Observação */}
+                  {secaoModal === 'observacao' && (() => {
+                    const opcaoConfigModal = exigenciasDaResposta(itemModal.item);
                     const observacaoObrigatoria = opcaoConfigModal?.observacaoObrigatoria || false;
                     const imagensNaoRelevantes = itemModal?.fotos.some((f) => f.analiseIa && !f.analiseIa.imagemRelevante) || false;
 

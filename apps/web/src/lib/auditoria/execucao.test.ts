@@ -4,6 +4,8 @@ import {
   aceitaFoto,
   aceitaObservacao,
   bloqueiaPorImagemIrrelevante,
+  exigenciasDaResposta,
+  pendenciaDoRegistro,
   agruparPorSecao,
   customizadoPendente,
   podeFinalizar,
@@ -203,5 +205,70 @@ describe('bloqueiaPorImagemIrrelevante', () => {
 
   it('não bloqueia sem imagens irrelevantes', () => {
     expect(bloqueiaPorImagemIrrelevante(base, false, '')).toBe(false);
+  });
+});
+
+describe('exigenciasDaResposta', () => {
+  const configs = [
+    { valor: 'Bom', pontuacao: 1, fotoObrigatoria: false, observacaoObrigatoria: false },
+    { valor: 'Ruim', pontuacao: -1, fotoObrigatoria: true, observacaoObrigatoria: true },
+  ];
+
+  it('usa a configuração da resposta escolhida', () => {
+    const it = item({ resposta: 'Ruim', opcoes: ['Bom', 'Ruim'], configs });
+    expect(exigenciasDaResposta(it)).toEqual({ fotoObrigatoria: true, observacaoObrigatoria: true });
+    expect(exigenciasDaResposta(item({ resposta: 'Bom', opcoes: ['Bom', 'Ruim'], configs }))).toEqual({
+      fotoObrigatoria: false,
+      observacaoObrigatoria: false,
+    });
+  });
+
+  it('sem configuração mantém a regra antiga: observação obrigatória', () => {
+    expect(exigenciasDaResposta(item({ resposta: 'conforme' }))).toEqual({ fotoObrigatoria: false, observacaoObrigatoria: true });
+  });
+
+  it('sem resposta não exige nada', () => {
+    expect(exigenciasDaResposta(item({ resposta: '' }))).toEqual({ fotoObrigatoria: false, observacaoObrigatoria: false });
+    expect(exigenciasDaResposta(item({ resposta: 'nao_avaliado' }))).toEqual({ fotoObrigatoria: false, observacaoObrigatoria: false });
+  });
+
+  it('não exige o que a pergunta não aceita', () => {
+    const it = item({ resposta: 'Ruim', opcoes: ['Bom', 'Ruim'], configs });
+    Object.assign(it.templateItem, { permiteFoto: false, permiteObservacao: false });
+    expect(exigenciasDaResposta(it)).toEqual({ fotoObrigatoria: false, observacaoObrigatoria: false });
+  });
+});
+
+describe('pendenciaDoRegistro', () => {
+  const configs = [{ valor: 'Ruim', pontuacao: -1, fotoObrigatoria: true, observacaoObrigatoria: true }];
+  const exigente = () => item({ resposta: 'Ruim', opcoes: ['Ruim'], configs });
+  const vazio = { fotos: 0, observacao: '', temImagemIrrelevante: false };
+
+  it('fotos só cobra a foto, mesmo com observação obrigatória', () => {
+    expect(pendenciaDoRegistro(exigente(), 'fotos', vazio)).toEqual({ secao: 'fotos', mensagem: 'Esta resposta requer pelo menos uma foto' });
+    expect(pendenciaDoRegistro(exigente(), 'fotos', { ...vazio, fotos: 1 })).toBeNull();
+  });
+
+  it('observação só cobra a observação, mesmo com foto obrigatória', () => {
+    expect(pendenciaDoRegistro(exigente(), 'observacao', { ...vazio, observacao: '  ' })).toEqual({
+      secao: 'observacao',
+      mensagem: 'Esta resposta requer uma observação',
+    });
+    expect(pendenciaDoRegistro(exigente(), 'observacao', { ...vazio, observacao: 'ok' })).toBeNull();
+  });
+
+  it('foto irrelevante leva para a observação nas duas janelas', () => {
+    const it = item({ resposta: 'nao_conforme', configs: [{ valor: 'nao_conforme', pontuacao: 0 }] });
+    const estado = { fotos: 1, observacao: '', temImagemIrrelevante: true };
+    expect(pendenciaDoRegistro(it, 'fotos', estado)?.secao).toBe('observacao');
+    expect(pendenciaDoRegistro(it, 'observacao', estado)?.secao).toBe('observacao');
+  });
+
+  it('sem resposta precisa de algum registro na própria janela', () => {
+    const it = item({ resposta: '' });
+    expect(pendenciaDoRegistro(it, 'fotos', vazio)?.secao).toBe('fotos');
+    expect(pendenciaDoRegistro(it, 'fotos', { ...vazio, fotos: 2 })).toBeNull();
+    expect(pendenciaDoRegistro(it, 'observacao', vazio)?.secao).toBe('observacao');
+    expect(pendenciaDoRegistro(it, 'observacao', { ...vazio, observacao: 'nota' })).toBeNull();
   });
 });

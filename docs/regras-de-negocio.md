@@ -134,6 +134,7 @@
 | RN-AUD-012 | Remoção de auditoria: apenas MASTER e GESTOR; o gestor/master deve ser o consultor ou o consultor deve estar vinculado a ele; remove cascata (itens e fotos) |
 | RN-AUD-013 | Resumo executivo: gerado por IA apenas para auditorias finalizadas; agrupado por grupo de itens com pontuação e não conformidades; salvo como JSON na auditoria |
 | RN-AUD-014 | PDF: gerado via Puppeteer; cache — só regenera se auditoria foi atualizada após último `pdfGeradoEm`; armazenado no Supabase Storage |
+| RN-AUD-015 | Execução (web): fotos e observação são registradas por botões e janelas separados. Cada janela só exige o que é dela (foto obrigatória na de fotos, observação obrigatória na de observação), conforme a resposta escolhida; foto marcada como não relevante sempre leva à observação. Sem resposta, cada janela salva se tiver o próprio registro (foto ou observação) |
 
 ### Fotos
 
@@ -365,3 +366,4 @@
 | 2026-10-16 | Adicionadas seções 17 (Agenda) e RN-PAC-008 | Claude |
 | 2026-10-25 | Seção 12 reescrita para a legislação automática (RN-LEG-001 a RN-LEG-021) | Claude |
 | 2026-10-25 | RN-LEG-015/016/019/021 ajustadas ao comportamento final (releitura por PDF/texto com legislação pronta, cadastro já em leitura, limite do link, desativadas aceitas em itens já ligados) | Claude |
+| 2026-10-25 | RN-AUD-015: fotos e observação separadas na execução do checklist (web) | Claude |
