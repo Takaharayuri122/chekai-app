@@ -63,6 +63,7 @@ describe('LegislacaoVinculoService', () => {
     expect(resultado).toEqual({ templateItens: 1, auditoriaItens: 1 });
     const insertTemplate = templateRepo.query.mock.calls.find((c) => c[0].includes('INSERT'));
     expect(insertTemplate[1]).toEqual([['t-novo'], 'l-216']);
+    expect(insertTemplate[0]).toContain('$2::uuid');
     const insertAuditoria = auditoriaRepo.query.mock.calls.find((c) => c[0].includes('INSERT'));
     expect(insertAuditoria[1]).toEqual([['a-novo'], 'l-216']);
   });

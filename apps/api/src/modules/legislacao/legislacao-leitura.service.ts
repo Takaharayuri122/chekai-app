@@ -46,7 +46,7 @@ export interface UsuarioAutenticado {
 }
 
 interface DadosLidos {
-  tipo: TipoLegislacao;
+  tipo: TipoLegislacao | null;
   numero: string | null;
   ano: number | null;
   orgaoEmissor: string | null;
@@ -66,6 +66,8 @@ const MSG = {
   grande: 'O conteúdo deste link passa de 20 MB. Anexe o PDF ou cole o texto da legislação.',
   redirects: 'O link redireciona vezes demais. Anexe o PDF ou cole o texto da legislação.',
   pdfIlegivel: 'Não foi possível ler o texto deste PDF. Cole o texto da legislação.',
+  textoCurto: 'O texto colado é curto demais. Cole o texto completo da legislação.',
+  iaIndisponivel: 'A leitura não pôde ser concluída agora. Tente de novo em alguns minutos.',
   generica: 'Não foi possível ler esta legislação. Tente de novo.',
   interrompida: 'A leitura foi interrompida. Tente de novo.',
   emAndamento: 'A leitura desta legislação já está em andamento.',
@@ -76,6 +78,7 @@ const MIN_CARACTERES = 500;
 const MAX_BYTES = 20 * 1024 * 1024;
 const MAX_REDIRECTS = 5;
 const TIMEOUT_MS = 30_000;
+const TIMEOUT_IA_MS = 60_000;
 const LOTE_EMBEDDINGS = 100;
 const TRAVADA_MS = 10 * 60 * 1000;
 const MODELO_DADOS = 'deepseek-chat';
@@ -133,6 +136,8 @@ export class LegislacaoLeituraService implements OnModuleInit {
   fetchFn: BuscarFn = buscarHttp;
   /** Resolução de DNS usada na validação do link (injetável nos testes). */
   resolverFn?: (host: string) => Promise<string[]>;
+  /** Tempo máximo da busca do link (ajustável nos testes). */
+  timeoutMs = TIMEOUT_MS;
 
   constructor(
     @InjectRepository(Legislacao)
@@ -142,10 +147,17 @@ export class LegislacaoLeituraService implements OnModuleInit {
     private readonly vinculoService: LegislacaoVinculoService,
     configService: ConfigService,
   ) {
-    this.openai = new OpenAI({ apiKey: (configService.get<string>('OPENAI_API_KEY') ?? '').trim() });
+    // Timeout explícito: sem ele uma chamada pendurada deixaria a legislação presa em "lendo".
+    this.openai = new OpenAI({
+      apiKey: (configService.get<string>('OPENAI_API_KEY') ?? '').trim(),
+      timeout: TIMEOUT_IA_MS,
+      maxRetries: 1,
+    });
     this.deepseek = new OpenAI({
       apiKey: configService.get<string>('DEEPSEEK_API_KEY'),
       baseURL: configService.get<string>('DEEPSEEK_BASE_URL', 'https://api.deepseek.com'),
+      timeout: TIMEOUT_IA_MS,
+      maxRetries: 1,
     });
   }
 
@@ -198,7 +210,9 @@ export class LegislacaoLeituraService implements OnModuleInit {
     legislacao.statusLeitura = StatusLeitura.LENDO;
     legislacao.erroLeitura = null;
 
-    void this.processar(id, usuario, fonte).catch(() => undefined);
+    void this.processar(id, usuario, fonte).catch((erro) =>
+      this.logger.error(`Falha inesperada na leitura da legislação ${id}: ${(erro as Error)?.message}`),
+    );
     return legislacao;
   }
 
@@ -224,14 +238,19 @@ export class LegislacaoLeituraService implements OnModuleInit {
       }
 
       const { texto, indicioSituacao, origem } = await this.obterTexto(legislacao, fonte);
+      const msgCurto =
+        fonte.tipo === 'pdf' ? MSG.pdfIlegivel : fonte.tipo === 'texto' ? MSG.textoCurto : MSG.semTexto;
       if (texto.trim().length < MIN_CARACTERES) {
-        throw new FalhaLeitura(MSG.semTexto);
+        throw new FalhaLeitura(msgCurto);
       }
 
-      const dados = await this.extrairDados(texto, indicioSituacao, usuario, gestorId);
+      const dados = this.mesclarDados(
+        legislacao,
+        await this.extrairDados(texto, indicioSituacao, usuario, gestorId),
+      );
       const trechos = dividirEmTrechos(texto);
       if (trechos.length === 0) {
-        throw new FalhaLeitura(MSG.semTexto);
+        throw new FalhaLeitura(msgCurto);
       }
       const embeddings = await this.gerarEmbeddingsLote(
         trechos.map((t) => t.conteudo),
@@ -282,7 +301,7 @@ export class LegislacaoLeituraService implements OnModuleInit {
    */
   async buscarConteudo(url: string): Promise<{ buffer: Buffer; contentType: string | null }> {
     const controle = new AbortController();
-    const timer = setTimeout(() => controle.abort(), TIMEOUT_MS);
+    const timer = setTimeout(() => controle.abort(), this.timeoutMs);
     try {
       let atual = url;
       for (let salto = 0; salto <= MAX_REDIRECTS; salto++) {
@@ -390,13 +409,19 @@ ${indicioSituacao ? `\nIndício de situação encontrado na página: ${indicioSi
 TEXTO:
 ${amostra}`;
 
-    const resposta = await this.deepseek.chat.completions.create({
-      model: MODELO_DADOS,
-      messages: [{ role: 'user', content: prompt }],
-      max_tokens: 800,
-      temperature: 0,
-      response_format: { type: 'json_object' },
-    });
+    let resposta: OpenAI.Chat.Completions.ChatCompletion;
+    try {
+      resposta = await this.deepseek.chat.completions.create({
+        model: MODELO_DADOS,
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 800,
+        temperature: 0,
+        response_format: { type: 'json_object' },
+      });
+    } catch (erro) {
+      this.logger.error(`Falha na IA ao ler legislação: ${(erro as Error)?.message}`);
+      throw new FalhaLeitura(MSG.iaIndisponivel);
+    }
 
     if (gestorId && resposta.usage) {
       await this.creditoService.registrarUso({
@@ -424,13 +449,37 @@ ${amostra}`;
     }
 
     return {
-      tipo: enumValido(Object.values(TipoLegislacao), bruto.tipo) ?? TipoLegislacao.OUTRO,
+      tipo: enumValido(Object.values(TipoLegislacao), bruto.tipo),
       numero: textoOuNulo(bruto.numero, 50),
       ano: anoValido(bruto.ano),
       orgaoEmissor: textoOuNulo(bruto.orgaoEmissor, 100),
       ementa: textoOuNulo(bruto.ementa, 10_000),
       dataPublicacao: dataValida(bruto.dataPublicacao),
       situacao: enumValido(Object.values(SituacaoLegislacao), bruto.situacao) ?? indicioSituacao,
+    };
+  }
+
+  /**
+   * Campo nulo/inválido na leitura mantém o valor anterior da legislação (releitura não apaga dados);
+   * `tipo` só vira `outro` se não havia tipo útil antes.
+   */
+  private mesclarDados(
+    anterior: Legislacao,
+    lidos: DadosLidos,
+  ): Omit<DadosLidos, 'tipo'> & { tipo: TipoLegislacao } {
+    const tipoAnterior =
+      anterior.tipo && anterior.tipo !== TipoLegislacao.OUTRO ? anterior.tipo : null;
+    return {
+      tipo: (lidos.tipo && lidos.tipo !== TipoLegislacao.OUTRO ? lidos.tipo : null) ??
+        tipoAnterior ??
+        lidos.tipo ??
+        TipoLegislacao.OUTRO,
+      numero: lidos.numero ?? anterior.numero ?? null,
+      ano: lidos.ano ?? anterior.ano ?? null,
+      orgaoEmissor: lidos.orgaoEmissor ?? anterior.orgaoEmissor ?? null,
+      ementa: lidos.ementa ?? anterior.ementa ?? null,
+      dataPublicacao: lidos.dataPublicacao ?? anterior.dataPublicacao ?? null,
+      situacao: lidos.situacao ?? anterior.situacao ?? null,
     };
   }
 
@@ -446,7 +495,13 @@ ${amostra}`;
     let tokens = 0;
     for (let i = 0; i < textos.length; i += LOTE_EMBEDDINGS) {
       const lote = textos.slice(i, i + LOTE_EMBEDDINGS);
-      const resposta = await this.openai.embeddings.create({ model: MODELO_EMBEDDING, input: lote });
+      let resposta: OpenAI.Embeddings.CreateEmbeddingResponse;
+      try {
+        resposta = await this.openai.embeddings.create({ model: MODELO_EMBEDDING, input: lote });
+      } catch (erro) {
+        this.logger.error(`Falha ao gerar embeddings da legislação: ${(erro as Error)?.message}`);
+        throw new FalhaLeitura(MSG.iaIndisponivel);
+      }
       const ordenados = [...resposta.data].sort((a, b) => a.index - b.index);
       if (ordenados.length !== lote.length) {
         throw new Error('Quantidade de embeddings diferente da de trechos');

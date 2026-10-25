@@ -89,14 +89,14 @@ export class LegislacaoVinculoService {
     if (templateIds.length) {
       await this.templateItemRepository.query(
         `INSERT INTO template_item_legislacoes (template_item_id, legislacao_id)
-         SELECT unnest($1::uuid[]), $2 ON CONFLICT DO NOTHING`,
+         SELECT unnest($1::uuid[]), $2::uuid ON CONFLICT DO NOTHING`,
         [templateIds, legislacao.id],
       );
     }
     if (auditoriaIds.length) {
       await this.auditoriaItemRepository.query(
         `INSERT INTO auditoria_item_legislacoes (auditoria_item_id, legislacao_id)
-         SELECT unnest($1::uuid[]), $2 ON CONFLICT DO NOTHING`,
+         SELECT unnest($1::uuid[]), $2::uuid ON CONFLICT DO NOTHING`,
         [auditoriaIds, legislacao.id],
       );
     }

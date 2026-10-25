@@ -78,17 +78,7 @@ export class LegislacaoService {
     data: CriarLegislacaoDto,
     usuario: UsuarioAutenticado,
   ): Promise<Legislacao> {
-    let linkOficial: string;
-    try {
-      linkOficial = normalizarLink(data.linkOficial);
-      await this.leituraService.validarLink(linkOficial);
-    } catch (erro) {
-      if (erro instanceof LinkInvalidoError) {
-        throw new BadRequestException(erro.message);
-      }
-      throw erro;
-    }
-    await this.garantirLinkNovo(linkOficial);
+    const linkOficial = await this.prepararLink(data.linkOficial);
 
     const legislacao = this.legislacaoRepository.create({
       linkOficial,
@@ -110,12 +100,33 @@ export class LegislacaoService {
     return this.leituraService.iniciar(salva.id, usuario, { tipo: 'link' });
   }
 
-  private async garantirLinkNovo(linkOficial: string): Promise<void> {
-    const existente = await this.legislacaoRepository
+  /**
+   * Normaliza e valida o link (400 se inválido/não público) e garante que não está cadastrado (409).
+   */
+  private async prepararLink(link: string, ignorarId?: string): Promise<string> {
+    let linkOficial: string;
+    try {
+      linkOficial = normalizarLink(link);
+      await this.leituraService.validarLink(linkOficial);
+    } catch (erro) {
+      if (erro instanceof LinkInvalidoError) {
+        throw new BadRequestException(erro.message);
+      }
+      throw erro;
+    }
+    await this.garantirLinkNovo(linkOficial, ignorarId);
+    return linkOficial;
+  }
+
+  private async garantirLinkNovo(linkOficial: string, ignorarId?: string): Promise<void> {
+    const qb = this.legislacaoRepository
       .createQueryBuilder('legislacao')
       .select(['legislacao.id'])
-      .where('lower(legislacao.linkOficial) = lower(:linkOficial)', { linkOficial })
-      .getOne();
+      .where('lower(legislacao.linkOficial) = lower(:linkOficial)', { linkOficial });
+    if (ignorarId) {
+      qb.andWhere('legislacao.id <> :ignorarId', { ignorarId });
+    }
+    const existente = await qb.getOne();
     if (existente) {
       throw new ConflictException({ message: 'Esta legislação já está cadastrada.', id: existente.id });
     }
@@ -197,8 +208,19 @@ export class LegislacaoService {
    */
   async atualizarLegislacao(id: string, data: AtualizarLegislacaoDto): Promise<Legislacao> {
     const legislacao = await this.buscarLegislacaoPorId(id);
-    Object.assign(legislacao, data);
-    return this.legislacaoRepository.save(legislacao);
+    const dados = { ...data };
+    if (dados.linkOficial !== undefined) {
+      dados.linkOficial = await this.prepararLink(dados.linkOficial, id);
+    }
+    Object.assign(legislacao, dados);
+    try {
+      return await this.legislacaoRepository.save(legislacao);
+    } catch (erro) {
+      if ((erro as { code?: string })?.code === '23505' && dados.linkOficial) {
+        await this.garantirLinkNovo(dados.linkOficial, id);
+      }
+      throw erro;
+    }
   }
 
   /**

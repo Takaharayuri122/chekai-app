@@ -28,7 +28,7 @@ describe('LegislacaoService', () => {
       save: jest.fn().mockImplementation((l) => Promise.resolve(l)),
       create: jest.fn().mockImplementation((d) => ({ ...d })),
       createQueryBuilder: jest.fn().mockImplementation(() => {
-        const qb = { select: () => qb, where: () => qb, getOne: qbGetOne };
+        const qb = { select: () => qb, where: () => qb, andWhere: () => qb, getOne: qbGetOne };
         return qb;
       }),
     };
@@ -122,6 +122,48 @@ describe('LegislacaoService', () => {
       service.criarLegislacao({ linkOficial: 'http://10.0.0.1/a', titulo: 'T' }, { id: 'u1' } as never),
     ).rejects.toThrow(BadRequestException);
     expect(repo.save).not.toHaveBeenCalled();
+  });
+
+  describe('atualizarLegislacao com link', () => {
+    beforeEach(() => repo.findOne.mockResolvedValue({ id: 'l1', linkOficial: 'https://x.gov.br/velho' }));
+
+    it('normaliza e valida o novo link', async () => {
+      const l = await service.atualizarLegislacao('l1', { linkOficial: 'https://X.gov.br/novo/' });
+      expect(leitura.validarLink).toHaveBeenCalledWith('https://x.gov.br/novo');
+      expect(l.linkOficial).toBe('https://x.gov.br/novo');
+    });
+
+    it('409 com id se outro registro já usa o link', async () => {
+      qbGetOne.mockResolvedValue({ id: 'outra' });
+      const chamada = service.atualizarLegislacao('l1', { linkOficial: 'https://x.gov.br/novo' });
+      await expect(chamada).rejects.toThrow(ConflictException);
+      await chamada.catch((e: ConflictException) => {
+        expect(e.getResponse()).toEqual({ message: 'Esta legislação já está cadastrada.', id: 'outra' });
+      });
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+
+    it('ignora a própria legislação na checagem', async () => {
+      const andWhere = jest.fn();
+      repo.createQueryBuilder.mockImplementation(() => {
+        const qb = { select: () => qb, where: () => qb, andWhere: (...a: unknown[]) => (andWhere(...a), qb), getOne: qbGetOne };
+        return qb;
+      });
+      await service.atualizarLegislacao('l1', { linkOficial: 'https://x.gov.br/velho' });
+      expect(andWhere).toHaveBeenCalledWith('legislacao.id <> :ignorarId', { ignorarId: 'l1' });
+    });
+
+    it('link não público dá 400', async () => {
+      leitura.validarLink.mockRejectedValue(new LinkInvalidoError('Este link não é um endereço público permitido.'));
+      await expect(service.atualizarLegislacao('l1', { linkOficial: 'http://10.0.0.1/' })).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('sem link no corpo não valida', async () => {
+      await service.atualizarLegislacao('l1', { titulo: 'Novo' });
+      expect(leitura.validarLink).not.toHaveBeenCalled();
+    });
   });
 
   it('adicionarChunks continua a ordem a partir do maior existente', async () => {

@@ -2,7 +2,7 @@ import * as http from 'http';
 import * as https from 'https';
 import { lookup as dnsLookup, LookupAddress } from 'dns';
 import { LookupFunction } from 'net';
-import { Readable } from 'stream';
+import { pipeline, Readable } from 'stream';
 import * as zlib from 'zlib';
 import { ipPrivado, LinkInvalidoError } from './url-segura';
 
@@ -61,12 +61,22 @@ export function criarLookupSeguro(resolver: ResolverTodos = resolverPadrao): Loo
   };
 }
 
+/**
+ * Corpo descomprimido conforme o `content-encoding`. Usa `pipeline` para que abort/erro na
+ * resposta destrua também o descompressor (senão a leitura do corpo fica pendente para sempre).
+ */
 function descomprimir(res: http.IncomingMessage): Readable {
   const codificacao = String(res.headers['content-encoding'] ?? '').toLowerCase().trim();
-  if (codificacao === 'gzip' || codificacao === 'x-gzip') return res.pipe(zlib.createGunzip());
-  if (codificacao === 'deflate') return res.pipe(zlib.createInflate());
-  if (codificacao === 'br') return res.pipe(zlib.createBrotliDecompress());
-  return res;
+  const descompressor =
+    codificacao === 'gzip' || codificacao === 'x-gzip'
+      ? zlib.createGunzip()
+      : codificacao === 'deflate'
+        ? zlib.createInflate()
+        : codificacao === 'br'
+          ? zlib.createBrotliDecompress()
+          : null;
+  if (!descompressor) return res;
+  return pipeline(res, descompressor, () => undefined);
 }
 
 /**
@@ -91,7 +101,10 @@ export const buscarHttp: BuscarFn = (url, init) =>
           status: res.statusCode ?? 0,
           headers: res.headers,
           body: corpo,
-          descartar: () => res.destroy(),
+          descartar: () => {
+            corpo.destroy();
+            res.destroy();
+          },
         });
       },
     );

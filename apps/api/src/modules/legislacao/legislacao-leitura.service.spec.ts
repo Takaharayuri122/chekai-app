@@ -7,7 +7,9 @@ import { Legislacao, StatusLeitura, TipoLegislacao } from './entities/legislacao
 import { LegislacaoChunk } from './entities/legislacao-chunk.entity';
 import { PerfilUsuario } from '../usuario/entities/usuario.entity';
 import { RespostaHttp } from './lib/buscar-http';
-import { criarLookupSeguro } from './lib/buscar-http';
+import { buscarHttp, criarLookupSeguro } from './lib/buscar-http';
+import * as http from 'http';
+import * as zlib from 'zlib';
 
 const GESTOR: UsuarioAutenticado = { id: 'g1', perfil: PerfilUsuario.GESTOR, gestorId: null };
 const MASTER: UsuarioAutenticado = { id: 'm1', perfil: PerfilUsuario.MASTER };
@@ -258,13 +260,113 @@ describe('LegislacaoLeituraService', () => {
   });
 
   it('erro inesperado grava falhou com mensagem genérica e não lança', async () => {
-    embeddingsCreate.mockRejectedValue(new Error('rede'));
+    manager.delete.mockRejectedValue(new Error('banco'));
     await expect(service.processar('l1', MASTER, { tipo: 'link' })).resolves.toBeUndefined();
     expect(repo.update.mock.calls[0][1]).toEqual({
       statusLeitura: StatusLeitura.FALHOU,
       erroLeitura: 'Não foi possível ler esta legislação. Tente de novo.',
     });
+  });
+
+  it.each([
+    ['DeepSeek', () => deepseekCreate.mockRejectedValue(new Error('timeout'))],
+    ['OpenAI', () => embeddingsCreate.mockRejectedValue(new Error('timeout'))],
+  ])('erro/timeout da IA (%s) grava a mensagem de tentar mais tarde', async (_nome, falhar) => {
+    falhar();
+    await service.processar('l1', MASTER, { tipo: 'link' });
+    expect(repo.update.mock.calls[0][1]).toEqual({
+      statusLeitura: StatusLeitura.FALHOU,
+      erroLeitura: 'A leitura não pôde ser concluída agora. Tente de novo em alguns minutos.',
+    });
     expect(dataSource.transaction).not.toHaveBeenCalled();
+  });
+
+  it('clientes de IA da leitura têm timeout de 60 s e 1 nova tentativa', () => {
+    const config = { get: jest.fn().mockImplementation((_c: string, p?: string) => p ?? 'sk-teste') };
+    const novo = new LegislacaoLeituraService({} as never, {} as never, {} as never, {} as never, config as never);
+    const clientes = novo as unknown as { openai: { timeout: number; maxRetries: number }; deepseek: { timeout: number; maxRetries: number } };
+    for (const cliente of [clientes.openai, clientes.deepseek]) {
+      expect(cliente.timeout).toBe(60_000);
+      expect(cliente.maxRetries).toBe(1);
+    }
+  });
+
+  it('releitura mantém os dados anteriores quando a IA devolve nulo ou inválido', async () => {
+    Object.assign(legislacao, {
+      tipo: TipoLegislacao.RDC,
+      numero: '216',
+      ano: 2004,
+      orgaoEmissor: 'ANVISA',
+      ementa: 'Ementa anterior',
+      dataPublicacao: '2004-09-16',
+      situacao: 'vigente',
+    });
+    deepseekCreate.mockResolvedValue({
+      choices: [{ message: { content: JSON.stringify({ tipo: 'x', numero: null, ano: 'abc', ementa: '', situacao: 'revogada' }) } }],
+      usage: { prompt_tokens: 1, completion_tokens: 1 },
+    });
+    await service.processar('l1', MASTER, { tipo: 'link' });
+    expect(manager.update.mock.calls[0][2]).toMatchObject({
+      tipo: 'rdc',
+      numero: '216',
+      ano: 2004,
+      orgaoEmissor: 'ANVISA',
+      ementa: 'Ementa anterior',
+      dataPublicacao: '2004-09-16',
+      situacao: 'revogada',
+    });
+  });
+
+  it('tipo "outro" da IA não sobrescreve um tipo útil anterior', async () => {
+    legislacao.tipo = TipoLegislacao.PORTARIA;
+    deepseekCreate.mockResolvedValue({
+      choices: [{ message: { content: JSON.stringify({ ...dadosIa, tipo: 'outro' }) } }],
+      usage: { prompt_tokens: 1, completion_tokens: 1 },
+    });
+    await service.processar('l1', MASTER, { tipo: 'link' });
+    expect(manager.update.mock.calls[0][2].tipo).toBe('portaria');
+  });
+
+  it('texto colado curto após trim tem mensagem própria', async () => {
+    await service.processar('l1', MASTER, { tipo: 'texto', texto: `   ${'a'.repeat(100)}   ` });
+    expect(repo.update.mock.calls[0][1].erroLeitura).toBe(
+      'O texto colado é curto demais. Cole o texto completo da legislação.',
+    );
+  });
+
+  it('PDF sem texto extraível tem a mensagem de PDF ilegível', async () => {
+    await service.processar('l1', MASTER, { tipo: 'pdf', buffer: Buffer.from('%PDF-1.4 inválido') });
+    expect(repo.update.mock.calls[0][1].erroLeitura).toBe(
+      'Não foi possível ler o texto deste PDF. Cole o texto da legislação.',
+    );
+  });
+
+  it('corpo gzip que nunca termina: o timeout encerra a leitura com falhou', async () => {
+    const servidor = http.createServer((_req, res) => {
+      res.writeHead(200, { 'content-type': 'text/html', 'content-encoding': 'gzip' });
+      const gzip = zlib.createGzip();
+      gzip.pipe(res);
+      gzip.write('x'.repeat(1000));
+      gzip.flush();
+      // nunca termina
+    });
+    await new Promise<void>((ok) => servidor.listen(0, '127.0.0.1', () => ok()));
+    const porta = (servidor.address() as { port: number }).port;
+    try {
+      service.timeoutMs = 300;
+      // Host público fictício (validado pelo resolver mockado); a conexão vai ao servidor local.
+      service.fetchFn = (_url, init) => buscarHttp(`http://127.0.0.1:${porta}/`, init);
+      const inicio = Date.now();
+      await service.processar('l1', MASTER, { tipo: 'link' });
+      expect(Date.now() - inicio).toBeLessThan(3000);
+      expect(repo.update).toHaveBeenCalledWith('l1', {
+        statusLeitura: StatusLeitura.FALHOU,
+        erroLeitura: 'O site demorou demais para responder. Anexe o PDF ou cole o texto da legislação.',
+      });
+    } finally {
+      servidor.closeAllConnections();
+      servidor.close();
+    }
   });
 
   describe('iniciar', () => {
