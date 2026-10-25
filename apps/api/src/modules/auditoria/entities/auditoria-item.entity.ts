@@ -7,10 +7,13 @@ import {
   ManyToOne,
   OneToMany,
   JoinColumn,
+  ManyToMany,
+  JoinTable,
 } from 'typeorm';
 import { Auditoria } from './auditoria.entity';
 import { TemplateItem } from '../../checklist/entities/template-item.entity';
 import { Foto } from './foto.entity';
+import { Legislacao } from '../../legislacao/entities/legislacao.entity';
 
 /**
  * Enum para resposta do item de auditoria.
@@ -55,8 +58,16 @@ export class AuditoriaItem {
   @Column({ type: 'text', nullable: true })
   planoAcaoFinal: string;
 
-  @Column({ length: 100, nullable: true })
+  @Column({ type: 'text', nullable: true })
   referenciaLegal: string;
+
+  @ManyToMany(() => Legislacao)
+  @JoinTable({
+    name: 'auditoria_item_legislacoes',
+    joinColumn: { name: 'auditoria_item_id' },
+    inverseJoinColumn: { name: 'legislacao_id' },
+  })
+  legislacoes: Legislacao[];
 
   @Column({ type: 'int', default: 0 })
   pontuacao: number;

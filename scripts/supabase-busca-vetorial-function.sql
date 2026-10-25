@@ -1,9 +1,13 @@
--- Função para busca vetorial de chunks similares
+-- Função para busca vetorial de chunks similares (com filtro opcional por legislações)
 -- Execute este SQL no SQL Editor do Supabase
+-- Mesma função de scripts/legislacao-automatica.sql
+
+DROP FUNCTION IF EXISTS buscar_chunks_similares(vector, int);
 
 CREATE OR REPLACE FUNCTION buscar_chunks_similares(
   query_embedding vector(1536),
-  match_limit int DEFAULT 5
+  match_limit int DEFAULT 5,
+  filtro_legislacao_ids uuid[] DEFAULT NULL
 )
 RETURNS TABLE (
   id uuid,
@@ -15,6 +19,8 @@ RETURNS TABLE (
   numero varchar,
   ano int,
   titulo varchar,
+  legislacao_id uuid,
+  link_oficial varchar,
   similaridade float
 )
 LANGUAGE plpgsql
@@ -32,16 +38,18 @@ BEGIN
     l.numero,
     l.ano,
     l.titulo,
+    l.id,
+    l."linkOficial",
     1 - (c.embedding <=> query_embedding)::float as similaridade
   FROM legislacao_chunks c
   JOIN legislacoes l ON l.id = c.legislacao_id
   WHERE l.ativo = true
     AND c.embedding IS NOT NULL
+    AND (filtro_legislacao_ids IS NULL OR l.id = ANY(filtro_legislacao_ids))
   ORDER BY c.embedding <=> query_embedding
   LIMIT match_limit;
 END;
 $$;
 
 -- Garante que a função está acessível via API
-GRANT EXECUTE ON FUNCTION buscar_chunks_similares(vector, int) TO anon, authenticated, service_role;
-
+GRANT EXECUTE ON FUNCTION buscar_chunks_similares(vector, int, uuid[]) TO anon, authenticated, service_role;

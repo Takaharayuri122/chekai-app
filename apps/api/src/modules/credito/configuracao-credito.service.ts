@@ -74,6 +74,11 @@ export class ConfiguracaoCreditoService implements OnApplicationBootstrap {
         modelo: 'deepseek-chat',
         tokensPorCredito: 10000,
       },
+      {
+        provedor: ProvedorIa.OPENAI,
+        modelo: 'text-embedding-3-small',
+        tokensPorCredito: 100000,
+      },
     ];
 
     for (const config of configuracoesPadrao) {
@@ -143,6 +148,11 @@ export class ConfiguracaoCreditoService implements OnApplicationBootstrap {
           provedor: ProvedorIa.DEEPSEEK,
           modelo: 'deepseek-chat',
           tokensPorCredito: 10000,
+        },
+        'openai/text-embedding-3-small': {
+          provedor: ProvedorIa.OPENAI,
+          modelo: 'text-embedding-3-small',
+          tokensPorCredito: 100000,
         },
       };
 
