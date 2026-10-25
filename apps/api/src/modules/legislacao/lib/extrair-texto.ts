@@ -3,6 +3,7 @@ import type { AnyNode, Element } from 'domhandler';
 import { SituacaoLegislacao } from '../entities/legislacao.entity';
 
 const DESCARTADOS = 'script, style, nav, header, footer, form, aside, noscript, svg, iframe';
+const TACHADOS = 'strike, s, del';
 const BLOCOS = 'p, div, li, h1, h2, h3, h4, h5, h6, tr, table, blockquote, section, article, ul, ol';
 const CANDIDATOS = new Set(['div', 'article', 'section', 'main', 'td', 'body']);
 
@@ -22,10 +23,33 @@ export function decodificarHtml(buffer: Buffer, contentType: string | null): str
   }
 }
 
-function indicioDeSituacao(texto: string): SituacaoLegislacao | null {
-  if (/revogad/i.test(texto)) return SituacaoLegislacao.REVOGADA;
+function situacaoDoRotulo(valor: string): SituacaoLegislacao | null {
+  if (/n[ãa]o\s+(?:est[áa]\s+)?(?:mais\s+)?vigente/i.test(valor) || /^\W*revogad/i.test(valor)) {
+    return SituacaoLegislacao.REVOGADA;
+  }
+  if (/^\W*vigente\s+com\s+altera[çc][õo]es/i.test(valor)) return SituacaoLegislacao.VIGENTE_COM_ALTERACOES;
+  if (/^\W*vigente/i.test(valor)) return SituacaoLegislacao.VIGENTE;
+  return null;
+}
+
+/**
+ * Indício de situação: rótulo explícito ("Situação: ..."), depois título/cabeçalhos; ocorrências
+ * soltas só valem para "vigente com alterações" e "não vigente". "(Revogado)" em artigo não conta.
+ */
+function indicioDeSituacao($: cheerio.CheerioAPI): SituacaoLegislacao | null {
+  const texto = $.root().text();
+  const rotulo = texto.match(/Situa[çc][ãa]o(?:\s+da\s+norma)?\s*:\s*([^\n]{0,60})/i);
+  if (rotulo) {
+    const s = situacaoDoRotulo(rotulo[1]);
+    if (s) return s;
+  }
+  const titulos = $('title, h1, h2, h3')
+    .map((_, el) => $(el).text())
+    .get()
+    .join('\n');
+  if (/\brevogad[ao]\b/i.test(titulos)) return SituacaoLegislacao.REVOGADA;
   if (/vigente\s+com\s+altera[çc][õo]es/i.test(texto)) return SituacaoLegislacao.VIGENTE_COM_ALTERACOES;
-  if (/vigente/i.test(texto)) return SituacaoLegislacao.VIGENTE;
+  if (/n[ãa]o\s+(?:est[áa]\s+)?(?:mais\s+)?vigente/i.test(texto)) return SituacaoLegislacao.REVOGADA;
   return null;
 }
 
@@ -61,8 +85,11 @@ export function extrairTextoHtml(html: string): {
   indicioSituacao: SituacaoLegislacao | null;
 } {
   const $ = cheerio.load(html);
-  const indicioSituacao = indicioDeSituacao($.root().text());
+  $('script, style, noscript').remove();
+  const indicioSituacao = indicioDeSituacao($);
 
+  // Texto tachado é trecho revogado: sai do conteúdo (depois do indício).
+  $(TACHADOS).remove();
   $(DESCARTADOS).remove();
   $('br').replaceWith('\n');
   $(BLOCOS).each((_, el) => {

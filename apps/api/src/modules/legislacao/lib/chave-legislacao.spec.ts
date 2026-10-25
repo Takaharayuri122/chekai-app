@@ -18,6 +18,12 @@ describe('chavesNoTexto', () => {
     ['RDC 216/2004; Portaria CVS 5/2013', ['rdc:216:2004', 'portaria:5:2013']],
     ['RDC 216/2004 e novamente RDC 216/2004', ['rdc:216:2004']],
     ['rdc 216', []],
+    ['Decreto-Lei nº 986, de 21 de outubro de 1969', []],
+    ['Lei Federal nº 8.078, de 11 de setembro de 1990', ['lei:8078:1990']],
+    ['Lei Estadual nº 10.083, de 23 de setembro de 1998', ['lei:10083:1998']],
+    ['Lei federal 8.078/1990', ['lei:8078:1990']],
+    ['Portaria SVS/MS nº 326, de 30 de julho de 1997', ['portaria:326:1997']],
+    ['Lei do 5/2010', []],
     ['', []],
   ])('%s', (texto, esperado) => {
     expect(chavesNoTexto(texto)).toEqual(esperado);

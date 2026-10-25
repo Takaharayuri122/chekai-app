@@ -60,6 +60,42 @@ describe('extrairTextoHtml', () => {
     expect(extrairTextoHtml('<body><p>Nada</p></body>').indicioSituacao).toBeNull();
   });
 
+  it('rótulo explícito prevalece sobre "(Revogado)" em artigo', () => {
+    const { indicioSituacao } = extrairTextoHtml(
+      '<body><p>Situação: Vigente com Alterações</p><p>Art. 5º (Revogado)</p></body>',
+    );
+    expect(indicioSituacao).toBe(SituacaoLegislacao.VIGENTE_COM_ALTERACOES);
+  });
+
+  it('frase solta "vigente" sem rótulo não gera indício', () => {
+    const { indicioSituacao } = extrairTextoHtml(
+      '<body><p>Art. 3º Sujeita-se à legislação sanitária vigente. Art. 4º (Revogado)</p></body>',
+    );
+    expect(indicioSituacao).toBeNull();
+  });
+
+  it('"Não vigente" é revogada', () => {
+    expect(extrairTextoHtml('<body><p>Situação: Não vigente</p></body>').indicioSituacao).toBe(
+      SituacaoLegislacao.REVOGADA,
+    );
+  });
+
+  it('script e style não geram indício', () => {
+    expect(
+      extrairTextoHtml('<body><script>var s="Situação: Revogada"</script><p>Texto</p></body>')
+        .indicioSituacao,
+    ).toBeNull();
+  });
+
+  it('remove texto tachado do conteúdo', () => {
+    const { texto } = extrairTextoHtml(
+      '<body><p>Art. 1º <strike>texto revogado</strike> novo texto <del>apagado</del></p></body>',
+    );
+    expect(texto).not.toContain('texto revogado');
+    expect(texto).not.toContain('apagado');
+    expect(texto).toContain('novo texto');
+  });
+
   it('página de firewall rende texto curto', () => {
     const { texto } = extrairTextoHtml(decodificarHtml(fixture('firewall.html'), 'text/html'));
     expect(texto.length).toBeLessThan(500);

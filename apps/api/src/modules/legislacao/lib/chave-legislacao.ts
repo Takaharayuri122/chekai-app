@@ -31,16 +31,28 @@ const TIPOS_NO_TEXTO: { tipo: TipoLegislacao; padrao: RegExp }[] = [
 ];
 
 const MESES = 'janeiro|fevereiro|mar[çc]o|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro';
+const ESFERAS = /^(?:Federal|Estadual|Municipal|Complementar)$/i;
+const PALAVRAS_COMUNS = /^(?:DE|DO|DA|DOS|DAS|EM|NO|NA|E|OU)$/;
 
-// tipo, siglas de órgão opcionais (ignoradas), número, e "/AAAA" ou ", de DD de mês de AAAA"
+// tipo, palavras intermediárias (validadas no código), número, e "/AAAA" ou ", de DD de mês de AAAA".
+// O lookbehind evita casar "Lei" dentro de "Decreto-Lei".
 const REGEX_REFERENCIA = new RegExp(
-  '\\b((?:Resolu[çc][ãa]o(?:\\s+da\\s+Diretoria\\s+Colegiada)?\\s*[-–—]?\\s*)?RDC|Instru[çc][ãa]o\\s+Normativa|IN|Portaria|Lei|Decreto)' +
-    '(?:\\s+[A-Z]{2,6}(?![a-z]))*' +
+  '(?<![-–—\\p{L}\\d])((?:Resolu[çc][ãa]o(?:\\s+da\\s+Diretoria\\s+Colegiada)?\\s*[-–—]?\\s*)?RDC|Instru[çc][ãa]o\\s+Normativa|IN|Portaria|Lei|Decreto)' +
+    '((?:\\s+[\\p{L}][\\p{L}/-]*[º°]?){0,3}?)' +
     '\\s*[-–—]?\\s*(?:[Nn][º°o]?\\.?\\s*)?' +
     '(\\d+(?:\\.\\d{3})*)' +
     `(?:\\s*/\\s*(\\d{4})(?!\\d)|\\s*,?\\s+de\\s+\\d{1,2}\\s*[º°o]?\\s+de\\s+(?:${MESES})\\s+de\\s+(\\d{4})(?!\\d))`,
-  'gi',
+  'giu',
 );
+
+/** As palavras entre tipo e número só podem ser esfera ("Federal") ou sigla de órgão em maiúsculas. */
+function palavrasValidas(intermediarias: string): boolean {
+  const palavras = intermediarias.trim().split(/\s+/).filter(Boolean);
+  while (palavras.length && /^n[º°o]?\.?$/i.test(palavras[palavras.length - 1])) palavras.pop();
+  return palavras.every(
+    (p) => ESFERAS.test(p) || (/^[A-ZÀ-Ý][A-ZÀ-Ý/-]{1,9}$/.test(p) && !PALAVRAS_COMUNS.test(p)),
+  );
+}
 
 /**
  * Extrai do texto livre as chaves canônicas das legislações citadas (únicas, na ordem).
@@ -49,9 +61,12 @@ export function chavesNoTexto(texto: string | null | undefined): string[] {
   if (!texto) return [];
   const chaves: string[] = [];
   for (const m of texto.matchAll(REGEX_REFERENCIA)) {
-    const tipo = TIPOS_NO_TEXTO.find((t) => t.padrao.test(m[1].trim()))?.tipo;
+    const tipoTexto = m[1].trim();
+    if (/^IN$/i.test(tipoTexto) && tipoTexto !== 'IN') continue;
+    if (!palavrasValidas(m[2])) continue;
+    const tipo = TIPOS_NO_TEXTO.find((t) => t.padrao.test(tipoTexto))?.tipo;
     if (!tipo) continue;
-    const chave = chaveDaLegislacao({ tipo, numero: m[2], ano: Number(m[3] ?? m[4]) });
+    const chave = chaveDaLegislacao({ tipo, numero: m[3], ano: Number(m[4] ?? m[5]) });
     if (chave && !chaves.includes(chave)) chaves.push(chave);
   }
   return chaves;

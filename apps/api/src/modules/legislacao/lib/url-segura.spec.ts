@@ -12,6 +12,15 @@ describe('ipPrivado', () => {
     'fc00::1',
     'fe80::1',
     '::ffff:127.0.0.1',
+    '0:0:0:0:0:ffff:7f00:1',
+    '::7f00:1',
+    '::2',
+    '64:ff9b::7f00:1',
+    '2002:7f00:1::',
+    '2001:db8::1',
+    '192.0.2.1',
+    '198.51.100.7',
+    '203.0.113.9',
   ])('%s é privado', (ip) => {
     expect(ipPrivado(ip)).toBe(true);
   });
@@ -19,6 +28,8 @@ describe('ipPrivado', () => {
   it('IP público não é privado', () => {
     expect(ipPrivado('200.152.32.1')).toBe(false);
     expect(ipPrivado('2804:14d::1')).toBe(false);
+    expect(ipPrivado('2001:4860:4860::8888')).toBe(false);
+    expect(ipPrivado('::ffff:8.8.8.8')).toBe(false);
   });
 });
 
