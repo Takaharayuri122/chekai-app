@@ -32,16 +32,23 @@ export interface LegislacaoOpcao {
   situacao: SituacaoLegislacao | null;
 }
 
+export interface LegislacaoParaPrompt {
+  nome: string;
+  ementa: string | null;
+}
+
 export type LegislacaoListada = Legislacao & { totalTrechos: number };
 
 interface BuscaSimilarResult {
   chunk: LegislacaoChunk;
   similaridade: number;
   legislacao: {
+    id?: string;
     tipo: string;
     numero: string;
     ano: number;
     titulo: string;
+    linkOficial?: string | null;
   };
 }
 
@@ -170,6 +177,17 @@ export class LegislacaoService {
         situacao: l.situacao,
       }))
       .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR', { numeric: true }));
+  }
+
+  /**
+   * Legislações ativas (nome curto + ementa) para listar nos prompts da IA, limitadas para economizar tokens.
+   */
+  async listarParaPrompt(limite = 80): Promise<LegislacaoParaPrompt[]> {
+    const ativas = await this.legislacaoRepository.find({ where: { ativo: true } });
+    return ativas
+      .map((l) => ({ nome: nomeCurtoLegislacao(l), ementa: l.ementa ?? null }))
+      .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR', { numeric: true }))
+      .slice(0, limite);
   }
 
   /**
@@ -336,6 +354,7 @@ export class LegislacaoService {
   async buscarChunksSimilares(
     query: string,
     limite = 5,
+    opcoes?: { legislacaoIds?: string[] },
   ): Promise<BuscaSimilarResult[]> {
     const queryEmbedding = await this.gerarEmbedding(query);
     const supabase = this.supabaseService.getClient();
@@ -344,6 +363,7 @@ export class LegislacaoService {
     const { data, error } = await supabase.rpc('buscar_chunks_similares', {
       query_embedding: queryEmbedding,
       match_limit: limite,
+      ...(opcoes?.legislacaoIds?.length ? { filtro_legislacao_ids: opcoes.legislacaoIds } : {}),
     });
 
     if (error) {
@@ -396,6 +416,8 @@ export class LegislacaoService {
       numero: string;
       ano: number;
       titulo: string;
+      legislacao_id?: string;
+      link_oficial?: string | null;
       similaridade: number;
     }) => ({
       chunk: {
@@ -407,30 +429,48 @@ export class LegislacaoService {
       } as LegislacaoChunk,
       similaridade: row.similaridade,
       legislacao: {
+        id: row.legislacao_id,
         tipo: row.tipo,
         numero: row.numero,
         ano: row.ano,
         titulo: row.titulo,
+        linkOficial: row.link_oficial,
       },
     }));
   }
 
   /**
-   * Gera contexto RAG para uma query.
+   * Gera contexto RAG para uma query. Com `legislacaoIds`, os trechos dessas legislações vêm primeiro;
+   * se forem poucos (< 3), completa com a busca em toda a base, sem repetir trechos (máx. 5).
    */
-  async gerarContextoRag(query: string): Promise<string> {
-    const chunksSimilares = await this.buscarChunksSimilares(query, 5);
+  async gerarContextoRag(
+    query: string,
+    opcoes?: { legislacaoIds?: string[] },
+  ): Promise<string> {
+    const limite = 5;
+    let chunksSimilares: BuscaSimilarResult[];
+    if (opcoes?.legislacaoIds?.length) {
+      chunksSimilares = await this.buscarChunksSimilares(query, limite, opcoes);
+      if (chunksSimilares.length < 3) {
+        const gerais = await this.buscarChunksSimilares(query, limite);
+        const vistos = new Set(chunksSimilares.map((r) => r.chunk.id));
+        chunksSimilares = [
+          ...chunksSimilares,
+          ...gerais.filter((r) => !vistos.has(r.chunk.id)),
+        ].slice(0, limite);
+      }
+    } else {
+      chunksSimilares = await this.buscarChunksSimilares(query, limite);
+    }
     if (chunksSimilares.length === 0) {
       return 'Nenhuma legislação relevante encontrada.';
     }
-    const contexto = chunksSimilares
+    return chunksSimilares
       .map((result) => {
-        const ref = `${result.legislacao.tipo.toUpperCase()} ${result.legislacao.numero}/${result.legislacao.ano}`;
+        const ref = nomeCurtoLegislacao(result.legislacao as Parameters<typeof nomeCurtoLegislacao>[0]);
         const artigo = result.chunk.artigo ? `, ${result.chunk.artigo}` : '';
         return `[${ref}${artigo}]: ${result.chunk.conteudo}`;
       })
       .join('\n\n');
-    return contexto;
   }
 }
-

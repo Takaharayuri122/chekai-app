@@ -179,4 +179,80 @@ describe('LegislacaoService', () => {
     await service.adicionarChunks('l1', [{ conteudo: 'a' }, { conteudo: 'b' }]);
     expect(chunkRepo.create.mock.calls.map((c) => c[0].ordem)).toEqual([5, 6]);
   });
+
+  describe('contexto RAG com legislações escolhidas', () => {
+    const linha = (id: string, extra: object = {}) => ({
+      id,
+      conteudo: `texto ${id}`,
+      artigo: 'Art. 1',
+      tipo: 'rdc',
+      numero: '216',
+      ano: 2004,
+      titulo: 'Boas Práticas',
+      legislacao_id: 'L1',
+      link_oficial: 'https://x',
+      similaridade: 0.9,
+      ...extra,
+    });
+    let rpc: jest.Mock;
+
+    beforeEach(() => {
+      rpc = jest.fn();
+      service = new LegislacaoService(
+        repo as never,
+        chunkRepo as never,
+        { getClient: () => ({ rpc }) } as never,
+        { get: jest.fn().mockReturnValue('sk-teste') } as never,
+        leitura as never,
+      );
+      jest.spyOn(service, 'gerarEmbedding').mockResolvedValue([0.1]);
+    });
+
+    it('com filtro e >= 3 trechos, chama a RPC uma vez com filtro_legislacao_ids', async () => {
+      rpc.mockResolvedValue({ data: [linha('a'), linha('b'), linha('c')], error: null });
+      const ctx = await service.gerarContextoRag('q', { legislacaoIds: ['L1'] });
+      expect(rpc).toHaveBeenCalledTimes(1);
+      expect(rpc).toHaveBeenCalledWith('buscar_chunks_similares', {
+        query_embedding: [0.1],
+        match_limit: 5,
+        filtro_legislacao_ids: ['L1'],
+      });
+      expect(ctx).toContain('[RDC 216/2004, Art. 1]: texto a');
+    });
+
+    it('com < 3 trechos filtrados, completa sem filtro, sem repetir e com limite 5', async () => {
+      rpc
+        .mockResolvedValueOnce({ data: [linha('a')], error: null })
+        .mockResolvedValueOnce({
+          data: [linha('a'), linha('b'), linha('c'), linha('d'), linha('e'), linha('f')],
+          error: null,
+        });
+      const ctx = await service.gerarContextoRag('q', { legislacaoIds: ['L1'] });
+      expect(rpc).toHaveBeenCalledTimes(2);
+      expect(rpc.mock.calls[1][1]).not.toHaveProperty('filtro_legislacao_ids');
+      const textos = ctx.split('\n\n').map((t) => t.split(': ')[1]);
+      expect(textos).toEqual(['texto a', 'texto b', 'texto c', 'texto d', 'texto e']);
+    });
+
+    it('sem ids não envia filtro; rótulo usa o nome curto (sem "null/null")', async () => {
+      rpc.mockResolvedValue({
+        data: [linha('a', { tipo: 'outro', numero: null, ano: null, titulo: 'Norma Interna', artigo: null })],
+        error: null,
+      });
+      const ctx = await service.gerarContextoRag('q');
+      expect(rpc.mock.calls[0][1]).not.toHaveProperty('filtro_legislacao_ids');
+      expect(ctx).toBe('[Norma Interna]: texto a');
+    });
+
+    it('listarParaPrompt limita a 80 e devolve nome curto + ementa', async () => {
+      repo.find.mockResolvedValue(
+        Array.from({ length: 90 }, (_, i) => ({
+          id: String(i), tipo: TipoLegislacao.RDC, numero: String(i + 1), ano: 2000, titulo: 't', ementa: 'em',
+        })),
+      );
+      const lista = await service.listarParaPrompt();
+      expect(lista).toHaveLength(80);
+      expect(lista[0]).toEqual({ nome: 'RDC 1/2000', ementa: 'em' });
+    });
+  });
 });

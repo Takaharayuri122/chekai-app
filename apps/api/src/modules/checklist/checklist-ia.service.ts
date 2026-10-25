@@ -1,7 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
-import { LegislacaoService } from '../legislacao/legislacao.service';
+import { LegislacaoService, LegislacaoParaPrompt } from '../legislacao/legislacao.service';
+import { LegislacaoVinculoService } from '../legislacao/legislacao-vinculo.service';
 import { CreditoService } from '../credito/credito.service';
 import { ChecklistService } from './checklist.service';
 import { PerfilUsuario } from '../usuario/entities/usuario.entity';
@@ -36,9 +37,7 @@ interface ItemGeradoIa {
   criticidade: string;
   peso: number;
   obrigatorio: boolean;
-  legislacaoReferencia?: string;
-  artigo?: string;
-  textoLegal?: string;
+  legislacoes?: string[];
   secao?: string;
   usarRespostasPersonalizadas?: boolean;
   tipoRespostaCustomizada?: string;
@@ -60,6 +59,7 @@ export class ChecklistIaService {
   constructor(
     private readonly configService: ConfigService,
     private readonly legislacaoService: LegislacaoService,
+    private readonly legislacaoVinculoService: LegislacaoVinculoService,
     private readonly creditoService: CreditoService,
     private readonly checklistService: ChecklistService,
   ) {
@@ -134,7 +134,12 @@ export class ChecklistIaService {
   ): Promise<RespostaConversaIa> {
     const resumoConversa = this.extrairResumoConversa(mensagens);
     const contextoLegislacao = await this.obterContextoRag(mensagens);
-    const promptGeracao = this.construirPromptGeracao(resumoConversa, contextoLegislacao);
+    const legislacoesCadastradas = await this.obterLegislacoesCadastradas();
+    const promptGeracao = this.construirPromptGeracao(
+      resumoConversa,
+      contextoLegislacao,
+      legislacoesCadastradas,
+    );
     this.logger.log(`[executarGeracao] Gerando checklist. Resumo: ${resumoConversa.substring(0, 200)}...`);
     const response = await this.deepseek.chat.completions.create({
       model: 'deepseek-chat',
@@ -235,6 +240,15 @@ export class ChecklistIaService {
     }
   }
 
+  private async obterLegislacoesCadastradas(): Promise<LegislacaoParaPrompt[]> {
+    try {
+      return await this.legislacaoService.listarParaPrompt(80);
+    } catch {
+      this.logger.warn('[obterLegislacoesCadastradas] Falha ao listar legislações cadastradas');
+      return [];
+    }
+  }
+
   private construirPromptConversa(): string {
     const categoriasDisponiveis = Object.values(CategoriaItem).join(', ');
     const tiposAtividade = Object.values(TipoAtividade).join(', ');
@@ -271,10 +285,17 @@ FORMATO:
 - Sempre em português brasileiro.`;
   }
 
-  private construirPromptGeracao(resumoConversa: string, contextoLegislacao: string): string {
+  private construirPromptGeracao(
+    resumoConversa: string,
+    contextoLegislacao: string,
+    legislacoesCadastradas: LegislacaoParaPrompt[] = [],
+  ): string {
     const categoriasDisponiveis = Object.values(CategoriaItem).join(', ');
     const criticidadesDisponiveis = Object.values(CriticidadeItem).join(', ');
     const tiposAtividade = Object.values(TipoAtividade).join(', ');
+    const listaLegislacoes = legislacoesCadastradas
+      .map((l) => `- ${l.nome}${l.ementa ? `: ${l.ementa.trim().slice(0, 160)}` : ''}`)
+      .join('\n');
 
     return `Com base na conversa abaixo, gere um checklist de auditoria em JSON.
 
@@ -282,6 +303,7 @@ CONVERSA:
 ${resumoConversa}
 
 ${contextoLegislacao ? `LEGISLAÇÃO DE REFERÊNCIA:\n${contextoLegislacao}\n` : ''}
+${listaLegislacoes ? `LEGISLAÇÕES CADASTRADAS (cite apenas estas, pelo nome exato):\n${listaLegislacoes}\n` : ''}
 RETORNE APENAS JSON válido (sem markdown, sem texto antes/depois) neste formato:
 {
   "nome": "Nome do Checklist",
@@ -298,9 +320,7 @@ RETORNE APENAS JSON válido (sem markdown, sem texto antes/depois) neste formato
           "criticidade": "valor do enum",
           "peso": 1,
           "obrigatorio": true,
-          "legislacaoReferencia": "RDC 216/2004",
-          "artigo": "Art. X",
-          "textoLegal": "Texto curto da lei",
+          "legislacoes": ["RDC 216/2004"],
           "usarRespostasPersonalizadas": false,
           "tipoRespostaCustomizada": null,
           "opcoesResposta": null,
@@ -321,10 +341,10 @@ REGRAS:
 - Criticidades: ${criticidadesDisponiveis}
 - Tipos: ${tiposAtividade}
 - Peso: 1 a 5
-- textoLegal: máximo 1 frase (economize tokens)
+- legislacoes: nomes exatos das legislações cadastradas aplicáveis à pergunta (lista vazia se nenhuma se aplicar); não invente nomes nem cite artigos
 - Perguntas claras e objetivas
 - Agrupe logicamente
-- Use legislação quando possível
+- Use as legislações cadastradas quando aplicável
 
 RESPOSTAS PADRÃO: conforme, nao_conforme, nao_aplicavel, nao_avaliado
 - Se o item usar respostas padrão: "usarRespostasPersonalizadas": false, "opcoesResposta": null, "tipoRespostaCustomizada": null
@@ -374,6 +394,19 @@ REGRAS DE FOTO E OBSERVAÇÃO (opcoesRespostaConfig):
       },
       { id: usuario.id, perfil: usuario.perfil },
     );
+    const idsPorNome = new Map<string, string[]>();
+    const resolverLegislacaoIds = async (nomes?: string[]): Promise<string[]> => {
+      const ids: string[] = [];
+      for (const nome of Array.isArray(nomes) ? nomes : []) {
+        if (typeof nome !== 'string' || !nome.trim()) continue;
+        const chave = nome.trim();
+        if (!idsPorNome.has(chave)) {
+          idsPorNome.set(chave, await this.legislacaoVinculoService.idsPorTexto(chave));
+        }
+        ids.push(...(idsPorNome.get(chave) as string[]));
+      }
+      return [...new Set(ids)].slice(0, 10);
+    };
     for (let gIdx = 0; gIdx < data.grupos.length; gIdx++) {
       const grupoData = data.grupos[gIdx];
       const grupo = await this.checklistService.adicionarGrupo(
@@ -391,9 +424,7 @@ REGRAS DE FOTO E OBSERVAÇÃO (opcoesRespostaConfig):
             criticidade: this.resolverCriticidade(itemData.criticidade),
             peso: itemData.peso ?? 1,
             obrigatorio: itemData.obrigatorio ?? true,
-            legislacaoReferencia: itemData.legislacaoReferencia,
-            artigo: itemData.artigo,
-            textoLegal: itemData.textoLegal,
+            legislacaoIds: await resolverLegislacaoIds(itemData.legislacoes),
             grupoId: grupo.id,
             secao: itemData.secao,
             ordem: iIdx,

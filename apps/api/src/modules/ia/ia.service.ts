@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
 import { LegislacaoService } from '../legislacao/legislacao.service';
+import { LegislacaoVinculoService } from '../legislacao/legislacao-vinculo.service';
 import { CreditoService } from '../credito/credito.service';
 import { RateLimitAnaliseImagemService } from './rate-limit-analise-imagem.service';
 import { PerfilUsuario } from '../usuario/entities/usuario.entity';
@@ -17,6 +18,7 @@ interface AnaliseImagemResult {
 interface GeracaoTextoResult {
   descricaoTecnica: string;
   referenciaLegal: string;
+  legislacaoIds: string[];
   riscoEnvolvido: string;
   planoAcao: {
     acoesCorretivas: string[];
@@ -40,6 +42,7 @@ export class IaService {
   constructor(
     private readonly configService: ConfigService,
     private readonly legislacaoService: LegislacaoService,
+    private readonly legislacaoVinculoService: LegislacaoVinculoService,
     private readonly creditoService: CreditoService,
     private readonly rateLimitAnaliseImagemService: RateLimitAnaliseImagemService,
   ) {
@@ -130,9 +133,11 @@ Se não identificar não conformidades, retorne:
     descricaoSimples: string,
     tipoEstabelecimento: string,
     usuario?: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
+    opcoes?: { legislacaoIds?: string[] },
   ): Promise<GeracaoTextoResult> {
     const contextoLegislacao = await this.legislacaoService.gerarContextoRag(
       `${descricaoSimples} ${tipoEstabelecimento} segurança alimentos`,
+      { legislacaoIds: opcoes?.legislacaoIds },
     );
 
     const prompt = `Você é um consultor especialista em segurança de alimentos.
@@ -148,7 +153,7 @@ ${contextoLegislacao}
 
 Retorne APENAS um JSON válido (sem markdown, sem backticks) com:
 - descricaoTecnica: descrição técnica detalhada da não conformidade
-- referenciaLegal: citação da legislação aplicável (ex: "RDC 216/2004, Art. 4.1.3")
+- referenciaLegal: nome da norma aplicável (ex: "RDC 216/2004"), sem artigo
 - riscoEnvolvido: tipo de risco (biológico, químico, físico, legal)
 - planoAcao: objeto com:
   - acoesCorretivas: array de ações para corrigir o problema
@@ -185,11 +190,18 @@ Retorne APENAS um JSON válido (sem markdown, sem backticks) com:
     }
     try {
       const cleanContent = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-      return JSON.parse(cleanContent);
+      const parsed = JSON.parse(cleanContent);
+      const referenciaLegal = typeof parsed.referenciaLegal === 'string' ? parsed.referenciaLegal : '';
+      return {
+        ...parsed,
+        referenciaLegal,
+        legislacaoIds: await this.legislacaoVinculoService.idsPorTexto(referenciaLegal),
+      };
     } catch {
       return {
         descricaoTecnica: content,
         referenciaLegal: 'Verificar legislação aplicável',
+        legislacaoIds: [],
         riscoEnvolvido: 'A determinar',
         planoAcao: {
           acoesCorretivas: ['Corrigir a não conformidade identificada'],
@@ -211,16 +223,19 @@ Retorne APENAS um JSON válido (sem markdown, sem backticks) com:
     categoria: string,
     tipoEstabelecimento: string,
     usuario?: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
+    opcoes?: { legislacaoIds?: string[] },
   ): Promise<{
     descricaoIa: string;
     tipoNaoConformidade: string;
     gravidade: 'baixa' | 'media' | 'alta' | 'critica';
     sugestoes: string[];
     referenciaLegal: string;
+    legislacaoIds: string[];
     imagemRelevante: boolean;
   }> {
     const contextoLegislacao = await this.legislacaoService.gerarContextoRag(
       `${perguntaChecklist} ${categoria}`,
+      { legislacaoIds: opcoes?.legislacaoIds },
     );
     const prompt = `Auditoria segurança alimentos.
 
@@ -236,7 +251,7 @@ Analise a imagem e retorne JSON (sem markdown):
 - tipoNaoConformidade: tipo identificado ou "Nenhuma identificada" (apenas se relevante)
 - gravidade: "baixa", "media", "alta" ou "critica" (apenas se relevante)
 - sugestoes: array com 2-3 sugestões de correção (apenas se relevante)
-- referenciaLegal: citação legal (ex: "RDC 216/2004, Art. 4.1.3") (apenas se relevante)`;
+- referenciaLegal: nome da norma aplicável (ex: "RDC 216/2004"), sem artigo (apenas se relevante)`;
 
     let gestorId: string | undefined;
     if (usuario && usuario.perfil !== PerfilUsuario.MASTER) {
@@ -280,12 +295,14 @@ Analise a imagem e retorne JSON (sem markdown):
     try {
       const cleanContent = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
       const parsed = JSON.parse(cleanContent);
+      const referenciaLegal = typeof parsed.referenciaLegal === 'string' ? parsed.referenciaLegal : '';
       return {
         descricaoIa: parsed.descricaoIa || '',
         tipoNaoConformidade: parsed.tipoNaoConformidade || 'Nenhuma identificada',
         gravidade: parsed.gravidade || 'media',
         sugestoes: parsed.sugestoes || [],
-        referenciaLegal: parsed.referenciaLegal || '',
+        referenciaLegal,
+        legislacaoIds: await this.legislacaoVinculoService.idsPorTexto(referenciaLegal),
         imagemRelevante: parsed.imagemRelevante !== undefined ? parsed.imagemRelevante : true,
       };
     } catch {
@@ -295,6 +312,7 @@ Analise a imagem e retorne JSON (sem markdown):
         gravidade: 'media',
         sugestoes: ['Tente novamente com outra imagem'],
         referenciaLegal: 'Verificar legislação aplicável',
+        legislacaoIds: [],
         imagemRelevante: true,
       };
     }
