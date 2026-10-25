@@ -132,7 +132,8 @@ api.interceptors.response.use(
       // estado "sem permissão" e mensagem de remoção bloqueada)
       const status = error.response?.status;
       const isLegislacaoTratadaNaTela =
-        /\/legislacoes(\/|$)/.test(requestUrl) && (status === 409 || status === 403);
+        /\/legislacoes(\/|$)/.test(requestUrl) &&
+        !requestUrl.includes('/legislacoes/opcoes') && (status === 409 || status === 403);
       if (isLegislacaoTratadaNaTela) {
         return Promise.reject(error);
       }

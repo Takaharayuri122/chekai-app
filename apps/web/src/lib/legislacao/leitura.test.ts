@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { deveAtualizar, rotuloSituacao, rotuloStatusLeitura } from './leitura';
+import { deveAtualizar, mensagemDoErro, rotuloSituacao, rotuloStatusLeitura } from './leitura';
 
 describe('rotuloStatusLeitura', () => {
   it('traduz cada estado da leitura', () => {
@@ -28,5 +28,20 @@ describe('deveAtualizar', () => {
     expect(deveAtualizar('lendo')).toBe(true);
     expect(deveAtualizar('concluida')).toBe(false);
     expect(deveAtualizar('falhou')).toBe(false);
+  });
+});
+
+describe('mensagemDoErro', () => {
+  it('usa a mensagem em texto do corpo', () => {
+    expect(mensagemDoErro({ response: { data: { message: 'Há vínculos.' } } })).toBe('Há vínculos.');
+  });
+
+  it('junta mensagens em lista', () => {
+    expect(mensagemDoErro({ response: { data: { message: ['a', 'b'] } } })).toBe('a, b');
+  });
+
+  it('cai na mensagem padrão sem corpo', () => {
+    expect(mensagemDoErro(new Error('x'))).toBe('Não foi possível concluir. Tente de novo.');
+    expect(mensagemDoErro(undefined)).toBe('Não foi possível concluir. Tente de novo.');
   });
 });

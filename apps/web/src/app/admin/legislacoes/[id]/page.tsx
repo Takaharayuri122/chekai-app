@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { AlertTriangle, ExternalLink, FileText, Loader2, RefreshCw, Save, ClipboardPaste } from 'lucide-react';
 import { useAuthStore } from '@/lib/store';
@@ -26,6 +27,9 @@ import {
   OPCOES_SITUACAO,
   deveAtualizar,
   formatarDataPtBr,
+  idExistenteDoErro,
+  mensagemDoErro,
+  statusHttpDoErro,
   rotuloSituacao,
   rotuloStatusLeitura,
   statusChipLeitura,
@@ -65,10 +69,6 @@ function paraFormulario(l: Legislacao): FormularioLegislacao {
   };
 }
 
-function statusHttp(error: unknown): number | undefined {
-  return (error as { response?: { status?: number } })?.response?.status;
-}
-
 /**
  * Detalhe da legislação: estado da leitura, dados lidos editáveis e trechos.
  */
@@ -88,6 +88,8 @@ export default function LegislacaoDetalhesPage() {
   const [processando, setProcessando] = useState(false);
   const [modalPdf, setModalPdf] = useState(false);
   const [modalTexto, setModalTexto] = useState(false);
+  const [idExistente, setIdExistente] = useState<string | null>(null);
+  const [falhasPolling, setFalhasPolling] = useState(0);
   const statusAnterior = useRef<string | null>(null);
 
   const aplicar = useCallback(async (leg: Legislacao) => {
@@ -114,11 +116,15 @@ export default function LegislacaoDetalhesPage() {
     try {
       if (!silencioso) setLoading(true);
       await aplicar(await legislacaoService.buscarPorId(id));
+      if (silencioso) setFalhasPolling(0);
     } catch (error) {
-      if (statusHttp(error) === 403) {
+      if (statusHttpDoErro(error) === 403) {
         setSemPermissao(true);
       } else if (!silencioso) {
         router.push('/admin/legislacoes');
+      } else {
+        // falha momentânea no acompanhamento: o efeito de polling tenta de novo
+        setFalhasPolling((n) => n + 1);
       }
     } finally {
       if (!silencioso) setLoading(false);
@@ -136,10 +142,20 @@ export default function LegislacaoDetalhesPage() {
   // Enquanto a leitura roda, consulta de novo a cada 3 s; limpa ao desmontar ou ao concluir
   const status = legislacao?.statusLeitura;
   useEffect(() => {
-    if (!status || !deveAtualizar(status)) return;
+    if (semPermissao || !status || !deveAtualizar(status)) return;
     const timer = setTimeout(() => carregar(true), INTERVALO_ATUALIZACAO_MS);
     return () => clearTimeout(timer);
-  }, [status, legislacao, carregar]);
+  }, [status, legislacao, falhasPolling, semPermissao, carregar]);
+
+  /** 403 vira estado sem permissão; 409 e demais erros mostram a mensagem da API. */
+  const tratarErro = (erro: unknown) => {
+    if (statusHttpDoErro(erro) === 403) {
+      setSemPermissao(true);
+      return;
+    }
+    if (statusHttpDoErro(erro) === 409) setIdExistente(idExistenteDoErro(erro) ?? null);
+    toastService.error(mensagemDoErro(erro));
+  };
 
   const alterar = <K extends keyof FormularioLegislacao>(campo: K, valor: FormularioLegislacao[K]) =>
     setForm((atual) => (atual ? { ...atual, [campo]: valor } : atual));
@@ -151,6 +167,7 @@ export default function LegislacaoDetalhesPage() {
       return;
     }
     const ano = parseInt(form.ano, 10);
+    setIdExistente(null);
     try {
       setSalvando(true);
       const atualizada = await legislacaoService.atualizar(id, {
@@ -167,8 +184,8 @@ export default function LegislacaoDetalhesPage() {
       });
       setLegislacao((atual) => (atual ? { ...atual, ...atualizada } : atualizada));
       toastService.success('Legislação atualizada.');
-    } catch {
-      // erro já exibido pelo interceptor
+    } catch (erro) {
+      tratarErro(erro);
     } finally {
       setSalvando(false);
     }
@@ -181,12 +198,22 @@ export default function LegislacaoDetalhesPage() {
     await aplicar(atualizada);
   };
 
+  /** Para os modais: mostra o erro na tela e repassa, mantendo o modal aberto. */
+  const enviarComRetorno = async (acao: () => Promise<Legislacao>) => {
+    try {
+      await reiniciar(acao);
+    } catch (erro) {
+      tratarErro(erro);
+      throw erro;
+    }
+  };
+
   const tentarDeNovo = async () => {
     try {
       setProcessando(true);
       await reiniciar(() => legislacaoService.lerNovamente(id));
-    } catch {
-      // erro já exibido pelo interceptor
+    } catch (erro) {
+      tratarErro(erro);
     } finally {
       setProcessando(false);
     }
@@ -318,6 +345,14 @@ export default function LegislacaoDetalhesPage() {
 
         {legislacao.statusLeitura === 'concluida' && (
           <>
+            {idExistente && (
+              <p role="alert" className="text-sm text-destructive">
+                Esta legislação já está cadastrada.{' '}
+                <Link href={`/admin/legislacoes/${idExistente}`} className="font-medium underline">
+                  Abrir a existente
+                </Link>
+              </p>
+            )}
             <section className="space-y-4 rounded-lg border border-border bg-card p-4 shadow-sm">
               <h2 className="font-display text-base font-semibold">Dados da legislação</h2>
 
@@ -436,12 +471,12 @@ export default function LegislacaoDetalhesPage() {
       <ModalEnviarPdf
         open={modalPdf}
         onOpenChange={setModalPdf}
-        onEnviar={(arquivo) => reiniciar(() => legislacaoService.enviarArquivo(id, arquivo))}
+        onEnviar={(arquivo) => enviarComRetorno(() => legislacaoService.enviarArquivo(id, arquivo))}
       />
       <ModalColarTexto
         open={modalTexto}
         onOpenChange={setModalTexto}
-        onEnviar={(texto) => reiniciar(() => legislacaoService.enviarTexto(id, texto))}
+        onEnviar={(texto) => enviarComRetorno(() => legislacaoService.enviarTexto(id, texto))}
       />
       <ConfirmDialog
         open={confirmarReleitura}

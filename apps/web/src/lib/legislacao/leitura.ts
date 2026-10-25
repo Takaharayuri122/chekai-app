@@ -62,3 +62,31 @@ export function formatarDataPtBr(valor?: string | null): string {
   if (Number.isNaN(data.getTime())) return '—';
   return data.toLocaleDateString('pt-BR');
 }
+
+interface ErroHttp {
+  response?: { status?: number; data?: { message?: string | string[]; id?: string } };
+}
+
+export const MENSAGEM_ERRO_PADRAO = 'Não foi possível concluir. Tente de novo.';
+export const MENSAGEM_SEM_PERMISSAO = 'Você não tem permissão para gerenciar legislações.';
+
+/** Texto de erro vindo do corpo da API (string ou lista), ou a mensagem padrão. */
+export function mensagemDoErro(erro: unknown): string {
+  const message = (erro as ErroHttp)?.response?.data?.message;
+  if (Array.isArray(message)) {
+    const texto = message.filter(Boolean).join(', ');
+    if (texto) return texto;
+  } else if (typeof message === 'string' && message.trim()) {
+    return message;
+  }
+  return MENSAGEM_ERRO_PADRAO;
+}
+
+export function statusHttpDoErro(erro: unknown): number | undefined {
+  return (erro as ErroHttp)?.response?.status;
+}
+
+/** `id` da legislação existente, enviado pela API no 409 de link duplicado. */
+export function idExistenteDoErro(erro: unknown): string | undefined {
+  return (erro as ErroHttp)?.response?.data?.id;
+}

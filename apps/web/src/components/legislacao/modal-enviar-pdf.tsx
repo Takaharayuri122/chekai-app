@@ -50,7 +50,7 @@ export function ModalEnviarPdf({ open, onOpenChange, onEnviar }: ModalEnviarPdfP
       await onEnviar(arquivo);
       onOpenChange(false);
     } catch {
-      // erro já exibido pelo interceptor
+      // o erro já foi mostrado pela página; o modal continua aberto
     } finally {
       setEnviando(false);
     }

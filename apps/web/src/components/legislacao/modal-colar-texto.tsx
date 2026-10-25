@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Loader2 } from 'lucide-react';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { ResponsiveDialog } from '@/components/ui/responsive-dialog';
 import { Button } from '@/components/ui/shadcn/button';
 import { Textarea } from '@/components/ui/shadcn/textarea';
@@ -17,13 +18,30 @@ interface ModalColarTextoProps {
 export function ModalColarTexto({ open, onOpenChange, onEnviar }: ModalColarTextoProps) {
   const [texto, setTexto] = useState('');
   const [enviando, setEnviando] = useState(false);
+  const [interagiu, setInteragiu] = useState(false);
+  const [confirmarDescarte, setConfirmarDescarte] = useState(false);
 
   useEffect(() => {
-    if (open) setTexto('');
+    if (open) {
+      setTexto('');
+      setInteragiu(false);
+      setConfirmarDescarte(false);
+    }
   }, [open]);
 
   const tamanho = texto.trim().length;
+  const isDirty = tamanho > 0;
   const valido = tamanho >= MINIMO_CARACTERES_TEXTO;
+
+  /** Pede confirmação ao descartar só depois de o usuário ter digitado algo. */
+  const solicitarFechamento = () => {
+    if (enviando) return;
+    if (isDirty && interagiu) {
+      setConfirmarDescarte(true);
+      return;
+    }
+    onOpenChange(false);
+  };
 
   const enviar = async () => {
     if (!valido) return;
@@ -32,21 +50,22 @@ export function ModalColarTexto({ open, onOpenChange, onEnviar }: ModalColarText
       await onEnviar(texto.trim());
       onOpenChange(false);
     } catch {
-      // erro já exibido pelo interceptor
+      // o erro já foi mostrado pela página; o modal continua aberto
     } finally {
       setEnviando(false);
     }
   };
 
   return (
+    <>
     <ResponsiveDialog
       open={open}
-      onOpenChange={(valor) => !enviando && onOpenChange(valor)}
+      onOpenChange={(valor) => (valor ? onOpenChange(true) : solicitarFechamento())}
       title="Colar texto"
       description="Cole o texto completo da legislação. O sistema preenche os dados a partir dele."
       footer={
         <>
-          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={enviando}>
+          <Button variant="ghost" onClick={solicitarFechamento} disabled={enviando}>
             Cancelar
           </Button>
           <Button onClick={enviar} disabled={!valido || enviando}>
@@ -59,7 +78,10 @@ export function ModalColarTexto({ open, onOpenChange, onEnviar }: ModalColarText
       <div className="space-y-2">
         <Textarea
           value={texto}
-          onChange={(e) => setTexto(e.target.value)}
+          onChange={(e) => {
+            setTexto(e.target.value);
+            setInteragiu(true);
+          }}
           rows={12}
           placeholder="Cole aqui o texto da legislação"
           aria-label="Texto da legislação"
@@ -69,5 +91,18 @@ export function ModalColarTexto({ open, onOpenChange, onEnviar }: ModalColarText
         </p>
       </div>
     </ResponsiveDialog>
+    <ConfirmDialog
+      open={confirmarDescarte}
+      onClose={() => setConfirmarDescarte(false)}
+      onConfirm={() => {
+        setConfirmarDescarte(false);
+        onOpenChange(false);
+      }}
+      title="Descartar alterações?"
+      message="O texto colado será perdido."
+      confirmLabel="Descartar"
+      variant="warning"
+    />
+    </>
   );
 }

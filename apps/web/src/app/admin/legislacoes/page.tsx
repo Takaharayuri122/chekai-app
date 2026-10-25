@@ -20,6 +20,7 @@ import { legislacaoService, Legislacao, FiltrosLegislacoes, StatusLeitura } from
 import { nomeCurtoLegislacao } from '@/lib/legislacao/nome-legislacao';
 import {
   OPCOES_STATUS_LEITURA,
+  mensagemDoErro,
   rotuloSituacao,
   rotuloStatusLeitura,
   statusChipLeitura,
@@ -30,12 +31,6 @@ const FILTROS_INICIAIS = { busca: '', statusLeitura: '' };
 type FiltrosForm = typeof FILTROS_INICIAIS;
 
 const TEXTO_RELER = 'Os dados lidos e os trechos serão substituídos pelo conteúdo atual da página.';
-
-function mensagemDoErro(error: unknown, padrao: string): string {
-  const data = (error as { response?: { data?: { message?: string | string[] } } })?.response?.data;
-  const mensagem = Array.isArray(data?.message) ? data?.message.join(', ') : data?.message;
-  return mensagem || padrao;
-}
 
 /**
  * Listagem de legislações (padrão crud-frontend: CrudFiltros + CrudTable).
@@ -89,7 +84,7 @@ export default function LegislacoesPage() {
       await carregar(filtrosAtuais);
     } catch (error) {
       // 409: a API explica que há vínculos; o interceptor não exibe esse caso
-      toastService.error(mensagemDoErro(error, 'Não foi possível remover a legislação.'));
+      toastService.error(mensagemDoErro(error));
       setRemover(null);
     } finally {
       setProcessando(false);
@@ -105,7 +100,7 @@ export default function LegislacoesPage() {
       setReler(null);
       await carregar(filtrosAtuais);
     } catch (error) {
-      toastService.error(mensagemDoErro(error, 'Não foi possível iniciar a leitura.'));
+      toastService.error(mensagemDoErro(error));
       setReler(null);
     } finally {
       setProcessando(false);
@@ -118,7 +113,7 @@ export default function LegislacoesPage() {
       toastService.success(leg.ativo ? 'Legislação desativada.' : 'Legislação ativada.');
       await carregar(filtrosAtuais);
     } catch (error) {
-      toastService.error(mensagemDoErro(error, 'Não foi possível alterar a legislação.'));
+      toastService.error(mensagemDoErro(error));
     }
   };
 
