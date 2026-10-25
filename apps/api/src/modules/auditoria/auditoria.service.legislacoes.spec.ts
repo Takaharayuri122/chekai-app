@@ -4,8 +4,8 @@ import { LegislacaoVinculoService } from '../legislacao/legislacao-vinculo.servi
 import { PerfilUsuario } from '../usuario/entities/usuario.entity';
 import { StatusAuditoria } from './entities/auditoria.entity';
 
-const rdc = { id: 'l-1', tipo: 'rdc', numero: '216', ano: 2004, titulo: 'Boas práticas', situacao: 'vigente' };
-const portaria = { id: 'l-2', tipo: 'portaria', numero: '5', ano: 2013, titulo: 'CVS', situacao: 'vigente' };
+const rdc = { id: '11111111-1111-4111-8111-111111111111', tipo: 'rdc', numero: '216', ano: 2004, titulo: 'Boas práticas', situacao: 'vigente' };
+const portaria = { id: '22222222-2222-4222-8222-222222222222', tipo: 'portaria', numero: '5', ano: 2013, titulo: 'CVS', situacao: 'vigente' };
 const usuario = { id: 'u-1', perfil: PerfilUsuario.AUDITOR };
 
 describe('AuditoriaService - legislações dos itens', () => {
@@ -51,18 +51,16 @@ describe('AuditoriaService - legislações dos itens', () => {
 
   it('responder com legislacaoIds grava vínculos e referenciaLegal derivado (prevalece sobre o texto)', async () => {
     const item = await service.responderItem(
-      'a-1', 'i-1', { resposta: 'conforme', legislacaoIds: ['l-1', 'l-2'], referenciaLegal: 'ignorado' }, usuario,
+      'a-1', 'i-1', { resposta: 'conforme', legislacaoIds: ['11111111-1111-4111-8111-111111111111', '22222222-2222-4222-8222-222222222222'], referenciaLegal: 'ignorado' }, usuario,
     );
-    expect(item.legislacoes.map((l) => l.id)).toEqual(['l-1', 'l-2']);
+    expect(item.legislacoes.map((l) => l.id)).toEqual(['11111111-1111-4111-8111-111111111111', '22222222-2222-4222-8222-222222222222']);
     expect(item.referenciaLegal).toBe('RDC 216/2004; Portaria 5/2013');
   });
 
-  it('legislacaoIds vazio remove vínculos e usa o texto enviado, ou null', async () => {
+  it('legislacaoIds vazio remove vínculos e zera referenciaLegal, ignorando o texto enviado', async () => {
     const a = await service.responderItem('a-1', 'i-1', { resposta: 'conforme', legislacaoIds: [], referenciaLegal: 'texto' }, usuario);
     expect(a.legislacoes).toEqual([]);
-    expect(a.referenciaLegal).toBe('texto');
-    const b = await service.responderItem('a-1', 'i-1', { resposta: 'conforme', legislacaoIds: [] }, usuario);
-    expect(b.referenciaLegal).toBeNull();
+    expect(a.referenciaLegal).toBeNull();
   });
 
   it('sem legislacaoIds, só referenciaLegal (mobile) grava o texto e não toca nos vínculos', async () => {
@@ -75,9 +73,16 @@ describe('AuditoriaService - legislações dos itens', () => {
 
   it('id inexistente falha com 400 e não salva', async () => {
     await expect(
-      service.responderItem('a-1', 'i-1', { resposta: 'conforme', legislacaoIds: ['x'] }, usuario),
+      service.responderItem('a-1', 'i-1', { resposta: 'conforme', legislacaoIds: ['99999999-9999-4999-8999-999999999999'] }, usuario),
     ).rejects.toThrow('Legislação não encontrada.');
     expect(itemRepository.save).not.toHaveBeenCalled();
+  });
+
+  it('legislacaoIds que não é UUID falha com 400 sem consultar o banco', async () => {
+    await expect(
+      service.responderItem('a-1', 'i-1', { resposta: 'conforme', legislacaoIds: ['x'] }, usuario),
+    ).rejects.toThrow('Legislação não encontrada.');
+    expect(legislacaoService.buscarPorIds).not.toHaveBeenCalled();
   });
 
   it('detalhe da auditoria carrega as relações de legislação e devolve só o resumo', async () => {

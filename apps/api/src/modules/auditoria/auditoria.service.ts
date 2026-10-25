@@ -18,6 +18,7 @@ import { Foto } from './entities/foto.entity';
 import { Unidade } from '../cliente/entities/unidade.entity';
 import { LegislacaoService } from '../legislacao/legislacao.service';
 import { LegislacaoVinculoService } from '../legislacao/legislacao-vinculo.service';
+import { validarLegislacaoIds } from '../legislacao/lib/validar-legislacao-ids';
 import { resumirLegislacoes } from '../legislacao/lib/resumo-legislacao';
 import { ChecklistService } from '../checklist/checklist.service';
 import { PerfilUsuario } from '../usuario/entities/usuario.entity';
@@ -253,14 +254,7 @@ export class AuditoriaService {
     // Só carrega as legislações quando o DTO as traz (evita salvar relação parcial)
     let legislacoesDoDto: Legislacao[] | undefined;
     if (dto.legislacaoIds !== undefined) {
-      if (
-        !Array.isArray(dto.legislacaoIds) ||
-        dto.legislacaoIds.length > 10 ||
-        dto.legislacaoIds.some((id) => typeof id !== 'string')
-      ) {
-        throw new BadRequestException('Legislação não encontrada.');
-      }
-      legislacoesDoDto = await this.legislacaoService.buscarPorIds(dto.legislacaoIds);
+      legislacoesDoDto = await this.legislacaoService.buscarPorIds(validarLegislacaoIds(dto.legislacaoIds));
     }
     // Validar resposta: deve ser um valor do enum ou uma opção personalizada do template
     const templateItem = item.templateItem;
@@ -316,10 +310,8 @@ export class AuditoriaService {
     item.planoAcaoSugerido = dto.planoAcaoSugerido ?? item.planoAcaoSugerido;
     if (legislacoesDoDto !== undefined) {
       item.legislacoes = legislacoesDoDto;
-      // O texto derivado prevalece; com a lista vazia vale o texto enviado (ou null)
-      item.referenciaLegal = (this.legislacaoVinculoService.textoDerivado(legislacoesDoDto) ??
-        dto.referenciaLegal ??
-        null) as string;
+      // Com legislacaoIds presente, o texto é sempre o derivado (lista vazia → null)
+      item.referenciaLegal = this.legislacaoVinculoService.textoDerivado(legislacoesDoDto) as string;
     } else {
       item.referenciaLegal = dto.referenciaLegal ?? item.referenciaLegal;
     }

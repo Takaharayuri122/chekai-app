@@ -5,6 +5,7 @@ import { ChecklistTemplate, StatusTemplate } from './entities/checklist-template
 import { TemplateItem, TipoRespostaCustomizada } from './entities/template-item.entity';
 import { LegislacaoService } from '../legislacao/legislacao.service';
 import { LegislacaoVinculoService } from '../legislacao/legislacao-vinculo.service';
+import { validarLegislacaoIds } from '../legislacao/lib/validar-legislacao-ids';
 import { resumirLegislacoes } from '../legislacao/lib/resumo-legislacao';
 import { aplicarRegrasForcadas } from './checklist-regras';
 import { ChecklistGrupo } from './entities/checklist-grupo.entity';
@@ -48,14 +49,7 @@ export class ChecklistService {
     if (legislacaoIds === undefined) {
       return;
     }
-    if (
-      !Array.isArray(legislacaoIds) ||
-      legislacaoIds.length > 10 ||
-      legislacaoIds.some((id) => typeof id !== 'string')
-    ) {
-      throw new BadRequestException('Legislação não encontrada.');
-    }
-    const legislacoes = await this.legislacaoService.buscarPorIds(legislacaoIds);
+    const legislacoes = await this.legislacaoService.buscarPorIds(validarLegislacaoIds(legislacaoIds));
     item.legislacoes = legislacoes;
     item.legislacaoReferencia = this.legislacaoVinculoService.textoDerivado(legislacoes) as string;
   }
@@ -322,7 +316,7 @@ export class ChecklistService {
     dto: Partial<CriarTemplateItemDto>,
     usuarioAutenticado?: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
   ): Promise<TemplateItem> {
-    const item = await this.itemRepository.findOne({ where: { id: itemId } });
+    const item = await this.itemRepository.findOne({ where: { id: itemId }, relations: ['legislacoes'] });
     if (!item) {
       throw new NotFoundException('Item não encontrado');
     }
