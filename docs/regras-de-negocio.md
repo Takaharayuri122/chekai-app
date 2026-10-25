@@ -254,13 +254,13 @@
 | RN-LEG-012 | Na auditoria, a IA sugere legislações para a não conformidade (`legislacaoIds`, obtidos casando a norma citada com a base); a sugestão só é aplicada se o usuário não tiver escolhido manualmente |
 | RN-LEG-013 | Relatórios (PDF, tela de relatório, plano de ação) mostram só o nome da norma em "Legislação: …", sem ementa ou lista: próprias do item, depois herdadas da pergunta, depois o texto `referenciaLegal` como último recurso |
 | RN-LEG-014 | Leitura automática pelo link: aceita só páginas públicas (`http`/`https`); endereços internos, privados ou reservados são recusados (também nos redirecionamentos). Aceita HTML e PDF; texto útil com menos de 500 caracteres falha com orientação para o plano B |
-| RN-LEG-015 | Plano B: anexar PDF (até 20 MB) ou colar o texto (de 500 a 2.000.000 de caracteres); disponível quando a leitura falha e na releitura |
-| RN-LEG-016 | A leitura roda em segundo plano (`statusLeitura`: `pendente`, `lendo`, `concluida`, `falhou`). Não é possível pedir nova leitura enquanto uma está em andamento. Leitura em `lendo` há mais de 10 minutos (ex.: reinício do servidor) vira `falhou` e pode ser repetida |
+| RN-LEG-015 | Plano B: anexar PDF (até 20 MB) ou colar o texto (de 500 a 2.000.000 de caracteres); disponível quando a leitura falha ou não foi iniciada e também com a legislação pronta (releitura por outra fonte). "Ler novamente"/"Tentar de novo" pelo link só aparecem quando a legislação tem link |
+| RN-LEG-016 | A leitura roda em segundo plano (`statusLeitura`: `pendente`, `lendo`, `concluida`, `falhou`); o cadastro já nasce em `lendo`. Não é possível pedir nova leitura enquanto uma está em andamento. Ao reiniciar o servidor, legislação em `lendo` ou `pendente` sem mudança há mais de 10 minutos vira `falhou` e pode ser repetida |
 | RN-LEG-017 | "Ler novamente" substitui os dados lidos e os trechos pelo conteúdo atual, preservando título e informações; quando a IA não identifica um campo na releitura, o valor anterior é mantido. Se a leitura falhar, trechos e dados anteriores ficam intactos |
 | RN-LEG-018 | A leitura consome créditos de IA de quem a disparou (extração de dados e embeddings), conforme RN-CRD-001/002/007: MASTER isento; GESTOR paga da própria conta; sem saldo a leitura falha com "Sem créditos de IA para ler a legislação." |
-| RN-LEG-019 | Não há legislação repetida por link: o link é normalizado (sem espaços, `#fragmento` ou barra final) e, se já existir, o cadastro é recusado (409) apontando a existente. Não há deduplicação por número/ano |
+| RN-LEG-019 | Não há legislação repetida por link: o link é normalizado (sem espaços, `#fragmento` ou barra final) e, se já existir, o cadastro é recusado (409) apontando a existente. Não há deduplicação por número/ano. Link com mais de 500 caracteres é recusado (400). Na edição o link é opcional (vazio tira o link) |
 | RN-LEG-020 | Quando uma leitura conclui, perguntas e itens de auditoria sem vínculo cujo texto livre cita a norma (tipo + número + ano) ganham o vínculo; o texto livre não é alterado |
-| RN-LEG-021 | Legislação ligada a perguntas ou não conformidades não pode ser removida (409); deve ser desativada. Desativada deixa de aparecer nos seletores, mas os vínculos existentes são mantidos |
+| RN-LEG-021 | Legislação ligada a perguntas ou não conformidades não pode ser removida (409); deve ser desativada. Desativada deixa de aparecer nos seletores, mas os vínculos existentes são mantidos e o item que já a tem continua podendo ser salvo com ela |
 
 ---
 
@@ -364,3 +364,4 @@
 | 2026-10-16 | Adicionada seção 16 (Planos de Ação) | Claude |
 | 2026-10-16 | Adicionadas seções 17 (Agenda) e RN-PAC-008 | Claude |
 | 2026-10-25 | Seção 12 reescrita para a legislação automática (RN-LEG-001 a RN-LEG-021) | Claude |
+| 2026-10-25 | RN-LEG-015/016/019/021 ajustadas ao comportamento final (releitura por PDF/texto com legislação pronta, cadastro já em leitura, limite do link, desativadas aceitas em itens já ligados) | Claude |

@@ -119,8 +119,9 @@
 
 | Feature | API | Web | Mobile | Observações |
 |---------|-----|-----|--------|-------------|
-| CRUD de legislações | ok | ok | n/a | Apenas MASTER |
-| Busca semântica (RAG) | ok | ok | n/a | Usado internamente pela IA |
+| Gestão de legislações (cadastro pelo link, leitura automática, PDF/texto, ativar/desativar, remover) | ok | ok | n/a | MASTER e GESTOR com "Pode gerenciar legislações" (RN-LEG-005); só web |
+| Seletor de legislações na pergunta e na não conformidade | ok | ok | - | Só web (`GET /legislacoes/opcoes`, `legislacaoIds`). O mobile segue com o texto `legislacaoReferencia`/`referenciaLegal`, preenchido pela API com os nomes curtos (RN-LEG-009) |
+| Busca de trechos para a IA | ok | ok | n/a | Usado internamente pela IA |
 
 ## Sincronização
 
@@ -138,3 +139,4 @@
 | Data | Alteração |
 |------|-----------|
 | 2026-04-11 | Matriz inicial compilada a partir do código web, mobile e API |
+| 2026-10-25 | Legislação automática: gestão e seletor de legislações só na web; mobile mantém o texto de referência |
