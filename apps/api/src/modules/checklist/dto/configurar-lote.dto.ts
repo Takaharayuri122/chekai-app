@@ -31,6 +31,14 @@ export class OpcaoLoteDto {
   @IsString()
   valor: string;
 
+  @ApiPropertyOptional({
+    description:
+      'Valor que a opção tinha antes da edição (ausente = opção nova). Usado para renomear respostas já dadas (RN-CHK-018)',
+  })
+  @IsOptional()
+  @IsString()
+  valorOriginal?: string;
+
   @ApiPropertyOptional({ description: 'Pontuação da opção (-10 a 10). Null = sem pontuação' })
   @ValidateIf((o) => o.pontuacao != null)
   @IsNumber()
@@ -105,4 +113,6 @@ export interface ResultadoLote {
   ignorados: number;
   auditoriasVinculadas: number;
   simulado: boolean;
+  /** Respostas personalizadas atuais já usadas em auditorias (auditorias distintas por valor). */
+  respostasEmUso: { valor: string; auditorias: number }[];
 }
