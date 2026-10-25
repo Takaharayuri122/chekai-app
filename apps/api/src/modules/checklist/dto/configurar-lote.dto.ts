@@ -8,6 +8,7 @@ import {
   IsString,
   IsUUID,
   Max,
+  MaxLength,
   Min,
   ValidateIf,
   ValidateNested,
@@ -27,8 +28,12 @@ export const TIPOS_RESPOSTA_LOTE: TipoRespostaLote[] = [
   'data',
 ];
 
+/** Mesmo limite de `auditoria_itens.resposta` (varchar 100), onde a resposta escolhida é gravada. */
+export const TAMANHO_MAXIMO_OPCAO = 100;
+
 export class OpcaoLoteDto {
   @IsString()
+  @MaxLength(TAMANHO_MAXIMO_OPCAO, { message: 'Cada resposta pode ter até 100 caracteres' })
   valor: string;
 
   @ApiPropertyOptional({
@@ -37,6 +42,7 @@ export class OpcaoLoteDto {
   })
   @IsOptional()
   @IsString()
+  @MaxLength(TAMANHO_MAXIMO_OPCAO)
   valorOriginal?: string;
 
   @ApiPropertyOptional({ description: 'Pontuação da opção (-10 a 10). Null = sem pontuação' })

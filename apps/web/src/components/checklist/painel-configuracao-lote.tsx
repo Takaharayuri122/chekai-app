@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { AlertTriangle, Loader2, Lock } from 'lucide-react';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { EditorRespostasLote } from '@/components/checklist/editor-respostas-lote';
@@ -178,6 +178,8 @@ export function PainelConfiguracaoLote({ aberto, onFechar, templateId, escopo, i
   const [chaves, setChaves] = useState<string[]>(() => estado.opcoes.map(novaChave));
   const [emUso, setEmUso] = useState<RespostaEmUso[]>([]);
   // Última resposta removida, para "Desfazer"; some na próxima ação
+  // Arraste de resposta em andamento: o Esc dele cancela o arraste, não fecha o painel
+  const arrastandoRef = useRef(false);
   const [remocao, setRemocao] = useState<{ opcao: OpcaoLote; indice: number; chave: string } | null>(null);
   const [simulacao, setSimulacao] = useState<ResultadoLote | null>(null);
   const [simulando, setSimulando] = useState(false);
@@ -193,6 +195,7 @@ export function PainelConfiguracaoLote({ aberto, onFechar, templateId, escopo, i
       setChaves(inicial.opcoes.map(novaChave));
       setEmUso([]);
       setRemocao(null);
+      arrastandoRef.current = false;
       setSimulacao(null);
       setSimulando(false);
       setAplicando(false);
@@ -286,7 +289,7 @@ export function PainelConfiguracaoLote({ aberto, onFechar, templateId, escopo, i
   };
 
   const pedirFechar = () => {
-    if (aplicando) return;
+    if (aplicando || arrastandoRef.current) return;
     if (alterou) setConfirmarDescarte(true);
     else onFechar();
   };
@@ -374,6 +377,9 @@ export function PainelConfiguracaoLote({ aberto, onFechar, templateId, escopo, i
           onAdicionar={() => mudarOpcoes(adicionarOpcao(estado.opcoes), [...chaves, novaChave()])}
           onMover={(de, para) => mudarOpcoes(moverOpcao(estado.opcoes, de, para), moverOpcao(chaves, de, para))}
           onDesfazer={desfazerRemocao}
+          onArrastandoChange={(v) => {
+            arrastandoRef.current = v;
+          }}
         />
         {problemaOpcoes && <p className="text-xs text-destructive">{problemaOpcoes}</p>}
       </Secao>
@@ -498,6 +504,9 @@ export function PainelConfiguracaoLote({ aberto, onFechar, templateId, escopo, i
             side="right"
             className="flex w-full flex-col gap-0 p-0 sm:max-w-[560px]"
             onInteractOutside={(e) => e.preventDefault()}
+            onEscapeKeyDown={(e) => {
+              if (arrastandoRef.current) e.preventDefault();
+            }}
           >
             <SheetHeader className="border-b border-border px-6 py-4 pr-12">
               <SheetTitle>{titulo}</SheetTitle>
@@ -509,7 +518,13 @@ export function PainelConfiguracaoLote({ aberto, onFechar, templateId, escopo, i
         </Sheet>
       ) : (
         <Drawer open={aberto} onOpenChange={(o) => !o && pedirFechar()}>
-          <DrawerContent className="flex max-h-[92vh] flex-col" onInteractOutside={(e) => e.preventDefault()}>
+          <DrawerContent
+            className="flex max-h-[92vh] flex-col"
+            onInteractOutside={(e) => e.preventDefault()}
+            onEscapeKeyDown={(e) => {
+              if (arrastandoRef.current) e.preventDefault();
+            }}
+          >
             <DrawerHeader className="border-b border-border text-left">
               <DrawerTitle>{titulo}</DrawerTitle>
               <DrawerDescription>{descricao}</DrawerDescription>

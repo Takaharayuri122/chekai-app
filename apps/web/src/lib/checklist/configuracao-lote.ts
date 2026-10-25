@@ -279,11 +279,15 @@ export function renomearOpcao(lista: OpcaoLote[], indice: number, valor: string)
   return lista.map((o, i) => (i === indice ? { ...o, valor } : o));
 }
 
-/** Problema das respostas personalizadas (mínimo 2, sem texto vazio nem repetido); null quando estão ok. */
+/** Mesmo limite da resposta gravada na auditoria (varchar 100 na API). */
+export const TAMANHO_MAXIMO_OPCAO = 100;
+
+/** Problema das respostas personalizadas (mínimo 2, sem texto vazio, longo ou repetido); null quando estão ok. */
 export function problemasOpcoes(lista: OpcaoLote[]): string | null {
   if (lista.length < 2) return 'Use ao menos 2 respostas.';
   const nomes = lista.map((o) => o.valor.trim().toLowerCase());
   if (nomes.some((n) => !n)) return 'Dê um texto a cada resposta.';
+  if (lista.some((o) => o.valor.length > TAMANHO_MAXIMO_OPCAO)) return 'Use até 100 caracteres em cada resposta.';
   if (new Set(nomes).size !== nomes.length) return 'Dê um texto diferente a cada resposta.';
   return null;
 }

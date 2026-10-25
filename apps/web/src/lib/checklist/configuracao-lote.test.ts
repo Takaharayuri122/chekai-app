@@ -282,6 +282,8 @@ describe('configuracao-lote', () => {
       expect(problemasOpcoes([o('Sim'), o('  ')])).toBe('Dê um texto a cada resposta.');
       expect(problemasOpcoes([o('Sim'), o(' SIM ')])).toBe('Dê um texto diferente a cada resposta.');
       expect(problemasOpcoes([o('Sim'), o('Não')])).toBeNull();
+      expect(problemasOpcoes([o('Sim'), o('a'.repeat(101))])).toBe('Use até 100 caracteres em cada resposta.');
+      expect(problemasOpcoes([o('Sim'), o('a'.repeat(100))])).toBeNull();
     });
 
     it('motivoRequisicaoInvalida usa problemasOpcoes em personalizada', () => {

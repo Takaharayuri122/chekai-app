@@ -23,7 +23,7 @@ import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalList
 import { CSS } from '@dnd-kit/utilities';
 import { Tooltip } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/shadcn/button';
-import { lerPontos } from '@/lib/checklist/configuracao-lote';
+import { lerPontos, TAMANHO_MAXIMO_OPCAO } from '@/lib/checklist/configuracao-lote';
 import type { OpcaoLote, RespostaEmUso, TipoRespostaLote } from '@/lib/api';
 import { cn } from '@/lib/cn';
 
@@ -53,6 +53,8 @@ interface EditorRespostasLoteProps {
   onAdicionar: () => void;
   onMover: (de: number, para: number) => void;
   onDesfazer: () => void;
+  /** Avisa o painel que um arraste começou/terminou (Esc do arraste não pode fechar o painel). */
+  onArrastandoChange?: (arrastando: boolean) => void;
 }
 
 function auditorias(n: number): string {
@@ -153,6 +155,7 @@ function LinhaPersonalizada({ opcao, indice, tipo, compacto, uso, alca, levantad
       type="text"
       value={opcao.valor}
       onChange={(e) => onRenomear(indice, e.target.value)}
+      maxLength={TAMANHO_MAXIMO_OPCAO}
       placeholder="Texto da resposta"
       aria-label={`Texto da resposta ${indice + 1}`}
       className={cn(
@@ -273,6 +276,7 @@ export function EditorRespostasLote({
   onAdicionar,
   onMover,
   onDesfazer,
+  onArrastandoChange,
 }: EditorRespostasLoteProps) {
   const [arrastando, setArrastando] = useState<string | null>(null);
   const [destino, setDestino] = useState<number | null>(null);
@@ -339,6 +343,7 @@ export function EditorRespostasLote({
   const aoComecar = (e: DragStartEvent) => {
     setArrastando(String(e.active.id));
     setDestino(indiceDe(e.active.id));
+    onArrastandoChange?.(true);
   };
   const aoPassar = (e: DragOverEvent) => {
     if (e.over) setDestino(indiceDe(e.over.id));
@@ -348,11 +353,13 @@ export function EditorRespostasLote({
     const para = indiceDe(e.over?.id);
     setArrastando(null);
     setDestino(null);
+    onArrastandoChange?.(false);
     if (de >= 0 && para >= 0 && de !== para) onMover(de, para);
   };
   const aoCancelar = () => {
     setArrastando(null);
     setDestino(null);
+    onArrastandoChange?.(false);
   };
 
   const ativa = origem >= 0 ? opcoes[origem] : null;
