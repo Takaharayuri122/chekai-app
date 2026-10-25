@@ -186,7 +186,9 @@ export class LegislacaoService {
     if (encontradas.length !== unicos.length) {
       throw new BadRequestException('Legislação não encontrada.');
     }
-    return encontradas;
+    // Preserva a ordem enviada (o texto derivado segue essa ordem)
+    const porId = new Map(encontradas.map((l) => [l.id, l]));
+    return unicos.map((id) => porId.get(id) as Legislacao);
   }
 
   /**

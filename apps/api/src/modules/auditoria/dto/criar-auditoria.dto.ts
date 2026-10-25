@@ -1,4 +1,6 @@
 import {
+  ArrayMaxSize,
+  IsArray,
   IsEnum,
   IsNotEmpty,
   IsNumber,
@@ -72,6 +74,13 @@ export class ResponderItemDto {
   @IsString()
   @IsOptional()
   referenciaLegal?: string;
+
+  @ApiPropertyOptional({ description: 'IDs das legislações cadastradas ligadas ao item (até 10)', type: [String] })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(10)
+  @IsUUID('4', { each: true })
+  legislacaoIds?: string[];
 }
 
 /**

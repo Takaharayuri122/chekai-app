@@ -15,6 +15,7 @@ import { ChecklistModule } from '../checklist/checklist.module';
 import { PlanoModule } from '../plano/plano.module';
 import { IaModule } from '../ia/ia.module';
 import { SupabaseModule } from '../supabase/supabase.module';
+import { LegislacaoModule } from '../legislacao/legislacao.module';
 import { PdfModule } from '../pdf/pdf.module';
 
 /**
@@ -31,6 +32,7 @@ import { PdfModule } from '../pdf/pdf.module';
     forwardRef(() => PlanoModule),
     IaModule,
     SupabaseModule,
+    LegislacaoModule,
   ],
   controllers: [AuditoriaController],
   providers: [

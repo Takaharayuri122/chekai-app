@@ -94,6 +94,12 @@ describe('LegislacaoService', () => {
     await expect(service.buscarPorIds(['a', 'b', 'a'])).resolves.toHaveLength(2);
   });
 
+  it('buscarPorIds preserva a ordem dos ids enviados', async () => {
+    repo.find.mockResolvedValue([{ id: 'a' }, { id: 'b' }]);
+    const r = await service.buscarPorIds(['b', 'a']);
+    expect(r.map((l) => l.id)).toEqual(['b', 'a']);
+  });
+
   it('criarLegislacao normaliza o link, valida antes de gravar e dispara a leitura', async () => {
     repo.save.mockImplementation((l) => Promise.resolve({ ...l, id: 'nova' }));
     const usuario = { id: 'u1', perfil: 'gestor' } as never;

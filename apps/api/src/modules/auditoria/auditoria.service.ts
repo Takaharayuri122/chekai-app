@@ -13,8 +13,12 @@ import { Repository } from 'typeorm';
 import { Auditoria, StatusAuditoria } from './entities/auditoria.entity';
 import { AuditoriaItem, RespostaItem } from './entities/auditoria-item.entity';
 import { TemplateItem, TipoRespostaCustomizada } from '../checklist/entities/template-item.entity';
+import { Legislacao } from '../legislacao/entities/legislacao.entity';
 import { Foto } from './entities/foto.entity';
 import { Unidade } from '../cliente/entities/unidade.entity';
+import { LegislacaoService } from '../legislacao/legislacao.service';
+import { LegislacaoVinculoService } from '../legislacao/legislacao-vinculo.service';
+import { resumirLegislacoes } from '../legislacao/lib/resumo-legislacao';
 import { ChecklistService } from '../checklist/checklist.service';
 import { PerfilUsuario } from '../usuario/entities/usuario.entity';
 import {
@@ -47,6 +51,8 @@ export class AuditoriaService {
     private readonly unidadeRepository: Repository<Unidade>,
     private readonly checklistService: ChecklistService,
     private readonly iaService: IaService,
+    private readonly legislacaoService: LegislacaoService,
+    private readonly legislacaoVinculoService: LegislacaoVinculoService,
     @Inject(forwardRef(() => 'ValidacaoLimitesService'))
     @Optional()
     private readonly validacaoLimites?: any,
@@ -190,11 +196,17 @@ export class AuditoriaService {
         'itens',
         'itens.templateItem',
         'itens.templateItem.grupo',
+        'itens.templateItem.legislacoes',
+        'itens.legislacoes',
         'itens.fotos',
       ],
     });
     if (!auditoria) {
       throw new NotFoundException('Auditoria não encontrada');
+    }
+    for (const item of auditoria.itens ?? []) {
+      resumirLegislacoes([item]);
+      if (item.templateItem) resumirLegislacoes([item.templateItem]);
     }
     if (usuarioAutenticado) {
       this.validarAcessoAuditoria(auditoria, usuarioAutenticado);
@@ -237,6 +249,18 @@ export class AuditoriaService {
     });
     if (!item) {
       throw new NotFoundException('Item não encontrado');
+    }
+    // Só carrega as legislações quando o DTO as traz (evita salvar relação parcial)
+    let legislacoesDoDto: Legislacao[] | undefined;
+    if (dto.legislacaoIds !== undefined) {
+      if (
+        !Array.isArray(dto.legislacaoIds) ||
+        dto.legislacaoIds.length > 10 ||
+        dto.legislacaoIds.some((id) => typeof id !== 'string')
+      ) {
+        throw new BadRequestException('Legislação não encontrada.');
+      }
+      legislacoesDoDto = await this.legislacaoService.buscarPorIds(dto.legislacaoIds);
     }
     // Validar resposta: deve ser um valor do enum ou uma opção personalizada do template
     const templateItem = item.templateItem;
@@ -290,9 +314,19 @@ export class AuditoriaService {
     item.descricaoIa = dto.descricaoIa ?? item.descricaoIa;
     item.complementoDescricao = dto.complementoDescricao ?? item.complementoDescricao;
     item.planoAcaoSugerido = dto.planoAcaoSugerido ?? item.planoAcaoSugerido;
-    item.referenciaLegal = dto.referenciaLegal ?? item.referenciaLegal;
+    if (legislacoesDoDto !== undefined) {
+      item.legislacoes = legislacoesDoDto;
+      // O texto derivado prevalece; com a lista vazia vale o texto enviado (ou null)
+      item.referenciaLegal = (this.legislacaoVinculoService.textoDerivado(legislacoesDoDto) ??
+        dto.referenciaLegal ??
+        null) as string;
+    } else {
+      item.referenciaLegal = dto.referenciaLegal ?? item.referenciaLegal;
+    }
     item.pontuacao = this.calcularPontuacaoOpcao(templateItem, dto.resposta);
-    return this.itemRepository.save(item);
+    const salvo = await this.itemRepository.save(item);
+    resumirLegislacoes([salvo]);
+    return salvo;
   }
 
   /**
