@@ -71,6 +71,7 @@ import {
   CRITICIDADE_LABELS,
   CriarTemplateItemRequest,
   CriarGrupoRequest,
+  type LegislacaoResumo,
   RESPOSTAS_PADRAO,
   TipoRespostaCustomizada,
   TIPO_RESPOSTA_LABELS,
@@ -83,6 +84,9 @@ interface ItemFormData extends CriarTemplateItemRequest {
   id?: string;
   /** Texto antigo de referência, só exibido quando o item ainda não tem legislação vinculada. */
   referenciaAnterior?: string | null;
+  /** Só envia legislacaoIds ao salvar quando a seleção foi mexida (não apaga o texto legado à toa). */
+  legislacaoAlterada?: boolean;
+  legislacoesConhecidas?: LegislacaoResumo[];
 }
 
 const RESPOSTAS_PERSONALIZADAS_SUGESTOES = [
@@ -124,6 +128,7 @@ interface SortableItemProps {
 }
 
 function SortableItem({ item, index, onEdit, onRemove, onDuplicate, isDuplicating, isHighlighted, modoSelecao, selecionado, onToggleSelecao }: SortableItemProps) {
+  const nomeLegislacao = nomesLegislacoesDoItem({ legislacoes: item.legislacoes, referenciaLegal: item.legislacaoReferencia });
   const {
     attributes,
     listeners,
@@ -183,10 +188,10 @@ function SortableItem({ item, index, onEdit, onRemove, onDuplicate, isDuplicatin
               {CRITICIDADE_LABELS[item.criticidade]}
             </span>
           </Tooltip>
-          {nomesLegislacoesDoItem({ legislacoes: item.legislacoes, referenciaLegal: item.legislacaoReferencia }) && (
-            <Tooltip content={`Referência legal: ${nomesLegislacoesDoItem({ legislacoes: item.legislacoes, referenciaLegal: item.legislacaoReferencia })}`}>
+          {nomeLegislacao && (
+            <Tooltip content={`Referência legal: ${nomeLegislacao}`}>
               <span className="text-xs text-muted-foreground truncate max-w-[120px] sm:max-w-none">
-                {nomesLegislacoesDoItem({ legislacoes: item.legislacoes, referenciaLegal: item.legislacaoReferencia })}
+                {nomeLegislacao}
               </span>
             </Tooltip>
           )}
@@ -279,6 +284,8 @@ export default function EditarTemplatePage() {
     peso: 1,
     legislacaoIds: [],
     referenciaAnterior: null,
+    legislacaoAlterada: false,
+    legislacoesConhecidas: [],
     obrigatorio: true,
     opcoesResposta: [],
     usarRespostasPersonalizadas: false,
@@ -555,6 +562,8 @@ export default function EditarTemplatePage() {
       peso: 1,
       legislacaoIds: [],
       referenciaAnterior: null,
+      legislacaoAlterada: false,
+      legislacoesConhecidas: [],
       obrigatorio: true,
       opcoesResposta: [],
       usarRespostasPersonalizadas: false,
@@ -608,7 +617,9 @@ export default function EditarTemplatePage() {
       criticidade: item.criticidade,
       peso: item.tipoRespostaCustomizada === TipoRespostaCustomizada.TEXTO ? 0 : item.peso,
       legislacaoIds: item.legislacoes?.map((l) => l.id) ?? [],
-      referenciaAnterior: item.legislacoes ? null : item.legislacaoReferencia ?? null,
+      referenciaAnterior: item.legislacoes?.length ? null : item.legislacaoReferencia ?? null,
+      legislacaoAlterada: false,
+      legislacoesConhecidas: item.legislacoes ?? [],
       obrigatorio: item.obrigatorio,
       opcoesResposta: item.opcoesResposta || [],
       usarRespostasPersonalizadas: item.usarRespostasPersonalizadas || false,
@@ -631,7 +642,7 @@ export default function EditarTemplatePage() {
         categoria: itemForm.categoria,
         criticidade: itemForm.criticidade,
         peso: itemForm.tipoRespostaCustomizada === TipoRespostaCustomizada.TEXTO ? 0 : itemForm.peso,
-        legislacaoIds: itemForm.legislacaoIds ?? [],
+        ...(itemForm.legislacaoAlterada ? { legislacaoIds: itemForm.legislacaoIds ?? [] } : {}),
         obrigatorio: itemForm.obrigatorio,
         opcoesResposta: itemForm.usarRespostasPersonalizadas && !itemForm.tipoRespostaCustomizada ? itemForm.opcoesResposta : (itemForm.tipoRespostaCustomizada === TipoRespostaCustomizada.SELECT ? itemForm.opcoesResposta : undefined),
         usarRespostasPersonalizadas: itemForm.usarRespostasPersonalizadas,
@@ -1572,7 +1583,8 @@ export default function EditarTemplatePage() {
                 </label>
                 <SeletorLegislacoes
                   valor={itemForm.legislacaoIds ?? []}
-                  onChange={(ids) => setItemForm({ ...itemForm, legislacaoIds: ids })}
+                  onChange={(ids) => setItemForm({ ...itemForm, legislacaoIds: ids, legislacaoAlterada: true })}
+                  legislacoesConhecidas={itemForm.legislacoesConhecidas}
                   referenciaAnterior={itemForm.referenciaAnterior}
                 />
               </div>

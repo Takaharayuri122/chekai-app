@@ -66,6 +66,8 @@ interface ItemModalState {
   legislacaoIds: string[];
   /** Só vira true quando o usuário (ou a IA) muda a seleção; sem isso nada é gravado. */
   legislacaoAlterada: boolean;
+  /** Seleção mexida à mão neste modal: a IA não sobrescreve mais. */
+  legislacaoEditadaManual: boolean;
   isSaving: boolean;
 }
 
@@ -312,6 +314,7 @@ export default function AuditoriaPage() {
       descricaoIaExistente: item.descricaoIa || '',
       legislacaoIds: idsLegislacoesIniciais(item),
       legislacaoAlterada: false,
+      legislacaoEditadaManual: false,
       isSaving: false,
     });
   };
@@ -432,7 +435,8 @@ export default function AuditoriaPage() {
                     : foto
                 ),
                 // A IA identificou a norma: usa as legislações devolvidas, sem apagar as atuais se vierem vazias.
-                ...(analise.legislacaoIds && analise.legislacaoIds.length > 0
+                ...(analise.legislacaoIds && analise.legislacaoIds.length > 0 &&
+                  statusItem(prev.item) === 'nao_conforme' && !prev.legislacaoEditadaManual
                   ? { legislacaoIds: analise.legislacaoIds, legislacaoAlterada: true }
                   : {}),
               };
@@ -647,7 +651,7 @@ export default function AuditoriaPage() {
         {
           observacao: itemModal.observacao,
           descricaoIa: itemModal.descricaoIaExistente || itemModal.item.descricaoIa,
-          ...(itemModal.legislacaoAlterada ? { legislacaoIds: itemModal.legislacaoIds } : {}),
+          ...(itemModal.legislacaoAlterada && statusItem(itemModal.item) === 'nao_conforme' ? { legislacaoIds: itemModal.legislacaoIds } : {}),
         }
       );
       setUltimaHoraSalva(new Date());
@@ -662,7 +666,7 @@ export default function AuditoriaPage() {
                   ...item,
                   observacao: itemModal.observacao,
                   descricaoIa: itemModal.descricaoIaExistente || itemModal.item.descricaoIa || item.descricaoIa,
-                  ...(itemModal.legislacaoAlterada && itemSalvo
+                  ...(itemModal.legislacaoAlterada && itemSalvo && statusItem(itemModal.item) === 'nao_conforme'
                     ? { legislacoes: itemSalvo.legislacoes, referenciaLegal: itemSalvo.referenciaLegal }
                     : {}),
                 }
@@ -931,9 +935,10 @@ export default function AuditoriaPage() {
                   <span className="text-sm font-medium text-foreground">Legislação</span>
                   <SeletorLegislacoes
                     valor={itemModal.legislacaoIds}
-                    onChange={(ids) => setItemModal((prev) => prev ? { ...prev, legislacaoIds: ids, legislacaoAlterada: true } : null)}
+                    onChange={(ids) => setItemModal((prev) => prev ? { ...prev, legislacaoIds: ids, legislacaoAlterada: true, legislacaoEditadaManual: true } : null)}
                     referenciaAnterior={itemModal.item.referenciaLegal || itemModal.item.templateItem.legislacaoReferencia}
                     desabilitado={auditoria.status === 'finalizada'}
+                    legislacoesConhecidas={[...(itemModal.item.legislacoes ?? []), ...(itemModal.item.templateItem.legislacoes ?? [])]}
                   />
                 </div>
               )}

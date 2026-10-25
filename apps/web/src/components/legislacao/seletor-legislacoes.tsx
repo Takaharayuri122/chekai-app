@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from 'react';
 import { Plus, X } from 'lucide-react';
-import type { LegislacaoOpcao } from '@/lib/api';
+import type { LegislacaoOpcao, LegislacaoResumo } from '@/lib/api';
+import { nomeCurtoLegislacao } from '@/lib/legislacao/nome-legislacao';
 import { alternarSelecao, filtrarOpcoes } from '@/lib/legislacao/selecao';
 import { useOpcoesLegislacao } from '@/lib/legislacao/use-opcoes-legislacao';
 import { ResponsiveDialog } from '@/components/ui/responsive-dialog';
@@ -17,14 +18,20 @@ interface SeletorLegislacoesProps {
   /** Texto de referência antigo, exibido quando ainda não há legislação vinculada. */
   referenciaAnterior?: string | null;
   desabilitado?: boolean;
+  /** Legislações já vinculadas (com nome), para o chip não depender de /opcoes (inativa ou falha de carga). */
+  legislacoesConhecidas?: LegislacaoResumo[];
 }
 
-export function SeletorLegislacoes({ valor, onChange, referenciaAnterior, desabilitado }: SeletorLegislacoesProps) {
+export function SeletorLegislacoes({ valor, onChange, referenciaAnterior, desabilitado, legislacoesConhecidas }: SeletorLegislacoesProps) {
   const { opcoes, carregando } = useOpcoesLegislacao();
   const [aberto, setAberto] = useState(false);
   const [busca, setBusca] = useState('');
 
   const porId = useMemo(() => new Map(opcoes.map((o) => [o.id, o])), [opcoes]);
+  const nomesConhecidos = useMemo(
+    () => new Map((legislacoesConhecidas ?? []).map((l) => [l.id, nomeCurtoLegislacao(l)])),
+    [legislacoesConhecidas],
+  );
   const filtradas = useMemo(() => filtrarOpcoes(opcoes, busca), [opcoes, busca]);
   const mostrarAnterior = valor.length === 0 && Boolean(referenciaAnterior?.trim());
 
@@ -38,15 +45,15 @@ export function SeletorLegislacoes({ valor, onChange, referenciaAnterior, desabi
       {valor.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {valor.map((id) => {
-            const opcao = porId.get(id);
+            const nome = porId.get(id)?.nome ?? nomesConhecidos.get(id) ?? 'Legislação';
             return (
               <span key={id} className="inline-flex items-center gap-1 rounded-full bg-muted py-1 pl-2.5 pr-1 text-xs font-medium text-foreground">
-                <span>{opcao?.nome ?? 'Legislação'}</span>
+                <span>{nome}</span>
                 {!desabilitado && (
                   <Tooltip content="Remover">
                     <button
                       type="button"
-                      aria-label={`Remover ${opcao?.nome ?? 'legislação'}`}
+                      aria-label={`Remover ${nome}`}
                       onClick={() => onChange(valor.filter((x) => x !== id))}
                       className="inline-flex h-6 w-6 items-center justify-center rounded-full hover:bg-background/60"
                     >
