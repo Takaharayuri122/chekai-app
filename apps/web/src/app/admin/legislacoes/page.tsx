@@ -1,249 +1,250 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
-import {
-  Scale,
-  Plus,
-  Search,
-  ChevronRight,
-  MoreVertical,
-  Edit,
-  Trash2,
-  ExternalLink,
-  Layers,
-} from 'lucide-react';
+import { Plus, Scale, ExternalLink, RefreshCw, Power, Trash2 } from 'lucide-react';
 import { useAuthStore } from '@/lib/store';
-import { AppLayout, PageHeader } from '@/components';
-import { Button } from '@/components/ui/shadcn/button';
 import {
-  legislacaoService,
-  Legislacao,
-  TIPO_LEGISLACAO_LABELS,
-} from '@/lib/api';
+  AppLayout,
+  PageHeader,
+  CrudFiltros,
+  CrudTable,
+  StatusChip,
+  ConfirmDialog,
+} from '@/components';
+import type { AcaoTabela, ColunaTabela } from '@/components';
+import { Button } from '@/components/ui/shadcn/button';
+import { SemPermissaoLegislacoes } from '@/components/legislacao/sem-permissao';
+import { legislacaoService, Legislacao, FiltrosLegislacoes, StatusLeitura } from '@/lib/api';
+import { nomeCurtoLegislacao } from '@/lib/legislacao/nome-legislacao';
+import {
+  OPCOES_STATUS_LEITURA,
+  rotuloSituacao,
+  rotuloStatusLeitura,
+  statusChipLeitura,
+} from '@/lib/legislacao/leitura';
 import { toastService } from '@/lib/toast';
 
+const FILTROS_INICIAIS = { busca: '', statusLeitura: '' };
+type FiltrosForm = typeof FILTROS_INICIAIS;
+
+const TEXTO_RELER = 'Os dados lidos e os trechos serão substituídos pelo conteúdo atual da página.';
+
+function mensagemDoErro(error: unknown, padrao: string): string {
+  const data = (error as { response?: { data?: { message?: string | string[] } } })?.response?.data;
+  const mensagem = Array.isArray(data?.message) ? data?.message.join(', ') : data?.message;
+  return mensagem || padrao;
+}
+
 /**
- * Página de listagem de legislações.
+ * Listagem de legislações (padrão crud-frontend: CrudFiltros + CrudTable).
  */
 export default function LegislacoesPage() {
   const router = useRouter();
   const { isAuthenticated } = useAuthStore();
   const [legislacoes, setLegislacoes] = useState<Legislacao[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [menuAberto, setMenuAberto] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [semPermissao, setSemPermissao] = useState(false);
+  const [filtrosAtuais, setFiltrosAtuais] = useState<FiltrosLegislacoes>({});
+  const [remover, setRemover] = useState<Legislacao | null>(null);
+  const [reler, setReler] = useState<Legislacao | null>(null);
+  const [processando, setProcessando] = useState(false);
 
-  const loadLegislacoes = useCallback(async () => {
+  const carregar = useCallback(async (filtros: FiltrosLegislacoes = {}) => {
     try {
-      setIsLoading(true);
-      const data = await legislacaoService.listar();
-      setLegislacoes(data);
+      setLoading(true);
+      setFiltrosAtuais(filtros);
+      setLegislacoes(await legislacaoService.listar(filtros));
     } catch (error) {
-      // Erro já é tratado pelo interceptor
+      if ((error as { response?: { status?: number } })?.response?.status === 403) {
+        setSemPermissao(true);
+      }
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      router.push('/login');
-      return;
-    }
-    loadLegislacoes();
-  }, [isAuthenticated, router, loadLegislacoes]);
+    if (!isAuthenticated) router.push('/login');
+  }, [isAuthenticated, router]);
 
-  const handleRemover = async (id: string) => {
-    if (!confirm('Tem certeza que deseja remover esta legislação?')) return;
+  const handlePesquisar = useCallback(
+    (f: FiltrosForm) =>
+      carregar({
+        busca: f.busca.trim() || undefined,
+        statusLeitura: (f.statusLeitura as StatusLeitura) || undefined,
+      }),
+    [carregar],
+  );
+  const handleLimpar = useCallback(() => carregar(), [carregar]);
+
+  const confirmarRemocao = async () => {
+    if (!remover) return;
+    setProcessando(true);
     try {
-      await legislacaoService.remover(id);
-      toastService.success('Legislação removida com sucesso!');
-      loadLegislacoes();
+      await legislacaoService.remover(remover.id);
+      toastService.success('Legislação removida.');
+      setRemover(null);
+      await carregar(filtrosAtuais);
     } catch (error) {
-      // Erro já é tratado pelo interceptor
+      // 409: a API explica que há vínculos; o interceptor não exibe esse caso
+      toastService.error(mensagemDoErro(error, 'Não foi possível remover a legislação.'));
+      setRemover(null);
+    } finally {
+      setProcessando(false);
     }
-    setMenuAberto(null);
   };
 
-  const legislacoesFiltradas = legislacoes.filter(
-    (leg) =>
-      leg.titulo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      leg.numero?.includes(searchTerm) ||
-      leg.orgaoEmissor?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const confirmarReleitura = async () => {
+    if (!reler) return;
+    setProcessando(true);
+    try {
+      await legislacaoService.lerNovamente(reler.id);
+      toastService.success('Leitura iniciada.');
+      setReler(null);
+      await carregar(filtrosAtuais);
+    } catch (error) {
+      toastService.error(mensagemDoErro(error, 'Não foi possível iniciar a leitura.'));
+      setReler(null);
+    } finally {
+      setProcessando(false);
+    }
+  };
+
+  const alternarAtivo = async (leg: Legislacao) => {
+    try {
+      await legislacaoService.alterarAtivo(leg.id, !leg.ativo);
+      toastService.success(leg.ativo ? 'Legislação desativada.' : 'Legislação ativada.');
+      await carregar(filtrosAtuais);
+    } catch (error) {
+      toastService.error(mensagemDoErro(error, 'Não foi possível alterar a legislação.'));
+    }
+  };
+
+  const colunas: ColunaTabela<Legislacao>[] = [
+    {
+      label: 'Nome',
+      render: (l) => (
+        <Link href={`/admin/legislacoes/${l.id}`} className="font-medium hover:underline">
+          {nomeCurtoLegislacao(l)}
+          {!l.ativo && <span className="ml-2 text-xs font-normal text-muted-foreground">(inativa)</span>}
+        </Link>
+      ),
+    },
+    {
+      label: 'Título',
+      className: 'max-w-[320px]',
+      render: (l) => <span className="line-clamp-2 text-muted-foreground">{l.titulo}</span>,
+    },
+    {
+      label: 'Situação',
+      render: (l) => {
+        const rotulo = rotuloSituacao(l.situacao);
+        if (!rotulo) return <span className="text-muted-foreground">—</span>;
+        return l.situacao === 'revogada' ? (
+          <StatusChip status="nao_conforme" label={rotulo} />
+        ) : (
+          <span>{rotulo}</span>
+        );
+      },
+    },
+    {
+      label: 'Leitura',
+      render: (l) => (
+        <StatusChip status={statusChipLeitura(l.statusLeitura)} label={rotuloStatusLeitura(l.statusLeitura)} />
+      ),
+    },
+    {
+      label: 'Trechos',
+      render: (l) => <span>{l.totalTrechos ?? 0}</span>,
+    },
+  ];
+
+  const acoes: AcaoTabela<Legislacao>[] = [
+    { label: 'Abrir', icon: ExternalLink, onClick: (l) => router.push(`/admin/legislacoes/${l.id}`) },
+    {
+      label: 'Ler novamente',
+      icon: RefreshCw,
+      onClick: (l) => setReler(l),
+      isVisivel: (l) => l.statusLeitura !== 'lendo' && l.statusLeitura !== 'pendente',
+    },
+    { label: 'Desativar', icon: Power, onClick: alternarAtivo, isVisivel: (l) => l.ativo },
+    { label: 'Ativar', icon: Power, onClick: alternarAtivo, isVisivel: (l) => !l.ativo },
+    { label: 'Remover', icon: Trash2, className: 'text-destructive', onClick: (l) => setRemover(l) },
+  ];
 
   return (
     <AppLayout>
       <PageHeader
         title="Legislações"
-        subtitle={`${legislacoes.length} cadastradas · base de consulta da IA`}
+        subtitle="Base de consulta para checklists e relatórios"
         action={
-          <Button asChild>
-            <Link href="/admin/legislacoes/nova">
-              <Plus className="h-4 w-4" />
-              Nova
-            </Link>
-          </Button>
+          !semPermissao && (
+            <Button asChild>
+              <Link href="/admin/legislacoes/nova">
+                <Plus className="h-4 w-4" />
+                Nova
+              </Link>
+            </Button>
+          )
         }
       />
 
-      <div className="px-4 py-4 lg:px-8 space-y-4">
-        {/* Search */}
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="relative"
-        >
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-primary" />
-          <input
-            type="text"
-            placeholder="Buscar por título, número, órgão..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-12 pr-4 py-3 bg-card backdrop-blur-sm border border-primary/20 rounded-xl text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-indigo-500/20 transition-all"
+      {semPermissao ? (
+        <SemPermissaoLegislacoes />
+      ) : (
+        <div className="space-y-4 px-4 py-4 lg:px-8">
+          <CrudFiltros
+            campos={[
+              { key: 'busca', label: 'Busca', tipo: 'text', placeholder: 'Buscar por nome ou título...' },
+              {
+                key: 'statusLeitura',
+                label: 'Leitura',
+                tipo: 'select',
+                placeholder: 'Todas',
+                opcoes: OPCOES_STATUS_LEITURA,
+              },
+            ]}
+            valoresIniciais={FILTROS_INICIAIS}
+            onPesquisar={handlePesquisar}
+            onLimpar={handleLimpar}
           />
-        </motion.div>
 
-        {/* Info Card */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="bg-gradient-to-r from-primary/20 to-primary/20 border border-primary/30 rounded-2xl p-4"
-        >
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 bg-primary/20 rounded-xl flex items-center justify-center flex-shrink-0">
-              <Layers className="w-5 h-5 text-primary" />
-            </div>
-            <div>
-              <h3 className="font-medium text-foreground mb-1">Base de Conhecimento RAG</h3>
-              <p className="text-sm text-primary/70">
-                As legislações cadastradas aqui alimentam o sistema de IA para gerar 
-                recomendações e textos técnicos baseados nas normas vigentes.
-              </p>
-            </div>
-          </div>
-        </motion.div>
+          <CrudTable
+            colunas={colunas}
+            dados={legislacoes}
+            acoes={acoes}
+            keyExtractor={(l) => l.id}
+            loading={loading}
+            emptyState={{
+              icon: Scale,
+              title: 'Nenhuma legislação encontrada',
+              description: 'Cadastre uma legislação pelo botão "Nova".',
+            }}
+          />
+        </div>
+      )}
 
-        {/* Lista de Legislações */}
-        {isLoading ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="w-10 h-10 border-3 border-primary border-t-transparent rounded-full animate-spin" />
-          </div>
-        ) : legislacoesFiltradas.length === 0 ? (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-card rounded-2xl border border-primary/20 p-12 text-center backdrop-blur-sm"
-          >
-            <div className="w-20 h-20 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <Scale className="w-10 h-10 text-primary" />
-            </div>
-            <h3 className="text-lg font-semibold text-foreground mb-2">
-              Nenhuma legislação encontrada
-            </h3>
-            <p className="text-primary/70">
-              {searchTerm
-                ? 'Tente buscar com outros termos'
-                : 'Adicione uma legislação pelo botão no topo.'}
-            </p>
-          </motion.div>
-        ) : (
-          <div className="space-y-3">
-            {legislacoesFiltradas.map((leg, index) => (
-              <motion.div
-                key={leg.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
-                className="bg-card rounded-2xl border border-primary/20 p-5 backdrop-blur-sm hover:border-primary/40 transition-all group"
-              >
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 bg-gradient-to-br from-primary/20 to-primary/20 rounded-xl flex items-center justify-center flex-shrink-0">
-                    <Scale className="w-6 h-6 text-primary" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <h3 className="font-semibold text-foreground truncate">
-                          {TIPO_LEGISLACAO_LABELS[leg.tipo]} {leg.numero}/{leg.ano}
-                        </h3>
-                        <p className="text-sm text-primary/70 line-clamp-2">
-                          {leg.titulo}
-                        </p>
-                      </div>
-                      <div className="relative">
-                        <button
-                          onClick={() => setMenuAberto(menuAberto === leg.id ? null : leg.id)}
-                          className="p-2 hover:bg-muted rounded-lg transition-colors"
-                        >
-                          <MoreVertical className="w-4 h-4 text-primary" />
-                        </button>
-                        {menuAberto === leg.id && (
-                          <div className="absolute right-0 top-full mt-1 bg-card rounded-xl border border-primary/20 shadow-xl py-2 min-w-[160px] z-50">
-                            <Link
-                              href={`/admin/legislacoes/${leg.id}`}
-                              className="flex items-center gap-3 px-4 py-2 hover:bg-muted text-primary"
-                            >
-                              <Edit className="w-4 h-4" />
-                              Editar
-                            </Link>
-                            {leg.linkOficial && (
-                              <a
-                                href={leg.linkOficial}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center gap-3 px-4 py-2 hover:bg-muted text-primary"
-                              >
-                                <ExternalLink className="w-4 h-4" />
-                                Abrir Link
-                              </a>
-                            )}
-                            <button
-                              onClick={() => handleRemover(leg.id)}
-                              className="flex items-center gap-3 px-4 py-2 hover:bg-red-500/10 text-red-400 w-full"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                              Remover
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-3 mt-3 text-sm">
-                      <span className="px-2 py-1 bg-primary/20 text-primary text-xs font-medium rounded-lg">
-                        {TIPO_LEGISLACAO_LABELS[leg.tipo]}
-                      </span>
-                      {leg.orgaoEmissor && (
-                        <span className="text-primary/60">
-                          {leg.orgaoEmissor}
-                        </span>
-                      )}
-                      {leg.chunks && leg.chunks.length > 0 && (
-                        <span className="flex items-center gap-1 text-primary">
-                          <Layers className="w-3.5 h-3.5" />
-                          {leg.chunks.length} chunks
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <Link
-                    href={`/admin/legislacoes/${leg.id}`}
-                    className="p-2 hover:bg-primary/10 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
-                  >
-                    <ChevronRight className="w-5 h-5 text-primary" />
-                  </Link>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        )}
-      </div>
-
+      <ConfirmDialog
+        open={!!remover}
+        onClose={() => setRemover(null)}
+        onConfirm={confirmarRemocao}
+        title="Remover legislação"
+        message={`Deseja remover "${remover ? nomeCurtoLegislacao(remover) : ''}"? Esta ação não pode ser desfeita.`}
+        confirmLabel="Remover"
+        loading={processando}
+      />
+      <ConfirmDialog
+        open={!!reler}
+        onClose={() => setReler(null)}
+        onConfirm={confirmarReleitura}
+        title="Ler novamente"
+        message={TEXTO_RELER}
+        confirmLabel="Ler novamente"
+        variant="warning"
+        loading={processando}
+      />
     </AppLayout>
   );
 }
-

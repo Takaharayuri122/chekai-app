@@ -1,241 +1,140 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
-import {
-  Save,
-  Scale,
-  Building,
-  Link as LinkIcon,
-  FileText,
-  Hash,
-  Calendar,
-} from 'lucide-react';
+import Link from 'next/link';
+import { Loader2 } from 'lucide-react';
 import { useAuthStore } from '@/lib/store';
 import { AppLayout, PageHeader } from '@/components';
 import { Button } from '@/components/ui/shadcn/button';
-import {
-  legislacaoService,
-  TipoLegislacao,
-  TIPO_LEGISLACAO_LABELS,
-} from '@/lib/api';
+import { Input } from '@/components/ui/shadcn/input';
+import { Label } from '@/components/ui/shadcn/label';
+import { Textarea } from '@/components/ui/shadcn/textarea';
+import { SemPermissaoLegislacoes } from '@/components/legislacao/sem-permissao';
+import { legislacaoService } from '@/lib/api';
 import { toastService } from '@/lib/toast';
 
-/**
- * Página de criação de nova legislação.
- */
-// Formulário legado; a tela é refeita na Task 9 (cadastro só pelo link).
-interface FormularioLegislacao {
-  tipo: TipoLegislacao;
-  numero: string;
-  ano: number;
-  titulo: string;
-  ementa: string;
-  orgaoEmissor: string;
-  linkOficial: string;
+interface ErroApi {
+  response?: { status?: number; data?: { message?: string | string[]; id?: string } };
 }
 
+/**
+ * Cadastro de legislação: só o link e o título; o sistema lê a página e preenche o resto.
+ */
 export default function NovaLegislacaoPage() {
   const router = useRouter();
   const { isAuthenticated } = useAuthStore();
-  const [isLoading, setIsLoading] = useState(false);
-  const [formData, setFormData] = useState<FormularioLegislacao>({
-    tipo: TipoLegislacao.RDC,
-    numero: '',
-    ano: new Date().getFullYear(),
-    titulo: '',
-    ementa: '',
-    orgaoEmissor: '',
-    linkOficial: '',
-  });
+  const [linkOficial, setLinkOficial] = useState('');
+  const [titulo, setTitulo] = useState('');
+  const [informacoes, setInformacoes] = useState('');
+  const [salvando, setSalvando] = useState(false);
+  const [idExistente, setIdExistente] = useState<string | null>(null);
+  const [semPermissao, setSemPermissao] = useState(false);
 
-  if (!isAuthenticated) {
-    router.push('/login');
-    return null;
-  }
+  useEffect(() => {
+    if (!isAuthenticated) router.push('/login');
+  }, [isAuthenticated, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.linkOficial || !formData.titulo) {
-      toastService.warning('Preencha os campos obrigatórios');
+    setIdExistente(null);
+    if (!linkOficial.trim() || !titulo.trim()) {
+      toastService.warning('Preencha o link e o título.');
+      return;
+    }
+    if (!/^https?:\/\//i.test(linkOficial.trim())) {
+      toastService.warning('O link deve começar com http:// ou https://.');
       return;
     }
     try {
-      setIsLoading(true);
-      const legislacao = await legislacaoService.criar({ linkOficial: formData.linkOficial, titulo: formData.titulo });
-      toastService.success('Legislação criada com sucesso!');
+      setSalvando(true);
+      const legislacao = await legislacaoService.criar({
+        linkOficial: linkOficial.trim(),
+        titulo: titulo.trim(),
+        ...(informacoes.trim() ? { informacoes: informacoes.trim() } : {}),
+      });
       router.push(`/admin/legislacoes/${legislacao.id}`);
     } catch (error) {
-      // Erro já é tratado pelo interceptor
+      const { response } = error as ErroApi;
+      if (response?.status === 409 && response.data?.id) {
+        setIdExistente(response.data.id);
+      } else if (response?.status === 409) {
+        toastService.error('Esta legislação já está cadastrada.');
+      } else if (response?.status === 403) {
+        setSemPermissao(true);
+      }
+      // demais erros já são exibidos pelo interceptor
     } finally {
-      setIsLoading(false);
+      setSalvando(false);
     }
-  };
-
-  const handleChange = (field: keyof FormularioLegislacao, value: string | number) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   return (
     <AppLayout>
-      <PageHeader title="Nova legislação" subtitle="Adicionar à base de consulta da IA" backHref="/admin/legislacoes" />
+      <PageHeader title="Nova legislação" backHref="/admin/legislacoes" />
 
-      <form onSubmit={handleSubmit} className="px-4 py-4 lg:px-8 space-y-4 pb-6">
-        {/* Tipo e Número */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-card rounded-2xl border border-primary/20 p-6 backdrop-blur-sm space-y-4"
-        >
-          <h2 className="text-lg font-semibold text-foreground flex items-center gap-2 font-display">
-            <Scale className="w-5 h-5 text-primary" />
-            Identificação
-          </h2>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-primary/80 mb-2">
-                Tipo *
-              </label>
-              <select
-                value={formData.tipo}
-                onChange={(e) => handleChange('tipo', e.target.value as TipoLegislacao)}
-                className="w-full px-4 py-3 bg-muted border border-primary/20 rounded-xl text-foreground focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
-              >
-                {Object.values(TipoLegislacao).map((tipo) => (
-                  <option key={tipo} value={tipo}>
-                    {TIPO_LEGISLACAO_LABELS[tipo]}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-primary mb-2">
-                <Hash className="w-4 h-4 inline mr-1" />
-                Número *
-              </label>
-              <input
-                type="text"
-                value={formData.numero}
-                onChange={(e) => handleChange('numero', e.target.value)}
-                placeholder="216"
-                className="w-full px-4 py-3 bg-muted border border-primary/20 rounded-xl text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-primary mb-2">
-                <Calendar className="w-4 h-4 inline mr-1" />
-                Ano *
-              </label>
-              <input
-                type="number"
-                value={formData.ano}
-                onChange={(e) => handleChange('ano', parseInt(e.target.value, 10))}
-                min={1900}
-                max={2100}
-                className="w-full px-4 py-3 bg-muted border border-primary/20 rounded-xl text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-primary mb-2">
-                <Building className="w-4 h-4 inline mr-1" />
-                Órgão Emissor
-              </label>
-              <input
-                type="text"
-                value={formData.orgaoEmissor || ''}
-                onChange={(e) => handleChange('orgaoEmissor', e.target.value)}
-                placeholder="ANVISA"
-                className="w-full px-4 py-3 bg-muted border border-primary/20 rounded-xl text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
-              />
-            </div>
-          </div>
-        </motion.div>
-
-        {/* Título e Ementa */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="bg-card rounded-2xl border border-primary/20 p-6 backdrop-blur-sm space-y-4"
-        >
-          <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
-            <FileText className="w-5 h-5 text-primary" />
-            Conteúdo
-          </h2>
-
-          <div>
-            <label className="block text-sm font-medium text-primary mb-2">
-              Título *
-            </label>
-            <input
-              type="text"
-              value={formData.titulo}
-              onChange={(e) => handleChange('titulo', e.target.value)}
-              placeholder="Regulamento Técnico de Boas Práticas..."
-              className="w-full px-4 py-3 bg-muted border border-primary/20 rounded-xl text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-primary mb-2">
-              Ementa
-            </label>
-            <textarea
-              value={formData.ementa || ''}
-              onChange={(e) => handleChange('ementa', e.target.value)}
-              placeholder="Dispõe sobre o Regulamento Técnico de Boas Práticas para Serviços de Alimentação..."
-              rows={4}
-              className="w-full px-4 py-3 bg-muted border border-primary/20 rounded-xl text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all resize-none"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-primary mb-2">
-              <LinkIcon className="w-4 h-4 inline mr-1" />
-              Link Oficial
-            </label>
-            <input
+      {semPermissao ? (
+        <SemPermissaoLegislacoes />
+      ) : (
+        <form onSubmit={handleSubmit} className="mx-auto max-w-2xl space-y-5 px-4 py-4 lg:px-8">
+          <div className="space-y-2">
+            <Label htmlFor="linkOficial">Link oficial *</Label>
+            <Input
+              id="linkOficial"
               type="url"
-              value={formData.linkOficial || ''}
-              onChange={(e) => handleChange('linkOficial', e.target.value)}
-              placeholder="https://www.gov.br/anvisa/..."
-              className="w-full px-4 py-3 bg-muted border border-primary/20 rounded-xl text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+              inputMode="url"
+              value={linkOficial}
+              onChange={(e) => {
+                setLinkOficial(e.target.value);
+                setIdExistente(null);
+              }}
+              placeholder="https://..."
+              className="h-11"
+            />
+            <p className="text-xs text-muted-foreground">O sistema lê a página e preenche o resto.</p>
+            {idExistente && (
+              <p role="alert" className="text-sm text-destructive">
+                Esta legislação já está cadastrada.{' '}
+                <Link href={`/admin/legislacoes/${idExistente}`} className="font-medium underline">
+                  Abrir a existente
+                </Link>
+              </p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="titulo">Título *</Label>
+            <Input
+              id="titulo"
+              value={titulo}
+              onChange={(e) => setTitulo(e.target.value)}
+              placeholder="Ex.: Boas práticas para serviços de alimentação"
+              className="h-11"
             />
           </div>
-        </motion.div>
 
-        {/* Info */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="bg-primary/10 border border-primary/20 rounded-2xl p-4"
-        >
-          <p className="text-sm text-primary/70">
-            💡 Após criar a legislação, você poderá adicionar os <strong>chunks</strong> (trechos de texto) 
-            que serão usados pelo sistema de IA para gerar recomendações baseadas nas normas.
-          </p>
-        </motion.div>
-      </form>
+          <div className="space-y-2">
+            <Label htmlFor="informacoes">Informações (opcional)</Label>
+            <Textarea
+              id="informacoes"
+              value={informacoes}
+              onChange={(e) => setInformacoes(e.target.value)}
+              rows={4}
+              placeholder="Observações para quem for usar esta legislação"
+            />
+          </div>
 
-      {/* Ações fixas no fim da área de conteúdo, acima da barra inferior no celular */}
-      <div className="sticky bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-20 flex gap-3 border-t border-border bg-card/95 px-4 py-3 backdrop-blur md:bottom-0 lg:px-8">
-        <Button type="button" variant="ghost" className="h-11 flex-1" onClick={() => router.back()}>
-          Cancelar
-        </Button>
-        <Button className="h-11 flex-1" onClick={handleSubmit} disabled={isLoading}>
-          <Save className="h-4 w-4" />
-          {isLoading ? 'Salvando…' : 'Criar legislação'}
-        </Button>
-      </div>
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="ghost" asChild>
+              <Link href="/admin/legislacoes">Cancelar</Link>
+            </Button>
+            <Button type="submit" disabled={salvando}>
+              {salvando && <Loader2 className="h-4 w-4 animate-spin" />}
+              Salvar
+            </Button>
+          </div>
+        </form>
+      )}
     </AppLayout>
   );
 }
-

@@ -128,6 +128,14 @@ api.interceptors.response.use(
         );
         return Promise.reject(error);
       }
+      // 409 e 403 de legislações são tratados na própria tela (atalho para a existente,
+      // estado "sem permissão" e mensagem de remoção bloqueada)
+      const status = error.response?.status;
+      const isLegislacaoTratadaNaTela =
+        /\/legislacoes(\/|$)/.test(requestUrl) && (status === 409 || status === 403);
+      if (isLegislacaoTratadaNaTela) {
+        return Promise.reject(error);
+      }
       if (errorMessage) {
         toastService.error(errorMessage);
       } else {
