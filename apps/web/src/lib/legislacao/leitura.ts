@@ -21,9 +21,28 @@ export function rotuloSituacao(situacao: SituacaoLegislacao | null): string | nu
   return situacao ? ROTULOS_SITUACAO[situacao] : null;
 }
 
-/** Enquanto a leitura está em andamento a tela consulta a API de tempos em tempos. */
+/**
+ * Enquanto a leitura está em andamento a tela consulta a API de tempos em tempos.
+ * `pendente` não tem leitura rodando (o cadastro já nasce em `lendo`): a tela oferece tentar de novo.
+ */
 export function deveAtualizar(status: StatusLeitura): boolean {
-  return status === 'pendente' || status === 'lendo';
+  return status === 'lendo';
+}
+
+/** Falhas seguidas no acompanhamento depois das quais a tela para e oferece "Atualizar". */
+export const LIMITE_FALHAS_ACOMPANHAMENTO = 5;
+
+export function continuarAcompanhando(status: StatusLeitura, falhasSeguidas: number): boolean {
+  return deveAtualizar(status) && falhasSeguidas < LIMITE_FALHAS_ACOMPANHAMENTO;
+}
+
+/**
+ * Rotas de gestão de legislações (todas menos `/legislacoes/opcoes`, usada pelos seletores):
+ * as telas mostram o próprio erro, então o interceptor não exibe toast.
+ */
+export function erroTratadoNasTelasDeLegislacao(url: string): boolean {
+  const caminho = url.split('?')[0];
+  return /\/legislacoes(\/|$)/.test(caminho) && !/\/legislacoes\/opcoes\/?$/.test(caminho);
 }
 
 /** Tom do StatusChip para cada estado da leitura. */

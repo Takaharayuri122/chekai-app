@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/shadcn/button';
 import { SemPermissaoLegislacoes } from '@/components/legislacao/sem-permissao';
 import { legislacaoService, Legislacao, FiltrosLegislacoes, StatusLeitura } from '@/lib/api';
 import { nomeCurtoLegislacao } from '@/lib/legislacao/nome-legislacao';
+import { resetarOpcoesLegislacao } from '@/lib/legislacao/use-opcoes-legislacao';
 import {
   OPCOES_STATUS_LEITURA,
   mensagemDoErro,
@@ -54,6 +55,8 @@ export default function LegislacoesPage() {
     } catch (error) {
       if ((error as { response?: { status?: number } })?.response?.status === 403) {
         setSemPermissao(true);
+      } else {
+        toastService.error(mensagemDoErro(error));
       }
     } finally {
       setLoading(false);
@@ -79,6 +82,7 @@ export default function LegislacoesPage() {
     setProcessando(true);
     try {
       await legislacaoService.remover(remover.id);
+      resetarOpcoesLegislacao();
       toastService.success('Legislação removida.');
       setRemover(null);
       await carregar(filtrosAtuais);
@@ -96,6 +100,7 @@ export default function LegislacoesPage() {
     setProcessando(true);
     try {
       await legislacaoService.lerNovamente(reler.id);
+      resetarOpcoesLegislacao();
       toastService.success('Leitura iniciada.');
       setReler(null);
       await carregar(filtrosAtuais);
@@ -110,6 +115,7 @@ export default function LegislacoesPage() {
   const alternarAtivo = async (leg: Legislacao) => {
     try {
       await legislacaoService.alterarAtivo(leg.id, !leg.ativo);
+      resetarOpcoesLegislacao();
       toastService.success(leg.ativo ? 'Legislação desativada.' : 'Legislação ativada.');
       await carregar(filtrosAtuais);
     } catch (error) {
@@ -162,7 +168,8 @@ export default function LegislacoesPage() {
       label: 'Ler novamente',
       icon: RefreshCw,
       onClick: (l) => setReler(l),
-      isVisivel: (l) => l.statusLeitura !== 'lendo' && l.statusLeitura !== 'pendente',
+      // Só com link e sem leitura em andamento (pendente pode ser repetida)
+      isVisivel: (l) => l.statusLeitura !== 'lendo' && Boolean(l.linkOficial?.trim()),
     },
     { label: 'Desativar', icon: Power, onClick: alternarAtivo, isVisivel: (l) => l.ativo },
     { label: 'Ativar', icon: Power, onClick: alternarAtivo, isVisivel: (l) => !l.ativo },

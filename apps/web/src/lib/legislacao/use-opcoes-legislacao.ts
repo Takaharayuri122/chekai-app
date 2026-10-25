@@ -1,41 +1,36 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useSyncExternalStore } from 'react';
 import { legislacaoService, type LegislacaoOpcao } from '@/lib/api';
+import { criarCacheOpcoes } from './cache-opcoes';
 
-let promessaCompartilhada: Promise<LegislacaoOpcao[]> | null = null;
+const cache = criarCacheOpcoes<LegislacaoOpcao>(() => legislacaoService.opcoes());
 
-function carregarOpcoes(): Promise<LegislacaoOpcao[]> {
-  if (!promessaCompartilhada) {
-    promessaCompartilhada = legislacaoService.opcoes().catch((erro) => {
-      // Falha não fica em cache: a próxima abertura tenta de novo.
-      promessaCompartilhada = null;
-      throw erro;
-    });
-  }
-  return promessaCompartilhada;
-}
-
-/** Limpa o cache de opções (usado em testes). */
+/** Limpa o cache de opções; chamar depois de criar, editar, ativar, desativar, remover ou reler. */
 export function resetarOpcoesLegislacao(): void {
-  promessaCompartilhada = null;
+  cache.resetar();
 }
 
-/** Opções de legislação para o seletor; busca uma vez e compartilha entre os componentes. */
-export function useOpcoesLegislacao(): { opcoes: LegislacaoOpcao[]; carregando: boolean } {
-  const [opcoes, setOpcoes] = useState<LegislacaoOpcao[]>([]);
-  const [carregando, setCarregando] = useState(true);
+/**
+ * Opções de legislação para o seletor, compartilhadas entre os componentes.
+ * `recarregar` busca de novo mantendo a lista atual na tela enquanto isso.
+ */
+export function useOpcoesLegislacao(): {
+  opcoes: LegislacaoOpcao[];
+  carregando: boolean;
+  erro: boolean;
+  recarregar: () => Promise<void>;
+} {
+  const estado = useSyncExternalStore(cache.assinar, cache.obter, cache.obter);
 
   useEffect(() => {
-    let ativo = true;
-    carregarOpcoes()
-      .then((lista) => ativo && setOpcoes(lista))
-      .catch(() => undefined)
-      .finally(() => ativo && setCarregando(false));
-    return () => {
-      ativo = false;
-    };
-  }, []);
+    void cache.garantir();
+  }, [estado.opcoes]);
 
-  return { opcoes, carregando };
+  return {
+    opcoes: estado.opcoes ?? [],
+    carregando: estado.carregando || (estado.opcoes === null && !estado.erro),
+    erro: estado.erro,
+    recarregar: cache.recarregar,
+  };
 }

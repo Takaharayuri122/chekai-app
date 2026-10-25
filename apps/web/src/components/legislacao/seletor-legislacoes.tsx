@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Plus, X } from 'lucide-react';
+import { Loader2, Plus, RefreshCw, X } from 'lucide-react';
 import type { LegislacaoOpcao, LegislacaoResumo } from '@/lib/api';
 import { nomeCurtoLegislacao } from '@/lib/legislacao/nome-legislacao';
 import { alternarSelecao, filtrarOpcoes } from '@/lib/legislacao/selecao';
@@ -23,7 +23,7 @@ interface SeletorLegislacoesProps {
 }
 
 export function SeletorLegislacoes({ valor, onChange, referenciaAnterior, desabilitado, legislacoesConhecidas }: SeletorLegislacoesProps) {
-  const { opcoes, carregando } = useOpcoesLegislacao();
+  const { opcoes, carregando, erro, recarregar } = useOpcoesLegislacao();
   const [aberto, setAberto] = useState(false);
   const [busca, setBusca] = useState('');
 
@@ -38,6 +38,12 @@ export function SeletorLegislacoes({ valor, onChange, referenciaAnterior, desabi
   const fechar = (open: boolean) => {
     setAberto(open);
     if (!open) setBusca('');
+  };
+
+  // Mostra a lista já carregada na hora e busca de novo, para refletir mudanças recentes
+  const abrir = () => {
+    setAberto(true);
+    void recarregar();
   };
 
   return (
@@ -68,7 +74,7 @@ export function SeletorLegislacoes({ valor, onChange, referenciaAnterior, desabi
       )}
 
       {!desabilitado && (
-        <Button type="button" variant="outline" className="h-11 w-full sm:w-auto" onClick={() => setAberto(true)}>
+        <Button type="button" variant="outline" className="h-11 w-full sm:w-auto" onClick={abrir}>
           <Plus className="h-4 w-4" />
           Adicionar legislação
         </Button>
@@ -91,7 +97,20 @@ export function SeletorLegislacoes({ valor, onChange, referenciaAnterior, desabi
           </Button>
         }
       >
-        {!carregando && opcoes.length === 0 ? (
+        {opcoes.length === 0 && erro && !carregando ? (
+          <div className="flex flex-col items-center gap-3 py-6 text-center">
+            <p className="text-sm text-muted-foreground">Não foi possível carregar as legislações.</p>
+            <Button type="button" variant="outline" className="h-11" onClick={() => void recarregar()}>
+              <RefreshCw className="h-4 w-4" />
+              Tentar de novo
+            </Button>
+          </div>
+        ) : opcoes.length === 0 && carregando ? (
+          <div role="status" className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Carregando legislações…
+          </div>
+        ) : opcoes.length === 0 ? (
           <p className="py-6 text-center text-sm text-muted-foreground">Nenhuma legislação cadastrada ainda.</p>
         ) : (
           <Command shouldFilter={false} className="rounded-lg border border-border">

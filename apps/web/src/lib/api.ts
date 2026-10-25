@@ -2,6 +2,7 @@ import axios, { AxiosError } from 'axios';
 import { abrirPdfBlobEmNovaAba, type ResultadoAberturaPdf } from './pdf-abertura';
 import { toastService } from './toast';
 import type { ModeloSecao } from './relatorio-tecnico/modelo-secoes';
+import { erroTratadoNasTelasDeLegislacao } from './legislacao/leitura';
 
 export type { ResultadoAberturaPdf } from './pdf-abertura';
 
@@ -128,13 +129,9 @@ api.interceptors.response.use(
         );
         return Promise.reject(error);
       }
-      // 409 e 403 de legislações são tratados na própria tela (atalho para a existente,
-      // estado "sem permissão" e mensagem de remoção bloqueada)
-      const status = error.response?.status;
-      const isLegislacaoTratadaNaTela =
-        /\/legislacoes(\/|$)/.test(requestUrl) &&
-        !requestUrl.includes('/legislacoes/opcoes') && (status === 409 || status === 403);
-      if (isLegislacaoTratadaNaTela) {
+      // Erros das telas de legislação são tratados nelas mesmas (atalho para a existente,
+      // estado "sem permissão", acompanhamento da leitura), sem toast duplicado
+      if (erroTratadoNasTelasDeLegislacao(requestUrl)) {
         return Promise.reject(error);
       }
       if (errorMessage) {
@@ -1217,7 +1214,7 @@ export interface Legislacao {
   titulo: string;
   ementa?: string;
   orgaoEmissor?: string;
-  linkOficial?: string;
+  linkOficial?: string | null;
   informacoes?: string | null;
   situacao: SituacaoLegislacao | null;
   dataPublicacao: string | null;
@@ -1257,17 +1254,18 @@ export interface CriarLegislacaoRequest {
   informacoes?: string;
 }
 
+/** null limpa o valor (ano, situação, data de publicação e link). */
 export type AtualizarLegislacaoRequest = Partial<{
   tipo: TipoLegislacao;
   numero: string;
-  ano: number;
+  ano: number | null;
   titulo: string;
   ementa: string;
   orgaoEmissor: string;
-  linkOficial: string;
+  linkOficial: string | null;
   informacoes: string;
-  situacao: SituacaoLegislacao;
-  dataPublicacao: string;
+  situacao: SituacaoLegislacao | null;
+  dataPublicacao: string | null;
 }>;
 
 export interface FiltrosLegislacoes {

@@ -23,8 +23,11 @@ import {
   TIPO_LEGISLACAO_LABELS,
 } from '@/lib/api';
 import { nomeCurtoLegislacao } from '@/lib/legislacao/nome-legislacao';
+import { FormularioLegislacao, montarAtualizacao, paraFormulario } from '@/lib/legislacao/formulario';
+import { resetarOpcoesLegislacao } from '@/lib/legislacao/use-opcoes-legislacao';
 import {
   OPCOES_SITUACAO,
+  continuarAcompanhando,
   deveAtualizar,
   formatarDataPtBr,
   idExistenteDoErro,
@@ -40,34 +43,6 @@ const INTERVALO_ATUALIZACAO_MS = 3000;
 const TEXTO_RELER = 'Os dados lidos e os trechos serão substituídos pelo conteúdo atual da página.';
 const CLASSE_SELECT =
   'h-11 w-full rounded-md border border-input bg-card px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring md:h-10';
-
-interface FormularioLegislacao {
-  tipo: TipoLegislacao;
-  numero: string;
-  ano: string;
-  orgaoEmissor: string;
-  dataPublicacao: string;
-  situacao: SituacaoLegislacao | '';
-  ementa: string;
-  titulo: string;
-  informacoes: string;
-  linkOficial: string;
-}
-
-function paraFormulario(l: Legislacao): FormularioLegislacao {
-  return {
-    tipo: l.tipo,
-    numero: l.numero ?? '',
-    ano: l.ano ? String(l.ano) : '',
-    orgaoEmissor: l.orgaoEmissor ?? '',
-    dataPublicacao: l.dataPublicacao ? l.dataPublicacao.slice(0, 10) : '',
-    situacao: l.situacao ?? '',
-    ementa: l.ementa ?? '',
-    titulo: l.titulo,
-    informacoes: l.informacoes ?? '',
-    linkOficial: l.linkOficial ?? '',
-  };
-}
 
 /**
  * Detalhe da legislação: estado da leitura, dados lidos editáveis e trechos.
@@ -100,10 +75,13 @@ export default function LegislacaoDetalhesPage() {
     }
     if (leg.statusLeitura === 'concluida') {
       if (statusAnterior.current !== 'concluida') {
+        // Leitura recém-concluída muda o nome curto usado nos seletores
+        if (statusAnterior.current) resetarOpcoesLegislacao();
         try {
           setTrechos(await legislacaoService.listarChunks(id));
-        } catch {
+        } catch (erro) {
           setTrechos([]);
+          toastService.error(mensagemDoErro(erro));
         }
       }
     } else {
@@ -121,9 +99,10 @@ export default function LegislacaoDetalhesPage() {
       if (statusHttpDoErro(error) === 403) {
         setSemPermissao(true);
       } else if (!silencioso) {
+        toastService.error(mensagemDoErro(error));
         router.push('/admin/legislacoes');
       } else {
-        // falha momentânea no acompanhamento: o efeito de polling tenta de novo
+        // falha momentânea no acompanhamento: o efeito de polling tenta de novo (até o limite)
         setFalhasPolling((n) => n + 1);
       }
     } finally {
@@ -139,13 +118,19 @@ export default function LegislacaoDetalhesPage() {
     carregar();
   }, [isAuthenticated, router, carregar]);
 
-  // Enquanto a leitura roda, consulta de novo a cada 3 s; limpa ao desmontar ou ao concluir
+  // Enquanto a leitura roda, consulta de novo a cada 3 s; limpa ao desmontar, ao concluir
+  // ou depois de 5 falhas seguidas (aí a tela oferece "Atualizar")
   const status = legislacao?.statusLeitura;
   useEffect(() => {
-    if (semPermissao || !status || !deveAtualizar(status)) return;
+    if (semPermissao || !status || !continuarAcompanhando(status, falhasPolling)) return;
     const timer = setTimeout(() => carregar(true), INTERVALO_ATUALIZACAO_MS);
     return () => clearTimeout(timer);
   }, [status, legislacao, falhasPolling, semPermissao, carregar]);
+
+  const retomarAcompanhamento = () => {
+    setFalhasPolling(0);
+    void carregar(true);
+  };
 
   /** 403 vira estado sem permissão; 409 e demais erros mostram a mensagem da API. */
   const tratarErro = (erro: unknown) => {
@@ -161,28 +146,18 @@ export default function LegislacaoDetalhesPage() {
     setForm((atual) => (atual ? { ...atual, [campo]: valor } : atual));
 
   const salvar = async () => {
-    if (!form) return;
-    if (!form.titulo.trim() || !form.linkOficial.trim()) {
-      toastService.warning('Preencha o título e o link.');
+    if (!form || !legislacao) return;
+    if (!form.titulo.trim()) {
+      toastService.warning('Preencha o título.');
       return;
     }
-    const ano = parseInt(form.ano, 10);
     setIdExistente(null);
     try {
       setSalvando(true);
-      const atualizada = await legislacaoService.atualizar(id, {
-        tipo: form.tipo,
-        numero: form.numero.trim(),
-        ...(Number.isNaN(ano) ? {} : { ano }),
-        orgaoEmissor: form.orgaoEmissor.trim(),
-        ...(form.dataPublicacao ? { dataPublicacao: form.dataPublicacao } : {}),
-        ...(form.situacao ? { situacao: form.situacao } : {}),
-        ementa: form.ementa.trim(),
-        titulo: form.titulo.trim(),
-        informacoes: form.informacoes.trim(),
-        linkOficial: form.linkOficial.trim(),
-      });
+      const atualizada = await legislacaoService.atualizar(id, montarAtualizacao(form, legislacao.linkOficial));
+      resetarOpcoesLegislacao();
       setLegislacao((atual) => (atual ? { ...atual, ...atualizada } : atualizada));
+      setForm(paraFormulario(atualizada));
       toastService.success('Legislação atualizada.');
     } catch (erro) {
       tratarErro(erro);
@@ -194,7 +169,9 @@ export default function LegislacaoDetalhesPage() {
   /** Dispara uma ação que reinicia a leitura e volta a acompanhar o andamento. */
   const reiniciar = async (acao: () => Promise<Legislacao>) => {
     const atualizada = await acao();
+    resetarOpcoesLegislacao();
     statusAnterior.current = null;
+    setFalhasPolling(0);
     await aplicar(atualizada);
   };
 
@@ -246,6 +223,9 @@ export default function LegislacaoDetalhesPage() {
 
   const rotuloDaSituacao = rotuloSituacao(legislacao.situacao);
   const lendo = deveAtualizar(legislacao.statusLeitura);
+  const acompanhamentoParado = lendo && !continuarAcompanhando(legislacao.statusLeitura, falhasPolling);
+  const temLink = Boolean(legislacao.linkOficial?.trim());
+  const semAndamento = legislacao.statusLeitura === 'falhou' || legislacao.statusLeitura === 'pendente';
 
   return (
     <AppLayout>
@@ -256,10 +236,12 @@ export default function LegislacaoDetalhesPage() {
         action={
           legislacao.statusLeitura === 'concluida' && (
             <>
-              <Button variant="outline" onClick={() => setConfirmarReleitura(true)} className="hidden sm:inline-flex">
-                <RefreshCw className="h-4 w-4" />
-                Ler novamente
-              </Button>
+              {temLink && (
+                <Button variant="outline" onClick={() => setConfirmarReleitura(true)} className="hidden sm:inline-flex">
+                  <RefreshCw className="h-4 w-4" />
+                  Ler novamente
+                </Button>
+              )}
               <Button onClick={salvar} disabled={salvando}>
                 {salvando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                 Salvar
@@ -308,7 +290,7 @@ export default function LegislacaoDetalhesPage() {
           )}
         </section>
 
-        {lendo && (
+        {lendo && !acompanhamentoParado && (
           <section
             role="status"
             className="flex items-center gap-3 rounded-lg border border-border bg-card p-4 shadow-sm"
@@ -320,17 +302,36 @@ export default function LegislacaoDetalhesPage() {
           </section>
         )}
 
-        {legislacao.statusLeitura === 'falhou' && (
+        {acompanhamentoParado && (
+          <section className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4 shadow-sm sm:flex-row sm:items-center">
+            <AlertTriangle className="h-5 w-5 shrink-0 text-warning" />
+            <p className="flex-1 text-sm text-muted-foreground">
+              Não foi possível acompanhar a leitura agora. Ela continua em andamento; atualize para ver o resultado.
+            </p>
+            <Button variant="outline" className="h-11 sm:h-10" onClick={retomarAcompanhamento}>
+              <RefreshCw className="h-4 w-4" />
+              Atualizar
+            </Button>
+          </section>
+        )}
+
+        {semAndamento && (
           <section className="space-y-3 rounded-lg border border-destructive/40 bg-destructive/5 p-4">
             <div className="flex items-start gap-3">
               <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" />
-              <p className="text-sm">{legislacao.erroLeitura || 'Não foi possível ler esta legislação.'}</p>
+              <p className="text-sm">
+                {legislacao.statusLeitura === 'pendente'
+                  ? 'A leitura desta legislação não foi iniciada.'
+                  : legislacao.erroLeitura || 'Não foi possível ler esta legislação.'}
+              </p>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button onClick={tentarDeNovo} disabled={processando}>
-                {processando ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-                Tentar de novo
-              </Button>
+              {temLink && (
+                <Button onClick={tentarDeNovo} disabled={processando}>
+                  {processando ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                  Tentar de novo
+                </Button>
+              )}
               <Button variant="outline" onClick={() => setModalPdf(true)}>
                 <FileText className="h-4 w-4" />
                 Enviar PDF
@@ -443,7 +444,7 @@ export default function LegislacaoDetalhesPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="linkOficial">Link oficial</Label>
+                <Label htmlFor="linkOficial">Link oficial (opcional)</Label>
                 <Input
                   id="linkOficial"
                   type="url"
@@ -457,10 +458,29 @@ export default function LegislacaoDetalhesPage() {
                 </p>
               </div>
 
-              <Button variant="outline" onClick={() => setConfirmarReleitura(true)} className="w-full sm:hidden">
-                <RefreshCw className="h-4 w-4" />
-                Ler novamente
-              </Button>
+            </section>
+
+            <section className="space-y-3 rounded-lg border border-border bg-card p-4 shadow-sm">
+              <h2 className="font-display text-base font-semibold">Ler de novo</h2>
+              <p className="text-sm text-muted-foreground">
+                Os dados lidos e os trechos são substituídos pelo novo conteúdo. Título e informações são mantidos.
+              </p>
+              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                {temLink && (
+                  <Button variant="outline" onClick={() => setConfirmarReleitura(true)} className="h-11 sm:hidden">
+                    <RefreshCw className="h-4 w-4" />
+                    Ler novamente
+                  </Button>
+                )}
+                <Button variant="outline" onClick={() => setModalPdf(true)} className="h-11 sm:h-10">
+                  <FileText className="h-4 w-4" />
+                  Enviar PDF
+                </Button>
+                <Button variant="outline" onClick={() => setModalTexto(true)} className="h-11 sm:h-10">
+                  <ClipboardPaste className="h-4 w-4" />
+                  Colar texto
+                </Button>
+              </div>
             </section>
 
             <ListaTrechos trechos={trechos} />

@@ -12,6 +12,8 @@ import { Label } from '@/components/ui/shadcn/label';
 import { Textarea } from '@/components/ui/shadcn/textarea';
 import { SemPermissaoLegislacoes } from '@/components/legislacao/sem-permissao';
 import { legislacaoService } from '@/lib/api';
+import { mensagemDoErro } from '@/lib/legislacao/leitura';
+import { resetarOpcoesLegislacao } from '@/lib/legislacao/use-opcoes-legislacao';
 import { toastService } from '@/lib/toast';
 
 interface ErroApi {
@@ -53,6 +55,7 @@ export default function NovaLegislacaoPage() {
         titulo: titulo.trim(),
         ...(informacoes.trim() ? { informacoes: informacoes.trim() } : {}),
       });
+      resetarOpcoesLegislacao();
       router.push(`/admin/legislacoes/${legislacao.id}`);
     } catch (error) {
       const { response } = error as ErroApi;
@@ -62,8 +65,10 @@ export default function NovaLegislacaoPage() {
         toastService.error('Esta legislação já está cadastrada.');
       } else if (response?.status === 403) {
         setSemPermissao(true);
+      } else {
+        // o interceptor não exibe erros das telas de legislação
+        toastService.error(mensagemDoErro(error));
       }
-      // demais erros já são exibidos pelo interceptor
     } finally {
       setSalvando(false);
     }
