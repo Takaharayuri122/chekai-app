@@ -13,6 +13,7 @@ import {
   ClipboardCheck,
   Building2,
   Coins,
+  SlidersHorizontal,
 } from 'lucide-react';
 import { AppLayout, PageHeader, EmptyState, FormModal } from '@/components';
 import {
@@ -41,6 +42,7 @@ export default function PlanosPage() {
     limiteAuditorias: 0,
     limiteClientes: 0,
     limiteCreditos: 0,
+    permiteModeloRelatorioTecnico: false,
     ativo: true,
   });
 
@@ -96,6 +98,7 @@ export default function PlanosPage() {
       limiteAuditorias: plano.limiteAuditorias,
       limiteClientes: plano.limiteClientes,
       limiteCreditos: plano.limiteCreditos,
+      permiteModeloRelatorioTecnico: plano.permiteModeloRelatorioTecnico ?? false,
       ativo: plano.ativo,
     });
     setShowModal(true);
@@ -111,6 +114,7 @@ export default function PlanosPage() {
       limiteAuditorias: 0,
       limiteClientes: 0,
       limiteCreditos: 0,
+      permiteModeloRelatorioTecnico: false,
       ativo: true,
     });
   };
@@ -219,6 +223,12 @@ export default function PlanosPage() {
                       <Coins className="w-4 h-4 text-primary" />
                       <span>{plano.limiteCreditos.toLocaleString('pt-BR')} créditos</span>
                     </div>
+                    {plano.permiteModeloRelatorioTecnico && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <SlidersHorizontal className="w-4 h-4 text-primary" />
+                        <span>Relatório técnico personalizável</span>
+                      </div>
+                    )}
                   </div>
                   <div className="flex flex-wrap items-start justify-end gap-2">
                     <button
@@ -369,6 +379,19 @@ export default function PlanosPage() {
                 }
               />
             </div>
+          </div>
+          <div className="flex flex-col">
+            <label className="flex items-center justify-between gap-2 py-1 cursor-pointer">
+              <span className="text-sm font-medium text-foreground">Permite personalizar o relatório técnico</span>
+              <input
+                type="checkbox"
+                className="relative shrink-0 cursor-pointer appearance-none rounded-full bg-muted-foreground/30 transition-colors checked:bg-primary before:absolute before:left-0.5 before:top-0.5 before:rounded-full before:bg-white before:shadow before:transition-transform disabled:opacity-50 h-5 w-9 before:h-4 before:w-4 checked:before:translate-x-4"
+                checked={planoForm.permiteModeloRelatorioTecnico ?? false}
+                onChange={(e) =>
+                  setPlanoForm({ ...planoForm, permiteModeloRelatorioTecnico: e.target.checked })
+                }
+              />
+            </label>
           </div>
           <div className="flex flex-col">
             <label className="flex items-center justify-between gap-2 py-1 cursor-pointer">

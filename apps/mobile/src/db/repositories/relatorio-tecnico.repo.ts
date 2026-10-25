@@ -1,4 +1,5 @@
 import { getDatabase } from '../client';
+import type { ModeloSecao } from '../../utils/modelo-secoes';
 
 export type RelatorioTecnicoStatus = 'rascunho' | 'finalizado';
 export type SyncStatus = 'pending' | 'synced' | 'error';
@@ -52,6 +53,10 @@ export interface RelatorioTecnicoCompleto {
   syncStatus: string;
   pdfUrl: string | null;
   pdfLocalPath: string | null;
+  /** Snapshot do modelo (relatórios finalizados no servidor). */
+  modeloSecoes: ModeloSecao[] | null;
+  /** Motivo de uma finalização recusada pelo servidor (RN-REL-013). */
+  avisoSync: string | null;
   updatedAt: string;
 }
 
@@ -74,6 +79,8 @@ interface RelatorioTecnicoRow {
   sync_status: string;
   pdf_url: string | null;
   pdf_local_path: string | null;
+  modelo_secoes: string | null;
+  aviso_sync: string | null;
   updated_at: string;
   razao_social: string;
   nome_unidade: string | null;
@@ -88,6 +95,18 @@ function parseAcoes(valor: string | null): string[] {
     return Array.isArray(parsed) ? parsed.map((item) => String(item)) : [];
   } catch {
     return [];
+  }
+}
+
+function parseModelo(valor: string | null): ModeloSecao[] | null {
+  if (!valor) {
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(valor) as unknown;
+    return Array.isArray(parsed) ? (parsed as ModeloSecao[]) : null;
+  } catch {
+    return null;
   }
 }
 
@@ -113,6 +132,8 @@ function mapearCompleto(r: RelatorioTecnicoRow): RelatorioTecnicoCompleto {
     syncStatus: r.sync_status,
     pdfUrl: r.pdf_url,
     pdfLocalPath: r.pdf_local_path,
+    modeloSecoes: parseModelo(r.modelo_secoes),
+    avisoSync: r.aviso_sync,
     updatedAt: r.updated_at,
   };
 }
@@ -210,6 +231,27 @@ export class RelatorioTecnicoRepo {
     );
   }
 
+  /** Finaliza localmente congelando o modelo aplicado (RN-REL-012), até o servidor confirmar. */
+  finalizarLocal(id: string, modelo: ModeloSecao[]): void {
+    this.db.runSync(
+      `UPDATE relatorios_tecnicos
+       SET status = 'finalizado', modelo_secoes = ?, aviso_sync = NULL,
+           sync_status = 'pending', updated_at = ?
+       WHERE id = ?`,
+      [JSON.stringify(modelo), new Date().toISOString(), id],
+    );
+  }
+
+  /** Finalização recusada pelo servidor (RN-REL-013): volta a rascunho e descarta o snapshot local. */
+  voltarParaRascunho(id: string, aviso: string): void {
+    this.db.runSync(
+      `UPDATE relatorios_tecnicos
+       SET status = 'rascunho', modelo_secoes = NULL, aviso_sync = ?, updated_at = ?
+       WHERE id = ?`,
+      [aviso, new Date().toISOString(), id],
+    );
+  }
+
   setRemoteId(id: string, remoteId: string): void {
     this.db.runSync(
       `UPDATE relatorios_tecnicos SET remote_id = ? WHERE id = ?`,
@@ -293,6 +335,7 @@ export class RelatorioTecnicoRepo {
     assinaturaNomeConsultora: string;
     responsavel: string;
     pdfUrl: string | null;
+    modeloSecoes?: ModeloSecao[] | null;
   }): void {
     const now = new Date().toISOString();
     this.db.runSync(
@@ -300,8 +343,8 @@ export class RelatorioTecnicoRepo {
          (id, remote_id, local_id, cliente_id, unidade_id, identificacao,
           descricao_ocorrencia_html, avaliacao_tecnica_html, acoes_executadas,
           recomendacoes_html, plano_acao_html, apoio_analitico, status,
-          assinatura_nome, responsavel, pdf_url, sync_status, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'synced', ?)
+          assinatura_nome, responsavel, pdf_url, modelo_secoes, sync_status, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'synced', ?)
        ON CONFLICT(id) DO UPDATE SET
          remote_id = excluded.remote_id,
          cliente_id = excluded.cliente_id,
@@ -317,6 +360,7 @@ export class RelatorioTecnicoRepo {
          assinatura_nome = excluded.assinatura_nome,
          responsavel = excluded.responsavel,
          pdf_url = excluded.pdf_url,
+         modelo_secoes = excluded.modelo_secoes,
          sync_status = 'synced',
          updated_at = excluded.updated_at
        WHERE relatorios_tecnicos.sync_status != 'pending'`,
@@ -324,7 +368,8 @@ export class RelatorioTecnicoRepo {
         input.localId, input.remoteId, input.localId, input.clienteId, input.unidadeId, input.identificacao,
         input.descricaoOcorrenciaHtml, input.avaliacaoTecnicaHtml, JSON.stringify(input.acoesExecutadas),
         input.recomendacoesConsultoraHtml, input.planoAcaoSugeridoHtml, input.apoioAnalitico, input.status,
-        input.assinaturaNomeConsultora, input.responsavel, input.pdfUrl, now,
+        input.assinaturaNomeConsultora, input.responsavel, input.pdfUrl,
+        input.modeloSecoes ? JSON.stringify(input.modeloSecoes) : null, now,
       ],
     );
   }

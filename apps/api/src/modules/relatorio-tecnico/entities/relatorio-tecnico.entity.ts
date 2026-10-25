@@ -12,6 +12,7 @@ import { Cliente } from '../../cliente/entities/cliente.entity';
 import { Unidade } from '../../cliente/entities/unidade.entity';
 import { Usuario } from '../../usuario/entities/usuario.entity';
 import { RelatorioTecnicoFoto } from './relatorio-tecnico-foto.entity';
+import { ModeloSecao } from '../modelo-secoes';
 
 export enum StatusRelatorioTecnico {
   RASCUNHO = 'rascunho',
@@ -64,6 +65,10 @@ export class RelatorioTecnico {
 
   @Column({ name: 'apoio_analitico_chek_ai', type: 'text', nullable: true })
   apoioAnaliticoChekAi: string | null;
+
+  /** Snapshot do modelo aplicado, gravado na transição para finalizado. */
+  @Column({ name: 'modelo_secoes', type: 'jsonb', nullable: true })
+  modeloSecoes: ModeloSecao[] | null;
 
   @Column({
     type: 'enum',
