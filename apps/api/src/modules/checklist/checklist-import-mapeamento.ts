@@ -4,6 +4,7 @@ import {
   ConfiguracaoPerguntaImportada,
   PerguntaImportada,
 } from './dto/importar-checklist.dto';
+import { TAMANHO_MAXIMO_OPCAO } from './dto/configurar-lote.dto';
 import { CategoriaItem, CriticidadeItem, TemplateItem } from './entities/template-item.entity';
 
 type OpcaoImportada = ConfiguracaoPerguntaImportada['opcoes'][number];
@@ -68,6 +69,7 @@ export const PONTUACAO_MIN = -10;
 export const PONTUACAO_MAX = 10;
 export const PESO_MAX = 100;
 const MOTIVO_PONTUACAO_AJUSTADA = 'Pontuação da planilha fora do intervalo de -10 a 10 foi ajustada.';
+const MOTIVO_OPCAO_ENCURTADA = 'Uma resposta da planilha passou de 100 caracteres e foi encurtada.';
 
 /** Peso inteiro de 0 a PESO_MAX; valor ausente, inválido ou negativo vira 1. */
 export function normalizarPeso(bruto: number | undefined): number {
@@ -109,12 +111,16 @@ export function mapearLinhaImportada(row: ChecklistCsvRow, indice: number): Perg
 
   let opcoes: OpcaoImportada[];
   let pontuacaoAjustada = false;
+  let opcaoEncurtada = false;
   if (tipo === 'personalizada') {
     opcoes = opcoesPlanilha.map((o) => {
       const { pontuacao, ajustada } = normalizarPontos(o.pontos);
       pontuacaoAjustada ||= ajustada;
+      // A resposta escolhida é gravada na auditoria com até 100 caracteres
+      const texto = (o.texto ?? '').trim();
+      opcaoEncurtada ||= texto.length > TAMANHO_MAXIMO_OPCAO;
       return opcao(
-        o.texto,
+        texto.slice(0, TAMANHO_MAXIMO_OPCAO),
         pontuacao,
         exige(row.fotosObrigatorias, o.inconformidade),
         exige(row.justificativaObrigatoria, o.inconformidade),
@@ -154,6 +160,7 @@ export function mapearLinhaImportada(row: ChecklistCsvRow, indice: number): Perg
   const motivos: string[] = [];
   if (!reconhecido) motivos.push(`Tipo de resposta da planilha não reconhecido: "${row.tipoResposta}"`);
   if (pontuacaoAjustada) motivos.push(MOTIVO_PONTUACAO_AJUSTADA);
+  if (opcaoEncurtada) motivos.push(MOTIVO_OPCAO_ENCURTADA);
   if (motivos.length) pergunta.motivoConferir = motivos.join(' ');
   return pergunta;
 }

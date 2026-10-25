@@ -1,6 +1,6 @@
 import { normalizarConfiguracao, PESO_MAX } from './checklist-import-mapeamento';
 import { RESPOSTAS_PADRAO_VALORES } from './checklist-regras';
-import { TIPOS_RESPOSTA_LOTE } from './dto/configurar-lote.dto';
+import { TAMANHO_MAXIMO_OPCAO, TIPOS_RESPOSTA_LOTE } from './dto/configurar-lote.dto';
 import { ConfiguracaoPerguntaImportada, PerguntaImportada } from './dto/importar-checklist.dto';
 import { CategoriaItem, CriticidadeItem } from './entities/template-item.entity';
 
@@ -111,7 +111,15 @@ function opcoesValidas(valor: unknown): ConfiguracaoPerguntaImportada['opcoes'] 
   if (!Array.isArray(valor)) return undefined;
   const resultado: ConfiguracaoPerguntaImportada['opcoes'] = [];
   for (const o of valor as Bruto[]) {
-    if (!o || typeof o !== 'object' || typeof o.valor !== 'string' || !o.valor.trim()) return undefined;
+    if (
+      !o ||
+      typeof o !== 'object' ||
+      typeof o.valor !== 'string' ||
+      !o.valor.trim() ||
+      o.valor.length > TAMANHO_MAXIMO_OPCAO
+    ) {
+      return undefined;
+    }
     const p = o.pontuacao;
     if (p != null && (typeof p !== 'number' || !Number.isFinite(p) || p < -10 || p > 10)) return undefined;
     const opcao: ConfiguracaoPerguntaImportada['opcoes'][number] = {
