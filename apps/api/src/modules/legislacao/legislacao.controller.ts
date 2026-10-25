@@ -40,6 +40,7 @@ import { AdicionarChunksDto, BuscaRagDto } from './dto/chunks.dto';
 import { LerTextoDto } from './dto/ler-texto.dto';
 import { LegislacaoLeituraService, UsuarioAutenticado } from './legislacao-leitura.service';
 import { ehPdf } from './lib/extrair-texto';
+import { nomeCurtoLegislacao } from './lib/nome-legislacao';
 
 const MAX_PDF_BYTES = 20 * 1024 * 1024;
 const MSG_PDF = 'Envie um arquivo PDF de até 20 MB.';
@@ -250,7 +251,7 @@ export class LegislacaoController {
     return {
       chunks: resultados.map((r) => ({
         conteudo: r.chunk.conteudo,
-        referencia: `${r.legislacao.tipo.toUpperCase()} ${r.legislacao.numero}/${r.legislacao.ano}${r.chunk.artigo ? `, ${r.chunk.artigo}` : ''}`,
+        referencia: `${nomeCurtoLegislacao(r.legislacao as Parameters<typeof nomeCurtoLegislacao>[0])}${r.chunk.artigo ? `, ${r.chunk.artigo}` : ''}`,
         similaridade: r.similaridade,
       })),
     };

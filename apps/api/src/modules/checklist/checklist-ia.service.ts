@@ -401,7 +401,14 @@ REGRAS DE FOTO E OBSERVAÇÃO (opcoesRespostaConfig):
         if (typeof nome !== 'string' || !nome.trim()) continue;
         const chave = nome.trim();
         if (!idsPorNome.has(chave)) {
-          idsPorNome.set(chave, await this.legislacaoVinculoService.idsPorTexto(chave));
+          let encontrados: string[] = [];
+          try {
+            encontrados = await this.legislacaoVinculoService.idsPorTexto(chave);
+          } catch (erro) {
+            // Sem vínculo para esta norma: o checklist gerado (já pago) segue sendo criado.
+            this.logger.warn(`Não foi possível casar "${chave}" com as legislações: ${(erro as Error)?.message}`);
+          }
+          idsPorNome.set(chave, encontrados);
         }
         ids.push(...(idsPorNome.get(chave) as string[]));
       }

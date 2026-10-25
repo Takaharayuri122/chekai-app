@@ -85,4 +85,11 @@ describe('ChecklistIaService (legislações cadastradas)', () => {
     expect(dto).not.toHaveProperty('textoLegal');
     expect(dto).not.toHaveProperty('legislacaoReferencia');
   });
+
+  it('falha ao casar o nome da legislação não impede criar o item (legislacaoIds vazio)', async () => {
+    vinculo.idsPorTexto.mockRejectedValue(new Error('banco fora'));
+    await service.processarMensagem(mensagens, master);
+    expect(checklistService.adicionarItem).toHaveBeenCalledTimes(1);
+    expect(checklistService.adicionarItem.mock.calls[0][1].legislacaoIds).toEqual([]);
+  });
 });

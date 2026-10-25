@@ -379,6 +379,13 @@ describe('LegislacaoLeituraService', () => {
       expect(processar).toHaveBeenCalledWith('l1', GESTOR, { tipo: 'link' });
     });
 
+    it('disparar processa sem checar o status (legislação recém-criada já em lendo)', async () => {
+      const processar = jest.spyOn(service, 'processar').mockResolvedValue(undefined);
+      service.disparar('l1', GESTOR, { tipo: 'link' });
+      expect(processar).toHaveBeenCalledWith('l1', GESTOR, { tipo: 'link' });
+      expect(repo.update).not.toHaveBeenCalled();
+    });
+
     it('409 se a leitura já está em andamento', async () => {
       await expect(service.iniciar('l1', GESTOR, { tipo: 'texto', texto: 'x' })).rejects.toThrow(ConflictException);
       await expect(service.iniciar('l1', GESTOR, { tipo: 'texto', texto: 'x' })).rejects.toThrow(
@@ -395,11 +402,11 @@ describe('LegislacaoLeituraService', () => {
     });
   });
 
-  it('onModuleInit marca as leituras travadas há mais de 10 min', async () => {
+  it('onModuleInit marca as leituras lendo ou pendentes paradas há mais de 10 min', async () => {
     const antes = Date.now();
     await service.onModuleInit();
     const [filtro, valores] = repo.update.mock.calls[0];
-    expect(filtro.statusLeitura).toBe(StatusLeitura.LENDO);
+    expect(filtro.statusLeitura.value).toEqual([StatusLeitura.LENDO, StatusLeitura.PENDENTE]);
     const limite: Date = filtro.atualizadoEm.value;
     expect(antes - limite.getTime()).toBeGreaterThanOrEqual(10 * 60 * 1000 - 50);
     expect(valores).toEqual({

@@ -91,6 +91,33 @@ describe('ChecklistService - legislações dos itens', () => {
     expect(item.legislacoes).toEqual([rdc]);
   });
 
+  it('atualizarItem ignora no corpo id, templateId, legislacoes, legislacaoReferencia e relações', async () => {
+    itemRepository.findOne.mockResolvedValue({
+      id: 'i-1', templateId: 't-1', legislacaoReferencia: 'RDC 216/2004', legislacoes: [rdc],
+    });
+    await service.atualizarItem(
+      'i-1',
+      {
+        pergunta: 'Nova',
+        id: 'outro',
+        templateId: 't-2',
+        template: { id: 't-2' },
+        grupo: { id: 'g-x' },
+        legislacoes: [portaria],
+        legislacaoReferencia: 'Inventada 1/2000',
+      } as never,
+      usuario,
+    );
+    const salvo = itemRepository.save.mock.calls[0][0];
+    expect(salvo.pergunta).toBe('Nova');
+    expect(salvo.id).toBe('i-1');
+    expect(salvo.templateId).toBe('t-1');
+    expect(salvo).not.toHaveProperty('template');
+    expect(salvo).not.toHaveProperty('grupo');
+    expect(salvo.legislacoes.map((l: { id: string }) => l.id)).toEqual([rdc.id]);
+    expect(salvo.legislacaoReferencia).toBe('RDC 216/2004');
+  });
+
   it('atualizarItem com id de legislação inválido (não UUID) falha com 400 sem consultar o banco', async () => {
     itemRepository.findOne.mockResolvedValue({ id: 'i-1', templateId: 't-1' });
     await expect(service.atualizarItem('i-1', { legislacaoIds: ['x'] }, usuario)).rejects.toThrow(

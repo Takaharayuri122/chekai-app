@@ -12,12 +12,16 @@ describe('LegislacaoController (rotas de leitura)', () => {
   let app: INestApplication;
   let base: string;
   const leitura = { iniciar: jest.fn().mockResolvedValue({ id: ID, statusLeitura: 'lendo' }) };
+  const servico = {
+    atualizarLegislacao: jest.fn().mockResolvedValue({ id: ID }),
+    buscarChunksSimilares: jest.fn(),
+  };
 
   beforeAll(async () => {
     const modulo = await Test.createTestingModule({
       controllers: [LegislacaoController],
       providers: [
-        { provide: LegislacaoService, useValue: {} },
+        { provide: LegislacaoService, useValue: servico },
         { provide: LegislacaoLeituraService, useValue: leitura },
       ],
     })
@@ -93,5 +97,41 @@ describe('LegislacaoController (rotas de leitura)', () => {
     const resposta = await fetch(`${base}/${ID}/ler-novamente`, { method: 'POST' });
     expect(resposta.status).toBe(200);
     expect(leitura.iniciar).toHaveBeenCalledWith(ID, expect.anything(), { tipo: 'link' });
+  });
+
+  it('PUT aceita null em situação, data de publicação, ano e link', async () => {
+    const corpo = { situacao: null, dataPublicacao: null, ano: null, linkOficial: null };
+    const resposta = await fetch(`${base}/${ID}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(corpo),
+    });
+    expect(resposta.status).toBe(200);
+    expect(servico.atualizarLegislacao).toHaveBeenCalledWith(ID, corpo);
+  });
+
+  it('rag/buscar usa o nome curto da legislação na referência', async () => {
+    servico.buscarChunksSimilares.mockResolvedValue([
+      {
+        chunk: { conteudo: 'a', artigo: 'Art. 1' },
+        similaridade: 0.9,
+        legislacao: { tipo: 'rdc', numero: '216', ano: 2004, titulo: 'Boas práticas' },
+      },
+      {
+        chunk: { conteudo: 'b', artigo: null },
+        similaridade: 0.8,
+        legislacao: { tipo: 'outro', numero: null, ano: null, titulo: 'Norma Interna' },
+      },
+    ]);
+    const resposta = await fetch(`${base}/rag/buscar`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: 'higiene' }),
+    });
+    const corpo = await resposta.json();
+    expect(corpo.chunks.map((c: { referencia: string }) => c.referencia)).toEqual([
+      'RDC 216/2004, Art. 1',
+      'Norma Interna',
+    ]);
   });
 });

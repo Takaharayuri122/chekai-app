@@ -64,4 +64,25 @@ describe('IaService (legislações escolhidas)', () => {
     expect(r.referenciaLegal).toBe('RDC 216/2004, Art. 4.1.3');
     expect(r.legislacaoIds).toEqual(['id-216']);
   });
+
+  it('gerarTextoNaoConformidade: falha ao casar a referência devolve o texto com legislacaoIds vazio', async () => {
+    vinculo.idsPorTexto.mockRejectedValue(new Error('banco fora'));
+    deepseek.mockResolvedValue(
+      resposta({ descricaoTecnica: 'd', referenciaLegal: 'RDC 216/2004', riscoEnvolvido: 'r', planoAcao: {} }),
+    );
+    const r = await service.gerarTextoNaoConformidade('x', 'restaurante', master);
+    expect(r.descricaoTecnica).toBe('d');
+    expect(r.referenciaLegal).toBe('RDC 216/2004');
+    expect(r.legislacaoIds).toEqual([]);
+  });
+
+  it('analisarImagemChecklist: falha ao casar a referência devolve a análise com legislacaoIds vazio', async () => {
+    vinculo.idsPorTexto.mockRejectedValue(new Error('banco fora'));
+    vision.mockResolvedValue(resposta({ descricaoIa: 'ok', referenciaLegal: 'RDC 216/2004', gravidade: 'alta' }));
+    const r = await service.analisarImagemChecklist('b64', 'pergunta', 'higiene', 'restaurante', master);
+    expect(r.descricaoIa).toBe('ok');
+    expect(r.gravidade).toBe('alta');
+    expect(r.tipoNaoConformidade).not.toBe('Erro na análise');
+    expect(r.legislacaoIds).toEqual([]);
+  });
 });

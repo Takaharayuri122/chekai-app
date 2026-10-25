@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
+import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
 import { SupabaseService } from '../supabase/supabase.service';
@@ -17,6 +18,9 @@ import { ListarLegislacoesQueryDto } from './dto/listar-legislacoes-query.dto';
 import { LegislacaoChunk } from './entities/legislacao-chunk.entity';
 import { LegislacaoLeituraService, UsuarioAutenticado } from './legislacao-leitura.service';
 import { LinkInvalidoError, normalizarLink } from './lib/url-segura';
+
+/** Tamanho da coluna `linkOficial`; a normalização pode alongar o link enviado. */
+const TAMANHO_MAXIMO_LINK = 500;
 
 interface ChunkInput {
   conteudo: string;
@@ -91,7 +95,8 @@ export class LegislacaoService {
       linkOficial,
       titulo: data.titulo,
       informacoes: data.informacoes ?? null,
-      statusLeitura: StatusLeitura.PENDENTE,
+      // Já nasce em leitura: não há janela "pendente" sem andamento.
+      statusLeitura: StatusLeitura.LENDO,
       criadoPorId: usuario.id,
     });
     let salva: Legislacao;
@@ -104,7 +109,8 @@ export class LegislacaoService {
       }
       throw erro;
     }
-    return this.leituraService.iniciar(salva.id, usuario, { tipo: 'link' });
+    this.leituraService.disparar(salva.id, usuario, { tipo: 'link' });
+    return salva;
   }
 
   /**
@@ -114,6 +120,9 @@ export class LegislacaoService {
     let linkOficial: string;
     try {
       linkOficial = normalizarLink(link);
+      if (linkOficial.length > TAMANHO_MAXIMO_LINK) {
+        throw new LinkInvalidoError('O link é longo demais.');
+      }
       await this.leituraService.validarLink(linkOficial);
     } catch (erro) {
       if (erro instanceof LinkInvalidoError) {
@@ -191,7 +200,8 @@ export class LegislacaoService {
   }
 
   /**
-   * Busca legislações ativas pelos IDs; falha se alguma não existir ou estiver inativa.
+   * Busca legislações pelos IDs (ativas ou não: um item já ligado a uma legislação desativada
+   * continua podendo ser salvo); falha se alguma não existir. Os seletores oferecem só as ativas.
    */
   async buscarPorIds(ids: string[]): Promise<Legislacao[]> {
     const unicos = [...new Set(ids)];
@@ -199,7 +209,7 @@ export class LegislacaoService {
       return [];
     }
     const encontradas = await this.legislacaoRepository.find({
-      where: { id: In(unicos), ativo: true },
+      where: { id: In(unicos) },
     });
     if (encontradas.length !== unicos.length) {
       throw new BadRequestException('Legislação não encontrada.');
@@ -210,13 +220,10 @@ export class LegislacaoService {
   }
 
   /**
-   * Busca uma legislação pelo ID.
+   * Busca uma legislação pelo ID (sem os trechos: a tela consulta a cada poucos segundos).
    */
   async buscarLegislacaoPorId(id: string): Promise<Legislacao> {
-    const legislacao = await this.legislacaoRepository.findOne({
-      where: { id },
-      relations: ['chunks'],
-    });
+    const legislacao = await this.legislacaoRepository.findOne({ where: { id } });
     if (!legislacao) {
       throw new NotFoundException('Legislação não encontrada');
     }
@@ -227,49 +234,58 @@ export class LegislacaoService {
    * Atualiza os dados de uma legislação.
    */
   async atualizarLegislacao(id: string, data: AtualizarLegislacaoDto): Promise<Legislacao> {
-    const legislacao = await this.buscarLegislacaoPorId(id);
+    await this.buscarLegislacaoPorId(id);
     const dados = { ...data };
+    // null (ou vazio) tira o link; com link, normaliza e valida
     if (dados.linkOficial !== undefined) {
-      dados.linkOficial = await this.prepararLink(dados.linkOficial, id);
+      dados.linkOficial = dados.linkOficial?.trim()
+        ? await this.prepararLink(dados.linkOficial, id)
+        : null;
     }
-    Object.assign(legislacao, dados);
-    try {
-      return await this.legislacaoRepository.save(legislacao);
-    } catch (erro) {
-      if ((erro as { code?: string })?.code === '23505' && dados.linkOficial) {
-        await this.garantirLinkNovo(dados.linkOficial, id);
+    // update só das colunas enviadas: não sobrescreve o andamento da leitura (que roda em paralelo)
+    if (Object.keys(dados).length > 0) {
+      try {
+        await this.legislacaoRepository.update(id, dados as QueryDeepPartialEntity<Legislacao>);
+      } catch (erro) {
+        if ((erro as { code?: string })?.code === '23505' && dados.linkOficial) {
+          await this.garantirLinkNovo(dados.linkOficial, id);
+        }
+        throw erro;
       }
-      throw erro;
     }
+    return this.buscarLegislacaoPorId(id);
   }
 
   /**
    * Ativa ou desativa uma legislação.
    */
   async alterarAtivo(id: string, ativo: boolean): Promise<Legislacao> {
-    const legislacao = await this.buscarLegislacaoPorId(id);
-    legislacao.ativo = ativo;
-    return this.legislacaoRepository.save(legislacao);
+    await this.buscarLegislacaoPorId(id);
+    await this.legislacaoRepository.update(id, { ativo });
+    return this.buscarLegislacaoPorId(id);
   }
 
   /**
    * Remove uma legislação; se estiver ligada a perguntas ou não conformidades, só pode ser desativada.
    */
   async remover(id: string): Promise<void> {
-    const legislacao = await this.buscarLegislacaoPorId(id);
-    const [vinculos] = await this.legislacaoRepository.query(
-      `SELECT
-         (SELECT COUNT(*) FROM template_item_legislacoes WHERE legislacao_id = $1)
-         + (SELECT COUNT(*) FROM auditoria_item_legislacoes WHERE legislacao_id = $1) AS total`,
-      [id],
-    );
-    if (Number(vinculos?.total) > 0) {
-      throw new ConflictException(
-        'Esta legislação está ligada a perguntas ou não conformidades. Desative em vez de remover.',
+    await this.buscarLegislacaoPorId(id);
+    // Contagem e exclusões juntas: um vínculo criado no meio não fica apontando para o nada.
+    await this.legislacaoRepository.manager.transaction(async (manager) => {
+      const [vinculos] = await manager.query(
+        `SELECT
+           (SELECT COUNT(*) FROM template_item_legislacoes WHERE legislacao_id = $1)
+           + (SELECT COUNT(*) FROM auditoria_item_legislacoes WHERE legislacao_id = $1) AS total`,
+        [id],
       );
-    }
-    await this.chunkRepository.delete({ legislacaoId: id });
-    await this.legislacaoRepository.remove(legislacao);
+      if (Number(vinculos?.total) > 0) {
+        throw new ConflictException(
+          'Esta legislação está ligada a perguntas ou não conformidades. Desative em vez de remover.',
+        );
+      }
+      await manager.delete(LegislacaoChunk, { legislacaoId: id });
+      await manager.delete(Legislacao, { id });
+    });
   }
 
   /**

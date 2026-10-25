@@ -26,6 +26,27 @@ import {
 /**
  * Serviço responsável pela gestão de checklists.
  */
+/**
+ * Chaves que o corpo da edição de item não pode tocar: identidade, dono, relações e o texto
+ * derivado das legislações (que só muda via `legislacaoIds`). O corpo chega sem validação de DTO.
+ */
+const CHAVES_PROTEGIDAS_ITEM = [
+  'id',
+  'templateId',
+  'template',
+  'grupo',
+  'legislacoes',
+  'legislacaoReferencia',
+  'criadoEm',
+  'atualizadoEm',
+];
+
+function camposEditaveisDoItem(campos: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(campos).filter(([chave]) => !CHAVES_PROTEGIDAS_ITEM.includes(chave)),
+  );
+}
+
 @Injectable()
 export class ChecklistService {
   constructor(
@@ -325,7 +346,7 @@ export class ChecklistService {
       throw new ForbiddenException('Apenas o gestor responsável pode editar este checklist');
     }
     const { legislacaoIds, ...campos } = dto;
-    Object.assign(item, campos);
+    Object.assign(item, camposEditaveisDoItem(campos));
     if (legislacaoIds !== undefined) {
       // Só carrega a relação quando o DTO a traz; do contrário o save não a toca
       await this.aplicarLegislacoes(item, legislacaoIds);

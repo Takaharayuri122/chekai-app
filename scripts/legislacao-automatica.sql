@@ -21,6 +21,9 @@ ALTER TABLE legislacoes ADD COLUMN IF NOT EXISTS "lidoEm" timestamptz;
 ALTER TABLE legislacoes ADD COLUMN IF NOT EXISTS "origemTexto" varchar(10);
 ALTER TABLE legislacoes ADD COLUMN IF NOT EXISTS "criadoPorId" uuid;
 
+-- Link vazio ou só com espaços conta como "sem link" (não entra no dedupe nem no índice).
+UPDATE legislacoes SET "linkOficial" = NULL WHERE btrim("linkOficial") = '';
+
 -- Dedupe por link (a API normaliza o link antes de comparar).
 -- Bases antigas podem ter links repetidos: mantém o link só na legislação mais antiga.
 UPDATE legislacoes l
@@ -114,3 +117,6 @@ $$;
 
 -- Garante que a função está acessível via API
 GRANT EXECUTE ON FUNCTION buscar_chunks_similares(vector, int, uuid[]) TO anon, authenticated, service_role;
+
+-- 7. Avisa a API do Supabase (PostgREST) para recarregar o esquema (nova assinatura da função).
+NOTIFY pgrst, 'reload schema';

@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
-import { DataSource, LessThan, Not, Repository } from 'typeorm';
+import { DataSource, In, LessThan, Not, Repository } from 'typeorm';
 import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 import OpenAI from 'openai';
 import {
@@ -162,13 +162,13 @@ export class LegislacaoLeituraService implements OnModuleInit {
   }
 
   /**
-   * Leituras que ficaram em andamento (ex.: queda do processo) viram falha.
+   * Leituras que ficaram em andamento ou pendentes (ex.: queda do processo) viram falha.
    */
   async onModuleInit(): Promise<void> {
     try {
       await this.legislacaoRepository.update(
         {
-          statusLeitura: StatusLeitura.LENDO,
+          statusLeitura: In([StatusLeitura.LENDO, StatusLeitura.PENDENTE]),
           atualizadoEm: LessThan(new Date(Date.now() - TRAVADA_MS)),
         },
         { statusLeitura: StatusLeitura.FALHOU, erroLeitura: MSG.interrompida },
@@ -210,10 +210,17 @@ export class LegislacaoLeituraService implements OnModuleInit {
     legislacao.statusLeitura = StatusLeitura.LENDO;
     legislacao.erroLeitura = null;
 
+    this.disparar(id, usuario, fonte);
+    return legislacao;
+  }
+
+  /**
+   * Dispara o processamento sem aguardar. A legislação já deve estar gravada como `lendo`.
+   */
+  disparar(id: string, usuario: UsuarioAutenticado, fonte: FonteLeitura): void {
     void this.processar(id, usuario, fonte).catch((erro) =>
       this.logger.error(`Falha inesperada na leitura da legislação ${id}: ${(erro as Error)?.message}`),
     );
-    return legislacao;
   }
 
   /**

@@ -188,15 +188,12 @@ Retorne APENAS um JSON válido (sem markdown, sem backticks) com:
         contexto: `Geração de texto: ${descricaoSimples.substring(0, 100)}`,
       });
     }
+    let resultado: Record<string, unknown> & { referenciaLegal: string };
     try {
       const cleanContent = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
       const parsed = JSON.parse(cleanContent);
       const referenciaLegal = typeof parsed.referenciaLegal === 'string' ? parsed.referenciaLegal : '';
-      return {
-        ...parsed,
-        referenciaLegal,
-        legislacaoIds: await this.legislacaoVinculoService.idsPorTexto(referenciaLegal),
-      };
+      resultado = { ...parsed, referenciaLegal };
     } catch {
       return {
         descricaoTecnica: content,
@@ -210,6 +207,23 @@ Retorne APENAS um JSON válido (sem markdown, sem backticks) com:
           responsavelSugerido: 'Responsável Técnico',
         },
       };
+    }
+    // Fora do try do JSON: falha ao casar a norma não descarta o texto gerado (já pago).
+    return {
+      ...resultado,
+      legislacaoIds: await this.idsDaReferencia(resultado.referenciaLegal),
+    } as GeracaoTextoResult;
+  }
+
+  /**
+   * IDs das legislações cadastradas citadas na referência; em caso de erro devolve [] (só registra).
+   */
+  private async idsDaReferencia(referenciaLegal: string): Promise<string[]> {
+    try {
+      return await this.legislacaoVinculoService.idsPorTexto(referenciaLegal);
+    } catch (erro) {
+      this.logger.warn(`Não foi possível casar a referência legal com as legislações: ${(erro as Error)?.message}`);
+      return [];
     }
   }
 
@@ -292,17 +306,24 @@ Analise a imagem e retorne JSON (sem markdown):
         contexto: `Checklist: ${perguntaChecklist.substring(0, 100)}`,
       });
     }
+    let analise: {
+      descricaoIa: string;
+      tipoNaoConformidade: string;
+      gravidade: 'baixa' | 'media' | 'alta' | 'critica';
+      sugestoes: string[];
+      referenciaLegal: string;
+      imagemRelevante: boolean;
+    };
     try {
       const cleanContent = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
       const parsed = JSON.parse(cleanContent);
       const referenciaLegal = typeof parsed.referenciaLegal === 'string' ? parsed.referenciaLegal : '';
-      return {
+      analise = {
         descricaoIa: parsed.descricaoIa || '',
         tipoNaoConformidade: parsed.tipoNaoConformidade || 'Nenhuma identificada',
         gravidade: parsed.gravidade || 'media',
         sugestoes: parsed.sugestoes || [],
         referenciaLegal,
-        legislacaoIds: await this.legislacaoVinculoService.idsPorTexto(referenciaLegal),
         imagemRelevante: parsed.imagemRelevante !== undefined ? parsed.imagemRelevante : true,
       };
     } catch {
@@ -316,6 +337,8 @@ Analise a imagem e retorne JSON (sem markdown):
         imagemRelevante: true,
       };
     }
+    // Fora do try do JSON: falha ao casar a norma não descarta a análise (já paga).
+    return { ...analise, legislacaoIds: await this.idsDaReferencia(analise.referenciaLegal) };
   }
 
   /**
