@@ -11,6 +11,7 @@ export interface AuthenticatedRequest extends Request {
     perfil: PerfilUsuario;
     gestorId?: string;
     tenantId?: string;
+    podeGerenciarLegislacoes: boolean;
   };
 }
 

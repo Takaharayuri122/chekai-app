@@ -1,4 +1,5 @@
 import {
+  IsBoolean,
   IsEmail,
   IsEnum,
   IsNotEmpty,
@@ -53,6 +54,13 @@ export class CriarUsuarioDto {
   @IsUUID('4', { message: 'ID do plano inválido' })
   @IsOptional()
   planoId?: string;
+
+  @ApiPropertyOptional({
+    description: 'Permite ao gestor gerenciar legislações (só vale quando um Master cria um Gestor)',
+  })
+  @IsBoolean()
+  @IsOptional()
+  podeGerenciarLegislacoes?: boolean;
 
   @ApiPropertyOptional({ description: 'URL da logo da consultoria (exibida no relatório). Enviar null para remover.' })
   @ValidateIf((o) => o.logoUrl != null)

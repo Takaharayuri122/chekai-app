@@ -73,8 +73,8 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'Dados do usuário' })
   @ApiResponse({ status: 401, description: 'Não autorizado' })
   async me(
-    @CurrentUser() usuario: { id: string; email: string; perfil: PerfilUsuario; gestorId?: string; tenantId?: string },
-  ): Promise<{ id: string; email: string; perfil: PerfilUsuario; gestorId?: string; tenantId?: string }> {
+    @CurrentUser() usuario: { id: string; email: string; perfil: PerfilUsuario; gestorId?: string; tenantId?: string; podeGerenciarLegislacoes: boolean },
+  ): Promise<{ id: string; email: string; perfil: PerfilUsuario; gestorId?: string; tenantId?: string; podeGerenciarLegislacoes: boolean }> {
     return usuario;
   }
 

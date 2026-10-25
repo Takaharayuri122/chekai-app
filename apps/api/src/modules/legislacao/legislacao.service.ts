@@ -1,10 +1,19 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
 import { SupabaseService } from '../supabase/supabase.service';
-import { Legislacao, TipoLegislacao } from './entities/legislacao.entity';
+import { Legislacao, SituacaoLegislacao, StatusLeitura } from './entities/legislacao.entity';
+import { nomeCurtoLegislacao } from './lib/nome-legislacao';
+import { CriarLegislacaoDto } from './dto/criar-legislacao.dto';
+import { AtualizarLegislacaoDto } from './dto/atualizar-legislacao.dto';
+import { ListarLegislacoesQueryDto } from './dto/listar-legislacoes-query.dto';
 import { LegislacaoChunk } from './entities/legislacao-chunk.entity';
 
 interface ChunkInput {
@@ -13,6 +22,15 @@ interface ChunkInput {
   inciso?: string;
   paragrafo?: string;
 }
+
+export interface LegislacaoOpcao {
+  id: string;
+  nome: string;
+  titulo: string;
+  situacao: SituacaoLegislacao | null;
+}
+
+export type LegislacaoListada = Legislacao & { totalTrechos: number };
 
 interface BuscaSimilarResult {
   chunk: LegislacaoChunk;
@@ -41,52 +59,86 @@ export class LegislacaoService {
     private readonly configService: ConfigService,
   ) {
     const apiKey = this.configService.get<string>('OPENAI_API_KEY');
-    console.log('[LegislacaoService] Verificando OPENAI_API_KEY...');
-    console.log('[LegislacaoService] API Key presente:', !!apiKey);
-    console.log('[LegislacaoService] API Key length:', apiKey?.length || 0);
-    console.log('[LegislacaoService] API Key prefix:', apiKey?.substring(0, 7) || 'N/A');
-    
     if (!apiKey) {
       throw new Error(
         'OPENAI_API_KEY não configurada. Configure a variável de ambiente OPENAI_API_KEY no arquivo .env',
       );
     }
-    
-    const trimmedKey = apiKey.trim();
-    console.log('[LegislacaoService] API Key após trim length:', trimmedKey.length);
-    console.log('[LegislacaoService] API Key após trim prefix:', trimmedKey.substring(0, 7));
-    
-    this.openai = new OpenAI({
-      apiKey: trimmedKey,
-    });
-    
-    console.log('[LegislacaoService] Cliente OpenAI inicializado com sucesso');
+    this.openai = new OpenAI({ apiKey: apiKey.trim() });
   }
 
   /**
-   * Cria uma nova legislação.
+   * Cadastra uma legislação (ainda sem leitura do conteúdo).
    */
-  async criarLegislacao(data: {
-    tipo: TipoLegislacao;
-    numero: string;
-    ano: number;
-    titulo: string;
-    ementa?: string;
-    orgaoEmissor?: string;
-    linkOficial?: string;
-  }): Promise<Legislacao> {
-    const legislacao = this.legislacaoRepository.create(data);
+  async criarLegislacao(
+    data: CriarLegislacaoDto,
+    criadoPorId?: string,
+  ): Promise<Legislacao> {
+    const legislacao = this.legislacaoRepository.create({
+      linkOficial: data.linkOficial,
+      titulo: data.titulo,
+      informacoes: data.informacoes ?? null,
+      statusLeitura: StatusLeitura.PENDENTE,
+      criadoPorId: criadoPorId ?? null,
+    });
     return this.legislacaoRepository.save(legislacao);
   }
 
   /**
-   * Lista todas as legislações.
+   * Lista as legislações com a contagem de trechos, aplicando os filtros.
    */
-  async listarLegislacoes(): Promise<Legislacao[]> {
-    return this.legislacaoRepository.find({
-      where: { ativo: true },
-      order: { ano: 'DESC', numero: 'ASC' },
+  async listar(filtros: ListarLegislacoesQueryDto = {}): Promise<LegislacaoListada[]> {
+    const qb = this.legislacaoRepository
+      .createQueryBuilder('legislacao')
+      .loadRelationCountAndMap('legislacao.totalTrechos', 'legislacao.chunks');
+    if (filtros.busca?.trim()) {
+      qb.andWhere(
+        '(legislacao.titulo ILIKE :busca OR legislacao.numero ILIKE :busca OR legislacao.ementa ILIKE :busca)',
+        { busca: `%${filtros.busca.trim()}%` },
+      );
+    }
+    if (filtros.statusLeitura) {
+      qb.andWhere('legislacao.statusLeitura = :statusLeitura', {
+        statusLeitura: filtros.statusLeitura,
+      });
+    }
+    if (filtros.ativo) {
+      qb.andWhere('legislacao.ativo = :ativo', { ativo: filtros.ativo === 'true' });
+    }
+    qb.orderBy('legislacao.ano', 'DESC', 'NULLS LAST').addOrderBy('legislacao.titulo', 'ASC');
+    return (await qb.getMany()) as LegislacaoListada[];
+  }
+
+  /**
+   * Opções para os seletores: legislações ativas, ordenadas pelo nome curto.
+   */
+  async listarOpcoes(): Promise<LegislacaoOpcao[]> {
+    const ativas = await this.legislacaoRepository.find({ where: { ativo: true } });
+    return ativas
+      .map((l) => ({
+        id: l.id,
+        nome: nomeCurtoLegislacao(l),
+        titulo: l.titulo,
+        situacao: l.situacao,
+      }))
+      .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR', { numeric: true }));
+  }
+
+  /**
+   * Busca legislações ativas pelos IDs; falha se alguma não existir ou estiver inativa.
+   */
+  async buscarPorIds(ids: string[]): Promise<Legislacao[]> {
+    const unicos = [...new Set(ids)];
+    if (unicos.length === 0) {
+      return [];
+    }
+    const encontradas = await this.legislacaoRepository.find({
+      where: { id: In(unicos), ativo: true },
     });
+    if (encontradas.length !== unicos.length) {
+      throw new BadRequestException('Legislação não encontrada.');
+    }
+    return encontradas;
   }
 
   /**
@@ -104,33 +156,41 @@ export class LegislacaoService {
   }
 
   /**
-   * Atualiza uma legislação.
+   * Atualiza os dados de uma legislação.
    */
-  async atualizarLegislacao(
-    id: string,
-    data: Partial<{
-      tipo: TipoLegislacao;
-      numero: string;
-      ano: number;
-      titulo: string;
-      ementa?: string;
-      orgaoEmissor?: string;
-      linkOficial?: string;
-      ativo?: boolean;
-    }>,
-  ): Promise<Legislacao> {
+  async atualizarLegislacao(id: string, data: AtualizarLegislacaoDto): Promise<Legislacao> {
     const legislacao = await this.buscarLegislacaoPorId(id);
     Object.assign(legislacao, data);
     return this.legislacaoRepository.save(legislacao);
   }
 
   /**
-   * Remove (desativa) uma legislação.
+   * Ativa ou desativa uma legislação.
    */
-  async removerLegislacao(id: string): Promise<void> {
+  async alterarAtivo(id: string, ativo: boolean): Promise<Legislacao> {
     const legislacao = await this.buscarLegislacaoPorId(id);
-    legislacao.ativo = false;
-    await this.legislacaoRepository.save(legislacao);
+    legislacao.ativo = ativo;
+    return this.legislacaoRepository.save(legislacao);
+  }
+
+  /**
+   * Remove uma legislação; se estiver ligada a perguntas ou não conformidades, só pode ser desativada.
+   */
+  async remover(id: string): Promise<void> {
+    const legislacao = await this.buscarLegislacaoPorId(id);
+    const [vinculos] = await this.legislacaoRepository.query(
+      `SELECT
+         (SELECT COUNT(*) FROM template_item_legislacoes WHERE legislacao_id = $1)
+         + (SELECT COUNT(*) FROM auditoria_item_legislacoes WHERE legislacao_id = $1) AS total`,
+      [id],
+    );
+    if (Number(vinculos?.total) > 0) {
+      throw new ConflictException(
+        'Esta legislação está ligada a perguntas ou não conformidades. Desative em vez de remover.',
+      );
+    }
+    await this.chunkRepository.delete({ legislacaoId: id });
+    await this.legislacaoRepository.remove(legislacao);
   }
 
   /**
@@ -161,32 +221,14 @@ export class LegislacaoService {
    * Gera embedding para um texto usando OpenAI.
    */
   async gerarEmbedding(texto: string): Promise<number[]> {
-    console.log('[LegislacaoService] Gerando embedding para texto:', texto.substring(0, 50) + '...');
-    console.log('[LegislacaoService] Modelo:', 'text-embedding-3-small');
-    
     try {
-      const apiKey = this.configService.get<string>('OPENAI_API_KEY');
-      console.log('[LegislacaoService] API Key sendo usada (prefix):', apiKey?.substring(0, 7) || 'N/A');
-      console.log('[LegislacaoService] API Key length:', apiKey?.length || 0);
-      
       const response = await this.openai.embeddings.create({
         model: 'text-embedding-3-small',
         input: texto,
       });
-      
-      console.log('[LegislacaoService] Embedding gerado com sucesso. Tamanho:', response.data[0].embedding.length);
       return response.data[0].embedding;
     } catch (error: any) {
-      console.error('[LegislacaoService] Erro ao gerar embedding:', {
-        status: error?.status,
-        message: error?.message,
-        code: error?.code,
-        type: error?.type,
-      });
-      
       if (error?.status === 401 || error?.message?.includes('Invalid API key') || error?.message?.includes('Incorrect API key')) {
-        const apiKey = this.configService.get<string>('OPENAI_API_KEY');
-        console.error('[LegislacaoService] API Key inválida detectada. Key prefix:', apiKey?.substring(0, 7) || 'N/A');
         throw new Error(
           'Chave de API da OpenAI inválida ou expirada. Verifique a variável OPENAI_API_KEY no arquivo .env e certifique-se de que a chave está correta e ativa.',
         );
@@ -196,13 +238,18 @@ export class LegislacaoService {
   }
 
   /**
-   * Adiciona chunks a uma legislação e gera embeddings.
+   * Adiciona chunks a uma legislação e gera embeddings, continuando a ordem a partir do maior existente.
    */
   async adicionarChunks(
     legislacaoId: string,
     chunks: ChunkInput[],
   ): Promise<void> {
     await this.buscarLegislacaoPorId(legislacaoId);
+    const ultimo = await this.chunkRepository.findOne({
+      where: { legislacaoId },
+      order: { ordem: 'DESC' },
+    });
+    const inicio = ultimo ? ultimo.ordem + 1 : 0;
     for (let i = 0; i < chunks.length; i++) {
       const chunk = chunks[i];
       const embedding = await this.gerarEmbedding(chunk.conteudo);
@@ -212,7 +259,7 @@ export class LegislacaoService {
         artigo: chunk.artigo,
         inciso: chunk.inciso,
         paragrafo: chunk.paragrafo,
-        ordem: i,
+        ordem: inicio + i,
         tokenCount: Math.ceil(chunk.conteudo.length / 4),
         embedding: `[${embedding.join(',')}]`,
       });
@@ -229,44 +276,16 @@ export class LegislacaoService {
     query: string,
     limite = 5,
   ): Promise<BuscaSimilarResult[]> {
-    console.log('[LegislacaoService] Iniciando busca de chunks similares...');
-    console.log('[LegislacaoService] Query:', query.substring(0, 50) + '...');
-    console.log('[LegislacaoService] Limite:', limite);
-    
-    let queryEmbedding: number[];
-    try {
-      queryEmbedding = await this.gerarEmbedding(query);
-      console.log('[LegislacaoService] Embedding gerado. Tamanho:', queryEmbedding.length);
-    } catch (error: any) {
-      console.error('[LegislacaoService] Erro ao gerar embedding:', error.message);
-      // Propaga o erro de embedding com mensagem clara
-      throw error;
-    }
-    
-    console.log('[LegislacaoService] Obtendo cliente Supabase...');
+    const queryEmbedding = await this.gerarEmbedding(query);
     const supabase = this.supabaseService.getClient();
-    console.log('[LegislacaoService] Cliente Supabase obtido com sucesso');
-    
-    console.log('[LegislacaoService] Chamando RPC buscar_chunks_similares...');
-    console.log('[LegislacaoService] Parâmetros:', {
-      query_embedding_length: queryEmbedding.length,
-      match_limit: limite,
-    });
-    
+
     // Chama a função stored procedure via RPC
     const { data, error } = await supabase.rpc('buscar_chunks_similares', {
       query_embedding: queryEmbedding,
       match_limit: limite,
     });
-    
+
     if (error) {
-      console.error('[LegislacaoService] Erro na chamada RPC:', {
-        code: error.code,
-        message: error.message,
-        details: error.details,
-        hint: error.hint,
-      });
-      
       if (
         error.code === '42883' ||
         error.code === 'PGRST202' ||
@@ -285,18 +304,17 @@ export class LegislacaoService {
             'Após executar, reinicie a aplicação.',
         );
       }
-      
+
       // Verifica se é erro de autenticação/API key
       if (error.message?.includes('Invalid API key') || error.message?.includes('JWT') || error.code === 'PGRST301') {
         throw new Error(
           `Erro de autenticação do Supabase: ${error.message}. Verifique a variável SUPABASE_SERVICE_ROLE_KEY no arquivo .env e certifique-se de que está usando a Service Role Key (não a anon key).`,
         );
       }
-      
+
       throw new Error(`Erro ao buscar chunks similares: ${error.message}`);
     }
-    
-    console.log('[LegislacaoService] RPC executado com sucesso. Resultados encontrados:', data?.length || 0);
+
     return this.mapearResultadosBusca(data || []);
   }
 

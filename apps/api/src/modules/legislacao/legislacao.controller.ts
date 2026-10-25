@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Put,
+  Patch,
   Delete,
   Body,
   Param,
@@ -16,136 +17,16 @@ import {
   ApiResponse,
   ApiBearerAuth,
 } from '@nestjs/swagger';
-import { LegislacaoService } from './legislacao.service';
+import { LegislacaoService, LegislacaoListada, LegislacaoOpcao } from './legislacao.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { Legislacao, TipoLegislacao } from './entities/legislacao.entity';
-import { IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-
-/**
- * DTO para criar legislação.
- */
-class CriarLegislacaoDto {
-  @ApiProperty({ enum: TipoLegislacao })
-  @IsEnum(TipoLegislacao)
-  tipo: TipoLegislacao;
-
-  @ApiProperty({ example: '216' })
-  @IsString()
-  @IsNotEmpty()
-  numero: string;
-
-  @ApiProperty({ example: 2004 })
-  @IsNumber()
-  ano: number;
-
-  @ApiProperty({ example: 'Boas Práticas para Serviços de Alimentação' })
-  @IsString()
-  @IsNotEmpty()
-  titulo: string;
-
-  @ApiPropertyOptional()
-  @IsString()
-  @IsOptional()
-  ementa?: string;
-
-  @ApiPropertyOptional({ example: 'ANVISA' })
-  @IsString()
-  @IsOptional()
-  orgaoEmissor?: string;
-
-  @ApiPropertyOptional()
-  @IsString()
-  @IsOptional()
-  linkOficial?: string;
-}
-
-/**
- * DTO para atualizar legislação.
- */
-class AtualizarLegislacaoDto {
-  @ApiPropertyOptional({ enum: TipoLegislacao })
-  @IsEnum(TipoLegislacao)
-  @IsOptional()
-  tipo?: TipoLegislacao;
-
-  @ApiPropertyOptional({ example: '216' })
-  @IsString()
-  @IsOptional()
-  numero?: string;
-
-  @ApiPropertyOptional({ example: 2004 })
-  @IsNumber()
-  @IsOptional()
-  ano?: number;
-
-  @ApiPropertyOptional({ example: 'Boas Práticas para Serviços de Alimentação' })
-  @IsString()
-  @IsOptional()
-  titulo?: string;
-
-  @ApiPropertyOptional()
-  @IsString()
-  @IsOptional()
-  ementa?: string;
-
-  @ApiPropertyOptional({ example: 'ANVISA' })
-  @IsString()
-  @IsOptional()
-  orgaoEmissor?: string;
-
-  @ApiPropertyOptional()
-  @IsString()
-  @IsOptional()
-  linkOficial?: string;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  ativo?: boolean;
-}
-
-/**
- * DTO para adicionar chunk.
- */
-class AdicionarChunkDto {
-  @ApiProperty({ example: 'O armazenamento de alimentos deve ser...' })
-  @IsString()
-  @IsNotEmpty()
-  conteudo: string;
-
-  @ApiPropertyOptional({ example: 'Art. 5º' })
-  @IsString()
-  @IsOptional()
-  artigo?: string;
-
-  @ApiPropertyOptional({ example: 'I' })
-  @IsString()
-  @IsOptional()
-  inciso?: string;
-
-  @ApiPropertyOptional({ example: '§1º' })
-  @IsString()
-  @IsOptional()
-  paragrafo?: string;
-}
-
-/**
- * DTO para adicionar múltiplos chunks.
- */
-class AdicionarChunksDto {
-  @ApiProperty({ type: [AdicionarChunkDto] })
-  chunks: AdicionarChunkDto[];
-}
-
-/**
- * DTO para busca RAG.
- */
-class BuscaRagDto {
-  @ApiProperty({ example: 'armazenamento de alimentos na câmara fria' })
-  @IsString()
-  @IsNotEmpty()
-  query: string;
-}
+import { PodeGerenciarLegislacoesGuard } from './guards/pode-gerenciar-legislacoes.guard';
+import { Legislacao } from './entities/legislacao.entity';
+import { CurrentUser } from '../../core/decorators/current-user.decorator';
+import { CriarLegislacaoDto } from './dto/criar-legislacao.dto';
+import { AtualizarLegislacaoDto } from './dto/atualizar-legislacao.dto';
+import { AlterarAtivoDto } from './dto/alterar-ativo.dto';
+import { ListarLegislacoesQueryDto } from './dto/listar-legislacoes-query.dto';
+import { AdicionarChunksDto, BuscaRagDto } from './dto/chunks.dto';
 
 /**
  * Controller para gestão de legislações e RAG.
@@ -157,21 +38,36 @@ class BuscaRagDto {
 export class LegislacaoController {
   constructor(private readonly legislacaoService: LegislacaoService) {}
 
+  @Get('opcoes')
+  @ApiOperation({ summary: 'Opções de legislações ativas para os seletores (qualquer usuário logado)' })
+  @ApiResponse({ status: 200, description: 'Lista de opções' })
+  async listarOpcoes(): Promise<LegislacaoOpcao[]> {
+    return this.legislacaoService.listarOpcoes();
+  }
+
   @Post()
-  @ApiOperation({ summary: 'Cria uma nova legislação' })
+  @UseGuards(PodeGerenciarLegislacoesGuard)
+  @ApiOperation({ summary: 'Cadastra uma nova legislação' })
   @ApiResponse({ status: 201, description: 'Legislação criada' })
-  async criarLegislacao(@Body() dto: CriarLegislacaoDto): Promise<Legislacao> {
-    return this.legislacaoService.criarLegislacao(dto);
+  async criarLegislacao(
+    @Body() dto: CriarLegislacaoDto,
+    @CurrentUser() usuario: { id: string },
+  ): Promise<Legislacao> {
+    return this.legislacaoService.criarLegislacao(dto, usuario.id);
   }
 
   @Get()
-  @ApiOperation({ summary: 'Lista todas as legislações' })
+  @UseGuards(PodeGerenciarLegislacoesGuard)
+  @ApiOperation({ summary: 'Lista as legislações' })
   @ApiResponse({ status: 200, description: 'Lista de legislações' })
-  async listarLegislacoes(): Promise<Legislacao[]> {
-    return this.legislacaoService.listarLegislacoes();
+  async listarLegislacoes(
+    @Query() filtros: ListarLegislacoesQueryDto,
+  ): Promise<LegislacaoListada[]> {
+    return this.legislacaoService.listar(filtros);
   }
 
   @Get(':id')
+  @UseGuards(PodeGerenciarLegislacoesGuard)
   @ApiOperation({ summary: 'Busca uma legislação pelo ID' })
   @ApiResponse({ status: 200, description: 'Legislação encontrada' })
   async buscarLegislacaoPorId(
@@ -180,7 +76,19 @@ export class LegislacaoController {
     return this.legislacaoService.buscarLegislacaoPorId(id);
   }
 
+  @Patch(':id/ativo')
+  @UseGuards(PodeGerenciarLegislacoesGuard)
+  @ApiOperation({ summary: 'Ativa ou desativa uma legislação' })
+  @ApiResponse({ status: 200, description: 'Situação alterada' })
+  async alterarAtivo(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: AlterarAtivoDto,
+  ): Promise<Legislacao> {
+    return this.legislacaoService.alterarAtivo(id, dto.ativo);
+  }
+
   @Put(':id')
+  @UseGuards(PodeGerenciarLegislacoesGuard)
   @ApiOperation({ summary: 'Atualiza uma legislação' })
   @ApiResponse({ status: 200, description: 'Legislação atualizada' })
   async atualizarLegislacao(
@@ -191,16 +99,18 @@ export class LegislacaoController {
   }
 
   @Delete(':id')
+  @UseGuards(PodeGerenciarLegislacoesGuard)
   @ApiOperation({ summary: 'Remove uma legislação' })
   @ApiResponse({ status: 200, description: 'Legislação removida' })
   async removerLegislacao(
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<{ message: string }> {
-    await this.legislacaoService.removerLegislacao(id);
+    await this.legislacaoService.remover(id);
     return { message: 'Legislação removida com sucesso' };
   }
 
   @Get(':id/chunks')
+  @UseGuards(PodeGerenciarLegislacoesGuard)
   @ApiOperation({ summary: 'Lista chunks de uma legislação' })
   @ApiResponse({ status: 200, description: 'Lista de chunks' })
   async listarChunks(
@@ -218,6 +128,7 @@ export class LegislacaoController {
   }
 
   @Post(':id/chunks')
+  @UseGuards(PodeGerenciarLegislacoesGuard)
   @ApiOperation({ summary: 'Adiciona chunks a uma legislação' })
   @ApiResponse({ status: 201, description: 'Chunks adicionados' })
   async adicionarChunks(
@@ -229,6 +140,7 @@ export class LegislacaoController {
   }
 
   @Delete('chunks/:chunkId')
+  @UseGuards(PodeGerenciarLegislacoesGuard)
   @ApiOperation({ summary: 'Remove um chunk' })
   @ApiResponse({ status: 200, description: 'Chunk removido' })
   async removerChunk(
@@ -239,6 +151,7 @@ export class LegislacaoController {
   }
 
   @Post('rag/buscar')
+  @UseGuards(PodeGerenciarLegislacoesGuard)
   @ApiOperation({ summary: 'Busca legislações similares via RAG' })
   @ApiResponse({ status: 200, description: 'Chunks similares encontrados' })
   async buscarSimilares(
@@ -265,6 +178,7 @@ export class LegislacaoController {
   }
 
   @Post('rag/contexto')
+  @UseGuards(PodeGerenciarLegislacoesGuard)
   @ApiOperation({ summary: 'Gera contexto RAG para uma query' })
   @ApiResponse({ status: 200, description: 'Contexto gerado' })
   async gerarContextoRag(
