@@ -157,7 +157,15 @@ export default function PlanosAcaoPage() {
   };
 
   const colunas: ColunaTabela<TarefaPlanoAcao>[] = [
-    { label: 'Tarefa', render: (t) => <span className="font-medium">{t.titulo}</span> },
+    {
+      label: 'Tarefa',
+      render: (t) => (
+        <div>
+          <span className="font-medium">{t.titulo}</span>
+          {t.referenciaLegal && <p className="mt-0.5 text-xs text-muted-foreground">Legislação: {t.referenciaLegal}</p>}
+        </div>
+      ),
+    },
     { label: 'Responsável', render: (t) => t.responsavel?.nome ?? '-' },
     { label: 'Unidade', render: (t) => t.auditoria?.unidade?.nome ?? '-', mobileOculta: true },
     {

@@ -40,7 +40,9 @@ import {
   aceitaFoto,
   aceitaObservacao,
   bloqueiaPorImagemIrrelevante,
+  statusItem,
 } from '@/lib/auditoria/execucao';
+import { SeletorLegislacoes } from '@/components/legislacao/seletor-legislacoes';
 
 type RespostaType = 'conforme' | 'nao_conforme' | 'nao_aplicavel' | string;
 
@@ -60,10 +62,21 @@ interface ItemModalState {
   complemento: string;
   observacao: string;
   descricaoIaExistente: string;
+  /** Legislações da não conformidade; começam com as do item ou, na falta, as da pergunta. */
+  legislacaoIds: string[];
+  /** Só vira true quando o usuário (ou a IA) muda a seleção; sem isso nada é gravado. */
+  legislacaoAlterada: boolean;
   isSaving: boolean;
 }
 
 const MAX_FOTOS_POR_ITEM = 5;
+
+/** Legislações próprias do item; sem elas, pré-preenche com as da pergunta (herança, ainda não gravada). */
+function idsLegislacoesIniciais(item: AuditoriaItem): string[] {
+  const proprias = item.legislacoes ?? [];
+  const fonte = proprias.length > 0 ? proprias : item.templateItem?.legislacoes ?? [];
+  return fonte.map((l) => l.id);
+}
 
 export default function AuditoriaPage() {
   const params = useParams();
@@ -297,6 +310,8 @@ export default function AuditoriaPage() {
       complemento: '', // Campo removido, mas mantido para compatibilidade
       observacao: item.observacao || '',
       descricaoIaExistente: item.descricaoIa || '',
+      legislacaoIds: idsLegislacoesIniciais(item),
+      legislacaoAlterada: false,
       isSaving: false,
     });
   };
@@ -324,6 +339,7 @@ export default function AuditoriaPage() {
     const perguntaChecklist = itemModal.item.templateItem.pergunta;
     const categoriaChecklist = itemModal.item.templateItem.categoria || 'geral';
     const tipoEstabelecimento = auditoria?.template?.tipoAtividade || 'serviço de alimentação';
+    const legislacaoIdsAtuais = itemModal.legislacaoIds;
     const fotosSelecionadas = filesParaProcessar.map((file) => ({
       file,
       preview: URL.createObjectURL(file),
@@ -390,7 +406,8 @@ export default function AuditoriaPage() {
               file,
               perguntaChecklist,
               categoriaChecklist,
-              tipoEstabelecimento
+              tipoEstabelecimento,
+              legislacaoIdsAtuais.length > 0 ? legislacaoIdsAtuais : undefined
             );
             setSalvando(true);
             await auditoriaService.atualizarAnaliseFoto(
@@ -414,6 +431,10 @@ export default function AuditoriaPage() {
                       }
                     : foto
                 ),
+                // A IA identificou a norma: usa as legislações devolvidas, sem apagar as atuais se vierem vazias.
+                ...(analise.legislacaoIds && analise.legislacaoIds.length > 0
+                  ? { legislacaoIds: analise.legislacaoIds, legislacaoAlterada: true }
+                  : {}),
               };
             });
             setAuditoria((prev) => {
@@ -619,13 +640,14 @@ export default function AuditoriaPage() {
     try {
       // Salva a observação e a descrição da IA (se existir)
       setSalvando(true);
-      await auditoriaService.responderItem(
+      const itemSalvo = await auditoriaService.responderItem(
         auditoria.id,
         itemModal.item.id,
         respostaAtual,
         {
           observacao: itemModal.observacao,
           descricaoIa: itemModal.descricaoIaExistente || itemModal.item.descricaoIa,
+          ...(itemModal.legislacaoAlterada ? { legislacaoIds: itemModal.legislacaoIds } : {}),
         }
       );
       setUltimaHoraSalva(new Date());
@@ -640,6 +662,9 @@ export default function AuditoriaPage() {
                   ...item,
                   observacao: itemModal.observacao,
                   descricaoIa: itemModal.descricaoIaExistente || itemModal.item.descricaoIa || item.descricaoIa,
+                  ...(itemModal.legislacaoAlterada && itemSalvo
+                    ? { legislacoes: itemSalvo.legislacoes, referenciaLegal: itemSalvo.referenciaLegal }
+                    : {}),
                 }
               : item
           ),
@@ -842,7 +867,7 @@ export default function AuditoriaPage() {
         onClose={() => setItemModal(null)}
         title={auditoria.status === 'finalizada' ? 'Visualizar Item' : 'Documentar Item'}
         maxWidth="5xl"
-        isDirty={Boolean(itemModal && (itemModal.fotos.length > 0 || itemModal.observacao))}
+        isDirty={Boolean(itemModal && (itemModal.fotos.length > 0 || itemModal.observacao || itemModal.legislacaoAlterada))}
         closeOnBackdrop={false}
         footer={itemModal ? (() => {
           const temResposta = Boolean(itemModal.item.resposta && itemModal.item.resposta !== 'nao_avaliado');
@@ -899,6 +924,19 @@ export default function AuditoriaPage() {
                 <p className="text-sm text-muted-foreground">Item do Checklist:</p>
                 <p className="font-medium">{itemModal.item.templateItem.pergunta}</p>
               </div>
+
+              {/* Legislação da não conformidade */}
+              {statusItem(itemModal.item) === 'nao_conforme' && (
+                <div className="mb-4 space-y-1">
+                  <span className="text-sm font-medium text-foreground">Legislação</span>
+                  <SeletorLegislacoes
+                    valor={itemModal.legislacaoIds}
+                    onChange={(ids) => setItemModal((prev) => prev ? { ...prev, legislacaoIds: ids, legislacaoAlterada: true } : null)}
+                    referenciaAnterior={itemModal.item.referenciaLegal || itemModal.item.templateItem.legislacaoReferencia}
+                    desabilitado={auditoria.status === 'finalizada'}
+                  />
+                </div>
+              )}
 
               {/* Tabs para Fotos e Observação */}
               <div className="mb-6">

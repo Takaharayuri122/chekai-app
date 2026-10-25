@@ -3,6 +3,7 @@
 import { Camera, ChevronLeft, ChevronRight, MessageSquare, Sparkles } from 'lucide-react';
 import type { AuditoriaItem } from '@/lib/api';
 import { aceitaFoto, aceitaObservacao } from '@/lib/auditoria/execucao';
+import { nomesLegislacoesDoItem } from '@/lib/legislacao/legislacoes-do-item';
 import { Button } from '@/components/ui/shadcn/button';
 
 interface PainelItemProps {
@@ -19,6 +20,8 @@ interface PainelItemProps {
 
 export function PainelItem({ item, numero, total, anterior, proximo, somenteLeitura, respostas, onNavegar, onDocumentar }: PainelItemProps) {
   const t = item.templateItem;
+  const nomePergunta = nomesLegislacoesDoItem({ legislacoes: t.legislacoes, referenciaLegal: t.legislacaoReferencia });
+  const nomeItem = nomesLegislacoesDoItem(item);
   const fotoOk = aceitaFoto(item);
   const obsOk = aceitaObservacao(item);
   const temRegistro = (item.fotos?.length ?? 0) > 0 || Boolean(item.observacao);
@@ -33,7 +36,7 @@ export function PainelItem({ item, numero, total, anterior, proximo, somenteLeit
             {t.obrigatorio && <span className="text-destructive"> · obrigatória</span>}
           </p>
           <h2 className="font-display text-lg font-semibold leading-snug">{t.pergunta}</h2>
-          {t.legislacaoReferencia && <p className="text-xs text-info">{t.legislacaoReferencia}</p>}
+          {nomePergunta && <p className="text-xs text-info">{nomePergunta}</p>}
         </div>
 
         {respostas}
@@ -72,7 +75,7 @@ export function PainelItem({ item, numero, total, anterior, proximo, somenteLeit
                     {item.observacao}
                   </p>
                 )}
-                {item.referenciaLegal && <p className="text-info">{item.referenciaLegal}</p>}
+                {nomeItem && <p className="text-info">{nomeItem}</p>}
               </div>
             </details>
           )}

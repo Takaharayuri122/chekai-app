@@ -46,6 +46,8 @@ import { AppLayout, Tooltip, ConfirmDialog, FormModal } from '@/components';
 import { PainelConfiguracaoLote } from '@/components/checklist/painel-configuracao-lote';
 import { BarraSelecao } from '@/components/checklist/barra-selecao';
 import { Checkbox } from '@/components/ui/shadcn/checkbox';
+import { SeletorLegislacoes } from '@/components/legislacao/seletor-legislacoes';
+import { nomesLegislacoesDoItem } from '@/lib/legislacao/legislacoes-do-item';
 import { Switch } from '@/components/ui/shadcn/switch';
 import {
   formGrupoAlterado,
@@ -79,6 +81,8 @@ import { calcularPontuacoesEmSequencia, isOpcaoSemPontuacao } from '@/lib/utils'
 
 interface ItemFormData extends CriarTemplateItemRequest {
   id?: string;
+  /** Texto antigo de referência, só exibido quando o item ainda não tem legislação vinculada. */
+  referenciaAnterior?: string | null;
 }
 
 const RESPOSTAS_PERSONALIZADAS_SUGESTOES = [
@@ -179,10 +183,10 @@ function SortableItem({ item, index, onEdit, onRemove, onDuplicate, isDuplicatin
               {CRITICIDADE_LABELS[item.criticidade]}
             </span>
           </Tooltip>
-          {item.legislacaoReferencia && (
-            <Tooltip content={`Referência legal: ${item.legislacaoReferencia}${item.artigo ? ` - ${item.artigo}` : ''}`}>
+          {nomesLegislacoesDoItem({ legislacoes: item.legislacoes, referenciaLegal: item.legislacaoReferencia }) && (
+            <Tooltip content={`Referência legal: ${nomesLegislacoesDoItem({ legislacoes: item.legislacoes, referenciaLegal: item.legislacaoReferencia })}`}>
               <span className="text-xs text-muted-foreground truncate max-w-[120px] sm:max-w-none">
-                {item.legislacaoReferencia}
+                {nomesLegislacoesDoItem({ legislacoes: item.legislacoes, referenciaLegal: item.legislacaoReferencia })}
               </span>
             </Tooltip>
           )}
@@ -273,8 +277,8 @@ export default function EditarTemplatePage() {
     categoria: CategoriaItem.OUTRO,
     criticidade: CriticidadeItem.MEDIA,
     peso: 1,
-    legislacaoReferencia: '',
-    artigo: '',
+    legislacaoIds: [],
+    referenciaAnterior: null,
     obrigatorio: true,
     opcoesResposta: [],
     usarRespostasPersonalizadas: false,
@@ -549,8 +553,8 @@ export default function EditarTemplatePage() {
       categoria: CategoriaItem.OUTRO,
       criticidade: CriticidadeItem.MEDIA,
       peso: 1,
-      legislacaoReferencia: '',
-      artigo: '',
+      legislacaoIds: [],
+      referenciaAnterior: null,
       obrigatorio: true,
       opcoesResposta: [],
       usarRespostasPersonalizadas: false,
@@ -603,8 +607,8 @@ export default function EditarTemplatePage() {
       categoria: item.categoria,
       criticidade: item.criticidade,
       peso: item.tipoRespostaCustomizada === TipoRespostaCustomizada.TEXTO ? 0 : item.peso,
-      legislacaoReferencia: item.legislacaoReferencia || '',
-      artigo: item.artigo || '',
+      legislacaoIds: item.legislacoes?.map((l) => l.id) ?? [],
+      referenciaAnterior: item.legislacoes ? null : item.legislacaoReferencia ?? null,
       obrigatorio: item.obrigatorio,
       opcoesResposta: item.opcoesResposta || [],
       usarRespostasPersonalizadas: item.usarRespostasPersonalizadas || false,
@@ -627,8 +631,7 @@ export default function EditarTemplatePage() {
         categoria: itemForm.categoria,
         criticidade: itemForm.criticidade,
         peso: itemForm.tipoRespostaCustomizada === TipoRespostaCustomizada.TEXTO ? 0 : itemForm.peso,
-        legislacaoReferencia: itemForm.legislacaoReferencia,
-        artigo: itemForm.artigo,
+        legislacaoIds: itemForm.legislacaoIds ?? [],
         obrigatorio: itemForm.obrigatorio,
         opcoesResposta: itemForm.usarRespostasPersonalizadas && !itemForm.tipoRespostaCustomizada ? itemForm.opcoesResposta : (itemForm.tipoRespostaCustomizada === TipoRespostaCustomizada.SELECT ? itemForm.opcoesResposta : undefined),
         usarRespostasPersonalizadas: itemForm.usarRespostasPersonalizadas,
@@ -1558,41 +1561,20 @@ export default function EditarTemplatePage() {
               </div>
 
               {/* Legislação */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
-                <div className="flex flex-col">
-                  <label className="flex items-center justify-between gap-2 py-1">
-                    <span className="font-medium text-foreground text-xs sm:text-sm flex items-center gap-1">
-                      Legislação
-                      <Tooltip content="Norma ou legislação de referência que fundamenta esta pergunta. Será exibida ao auditor durante a avaliação como base legal para a verificação. Ex: RDC 216/2004, NR-12, ISO 9001.">
-                        <HelpCircle className="w-3.5 h-3.5 text-muted-foreground/70 cursor-help" />
-                      </Tooltip>
-                    </span>
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Ex: RDC 216/2004"
-                    className="rounded-md border border-input bg-card outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs sm:!h-10 sm:!px-3"
-                    value={itemForm.legislacaoReferencia}
-                    onChange={(e) => setItemForm({ ...itemForm, legislacaoReferencia: e.target.value })}
-                  />
-                </div>
-                <div className="flex flex-col">
-                  <label className="flex items-center justify-between gap-2 py-1">
-                    <span className="font-medium text-foreground text-xs sm:text-sm flex items-center gap-1">
-                      Artigo/Inciso
-                      <Tooltip content="Artigo, parágrafo ou inciso específico da legislação informada. Permite ao auditor consultar o trecho exato da norma durante a auditoria. Ex: Art. 4.1.3, § 2º, Inciso IV.">
-                        <HelpCircle className="w-3.5 h-3.5 text-muted-foreground/70 cursor-help" />
-                      </Tooltip>
-                    </span>
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Ex: Art. 4.1.3"
-                    className="rounded-md border border-input bg-card outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 h-9 px-2.5 text-xs sm:!h-10 sm:!px-3"
-                    value={itemForm.artigo}
-                    onChange={(e) => setItemForm({ ...itemForm, artigo: e.target.value })}
-                  />
-                </div>
+              <div className="flex flex-col">
+                <label className="flex items-center justify-between gap-2 py-1">
+                  <span className="font-medium text-foreground text-xs sm:text-sm flex items-center gap-1">
+                    Legislação
+                    <Tooltip content="Normas cadastradas que fundamentam esta pergunta. Aparecem para o auditor como base legal e orientam a análise das não conformidades.">
+                      <HelpCircle className="w-3.5 h-3.5 text-muted-foreground/70 cursor-help" />
+                    </Tooltip>
+                  </span>
+                </label>
+                <SeletorLegislacoes
+                  valor={itemForm.legislacaoIds ?? []}
+                  onChange={(ids) => setItemForm({ ...itemForm, legislacaoIds: ids })}
+                  referenciaAnterior={itemForm.referenciaAnterior}
+                />
               </div>
 
               <div className="flex items-center gap-4 text-xs text-muted-foreground before:h-px before:flex-1 before:bg-border after:h-px after:flex-1 after:bg-border my-2 sm:text-sm">Opções de Resposta</div>
