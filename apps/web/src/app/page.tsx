@@ -402,6 +402,8 @@ function HomePageContent() {
         titulo="Veja o ChekAI em ação"
         subtitulo="Uma visão geral do painel web e do aplicativo mobile"
         embedUrl={process.env.NEXT_PUBLIC_LANDING_VIDEO_URL_DEMO ?? ''}
+        videoSrc="/videos/visao-geral.mp4"
+        posterSrc="/videos/visao-geral.jpg"
         placeholderHint="Vídeo em breve: demonstração geral do sistema."
         instrucaoEnv="Defina NEXT_PUBLIC_LANDING_VIDEO_URL_DEMO com a URL de incorporação (embed) do YouTube, Vimeo ou similar."
         className="bg-card"
@@ -411,6 +413,8 @@ function HomePageContent() {
         titulo="Checklists com apoio de IA"
         subtitulo="Criação de templates com sugestões baseadas na legislação cadastrada"
         embedUrl={process.env.NEXT_PUBLIC_LANDING_VIDEO_URL_CHECKLIST_IA ?? ''}
+        videoSrc="/videos/checklist-ia.mp4"
+        posterSrc="/videos/checklist-ia.jpg"
         placeholderHint="Vídeo em breve: criação de checklist com IA."
         instrucaoEnv="Defina NEXT_PUBLIC_LANDING_VIDEO_URL_CHECKLIST_IA com a URL de incorporação (embed)."
         className="bg-muted"
@@ -420,6 +424,8 @@ function HomePageContent() {
         titulo="Aplicativo em campo"
         subtitulo="Auditorias, fotos e sincronização automática no aplicativo mobile"
         embedUrl={process.env.NEXT_PUBLIC_LANDING_VIDEO_URL_APP_CAMPO ?? ''}
+        videoSrc="/videos/app-campo.mp4"
+        posterSrc="/videos/app-campo.jpg"
         placeholderHint="Vídeo em breve: auditoria no app e sincronização."
         instrucaoEnv="Defina NEXT_PUBLIC_LANDING_VIDEO_URL_APP_CAMPO com a URL de incorporação (embed)."
         className="bg-card"
