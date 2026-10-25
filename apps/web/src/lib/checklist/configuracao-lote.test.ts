@@ -14,6 +14,14 @@ import {
   resumoRespostasGrupo,
   secoesTravadas,
   temAlteracao,
+  opcoesComuns,
+  moverOpcao,
+  removerOpcao,
+  adicionarOpcao,
+  renomearOpcao,
+  problemasOpcoes,
+  respostasRemovidasEmUso,
+  renomeiaRespostaUsada,
 } from './configuracao-lote';
 import { CriticidadeItem, TipoRespostaCustomizada, type TemplateItem } from '../api';
 
@@ -202,5 +210,118 @@ describe('configuracao-lote', () => {
     expect(formGrupoAlterado({ nome: 'Higiene', descricao: 'x' }, grupo)).toBe(true);
     expect(formGrupoAlterado({ nome: '', descricao: '' }, null)).toBe(false);
     expect(formGrupoAlterado({ nome: 'Novo', descricao: '' }, null)).toBe(true);
+  });
+
+  describe('respostas personalizadas', () => {
+    const pers = (id: string, valores: string[], extra: Partial<TemplateItem> = {}) =>
+      item({
+        id,
+        usarRespostasPersonalizadas: true,
+        opcoesResposta: valores,
+        opcoesRespostaConfig: valores.map((valor, i) => ({
+          valor,
+          pontuacao: i === 0 ? 10 : 0,
+          fotoObrigatoria: i === 1,
+          observacaoObrigatoria: false,
+        })),
+        ...extra,
+      });
+
+    it('opcoesComuns devolve as opções com valorOriginal quando todas as perguntas têm as mesmas', () => {
+      expect(opcoesComuns([pers('a', ['Sim', 'Não']), pers('b', ['Sim', 'Não'])])).toEqual([
+        { valor: 'Sim', valorOriginal: 'Sim', pontuacao: 10, fotoObrigatoria: false, observacaoObrigatoria: false },
+        { valor: 'Não', valorOriginal: 'Não', pontuacao: 0, fotoObrigatoria: true, observacaoObrigatoria: false },
+      ]);
+    });
+
+    it('opcoesComuns é null com ordem diferente, pergunta padrão, tipo texto ou lista vazia', () => {
+      expect(opcoesComuns([pers('a', ['Sim', 'Não']), pers('b', ['Não', 'Sim'])])).toBeNull();
+      expect(opcoesComuns([pers('a', ['Sim', 'Não']), item({ id: 'b' })])).toBeNull();
+      expect(
+        opcoesComuns([pers('a', ['Sim', 'Não'], { tipoRespostaCustomizada: TipoRespostaCustomizada.TEXTO })]),
+      ).toBeNull();
+      expect(opcoesComuns([])).toBeNull();
+    });
+
+    it('opcoesComuns aceita o tipo select e ignora perguntas inativas', () => {
+      expect(
+        opcoesComuns([
+          pers('a', ['Sim', 'Não'], { tipoRespostaCustomizada: TipoRespostaCustomizada.SELECT }),
+          item({ id: 'b', ativo: false }),
+        ])?.map((o) => o.valor),
+      ).toEqual(['Sim', 'Não']);
+    });
+
+    it('escolher personalizada semeia com as opções comuns quando existirem', () => {
+      const inicial = estadoInicialLote();
+      inicial.ligadas.tipoResposta = true;
+      const comuns = opcoesComuns([pers('a', ['Sim', 'Não'])]);
+      const e = trocarTipoLote(inicial, 'personalizada', comuns);
+      expect(e.opcoes.map((o) => o.valorOriginal)).toEqual(['Sim', 'Não']);
+      const semComuns = trocarTipoLote(inicial, 'personalizada', null);
+      expect(semComuns.opcoes.every((o) => o.valorOriginal === undefined)).toBe(true);
+      expect(trocarTipoLote(inicial, 'padrao', comuns).opcoes[0].valor).toBe('conforme');
+    });
+
+    it('moverOpcao, removerOpcao, adicionarOpcao e renomearOpcao não alteram a lista original', () => {
+      const lista = opcoesComuns([pers('a', ['A', 'B', 'C'])])!;
+      expect(moverOpcao(lista, 2, 0).map((o) => o.valor)).toEqual(['C', 'A', 'B']);
+      expect(moverOpcao(lista, 0, 5).map((o) => o.valor)).toEqual(['A', 'B', 'C']);
+      expect(removerOpcao(lista, 1).map((o) => o.valor)).toEqual(['A', 'C']);
+      const mais = adicionarOpcao(lista);
+      expect(mais).toHaveLength(4);
+      expect(mais[3]).toEqual({ valor: '', fotoObrigatoria: false, observacaoObrigatoria: false });
+      const renomeada = renomearOpcao(lista, 0, 'Sim');
+      expect(renomeada[0]).toMatchObject({ valor: 'Sim', valorOriginal: 'A' });
+      expect(lista.map((o) => o.valor)).toEqual(['A', 'B', 'C']);
+    });
+
+    it('problemasOpcoes: mínimo 2, texto vazio e repetição', () => {
+      const o = (valor: string) => ({ valor, fotoObrigatoria: false, observacaoObrigatoria: false });
+      expect(problemasOpcoes([o('Sim')])).toBe('Use ao menos 2 respostas.');
+      expect(problemasOpcoes([o('Sim'), o('  ')])).toBe('Dê um texto a cada resposta.');
+      expect(problemasOpcoes([o('Sim'), o(' SIM ')])).toBe('Dê um texto diferente a cada resposta.');
+      expect(problemasOpcoes([o('Sim'), o('Não')])).toBeNull();
+    });
+
+    it('motivoRequisicaoInvalida usa problemasOpcoes em personalizada', () => {
+      const inicial = estadoInicialLote();
+      inicial.ligadas.tipoResposta = true;
+      const e = trocarTipoLote(inicial, 'personalizada');
+      e.opcoes = e.opcoes.slice(0, 1);
+      expect(motivoRequisicaoInvalida(e)).toBe('Use ao menos 2 respostas.');
+    });
+
+    it('motivoRequisicaoInvalida recusa remover resposta já usada', () => {
+      const inicial = estadoInicialLote();
+      inicial.ligadas.tipoResposta = true;
+      const e = trocarTipoLote(inicial, 'personalizada', opcoesComuns([pers('a', ['Sim', 'Não', 'Talvez'])]));
+      const emUso = [{ valor: 'Talvez', auditorias: 3 }];
+      expect(motivoRequisicaoInvalida(e, emUso)).toBeNull();
+      e.opcoes = removerOpcao(e.opcoes, 2);
+      expect(respostasRemovidasEmUso(e.opcoes, emUso)).toEqual(emUso);
+      expect(motivoRequisicaoInvalida(e, emUso)).toBe(
+        'A resposta “Talvez” já foi usada em 3 auditorias e não pode ser removida.',
+      );
+    });
+
+    it('renomeiaRespostaUsada só quando o texto de uma resposta usada muda', () => {
+      const lista = opcoesComuns([pers('a', ['Sim', 'Não'])])!;
+      const emUso = [{ valor: 'Sim', auditorias: 1 }];
+      expect(renomeiaRespostaUsada(lista, emUso)).toBe(false);
+      expect(renomeiaRespostaUsada(renomearOpcao(lista, 1, 'Nunca'), emUso)).toBe(false);
+      expect(renomeiaRespostaUsada(renomearOpcao(lista, 0, 'Sempre'), emUso)).toBe(true);
+      expect(renomeiaRespostaUsada(renomearOpcao(lista, 0, ' Sim '), emUso)).toBe(false);
+    });
+
+    it('montarAlteracoes envia valorOriginal quando houver', () => {
+      const inicial = estadoInicialLote();
+      inicial.ligadas.tipoResposta = true;
+      const e = trocarTipoLote(inicial, 'personalizada', opcoesComuns([pers('a', ['Sim', 'Não'])]));
+      e.opcoes = adicionarOpcao(renomearOpcao(e.opcoes, 0, 'Sempre'));
+      e.opcoes = renomearOpcao(e.opcoes, 2, 'Talvez');
+      const corpo = JSON.parse(JSON.stringify(montarAlteracoes(e)));
+      expect(corpo.opcoes.map((o: { valorOriginal?: string }) => o.valorOriginal)).toEqual(['Sim', 'Não', undefined]);
+    });
   });
 });

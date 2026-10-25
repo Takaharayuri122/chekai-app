@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
@@ -883,6 +883,15 @@ export default function EditarTemplatePage() {
     });
   };
 
+  // Perguntas que o painel vai alterar (para partir das opções que elas já têm em comum)
+  const itensDoEscopo = useMemo(() => {
+    const ativos = (template?.itens || []).filter((i) => i.ativo !== false);
+    if (!painelEscopo) return [];
+    if (painelEscopo.tipo === 'selecao') return ativos.filter((i) => painelEscopo.itemIds.includes(i.id));
+    if (painelEscopo.tipo === 'grupo') return ativos.filter((i) => i.grupoId === painelEscopo.grupoId);
+    return ativos;
+  }, [template?.itens, painelEscopo]);
+
   const abrirPainel = (escopo: EscopoLote) => {
     setPainelEscopo(escopo);
     setPainelAberto(true);
@@ -1383,6 +1392,7 @@ export default function EditarTemplatePage() {
           onFechar={() => setPainelAberto(false)}
           templateId={templateId}
           escopo={painelEscopo}
+          itens={itensDoEscopo}
           onAplicado={handleLoteAplicado}
         />
       )}

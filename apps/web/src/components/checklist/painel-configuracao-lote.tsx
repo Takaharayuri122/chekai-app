@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { AlertTriangle, Camera, Loader2, Lock, MessageSquare, Plus, Trash2 } from 'lucide-react';
+import { AlertTriangle, Loader2, Lock } from 'lucide-react';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
-import { Tooltip } from '@/components/ui/tooltip';
+import { EditorRespostasLote } from '@/components/checklist/editor-respostas-lote';
 import { Button } from '@/components/ui/shadcn/button';
 import {
   Drawer,
@@ -17,11 +17,17 @@ import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetT
 import { Switch } from '@/components/ui/shadcn/switch';
 import { useMediaQuery } from '@/hooks/use-media-query';
 import {
+  adicionarOpcao,
   estadoInicialLote,
-  lerPontos,
   montarRequisicaoLote,
   motivoRequisicaoInvalida,
+  moverOpcao,
+  opcoesComuns,
   opcoesValidas,
+  problemasOpcoes,
+  removerOpcao,
+  renomearOpcao,
+  renomeiaRespostaUsada,
   secoesTravadas,
   temAlteracao,
   trocarTipoLote,
@@ -29,7 +35,16 @@ import {
   type EstadoLote,
   type SecaoLote,
 } from '@/lib/checklist/configuracao-lote';
-import { checklistService, CRITICIDADE_LABELS, CriticidadeItem, type ResultadoLote, type TipoRespostaLote } from '@/lib/api';
+import {
+  checklistService,
+  CRITICIDADE_LABELS,
+  CriticidadeItem,
+  type OpcaoLote,
+  type RespostaEmUso,
+  type ResultadoLote,
+  type TemplateItem,
+  type TipoRespostaLote,
+} from '@/lib/api';
 import { cn } from '@/lib/cn';
 import { toastService } from '@/lib/toast';
 
@@ -40,6 +55,8 @@ interface PainelConfiguracaoLoteProps {
   onFechar: () => void;
   templateId: string;
   escopo: EscopoLote;
+  /** Perguntas do escopo: quando todas têm as mesmas opções personalizadas, o painel parte delas. */
+  itens: TemplateItem[];
   onAplicado: (r: ResultadoLote) => void;
 }
 
@@ -57,14 +74,11 @@ const TEXTO_TIPO: Partial<Record<TipoRespostaLote, string>> = {
   data: 'O auditor escolhe uma data. Não há opções de resposta.',
 };
 
-const ROTULO_PADRAO: Record<string, string> = {
-  conforme: 'Conforme',
-  nao_conforme: 'Não conforme',
-  nao_aplicavel: 'Não aplicável',
-  nao_avaliado: 'Não avaliado',
-};
-
 const DELAY_SIMULACAO_MS = 400;
+
+let sequenciaChave = 0;
+/** Chave estável de cada resposta na lista (o texto muda enquanto o gestor digita). */
+const novaChave = () => `resposta-${++sequenciaChave}`;
 
 function perguntas(n: number): string {
   return n === 1 ? '1 pergunta' : `${n} perguntas`;
@@ -158,9 +172,13 @@ function ValorSwitch({ checked, onChange, rotulo }: { checked: boolean; onChange
  * Painel de configuração em lote: lateral no desktop e gaveta no mobile, com cabeçalho e rodapé fixos.
  * Mostra o impacto (simulação) antes de aplicar.
  */
-export function PainelConfiguracaoLote({ aberto, onFechar, templateId, escopo, onAplicado }: PainelConfiguracaoLoteProps) {
+export function PainelConfiguracaoLote({ aberto, onFechar, templateId, escopo, itens, onAplicado }: PainelConfiguracaoLoteProps) {
   const desktop = useMediaQuery('(min-width: 768px)');
   const [estado, setEstado] = useState<EstadoLote>(estadoInicialLote);
+  const [chaves, setChaves] = useState<string[]>(() => estado.opcoes.map(novaChave));
+  const [emUso, setEmUso] = useState<RespostaEmUso[]>([]);
+  // Última resposta removida, para "Desfazer"; some na próxima ação
+  const [remocao, setRemocao] = useState<{ opcao: OpcaoLote; indice: number; chave: string } | null>(null);
   const [simulacao, setSimulacao] = useState<ResultadoLote | null>(null);
   const [simulando, setSimulando] = useState(false);
   const [aplicando, setAplicando] = useState(false);
@@ -170,7 +188,11 @@ export function PainelConfiguracaoLote({ aberto, onFechar, templateId, escopo, o
   // Cada abertura começa do zero.
   useEffect(() => {
     if (aberto) {
-      setEstado(estadoInicialLote());
+      const inicial = estadoInicialLote();
+      setEstado(inicial);
+      setChaves(inicial.opcoes.map(novaChave));
+      setEmUso([]);
+      setRemocao(null);
       setSimulacao(null);
       setSimulando(false);
       setAplicando(false);
@@ -182,9 +204,17 @@ export function PainelConfiguracaoLote({ aberto, onFechar, templateId, escopo, o
   const travadas = useMemo(() => secoesTravadas(estado), [estado]);
   const alterou = temAlteracao(estado);
   const opcoesAtivas = estado.ligadas.opcoes && !travadas.opcoes;
-  const opcoesOk = !opcoesAtivas || opcoesValidas(estado.opcoes);
+  const comuns = useMemo(() => opcoesComuns(itens), [itens]);
+  const problemaOpcoes = !opcoesAtivas
+    ? null
+    : estado.tipoResposta === 'personalizada'
+      ? problemasOpcoes(estado.opcoes)
+      : opcoesValidas(estado.opcoes)
+        ? null
+        : 'Dê um nome diferente a cada opção para continuar.';
+  const opcoesOk = problemaOpcoes === null;
   // Configuração que a API recusaria não é simulada nem aplicada
-  const motivoInvalido = alterou ? motivoRequisicaoInvalida(estado) : null;
+  const motivoInvalido = alterou ? motivoRequisicaoInvalida(estado, emUso) : null;
   const requisicaoOk = motivoInvalido === null;
 
   // Simulação com debounce a cada mudança.
@@ -200,7 +230,11 @@ export function PainelConfiguracaoLote({ aberto, onFechar, templateId, escopo, o
     const timer = setTimeout(async () => {
       try {
         const r = await checklistService.configurarLote(templateId, montarRequisicaoLote(escopo, estado, true));
-        if (!cancelado) setSimulacao(r);
+        if (!cancelado) {
+          setSimulacao(r);
+          // O uso das respostas depende só das perguntas do escopo: fica guardado entre simulações
+          setEmUso(r.respostasEmUso ?? []);
+        }
       } catch {
         if (!cancelado) setSimulacao(null);
       } finally {
@@ -213,13 +247,43 @@ export function PainelConfiguracaoLote({ aberto, onFechar, templateId, escopo, o
     };
   }, [aberto, alterou, requisicaoOk, estado, escopo, templateId]);
 
-  const ligar = (secao: SecaoLote, v: boolean) =>
+  const ligar = (secao: SecaoLote, v: boolean) => {
+    setRemocao(null);
     setEstado((e) => ({ ...e, ligadas: { ...e.ligadas, [secao]: v } }));
+  };
 
-  const trocarTipo = (tipo: TipoRespostaLote) => setEstado((e) => trocarTipoLote(e, tipo));
+  const trocarTipo = (tipo: TipoRespostaLote) => {
+    const novo = trocarTipoLote(estado, tipo, comuns);
+    setRemocao(null);
+    setEstado(novo);
+    if (novo.opcoes !== estado.opcoes) setChaves(novo.opcoes.map(novaChave));
+  };
 
-  const atualizarOpcao = (idx: number, parcial: Partial<EstadoLote['opcoes'][number]>) =>
-    setEstado((e) => ({ ...e, opcoes: e.opcoes.map((o, i) => (i === idx ? { ...o, ...parcial } : o)) }));
+  const mudarOpcoes = (opcoes: OpcaoLote[], novasChaves: string[] = chaves) => {
+    setRemocao(null);
+    setEstado((e) => ({ ...e, opcoes }));
+    setChaves(novasChaves);
+  };
+
+  const atualizarOpcao = (idx: number, parcial: Partial<OpcaoLote>) =>
+    mudarOpcoes(estado.opcoes.map((o, i) => (i === idx ? { ...o, ...parcial } : o)));
+
+  const removerResposta = (idx: number) => {
+    const opcao = estado.opcoes[idx];
+    const chave = chaves[idx];
+    mudarOpcoes(removerOpcao(estado.opcoes, idx), removerOpcao(chaves, idx));
+    setRemocao({ opcao, indice: idx, chave });
+  };
+
+  const desfazerRemocao = () => {
+    if (!remocao) return;
+    const indice = Math.min(remocao.indice, estado.opcoes.length);
+    const opcoes = [...estado.opcoes];
+    opcoes.splice(indice, 0, remocao.opcao);
+    const novasChaves = [...chaves];
+    novasChaves.splice(indice, 0, remocao.chave);
+    mudarOpcoes(opcoes, novasChaves);
+  };
 
   const pedirFechar = () => {
     if (aplicando) return;
@@ -229,7 +293,11 @@ export function PainelConfiguracaoLote({ aberto, onFechar, templateId, escopo, o
 
   const avisoPersonalizados = simulacao?.personalizadosSubstituidos ?? 0;
   const avisoAuditorias = simulacao?.auditoriasVinculadas ?? 0;
-  const temAviso = avisoPersonalizados > 0 || avisoAuditorias > 0;
+  // Renomear resposta já usada também muda o texto das respostas já dadas (RN-CHK-018)
+  const avisoRenomeacao =
+    opcoesAtivas && estado.tipoResposta === 'personalizada' && renomeiaRespostaUsada(estado.opcoes, emUso);
+  const textoAvisoRenomeacao = 'As respostas já dadas em auditorias serão atualizadas para o novo texto.';
+  const temAviso = avisoPersonalizados > 0 || avisoAuditorias > 0 || avisoRenomeacao;
   const textoAvisoPersonalizados =
     avisoPersonalizados === 1
       ? '1 das perguntas já tem opções personalizadas e elas serão substituídas.'
@@ -281,107 +349,33 @@ export function PainelConfiguracaoLote({ aberto, onFechar, templateId, escopo, o
       </Secao>
 
       <Secao
-        titulo="Opções, pontuação e exigências"
-        subtitulo="Vale para todas as perguntas"
+        titulo="Respostas"
+        subtitulo={
+          estado.tipoResposta === 'personalizada'
+            ? desktop
+              ? 'Arraste pela alça para mudar a ordem. É nesta ordem que o auditor vê.'
+              : 'Segure a alça e arraste para mudar a ordem. É nesta ordem que o auditor vê.'
+            : 'Pontuação e exigências de cada resposta'
+        }
         ligada={estado.ligadas.opcoes}
         travada={travadas.opcoes}
         onLigar={(v) => ligar('opcoes', v)}
       >
-        <div className="grid grid-cols-[minmax(0,1fr)_64px_36px_36px] items-center gap-2 text-xs font-medium text-muted-foreground">
-          <span>Opção</span>
-          <span className="text-center">Pontos</span>
-          <span className="text-center">Foto</span>
-          <span className="text-center">Obs.</span>
-        </div>
-        {estado.opcoes.map((o, idx) => {
-          const editavel = estado.tipoResposta === 'personalizada';
-          return (
-            <div key={idx} className="grid grid-cols-[minmax(0,1fr)_64px_36px_36px] items-center gap-2">
-              {editavel ? (
-                <div className="flex min-w-0 items-center gap-1">
-                  <input
-                    type="text"
-                    value={o.valor}
-                    onChange={(e) => atualizarOpcao(idx, { valor: e.target.value })}
-                    placeholder="Nome da opção"
-                    aria-label={`Nome da opção ${idx + 1}`}
-                    className="h-9 min-w-0 flex-1 rounded-md border border-input bg-card px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  />
-                  <Tooltip content="Remover opção">
-                  <button
-                    type="button"
-                    aria-label={`Remover opção ${o.valor || idx + 1}`}
-                    onClick={() => setEstado((e) => ({ ...e, opcoes: e.opcoes.filter((_, i) => i !== idx) }))}
-                    className="flex h-9 w-7 shrink-0 items-center justify-center rounded-md text-destructive hover:bg-muted"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                  </Tooltip>
-                </div>
-              ) : (
-                <span className="truncate text-sm">{ROTULO_PADRAO[o.valor] ?? o.valor}</span>
-              )}
-              <input
-                type="number"
-                min={-10}
-                max={10}
-                value={o.pontuacao ?? ''}
-                placeholder="—"
-                aria-label={`Pontos de ${ROTULO_PADRAO[o.valor] ?? (o.valor || `opção ${idx + 1}`)}`}
-                onChange={(e) => atualizarOpcao(idx, { pontuacao: lerPontos(e.target.value, o.valor, estado.tipoResposta) })}
-                className="h-9 w-full rounded-md border border-input bg-card px-2 text-center text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              />
-              <Tooltip content="Foto obrigatória">
-              <button
-                type="button"
-                aria-pressed={o.fotoObrigatoria}
-                aria-label="Foto obrigatória"
-                onClick={() => atualizarOpcao(idx, { fotoObrigatoria: !o.fotoObrigatoria })}
-                className={cn(
-                  'flex h-9 w-9 items-center justify-center rounded-md border transition-colors',
-                  o.fotoObrigatoria ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-card text-muted-foreground',
-                )}
-              >
-                <Camera className="h-4 w-4" />
-              </button>
-              </Tooltip>
-              <Tooltip content="Observação obrigatória">
-              <button
-                type="button"
-                aria-pressed={o.observacaoObrigatoria}
-                aria-label="Observação obrigatória"
-                onClick={() => atualizarOpcao(idx, { observacaoObrigatoria: !o.observacaoObrigatoria })}
-                className={cn(
-                  'flex h-9 w-9 items-center justify-center rounded-md border transition-colors',
-                  o.observacaoObrigatoria ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-card text-muted-foreground',
-                )}
-              >
-                <MessageSquare className="h-4 w-4" />
-              </button>
-              </Tooltip>
-            </div>
-          );
-        })}
-        {estado.tipoResposta === 'personalizada' && (
-          <div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() =>
-                setEstado((e) => ({
-                  ...e,
-                  opcoes: [...e.opcoes, { valor: '', fotoObrigatoria: false, observacaoObrigatoria: false }],
-                }))
-              }
-            >
-              <Plus className="h-4 w-4" />
-              Adicionar opção
-            </Button>
-          </div>
-        )}
-        {!opcoesOk && (
-          <p className="text-xs text-destructive">Dê um nome diferente a cada opção para continuar.</p>
-        )}
+        <EditorRespostasLote
+          tipo={estado.tipoResposta}
+          opcoes={estado.opcoes}
+          chaves={chaves}
+          emUso={emUso}
+          compacto={!desktop}
+          removida={remocao ? remocao.opcao.valor : null}
+          onAtualizar={atualizarOpcao}
+          onRenomear={(idx, valor) => mudarOpcoes(renomearOpcao(estado.opcoes, idx, valor))}
+          onRemover={removerResposta}
+          onAdicionar={() => mudarOpcoes(adicionarOpcao(estado.opcoes), [...chaves, novaChave()])}
+          onMover={(de, para) => mudarOpcoes(moverOpcao(estado.opcoes, de, para), moverOpcao(chaves, de, para))}
+          onDesfazer={desfazerRemocao}
+        />
+        {problemaOpcoes && <p className="text-xs text-destructive">{problemaOpcoes}</p>}
       </Secao>
 
       <Secao
@@ -469,6 +463,7 @@ export function PainelConfiguracaoLote({ aberto, onFechar, templateId, escopo, o
           <div className="space-y-1">
             {avisoPersonalizados > 0 && <p>{textoAvisoPersonalizados}</p>}
             {avisoAuditorias > 0 && <p>{textoAvisoAuditorias}</p>}
+            {avisoRenomeacao && <p>{textoAvisoRenomeacao}</p>}
           </div>
         </div>
       )}
@@ -544,7 +539,11 @@ export function PainelConfiguracaoLote({ aberto, onFechar, templateId, escopo, o
         onClose={() => setConfirmarAplicar(false)}
         onConfirm={aplicar}
         title="Aplicar configuração?"
-        message={[avisoPersonalizados > 0 ? textoAvisoPersonalizados : '', avisoAuditorias > 0 ? textoAvisoAuditorias : '']
+        message={[
+          avisoPersonalizados > 0 ? textoAvisoPersonalizados : '',
+          avisoAuditorias > 0 ? textoAvisoAuditorias : '',
+          avisoRenomeacao ? textoAvisoRenomeacao : '',
+        ]
           .filter(Boolean)
           .join(' ')}
         confirmLabel={`Aplicar em ${perguntas(afetados)}`}
