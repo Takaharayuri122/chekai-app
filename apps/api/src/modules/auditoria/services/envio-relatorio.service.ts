@@ -8,6 +8,7 @@ import { PerfilUsuario } from '../../usuario/entities/usuario.entity';
 import { AuditoriaService } from '../auditoria.service';
 import { Auditoria } from '../entities/auditoria.entity';
 import { AuditoriaEnvioRelatorio } from '../entities/auditoria-envio-relatorio.entity';
+import { caminhoNoBucket } from './caminho-no-bucket';
 import { RelatorioAuditoriaPdfService } from './relatorio-auditoria-pdf.service';
 import { ResultadoAuditoriaService } from './resultado-auditoria.service';
 
@@ -107,12 +108,12 @@ export class EnvioRelatorioService {
   }
 
   private async gerarLinkAssinado(urlPublica: string): Promise<{ url: string; validoAte: string }> {
-    const partes = urlPublica.split(`/storage/v1/object/public/${this.bucketName}/`);
-    if (partes.length < 2) throw new Error('Não foi possível gerar o link do relatório');
+    const caminho = caminhoNoBucket(urlPublica, this.bucketName);
+    if (!caminho) throw new Error('Não foi possível gerar o link do relatório');
     const { data, error } = await this.supabaseService
       .getClient()
       .storage.from(this.bucketName)
-      .createSignedUrl(decodeURIComponent(partes[1]), VALIDADE_LINK_SEGUNDOS);
+      .createSignedUrl(caminho, VALIDADE_LINK_SEGUNDOS);
     if (error || !data?.signedUrl) throw new Error('Não foi possível gerar o link do relatório');
     return { url: data.signedUrl, validoAte: formatarData(new Date(Date.now() + VALIDADE_LINK_SEGUNDOS * 1000)) };
   }

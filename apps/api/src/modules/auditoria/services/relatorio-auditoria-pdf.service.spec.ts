@@ -6,7 +6,7 @@ const PDF_GUARDADO = Buffer.from('%PDF-guardado');
 const URL_BUCKET = 'https://x.supabase.co/storage/v1/object/public/relatorios/auditorias/a-1/r.pdf';
 const resultado = { aproveitamento: 80 };
 
-function criar(auditoria: Record<string, unknown>, downloadOk = true) {
+function criar(auditoria: Record<string, unknown>, downloadOk = true, ultimaTarefa: unknown = null) {
   const auditoriaService = {
     buscarAuditoriaPorId: jest.fn().mockResolvedValue(auditoria),
     atualizarPdfUrl: jest.fn().mockResolvedValue(undefined),
@@ -24,14 +24,16 @@ function criar(auditoria: Record<string, unknown>, downloadOk = true) {
   );
   const supabase = { getClient: () => ({ storage: { from: () => ({ download }) } }) };
   const config = { get: () => undefined };
+  const planoTarefaRepository = { findOne: jest.fn().mockResolvedValue(ultimaTarefa) };
   const service = new RelatorioAuditoriaPdfService(
     auditoriaService as never,
     resultadoService as never,
     puppeteer as never,
     supabase as never,
     config as never,
+    planoTarefaRepository as never,
   );
-  return { service, auditoriaService, resultadoService, puppeteer };
+  return { service, auditoriaService, resultadoService, puppeteer, download, planoTarefaRepository };
 }
 
 const base = {
@@ -88,6 +90,34 @@ describe('RelatorioAuditoriaPdfService.obterPdf', () => {
     });
     await service.obterPdf('a-1', undefined);
     expect(puppeteer.gerarPdf).toHaveBeenCalled();
+  });
+
+  it('regenera quando um plano de ação foi criado ou alterado depois do PDF', async () => {
+    const { service, puppeteer, planoTarefaRepository } = criar(base, true, {
+      id: 't-1',
+      atualizadoEm: new Date('2026-10-24T00:00:00Z'),
+    });
+    await service.obterPdf('a-1', undefined);
+    expect(planoTarefaRepository.findOne).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { auditoriaId: 'a-1' }, order: { atualizadoEm: 'DESC' } }),
+    );
+    expect(puppeteer.gerarPdf).toHaveBeenCalled();
+  });
+
+  it('reaproveita o PDF quando os planos de ação são anteriores à geração', async () => {
+    const { service, puppeteer } = criar(base, true, { id: 't-1', atualizadoEm: new Date('2026-10-20T11:00:00Z') });
+    const r = await service.obterPdf('a-1', undefined);
+    expect(r.buffer.equals(PDF_GUARDADO)).toBe(true);
+    expect(puppeteer.gerarPdf).not.toHaveBeenCalled();
+  });
+
+  it('baixa o PDF guardado pelo caminho decodificado', async () => {
+    const { service, puppeteer, download } = criar(base);
+    puppeteer.verificarPdfExistente.mockResolvedValue(
+      'https://x.supabase.co/storage/v1/object/public/relatorios/auditorias/a-1/relat%C3%B3rio.pdf',
+    );
+    await service.obterPdf('a-1', undefined);
+    expect(download).toHaveBeenCalledWith('auditorias/a-1/relatório.pdf');
   });
 
   it('regenera quando o PDF guardado não pode ser baixado', async () => {
