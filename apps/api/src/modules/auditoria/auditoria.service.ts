@@ -21,6 +21,7 @@ import { LegislacaoVinculoService } from '../legislacao/legislacao-vinculo.servi
 import { validarLegislacaoIds } from '../legislacao/lib/validar-legislacao-ids';
 import { resumirLegislacoes } from '../legislacao/lib/resumo-legislacao';
 import { ChecklistService } from '../checklist/checklist.service';
+import { calcularPontuacaoOpcao, getPontuacaoMaximaItem, isOpcaoSemPontuacao } from '../checklist/regras';
 import { PerfilUsuario } from '../usuario/entities/usuario.entity';
 import {
   IniciarAuditoriaDto,
@@ -315,7 +316,7 @@ export class AuditoriaService {
     } else {
       item.referenciaLegal = dto.referenciaLegal ?? item.referenciaLegal;
     }
-    item.pontuacao = this.calcularPontuacaoOpcao(templateItem, dto.resposta);
+    item.pontuacao = calcularPontuacaoOpcao(templateItem, dto.resposta);
     const salvo = await this.itemRepository.save(item);
     resumirLegislacoes([salvo]);
     return salvo;
@@ -406,54 +407,6 @@ export class AuditoriaService {
   }
 
   /**
-   * Calcula a pontuação de uma opção de resposta: usa valor explícito da config quando existir,
-   * senão usa o algoritmo sequencial (base da primeira opção menos o índice).
-   */
-  private isOpcaoSemPontuacao(valor: string): boolean {
-    return ['nao_aplicavel', 'nao_avaliado'].includes(valor.toLowerCase());
-  }
-
-  private calcularPontuacaoOpcao(templateItem: TemplateItem | null | undefined, valorResposta: string): number {
-    if (!templateItem) return 0;
-    if (templateItem.tipoRespostaCustomizada === TipoRespostaCustomizada.TEXTO) return 0;
-    if (this.isOpcaoSemPontuacao(valorResposta)) return 0;
-    const configs = templateItem.opcoesRespostaConfig || [];
-    const configOpcao = configs.find((c) => c.valor === valorResposta);
-    if (configOpcao?.pontuacao != null && typeof configOpcao.pontuacao === 'number') {
-      return configOpcao.pontuacao;
-    }
-    if (configOpcao && configOpcao.pontuacao === null) return 0;
-    const opcoesOrdenadas = templateItem.usarRespostasPersonalizadas && templateItem.opcoesResposta?.length
-      ? templateItem.opcoesResposta
-      : ['conforme', 'nao_conforme', 'nao_aplicavel', 'nao_avaliado'];
-    const opcoesPontuaveis = opcoesOrdenadas.filter((op) => !this.isOpcaoSemPontuacao(op));
-    const indice = opcoesPontuaveis.indexOf(valorResposta);
-    const configPrimeira = configs.find((c) => c.valor === opcoesPontuaveis[0]);
-    const base = configPrimeira?.pontuacao != null && typeof configPrimeira.pontuacao === 'number'
-      ? configPrimeira.pontuacao
-      : 1;
-    return indice >= 0 ? base - indice : 0;
-  }
-
-  /**
-   * Retorna a pontuação máxima possível para um item: máximo entre as pontuações
-   * de cada opção pontuável, usando a mesma regra de cálculo.
-   */
-  private getPontuacaoMaximaItem(templateItem: TemplateItem | null | undefined): number {
-    if (!templateItem) return 0;
-    if (templateItem.tipoRespostaCustomizada === TipoRespostaCustomizada.TEXTO) return 0;
-    const opcoesOrdenadas = templateItem.usarRespostasPersonalizadas && templateItem.opcoesResposta?.length
-      ? templateItem.opcoesResposta
-      : ['conforme', 'nao_conforme', 'nao_aplicavel', 'nao_avaliado'];
-    const opcoesPontuaveis = opcoesOrdenadas.filter((op) => !this.isOpcaoSemPontuacao(op));
-    if (opcoesPontuaveis.length === 0) return 0;
-    const pontuacoes = opcoesPontuaveis.map((valor) =>
-      this.calcularPontuacaoOpcao(templateItem, valor),
-    );
-    return Math.max(...pontuacoes);
-  }
-
-  /**
    * Finaliza uma auditoria.
    */
   async finalizarAuditoria(
@@ -477,14 +430,14 @@ export class AuditoriaService {
       );
     }
     const itensPontuaveis = auditoria.itens.filter(
-      (item) => !this.isOpcaoSemPontuacao(item.resposta || ''),
+      (item) => !isOpcaoSemPontuacao(item.resposta || ''),
     );
     const pontuacaoObtida = itensPontuaveis.reduce(
       (acc, item) => acc + item.pontuacao,
       0,
     );
     const pontuacaoMaxima = itensPontuaveis.reduce(
-      (acc, item) => acc + this.getPontuacaoMaximaItem(item.templateItem),
+      (acc, item) => acc + getPontuacaoMaximaItem(item.templateItem),
       0,
     );
     const pontuacaoPercentual =
@@ -642,10 +595,10 @@ export class AuditoriaService {
         const primeiroItem = itens[0];
         const grupoNome = primeiroItem.templateItem?.grupo?.nome || 'Sem Grupo';
         const itensPontuaveisGrupo = itens.filter(
-          (item) => !this.isOpcaoSemPontuacao(item.resposta || ''),
+          (item) => !isOpcaoSemPontuacao(item.resposta || ''),
         );
         const pontuacaoPossivel = itensPontuaveisGrupo.reduce(
-          (acc, item) => acc + this.getPontuacaoMaximaItem(item.templateItem),
+          (acc, item) => acc + getPontuacaoMaximaItem(item.templateItem),
           0,
         );
         const pontuacaoObtida = itensPontuaveisGrupo.reduce((acc, item) => acc + item.pontuacao, 0);

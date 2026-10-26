@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Auditoria } from '../entities/auditoria.entity';
 import { AuditoriaItem, RespostaItem } from '../entities/auditoria-item.entity';
 import { nomesLegislacoesDoItem } from '../../legislacao/lib/legislacoes-do-item';
+import { getPontuacaoMaximaItem } from '../../checklist/regras';
 
 interface GrupoMetricas {
   nome: string;
@@ -1157,56 +1158,6 @@ export class RelatorioHtmlService {
     `;
   }
 
-  private static calcularPontuacaoOpcao(
-    templateItem: {
-      opcoesRespostaConfig?: Array<{ valor?: string; pontuacao?: number | null }>;
-      opcoesResposta?: string[];
-      usarRespostasPersonalizadas?: boolean;
-    } | null | undefined,
-    valorResposta: string,
-  ): number {
-    if (!templateItem) return 0;
-    const configs = templateItem.opcoesRespostaConfig || [];
-    const configOpcao = configs.find((c) => c.valor === valorResposta);
-    if (configOpcao?.pontuacao != null && typeof configOpcao.pontuacao === 'number') {
-      return configOpcao.pontuacao;
-    }
-    if (configOpcao && configOpcao.pontuacao === null) return 0;
-    const opcoesOrdenadas = templateItem.usarRespostasPersonalizadas && templateItem.opcoesResposta?.length
-      ? templateItem.opcoesResposta
-      : ['conforme', 'nao_conforme', 'nao_aplicavel', 'nao_avaliado'];
-    const indice = opcoesOrdenadas.indexOf(valorResposta);
-    const configPrimeira = configs.find((c) => c.valor === opcoesOrdenadas[0]);
-    const base = configPrimeira?.pontuacao != null && typeof configPrimeira.pontuacao === 'number'
-      ? configPrimeira.pontuacao
-      : 1;
-    return indice >= 0 ? base - indice : 0;
-  }
-
-  /**
-   * Retorna a pontuação máxima possível para um item: máximo entre as pontuações
-   * de cada opção, usando a mesma regra de cálculo (explícita ou sequencial).
-   */
-  private getPontuacaoMaximaItem(
-    templateItem: {
-      opcoesRespostaConfig?: Array<{ valor?: string; pontuacao?: number | null }>;
-      opcoesResposta?: string[];
-      usarRespostasPersonalizadas?: boolean;
-      tipoRespostaCustomizada?: string;
-    } | null | undefined,
-  ): number {
-    if (!templateItem) return 0;
-    if (templateItem.tipoRespostaCustomizada === 'texto') return 0;
-    const opcoesOrdenadas = templateItem.usarRespostasPersonalizadas && templateItem.opcoesResposta?.length
-      ? templateItem.opcoesResposta
-      : ['conforme', 'nao_conforme', 'nao_aplicavel', 'nao_avaliado'];
-    if (opcoesOrdenadas.length === 0) return 0;
-    const pontuacoes = opcoesOrdenadas.map((valor) =>
-      RelatorioHtmlService.calcularPontuacaoOpcao(templateItem, valor),
-    );
-    return Math.max(...pontuacoes);
-  }
-
   /**
    * Calcula os grupos de métricas.
    */
@@ -1226,7 +1177,7 @@ export class RelatorioHtmlService {
         const grupoNome =
           primeiroItem.templateItem?.grupo?.nome || 'Sem Grupo';
         const pontuacaoPossivel = itens.reduce(
-          (acc, item) => acc + this.getPontuacaoMaximaItem(item.templateItem),
+          (acc, item) => acc + getPontuacaoMaximaItem(item.templateItem),
           0,
         );
         const pontuacaoObtida = itens.reduce(

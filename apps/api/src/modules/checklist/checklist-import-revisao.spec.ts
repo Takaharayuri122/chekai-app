@@ -3,15 +3,12 @@ import { RESPOSTAS_PADRAO_VALORES } from './checklist-regras';
 import { PerguntaImportada } from './dto/importar-checklist.dto';
 import { CategoriaItem, CriticidadeItem, TemplateItem } from './entities/template-item.entity';
 import { configuracaoParaItem } from './checklist-import-mapeamento';
-import { AuditoriaService } from '../auditoria/auditoria.service';
+import { calcularPontuacaoOpcao } from './regras';
 
 /** Mesma regra de pontuação da auditoria, aplicada ao item como ele volta do banco (JSON). */
 function pontuar(item: Partial<TemplateItem>, valor: string): number {
   const salvo = JSON.parse(JSON.stringify(item)) as TemplateItem;
-  const proto = AuditoriaService.prototype as unknown as {
-    calcularPontuacaoOpcao: (i: TemplateItem, v: string) => number;
-  };
-  return proto.calcularPontuacaoOpcao.call(proto, salvo, valor);
+  return calcularPontuacaoOpcao(salvo, valor);
 }
 
 function pergunta(chave: string, texto: string, parcial: Partial<PerguntaImportada> = {}): PerguntaImportada {

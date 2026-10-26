@@ -108,6 +108,8 @@ export class TemplateItem {
     fotoObrigatoria: boolean;
     observacaoObrigatoria: boolean;
     pontuacao?: number | null;
+    sentido?: 'positiva' | 'negativa' | 'neutra' | null;
+    icone?: string | null;
   }>;
 
   @Column({ default: false })

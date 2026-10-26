@@ -7,15 +7,12 @@ import {
 } from './checklist-import-mapeamento';
 import { ChecklistCsvRow, ConfiguracaoPerguntaImportada } from './dto/importar-checklist.dto';
 import { CategoriaItem, CriticidadeItem, TemplateItem } from './entities/template-item.entity';
-import { AuditoriaService } from '../auditoria/auditoria.service';
+import { calcularPontuacaoOpcao } from './regras';
 
 /** Mesma regra de pontuação da auditoria, aplicada ao item como ele volta do banco (JSON). */
 function pontuar(item: Partial<TemplateItem>, valor: string): number {
   const salvo = JSON.parse(JSON.stringify(item)) as TemplateItem;
-  const proto = AuditoriaService.prototype as unknown as {
-    calcularPontuacaoOpcao: (i: TemplateItem, v: string) => number;
-  };
-  return proto.calcularPontuacaoOpcao.call(proto, salvo, valor);
+  return calcularPontuacaoOpcao(salvo, valor);
 }
 
 const linha = (extra: Partial<ChecklistCsvRow> = {}): ChecklistCsvRow => ({
