@@ -25,13 +25,11 @@ import {
   ApiConsumes,
   ApiBody,
 } from '@nestjs/swagger';
-import { ConfigService } from '@nestjs/config';
 import { AuditoriaService } from './auditoria.service';
-import { RelatorioPdfPuppeteerService } from './services/relatorio-pdf-puppeteer.service';
+import { RelatorioAuditoriaPdfService } from './services/relatorio-auditoria-pdf.service';
 import { ResultadoAuditoriaService, ResultadoAuditoria } from './services/resultado-auditoria.service';
 import { ComprimirImagemService } from './services/comprimir-imagem.service';
 import { ExtrairExifService } from './services/extrair-exif.service';
-import { SupabaseService } from '../supabase/supabase.service';
 import {
   IniciarAuditoriaDto,
   ResponderItemDto,
@@ -54,21 +52,13 @@ import { PaginatedResult } from '../../shared/types/pagination.interface';
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class AuditoriaController {
-  private readonly bucketName: string;
-
   constructor(
     private readonly auditoriaService: AuditoriaService,
-    private readonly relatorioPdfPuppeteerService: RelatorioPdfPuppeteerService,
+    private readonly relatorioAuditoriaPdfService: RelatorioAuditoriaPdfService,
     private readonly resultadoAuditoriaService: ResultadoAuditoriaService,
     private readonly comprimirImagemService: ComprimirImagemService,
     private readonly extrairExifService: ExtrairExifService,
-    private readonly supabaseService: SupabaseService,
-    private readonly configService: ConfigService,
-  ) {
-    this.bucketName =
-      this.configService.get<string>('SUPABASE_STORAGE_BUCKET_RELATORIOS') ||
-      'relatorios';
-  }
+  ) {}
 
   @Post()
   @UseGuards(RolesGuard)
@@ -291,83 +281,8 @@ export class AuditoriaController {
     @Res() res: Response,
   ): Promise<void> {
     const auditoria = await this.auditoriaService.buscarAuditoriaPorId(id, usuario);
+    const { buffer: pdfBuffer } = await this.relatorioAuditoriaPdfService.obterPdf(id, usuario);
 
-    if (auditoria.status !== 'finalizada') {
-      throw new BadRequestException('Apenas auditorias finalizadas podem gerar PDF');
-    }
-
-    const historico = await this.auditoriaService.listarHistoricoPorUnidade(auditoria.unidadeId, usuario);
-
-    const pdfGeradoEm = auditoria.pdfGeradoEm ? new Date(auditoria.pdfGeradoEm) : null;
-    const atualizadoEm = auditoria.atualizadoEm ? new Date(auditoria.atualizadoEm) : null;
-    const auditoriaAlteradaAposPdf =
-      !pdfGeradoEm || (atualizadoEm && atualizadoEm.getTime() > pdfGeradoEm.getTime());
-
-    let pdfBuffer: Buffer;
-    let pdfUrl = auditoria.pdfUrl;
-
-    if (auditoriaAlteradaAposPdf) {
-      pdfBuffer = await this.relatorioPdfPuppeteerService.gerarPdf(auditoria, historico);
-      pdfUrl = await this.relatorioPdfPuppeteerService.salvarPdfNoStorage(id, pdfBuffer);
-      await this.auditoriaService.atualizarPdfUrl(id, pdfUrl);
-    } else {
-      const pdfExistenteNoBucket = await this.relatorioPdfPuppeteerService.verificarPdfExistente(id);
-
-      if (pdfExistenteNoBucket) {
-        const supabase = this.supabaseService.getClient();
-        const urlParts = pdfExistenteNoBucket.split(`/storage/v1/object/public/${this.bucketName}/`);
-        const filePath = urlParts.length > 1 ? urlParts[1] : null;
-
-        if (filePath) {
-          const { data, error } = await supabase.storage
-            .from(this.bucketName)
-            .download(filePath);
-
-          if (!error && data) {
-            pdfBuffer = Buffer.from(await data.arrayBuffer());
-            pdfUrl = pdfExistenteNoBucket;
-            if (!auditoria.pdfUrl || auditoria.pdfUrl !== pdfExistenteNoBucket) {
-              await this.auditoriaService.atualizarPdfUrl(id, pdfExistenteNoBucket);
-            }
-          } else {
-            pdfBuffer = await this.relatorioPdfPuppeteerService.gerarPdf(auditoria, historico);
-            pdfUrl = await this.relatorioPdfPuppeteerService.salvarPdfNoStorage(id, pdfBuffer);
-            await this.auditoriaService.atualizarPdfUrl(id, pdfUrl);
-          }
-        } else {
-          pdfBuffer = await this.relatorioPdfPuppeteerService.gerarPdf(auditoria, historico);
-          pdfUrl = await this.relatorioPdfPuppeteerService.salvarPdfNoStorage(id, pdfBuffer);
-          await this.auditoriaService.atualizarPdfUrl(id, pdfUrl);
-        }
-      } else if (pdfUrl) {
-        const supabase = this.supabaseService.getClient();
-        const urlParts = pdfUrl.split(`/storage/v1/object/public/${this.bucketName}/`);
-        const filePath = urlParts.length > 1 ? urlParts[1] : null;
-
-        if (filePath) {
-          const { data, error } = await supabase.storage
-            .from(this.bucketName)
-            .download(filePath);
-
-          if (!error && data) {
-            pdfBuffer = Buffer.from(await data.arrayBuffer());
-          } else {
-            pdfBuffer = await this.relatorioPdfPuppeteerService.gerarPdf(auditoria, historico);
-            pdfUrl = await this.relatorioPdfPuppeteerService.salvarPdfNoStorage(id, pdfBuffer);
-            await this.auditoriaService.atualizarPdfUrl(id, pdfUrl);
-          }
-        } else {
-          pdfBuffer = await this.relatorioPdfPuppeteerService.gerarPdf(auditoria, historico);
-          pdfUrl = await this.relatorioPdfPuppeteerService.salvarPdfNoStorage(id, pdfBuffer);
-          await this.auditoriaService.atualizarPdfUrl(id, pdfUrl);
-        }
-      } else {
-        pdfBuffer = await this.relatorioPdfPuppeteerService.gerarPdf(auditoria, historico);
-        pdfUrl = await this.relatorioPdfPuppeteerService.salvarPdfNoStorage(id, pdfBuffer);
-        await this.auditoriaService.atualizarPdfUrl(id, pdfUrl);
-      }
-    }
-    
     const nomeArquivo = `relatorio-auditoria-${auditoria.unidade?.nome || 'unidade'}-${new Date().toISOString().split('T')[0]}.pdf`;
     
     // Validar buffer antes de enviar

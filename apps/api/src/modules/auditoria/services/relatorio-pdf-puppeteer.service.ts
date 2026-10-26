@@ -6,6 +6,7 @@ import { registrarMetricaGeracaoPdf } from '../../pdf/pdf-geracao-metricas.util'
 import { SupabaseService } from '../../supabase/supabase.service';
 import { Auditoria } from '../entities/auditoria.entity';
 import { RelatorioHtmlService } from './relatorio-html.service';
+import { ResultadoAuditoria } from './resultado-auditoria.service';
 
 /**
  * Serviço responsável pela geração de PDF do relatório de auditoria usando Puppeteer.
@@ -70,15 +71,15 @@ export class RelatorioPdfPuppeteerService {
 
   /**
    * Gera o PDF do relatório de auditoria a partir do HTML gerado.
-   * @param historico - Lista de auditorias finalizadas da mesma unidade (para seção de evolução no PDF)
+   * @param resultado - Cartão de resultado da auditoria (nota, faixa, contadores e grupos)
    */
-  async gerarPdf(auditoria: Auditoria, historico?: Auditoria[]): Promise<Buffer> {
-    return this.executarGeracaoPdf(auditoria, historico, false);
+  async gerarPdf(auditoria: Auditoria, resultado: ResultadoAuditoria): Promise<Buffer> {
+    return this.executarGeracaoPdf(auditoria, resultado, false);
   }
 
   private async executarGeracaoPdf(
     auditoria: Auditoria,
-    historico: Auditoria[] | undefined,
+    resultado: ResultadoAuditoria,
     jaTentouRecuperar: boolean,
   ): Promise<Buffer> {
     const metricas = this.configService.get<string>('PDF_GERACAO_METRICAS') === 'true';
@@ -94,7 +95,7 @@ export class RelatorioPdfPuppeteerService {
       });
       this.logger.log(`Gerando HTML do relatório para auditoria ${auditoria.id}`);
       const preparo = await this.pdfPreparacao.prepararAuditoria(auditoria);
-      const html = this.relatorioHtmlService.gerarHtml(auditoria, historico, {
+      const html = this.relatorioHtmlService.gerarHtml(auditoria, resultado, {
         fotosDataUriPorId: preparo.fotosPorId,
       });
       if (!html || html.length === 0) {
@@ -225,7 +226,7 @@ export class RelatorioPdfPuppeteerService {
             // ignora
           }
         }
-        return this.executarGeracaoPdf(auditoria, historico, true);
+        return this.executarGeracaoPdf(auditoria, resultado, true);
       }
       this.logger.error(`Erro ao gerar PDF para auditoria ${auditoria.id}:`, error);
       throw error;

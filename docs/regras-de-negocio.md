@@ -167,6 +167,7 @@
 | RN-REL-011 | Recurso liberado por plano (`planos.permite_modelo_relatorio_tecnico`, configurado pelo MASTER); MASTER é isento. Gestor sem o recurso recebe 403 ao salvar; se perder o recurso, o modelo salvo é mantido mas deixa de ser aplicado (volta ao padrão) |
 | RN-REL-012 | Snapshot (`relatorios_tecnicos.modelo_secoes`) gravado somente na transição para finalizado; reenvios de `status=finalizado` não o refazem. Finalizados seguem o snapshot (inclusive em edições posteriores no web); finalizados legados sem snapshot usam o padrão. Rascunhos seguem o modelo vigente |
 | RN-REL-013 | Finalização offline (mobile) recusada pela API por modelo desatualizado (409) volta o relatório a rascunho no app, atualiza o modelo em cache e exibe à consultora o que falta preencher |
+| RN-REL-014 | Conteúdo do relatório (PDF) da auditoria: topo com checklist, cliente/unidade, auditor, código, início, fim, duração e link "Ver no mapa" (só com coordenadas); cartão de resultado com percentual, faixa, barra das faixas, até 3 avaliações anteriores e contadores; tabela por grupo (AP, PP, PR, NA, NC, NR) e linha Geral, todos vindos do mesmo cálculo da tela; cada resposta com o ícone da opção (ou o padrão do sentido) na cor do sentido, e "?" quando não respondida; última página com quadro de resumo e duas linhas de assinatura (auditor e responsável da unidade). O PDF guardado é refeito quando a auditoria, o checklist ou suas perguntas mudam depois da geração |
 
 ---
 
@@ -371,3 +372,4 @@
 | 2026-10-25 | RN-AUD-015: fotos e observação separadas na execução do checklist (web) | Claude |
 | 2026-10-26 | RN-CHK-019: não conformidade contada pelo sentido da resposta (padrão e personalizadas) | Claude |
 | 2026-10-26 | RN-CHK-020: faixas de classificação configuráveis por checklist e resultado da auditoria | Claude |
+| 2026-10-26 | RN-REL-014: conteúdo do relatório da auditoria (dados da avaliação, cartão de resultado, NA/NR, ícones das respostas e assinaturas) | Claude |
