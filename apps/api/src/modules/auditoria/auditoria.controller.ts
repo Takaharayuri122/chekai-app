@@ -28,6 +28,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { AuditoriaService } from './auditoria.service';
 import { RelatorioPdfPuppeteerService } from './services/relatorio-pdf-puppeteer.service';
+import { ResultadoAuditoriaService, ResultadoAuditoria } from './services/resultado-auditoria.service';
 import { ComprimirImagemService } from './services/comprimir-imagem.service';
 import { ExtrairExifService } from './services/extrair-exif.service';
 import { SupabaseService } from '../supabase/supabase.service';
@@ -58,6 +59,7 @@ export class AuditoriaController {
   constructor(
     private readonly auditoriaService: AuditoriaService,
     private readonly relatorioPdfPuppeteerService: RelatorioPdfPuppeteerService,
+    private readonly resultadoAuditoriaService: ResultadoAuditoriaService,
     private readonly comprimirImagemService: ComprimirImagemService,
     private readonly extrairExifService: ExtrairExifService,
     private readonly supabaseService: SupabaseService,
@@ -106,8 +108,9 @@ export class AuditoriaController {
   async listarHistoricoUnidade(
     @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; gestorId?: string },
     @Param('unidadeId', ParseUUIDPipe) unidadeId: string,
+    @Query('templateId', new ParseUUIDPipe({ optional: true })) templateId?: string,
   ): Promise<Auditoria[]> {
-    return this.auditoriaService.listarHistoricoPorUnidade(unidadeId, usuario);
+    return this.auditoriaService.listarHistoricoPorUnidade(unidadeId, usuario, templateId);
   }
 
   @Put(':id/itens/:itemId')
@@ -221,6 +224,19 @@ export class AuditoriaController {
     @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; gestorId?: string },
   ): Promise<Auditoria> {
     return this.auditoriaService.reabrirAuditoria(id, usuario);
+  }
+
+  @Get(':id/resultado')
+  @UseGuards(RolesGuard)
+  @Roles(PerfilUsuario.MASTER, PerfilUsuario.GESTOR, PerfilUsuario.AUDITOR)
+  @ApiOperation({ summary: 'Resultado da auditoria: nota, classificação, tendência e métricas por grupo' })
+  @ApiResponse({ status: 200, description: 'Cartão de resultado da auditoria' })
+  async obterResultado(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; gestorId?: string },
+  ): Promise<ResultadoAuditoria> {
+    const auditoria = await this.auditoriaService.buscarAuditoriaPorId(id, usuario);
+    return this.resultadoAuditoriaService.calcular(auditoria, usuario);
   }
 
   @Get(':id/nao-conformes')

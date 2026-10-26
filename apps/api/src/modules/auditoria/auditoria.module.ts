@@ -9,6 +9,8 @@ import { Unidade } from '../cliente/entities/unidade.entity';
 import { AuditoriaService } from './auditoria.service';
 import { AuditoriaController } from './auditoria.controller';
 import { RelatorioPdfPuppeteerService } from './services/relatorio-pdf-puppeteer.service';
+import { ResultadoAuditoriaService } from './services/resultado-auditoria.service';
+import { PlanoAcaoTarefa } from '../plano-acao/entities/plano-acao-tarefa.entity';
 import { RelatorioHtmlService } from './services/relatorio-html.service';
 import { ComprimirImagemService } from './services/comprimir-imagem.service';
 import { ExtrairExifService } from './services/extrair-exif.service';
@@ -25,7 +27,7 @@ import { PdfModule } from '../pdf/pdf.module';
 @Module({
   imports: [
     PdfModule,
-    TypeOrmModule.forFeature([Auditoria, AuditoriaItem, Foto, Unidade, AuditoriaEnvioRelatorio]),
+    TypeOrmModule.forFeature([Auditoria, AuditoriaItem, Foto, Unidade, AuditoriaEnvioRelatorio, PlanoAcaoTarefa]),
     MulterModule.register({
       limits: { fileSize: 10 * 1024 * 1024 }, // 10MB max
     }),
@@ -40,10 +42,11 @@ import { PdfModule } from '../pdf/pdf.module';
     AuditoriaService,
     RelatorioPdfPuppeteerService,
     RelatorioHtmlService,
+    ResultadoAuditoriaService,
     ComprimirImagemService,
     ExtrairExifService,
   ],
-  exports: [AuditoriaService],
+  exports: [AuditoriaService, ResultadoAuditoriaService],
 })
 export class AuditoriaModule {}
 

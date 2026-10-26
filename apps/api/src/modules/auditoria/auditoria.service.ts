@@ -156,6 +156,7 @@ export class AuditoriaService {
   async listarHistoricoPorUnidade(
     unidadeId: string,
     usuarioAutenticado: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
+    templateId?: string,
   ): Promise<Auditoria[]> {
     const queryBuilder = this.auditoriaRepository
       .createQueryBuilder('auditoria')
@@ -163,6 +164,9 @@ export class AuditoriaService {
       .leftJoinAndSelect('auditoria.consultor', 'consultor')
       .where('auditoria.unidadeId = :unidadeId', { unidadeId })
       .andWhere('auditoria.status = :status', { status: StatusAuditoria.FINALIZADA });
+    if (templateId) {
+      queryBuilder.andWhere('auditoria.templateId = :templateId', { templateId });
+    }
     if (usuarioAutenticado.perfil === PerfilUsuario.MASTER || usuarioAutenticado.perfil === PerfilUsuario.GESTOR) {
       queryBuilder.andWhere(
         '(auditoria.consultorId = :userId OR consultor.gestorId = :userId)',
