@@ -317,6 +317,7 @@
 | RN-EML-002 | Em desenvolvimento: Ethereal via `nodemailer.createTestAccount()` |
 | RN-EML-003 | Provider efetivo depende da variável `EMAIL_PROVIDER` |
 | RN-EML-004 | Templates HTML de e-mail devem estar listados em `assets` no `nest-cli.json` para ir para `dist` no build |
+| RN-EML-005 | O relatório da auditoria finalizada é enviado por e-mail ao e-mail da unidade ou, na falta dele, ao do cliente: automaticamente ao finalizar, se o checklist tiver essa opção ligada, ou manualmente, com de 1 a 5 e-mails informados. O PDF segue em anexo até 8 MB; acima disso, o e-mail leva um link válido por 30 dias. Cada tentativa (destinatários, automática ou manual, quem enviou, sucesso ou erro) fica registrada, e uma falha no envio nunca impede a finalização da auditoria |
 
 ---
 
@@ -373,3 +374,4 @@
 | 2026-10-26 | RN-CHK-019: não conformidade contada pelo sentido da resposta (padrão e personalizadas) | Claude |
 | 2026-10-26 | RN-CHK-020: faixas de classificação configuráveis por checklist e resultado da auditoria | Claude |
 | 2026-10-26 | RN-REL-014: conteúdo do relatório da auditoria (dados da avaliação, cartão de resultado, NA/NR, ícones das respostas e assinaturas) | Claude |
+| 2026-10-26 | RN-EML-005: envio do relatório da auditoria por e-mail (automático e manual) com registro das tentativas | Claude |

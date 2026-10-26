@@ -13,6 +13,7 @@ import {
   UseInterceptors,
   UploadedFile,
   BadRequestException,
+  Logger,
   Res,
 } from '@nestjs/common';
 import { Response } from 'express';
@@ -26,6 +27,9 @@ import {
   ApiBody,
 } from '@nestjs/swagger';
 import { AuditoriaService } from './auditoria.service';
+import { EnvioRelatorioService } from './services/envio-relatorio.service';
+import { EnviarRelatorioDto } from './dto/enviar-relatorio.dto';
+import { AuditoriaEnvioRelatorio } from './entities/auditoria-envio-relatorio.entity';
 import { RelatorioAuditoriaPdfService } from './services/relatorio-auditoria-pdf.service';
 import { ResultadoAuditoriaService, ResultadoAuditoria } from './services/resultado-auditoria.service';
 import { ComprimirImagemService } from './services/comprimir-imagem.service';
@@ -40,7 +44,7 @@ import { RolesGuard } from '../../core/guards/roles.guard';
 import { Roles } from '../../core/decorators/roles.decorator';
 import { CurrentUser } from '../../core/decorators/current-user.decorator';
 import { PerfilUsuario } from '../usuario/entities/usuario.entity';
-import { Auditoria } from './entities/auditoria.entity';
+import { Auditoria, StatusAuditoria } from './entities/auditoria.entity';
 import { AuditoriaItem } from './entities/auditoria-item.entity';
 import { PaginatedResult } from '../../shared/types/pagination.interface';
 
@@ -52,8 +56,11 @@ import { PaginatedResult } from '../../shared/types/pagination.interface';
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class AuditoriaController {
+  private readonly logger = new Logger(AuditoriaController.name);
+
   constructor(
     private readonly auditoriaService: AuditoriaService,
+    private readonly envioRelatorioService: EnvioRelatorioService,
     private readonly relatorioAuditoriaPdfService: RelatorioAuditoriaPdfService,
     private readonly resultadoAuditoriaService: ResultadoAuditoriaService,
     private readonly comprimirImagemService: ComprimirImagemService,
@@ -200,7 +207,41 @@ export class AuditoriaController {
     @Body() dto: FinalizarAuditoriaDto,
     @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; gestorId?: string },
   ): Promise<Auditoria> {
-    return this.auditoriaService.finalizarAuditoria(id, dto, usuario);
+    const auditoria = await this.auditoriaService.finalizarAuditoria(id, dto, usuario);
+    // Envio automático em segundo plano: não atrasa nem derruba a resposta da finalização.
+    if (auditoria.template?.enviarRelatorioAoFinalizar) {
+      void this.envioRelatorioService
+        .enviar(auditoria.id, { automatico: true })
+        .catch((e) => this.logger.error(`Falha no envio automático do relatório da auditoria ${auditoria.id}`, e instanceof Error ? e.stack : String(e)));
+    }
+    return auditoria;
+  }
+
+  @Post(':id/enviar-relatorio')
+  @ApiOperation({ summary: 'Envia o relatório da auditoria finalizada por e-mail' })
+  @ApiResponse({ status: 201, description: 'Registro da tentativa de envio' })
+  @ApiResponse({ status: 400, description: 'Auditoria não está finalizada ou e-mails inválidos' })
+  async enviarRelatorio(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: EnviarRelatorioDto,
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; gestorId?: string },
+  ): Promise<AuditoriaEnvioRelatorio> {
+    const auditoria = await this.auditoriaService.buscarAuditoriaPorId(id, usuario);
+    if (auditoria.status !== StatusAuditoria.FINALIZADA) {
+      throw new BadRequestException('Apenas auditorias finalizadas podem ter o relatório enviado');
+    }
+    return this.envioRelatorioService.enviar(id, { destinatarios: dto.destinatarios, usuario, automatico: false });
+  }
+
+  @Get(':id/envios-relatorio')
+  @ApiOperation({ summary: 'Lista os envios do relatório da auditoria, do mais recente ao mais antigo' })
+  @ApiResponse({ status: 200, description: 'Envios registrados' })
+  async listarEnviosRelatorio(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; gestorId?: string },
+  ): Promise<AuditoriaEnvioRelatorio[]> {
+    await this.auditoriaService.buscarAuditoriaPorId(id, usuario);
+    return this.envioRelatorioService.listar(id);
   }
 
   @Put(':id/reabrir')

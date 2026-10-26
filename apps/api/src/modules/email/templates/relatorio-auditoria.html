@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relatório de auditoria - ChekAI</title>
+  </head>
+  <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #F4F7FA; line-height: 1.6;">
+    <table role="presentation" style="width: 100%; border-collapse: collapse; background-color: #F4F7FA; padding: 20px;">
+      <tr>
+        <td align="center" style="padding: 20px 0;">
+          <table role="presentation" style="max-width: 600px; width: 100%; background-color: #FFFFFF; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+            <!-- Header -->
+            <tr>
+              <td style="background: linear-gradient(135deg, #00B8A9 0%, #0891b2 100%); padding: 40px 30px; text-align: center;">
+                <h1 style="margin: 0; color: #FFFFFF; font-size: 28px; font-weight: 700; letter-spacing: -0.5px;">ChekAI</h1>
+                <p style="margin: 8px 0 0 0; color: #FFFFFF; font-size: 14px; opacity: 0.95;">Segurança de Alimentos com IA</p>
+              </td>
+            </tr>
+            
+            <!-- Content -->
+            <tr>
+              <td style="padding: 40px 30px;">
+                <h2 style="margin: 0 0 10px 0; color: #1B2A4A; font-size: 22px; font-weight: 600;">Relatório de auditoria</h2>
+                <p style="margin: 0 0 20px 0; color: #6B7280; font-size: 15px;">Segue o relatório da auditoria realizada em {{unidade}}.</p>
+
+                <table role="presentation" style="width: 100%; border-collapse: collapse; margin: 0 0 20px 0;">
+                  <tr><td style="padding: 8px 0; color: #6B7280; font-size: 14px; width: 40%;">Unidade</td><td style="padding: 8px 0; color: #1B2A4A; font-size: 14px; font-weight: 600;">{{unidade}}</td></tr>
+                  <tr><td style="padding: 8px 0; color: #6B7280; font-size: 14px;">Checklist</td><td style="padding: 8px 0; color: #1B2A4A; font-size: 14px; font-weight: 600;">{{checklist}}</td></tr>
+                  <tr><td style="padding: 8px 0; color: #6B7280; font-size: 14px;">Data</td><td style="padding: 8px 0; color: #1B2A4A; font-size: 14px; font-weight: 600;">{{data}}</td></tr>
+                  <tr><td style="padding: 8px 0; color: #6B7280; font-size: 14px;">Resultado</td><td style="padding: 8px 0; color: #1B2A4A; font-size: 14px; font-weight: 600;">{{resultado}}</td></tr>
+                  <tr><td style="padding: 8px 0; color: #6B7280; font-size: 14px;">Auditor</td><td style="padding: 8px 0; color: #1B2A4A; font-size: 14px; font-weight: 600;">{{auditor}}</td></tr>
+                </table>
+
+                {{blocoArquivo}}
+              </td>
+            </tr>
+
+            <!-- Footer -->
+            <tr>
+              <td style="background-color: #F4F7FA; padding: 30px; text-align: center; border-top: 1px solid #E5E9F0;">
+                <p style="margin: 0 0 15px 0; color: #6B7280; font-size: 13px; line-height: 1.6;">
+                  Se você não esperava este e-mail, pode ignorá-lo ou entrar em contato conosco.
+                </p>
+                <p style="margin: 0; color: #6B7280; font-size: 13px;">
+                  Atenciosamente,<br>
+                  <strong style="color: #1B2A4A;">Equipe ChekAI</strong>
+                </p>
+                <p style="margin: 20px 0 0 0; color: #9CA3AF; font-size: 12px;">
+                  © 2025 ChekAI. Todos os direitos reservados.
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
