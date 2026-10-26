@@ -12,6 +12,7 @@ import { TemplateItem } from './template-item.entity';
 import { ChecklistGrupo } from './checklist-grupo.entity';
 import { TipoAtividade } from '../../cliente/entities/cliente.entity';
 import { Usuario } from '../../usuario/entities/usuario.entity';
+import type { FaixaClassificacao } from '../regras';
 
 export enum StatusTemplate {
   RASCUNHO = 'rascunho',
@@ -61,6 +62,14 @@ export class ChecklistTemplate {
 
   @Column({ name: 'gestor_id', nullable: true, type: 'uuid' })
   gestorId: string | null;
+
+  /** Faixas de classificação da nota; null = usa FAIXAS_PADRAO */
+  @Column({ name: 'faixas_classificacao', type: 'jsonb', nullable: true })
+  faixasClassificacao: FaixaClassificacao[] | null;
+
+  /** Envia o relatório por e-mail ao finalizar a auditoria */
+  @Column({ name: 'enviar_relatorio_ao_finalizar', type: 'boolean', default: false })
+  enviarRelatorioAoFinalizar: boolean;
 
   @OneToMany(() => TemplateItem, (item) => item.template)
   itens: TemplateItem[];

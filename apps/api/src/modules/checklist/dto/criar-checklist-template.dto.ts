@@ -12,11 +12,35 @@ import {
   ValidateIf,
   ArrayMaxSize,
   IsUUID,
+  IsIn,
+  MaxLength,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { TipoAtividade } from '../../cliente/entities/cliente.entity';
+import type { SentidoResposta } from '../regras';
 import { CategoriaItem, CriticidadeItem, TipoRespostaCustomizada } from '../entities/template-item.entity';
+
+const SENTIDOS_RESPOSTA: SentidoResposta[] = ['positiva', 'negativa', 'neutra'];
+
+/** Faixa de classificação; a coerência entre faixas é validada por `validarFaixas` no service. */
+export class FaixaClassificacaoDto {
+  @IsString()
+  nome: string;
+
+  @IsString()
+  cor: string;
+
+  @IsOptional()
+  @IsString()
+  emoji: string | null;
+
+  @IsNumber()
+  de: number;
+
+  @IsNumber()
+  ate: number;
+}
 
 export class OpcaoRespostaConfigDto {
   @IsString()
@@ -35,6 +59,17 @@ export class OpcaoRespostaConfigDto {
   @Max(10)
   @IsOptional()
   pontuacao?: number | null;
+
+  @ApiPropertyOptional({ enum: SENTIDOS_RESPOSTA, description: 'Sentido da resposta. Null = deduzido pelo valor' })
+  @IsOptional()
+  @IsIn(SENTIDOS_RESPOSTA)
+  sentido?: SentidoResposta | null;
+
+  @ApiPropertyOptional({ description: 'Ícone da resposta (emoji ou código), até 32 caracteres' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(32)
+  icone?: string | null;
 }
 
 /**
@@ -191,5 +226,18 @@ export class CriarChecklistTemplateDto {
   @Type(() => CriarTemplateItemDto)
   @IsOptional()
   itens?: CriarTemplateItemDto[];
+
+  @ApiPropertyOptional({ description: 'Faixas de classificação da nota. Null = faixas padrão', type: [FaixaClassificacaoDto], nullable: true })
+  @IsOptional()
+  @ValidateIf((o) => o.faixasClassificacao != null)
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => FaixaClassificacaoDto)
+  faixasClassificacao?: FaixaClassificacaoDto[] | null;
+
+  @ApiPropertyOptional({ description: 'Envia o relatório por e-mail ao finalizar a auditoria' })
+  @IsBoolean()
+  @IsOptional()
+  enviarRelatorioAoFinalizar?: boolean;
 }
 

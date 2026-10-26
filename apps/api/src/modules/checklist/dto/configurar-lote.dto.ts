@@ -53,6 +53,17 @@ export class OpcaoLoteDto {
   @IsOptional()
   pontuacao?: number | null;
 
+  @ApiPropertyOptional({ enum: ['positiva', 'negativa', 'neutra'] })
+  @IsOptional()
+  @IsIn(['positiva', 'negativa', 'neutra'])
+  sentido?: 'positiva' | 'negativa' | 'neutra' | null;
+
+  @ApiPropertyOptional({ description: 'Ícone da resposta (emoji ou código), até 32 caracteres' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(32)
+  icone?: string | null;
+
   @IsBoolean()
   fotoObrigatoria: boolean;
 

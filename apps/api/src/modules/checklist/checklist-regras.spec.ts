@@ -1,4 +1,4 @@
-import { aplicarRegrasForcadas, aplicarTipoResposta, ItemConfiguravel } from './checklist-regras';
+import { aplicarRegrasForcadas, aplicarTipoResposta, ItemConfiguravel, normalizarOpcoesConfig } from './checklist-regras';
 import { TipoRespostaCustomizada } from './entities/template-item.entity';
 
 const base = (): Partial<ItemConfiguravel> => ({
@@ -138,5 +138,27 @@ describe('pontuação ausente nas opções', () => {
       expect('pontuacao' in porValor['conforme']).toBe(false);
       expect(porValor['nao_aplicavel'].pontuacao).toBeNull();
     }
+  });
+});
+
+describe('sentido e ícone das opções', () => {
+  it('normalizarOpcoesConfig mantém sentido e icone de uma opção existente', () => {
+    const item: Partial<ItemConfiguravel> = {
+      usarRespostasPersonalizadas: true,
+      opcoesResposta: ['Ruim'],
+      opcoesRespostaConfig: [
+        { valor: 'Ruim', fotoObrigatoria: false, observacaoObrigatoria: false, sentido: 'negativa', icone: '👎' },
+      ],
+    };
+    normalizarOpcoesConfig(item);
+    expect(item.opcoesRespostaConfig![0]).toMatchObject({ valor: 'Ruim', sentido: 'negativa', icone: '👎' });
+  });
+
+  it('aplicarTipoResposta em lote grava sentido e icone das opções', () => {
+    const item: Partial<ItemConfiguravel> = {};
+    aplicarTipoResposta(item, 'personalizada', [
+      { valor: 'Bom', fotoObrigatoria: false, observacaoObrigatoria: false, sentido: 'positiva', icone: '👍' },
+    ]);
+    expect(item.opcoesRespostaConfig![0]).toMatchObject({ sentido: 'positiva', icone: '👍' });
   });
 });

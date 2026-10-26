@@ -8,6 +8,7 @@ import { LegislacaoVinculoService } from '../legislacao/legislacao-vinculo.servi
 import { validarLegislacaoIds } from '../legislacao/lib/validar-legislacao-ids';
 import { resumirLegislacoes } from '../legislacao/lib/resumo-legislacao';
 import { aplicarRegrasForcadas } from './checklist-regras';
+import { validarFaixas } from './regras';
 import { ChecklistGrupo } from './entities/checklist-grupo.entity';
 import { Auditoria } from '../auditoria/entities/auditoria.entity';
 import {
@@ -75,6 +76,13 @@ export class ChecklistService {
     item.legislacaoReferencia = this.legislacaoVinculoService.textoDerivado(legislacoes) as string;
   }
 
+  /** Faixas ausentes ou null (padrão) são aceitas; as informadas precisam ser coerentes. */
+  private validarFaixasDoTemplate(faixas?: Parameters<typeof validarFaixas>[0] | null): void {
+    if (faixas == null) return;
+    const erros = validarFaixas(faixas);
+    if (erros.length > 0) throw new BadRequestException(erros.join('; '));
+  }
+
   /**
    * Cria um novo template de checklist.
    */
@@ -85,6 +93,7 @@ export class ChecklistService {
     if (usuarioAutenticado && usuarioAutenticado.perfil !== PerfilUsuario.MASTER && usuarioAutenticado.perfil !== PerfilUsuario.GESTOR) {
       throw new ForbiddenException('Apenas Master e Gestor podem criar templates');
     }
+    this.validarFaixasDoTemplate(dto.faixasClassificacao);
     const template = this.templateRepository.create({
       nome: dto.nome,
       descricao: dto.descricao,
@@ -92,6 +101,8 @@ export class ChecklistService {
       versao: dto.versao,
       status: StatusTemplate.RASCUNHO,
       gestorId: usuarioAutenticado?.id ?? undefined,
+      faixasClassificacao: dto.faixasClassificacao ?? null,
+      enviarRelatorioAoFinalizar: dto.enviarRelatorioAoFinalizar ?? false,
     });
     const savedTemplate = await this.templateRepository.save(template);
     if (dto.itens && dto.itens.length > 0) {
@@ -224,7 +235,11 @@ export class ChecklistService {
     if (usuarioAutenticado && template.gestorId !== usuarioAutenticado.id) {
       throw new ForbiddenException('Apenas o gestor responsável pode editar este checklist');
     }
+    this.validarFaixasDoTemplate(dto.faixasClassificacao);
     Object.assign(template, {
+      faixasClassificacao:
+        dto.faixasClassificacao === undefined ? template.faixasClassificacao : dto.faixasClassificacao,
+      enviarRelatorioAoFinalizar: dto.enviarRelatorioAoFinalizar ?? template.enviarRelatorioAoFinalizar,
       nome: dto.nome ?? template.nome,
       descricao: dto.descricao ?? template.descricao,
       tipoAtividade: dto.tipoAtividade ?? template.tipoAtividade,
