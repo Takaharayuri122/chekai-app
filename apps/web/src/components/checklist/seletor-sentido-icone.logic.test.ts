@@ -5,6 +5,7 @@ import {
   emojiDoIcone,
   escolherIcone,
   escolherSentido,
+  ROTULO_ICONE_PADRAO,
   sentidoDeduzidoDaOpcao,
   sentidoDeduzidoNoLote,
   sentidoMarcado,
@@ -53,8 +54,9 @@ describe('seletor-sentido-icone.logic', () => {
     expect(camposDaConfig(r)).toEqual({ sentido: undefined, icone: '👍' });
   });
 
-  it('sem ícone limpa o ícone mantendo o sentido', () => {
+  it('ícone padrão limpa o ícone mantendo o sentido', () => {
     expect(escolherIcone({ sentido: 'positiva', icone: '👍' }, null)).toEqual({ sentido: 'positiva', icone: null });
+    expect(ROTULO_ICONE_PADRAO).toBe('Ícone padrão');
   });
 
   it('emojiDoIcone aceita código do catálogo ou caractere', () => {

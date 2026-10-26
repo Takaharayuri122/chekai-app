@@ -14,6 +14,7 @@ import {
   SENTIDOS,
   emojiDoIcone,
   escolherIcone,
+  ROTULO_ICONE_PADRAO,
   escolherSentido,
   iconeExibido,
   sentidoMarcado,
@@ -98,7 +99,7 @@ export function SeletorSentidoIcone({ sentido, icone, sentidoDeduzido, onChange,
             className="mt-2 flex h-10 w-full items-center justify-center gap-1.5 rounded-md border border-border text-xs font-medium hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             {!icone && <Check className="h-3.5 w-3.5" aria-hidden />}
-            Sem ícone
+            {ROTULO_ICONE_PADRAO}
           </button>
         </DropdownMenuContent>
       </DropdownMenu>

@@ -34,7 +34,10 @@ export function escolherSentido(atual: SentidoIcone, sentido: SentidoResposta): 
   return { sentido, icone: atual.icone };
 }
 
-/** Escolha de um ícone (null = sem ícone): mantém o sentido atual, gravado ou não. */
+/** Rótulo da opção que limpa o ícone: a resposta passa a usar o ícone padrão do sentido. */
+export const ROTULO_ICONE_PADRAO = 'Ícone padrão';
+
+/** Escolha de um ícone (null = ícone padrão do sentido): mantém o sentido atual, gravado ou não. */
 export function escolherIcone(atual: SentidoIcone, icone: string | null): SentidoIcone {
   return { sentido: atual.sentido, icone };
 }
