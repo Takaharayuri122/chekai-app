@@ -870,6 +870,9 @@ export interface CriarTemplateRequest {
   tipoAtividade?: TipoAtividade;
   versao?: string;
   itens?: CriarTemplateItemRequest[];
+  /** null volta às faixas padrão; omitido mantém as atuais. */
+  faixasClassificacao?: FaixaClassificacao[] | null;
+  enviarRelatorioAoFinalizar?: boolean;
 }
 
 export const checklistService = {
