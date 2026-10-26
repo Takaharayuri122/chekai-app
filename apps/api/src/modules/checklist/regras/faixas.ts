@@ -6,17 +6,17 @@ export interface FaixaClassificacao {
   ate: number;
 }
 
-export const FAIXAS_PADRAO: FaixaClassificacao[] = [
+export const FAIXAS_PADRAO: readonly Readonly<FaixaClassificacao>[] = Object.freeze([
   { nome: 'Crítico', cor: '#DC2626', emoji: '🔴', de: 0, ate: 59.99 },
   { nome: 'Atenção Necessária', cor: '#EA580C', emoji: '🟠', de: 60, ate: 69.99 },
   { nome: 'Regular', cor: '#CA8A04', emoji: '🟡', de: 70, ate: 79.99 },
   { nome: 'Bom', cor: '#65A30D', emoji: '🟢', de: 80, ate: 89.99 },
   { nome: 'Com Excelência', cor: '#16A34A', emoji: '⭐', de: 90, ate: 100 },
-];
+].map((f) => Object.freeze(f)));
 
 const COR_HEX = /^#[0-9A-Fa-f]{6}$/;
 
-export function validarFaixas(faixas: FaixaClassificacao[]): string[] {
+export function validarFaixas(faixas: readonly FaixaClassificacao[]): string[] {
   if (!Array.isArray(faixas) || faixas.length === 0) {
     return ['Informe ao menos uma faixa de classificação.'];
   }
@@ -53,12 +53,16 @@ export function validarFaixas(faixas: FaixaClassificacao[]): string[] {
 
 export function classificar(
   nota: number,
-  faixas?: FaixaClassificacao[] | null,
+  faixas?: readonly FaixaClassificacao[] | null,
 ): { nome: string; cor: string | null; emoji: string | null; faixa: FaixaClassificacao | null } {
-  const lista = faixas && faixas.length > 0 ? faixas : FAIXAS_PADRAO;
-  const faixa = lista.find((f) => f.de <= nota && nota <= f.ate);
+  const lista: readonly FaixaClassificacao[] = faixas && faixas.length > 0 ? faixas : FAIXAS_PADRAO;
+  if (typeof nota !== 'number' || Number.isNaN(nota)) {
+    return { nome: 'Sem classificação', cor: null, emoji: null, faixa: null };
+  }
+  const n = Math.round(nota * 100) / 100;
+  const faixa = lista.find((f) => f.de <= n && n <= f.ate);
   if (faixa) return { nome: faixa.nome, cor: faixa.cor, emoji: faixa.emoji, faixa };
   const menor = Math.min(...lista.map((f) => f.de));
-  const nome = nota < menor ? 'Abaixo do mínimo' : 'Sem classificação';
+  const nome = n < menor ? 'Abaixo do mínimo' : 'Sem classificação';
   return { nome, cor: null, emoji: null, faixa: null };
 }

@@ -23,6 +23,12 @@ describe('classificar', () => {
     expect(classificar(75, []).nome).toBe('Regular');
   });
 
+  it('arredonda a nota para 2 casas antes de classificar', () => {
+    expect(classificar(59.995).nome).toBe('Atenção Necessária');
+    expect(classificar(89.999).nome).toBe('Com Excelência');
+    expect(classificar(59.994).nome).toBe('Crítico');
+  });
+
   it('abaixo do mínimo', () => {
     expect(classificar(-5)).toMatchObject({ nome: 'Abaixo do mínimo', faixa: null });
   });
