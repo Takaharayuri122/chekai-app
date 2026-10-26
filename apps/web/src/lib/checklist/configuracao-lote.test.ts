@@ -234,6 +234,14 @@ describe('configuracao-lote', () => {
       ]);
     });
 
+    it('opcoesComuns leva o sentido e o ícone gravados para não perdê-los ao salvar', () => {
+      const a = pers('a', ['Sim', 'Não']);
+      a.opcoesRespostaConfig![1] = { ...a.opcoesRespostaConfig![1], sentido: 'negativa', icone: '👎' };
+      const [sim, nao] = opcoesComuns([a])!;
+      expect('sentido' in sim || 'icone' in sim).toBe(false);
+      expect(nao).toMatchObject({ sentido: 'negativa', icone: '👎' });
+    });
+
     it('opcoesComuns é null com ordem diferente, pergunta padrão, tipo texto ou lista vazia', () => {
       expect(opcoesComuns([pers('a', ['Sim', 'Não']), pers('b', ['Não', 'Sim'])])).toBeNull();
       expect(opcoesComuns([pers('a', ['Sim', 'Não']), item({ id: 'b' })])).toBeNull();

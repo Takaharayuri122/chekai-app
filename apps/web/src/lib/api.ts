@@ -747,6 +747,9 @@ export interface OpcaoLote {
   /** Valor da opção antes da edição (ausente = opção nova); usado para atualizar respostas já dadas. */
   valorOriginal?: string;
   pontuacao?: number | null;
+  /** Sentido escolhido pelo gestor; ausente = deduzido da pontuação. */
+  sentido?: SentidoResposta | null;
+  icone?: string | null;
   fotoObrigatoria: boolean;
   observacaoObrigatoria: boolean;
 }

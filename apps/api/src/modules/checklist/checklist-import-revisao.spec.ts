@@ -159,6 +159,27 @@ describe('checklist-import-revisao', () => {
     });
   });
 
+  it('opção da IA preserva sentido válido e descarta valor desconhecido', () => {
+    const base = { fotoObrigatoria: false, observacaoObrigatoria: false };
+    const r = interpretarRespostaIa(
+      resposta([
+        {
+          chave: 'l1',
+          tipoResposta: 'personalizada',
+          opcoes: [
+            { valor: 'Sim', sentido: 'positiva', ...base },
+            { valor: 'Talvez', sentido: 'neutra', ...base },
+            { valor: 'Não', sentido: 'ruim', ...base },
+          ],
+        },
+      ]),
+      originais,
+    );
+    const opcoes = r.sugestoes[0].configuracaoSugerida.opcoes;
+    expect(opcoes.map((o) => o.sentido)).toEqual(['positiva', 'neutra', undefined]);
+    expect('sentido' in opcoes[2]).toBe(false);
+  });
+
   it('opção da IA sem pontuação fica sem pontuação explícita (não null)', () => {
     const r = interpretarRespostaIa(
       resposta([

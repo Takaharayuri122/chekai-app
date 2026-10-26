@@ -15,6 +15,12 @@ import {
   type SugestaoPergunta,
 } from '@/lib/api';
 import { diferencaPalavras } from '@/lib/checklist/revisao-importacao';
+import { SENTIDOS, emojiDoIcone } from '@/components/checklist/seletor-sentido-icone.logic';
+
+const ROTULO_SENTIDO = Object.fromEntries(SENTIDOS.map((s) => [s.valor, s.rotulo.toLowerCase()])) as Record<
+  NonNullable<ConfiguracaoPerguntaImportada['opcoes'][number]['sentido']>,
+  string
+>;
 
 interface PerguntaRevisadaProps {
   original: PerguntaImportada;
@@ -53,6 +59,14 @@ function montarChips(config: ConfiguracaoPerguntaImportada, alterados: Set<Campo
   else if (config.tipoResposta === 'data') tipo = 'Resposta em data';
   else tipo = 'Resposta personalizada';
   chips.push({ texto: tipo, ia: alterados.has('tipoResposta') || alterados.has('opcoes') });
+
+  const comSentido = config.opcoes.filter((o) => o.sentido);
+  if (comSentido.length > 0) {
+    chips.push({
+      texto: `Sentido: ${comSentido.map((o) => `${o.valor} ${emojiDoIcone(o.icone) ?? ''} ${ROTULO_SENTIDO[o.sentido!]}`.replace('  ', ' ')).join(', ')}`,
+      ia: alterados.has('opcoes'),
+    });
+  }
 
   const comFoto = config.opcoes.filter((o) => o.fotoObrigatoria).map((o) => o.valor);
   chips.push({

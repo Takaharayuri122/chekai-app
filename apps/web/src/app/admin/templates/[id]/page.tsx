@@ -44,6 +44,8 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { AppLayout, Tooltip, ConfirmDialog, FormModal } from '@/components';
 import { PainelConfiguracaoLote } from '@/components/checklist/painel-configuracao-lote';
+import { SeletorSentidoIcone } from '@/components/checklist/seletor-sentido-icone';
+import { camposDaConfig, sentidoDeduzidoDaOpcao, type SentidoIcone } from '@/components/checklist/seletor-sentido-icone.logic';
 import { BarraSelecao } from '@/components/checklist/barra-selecao';
 import { Checkbox } from '@/components/ui/shadcn/checkbox';
 import { SeletorLegislacoes } from '@/components/legislacao/seletor-legislacoes';
@@ -786,6 +788,27 @@ export default function EditarTemplatePage() {
     });
   };
 
+  /** Grava o que o gestor escolheu; sem escolha, o sentido continua sendo deduzido. */
+  const handleAtualizarSentidoIcone = (valor: string, escolha: SentidoIcone) => {
+    setItemForm((prev) => {
+      const configs = prev.opcoesRespostaConfig || [];
+      const campos = camposDaConfig(escolha);
+      if (!configs.some((c) => c.valor === valor)) {
+        return {
+          ...prev,
+          opcoesRespostaConfig: [
+            ...configs,
+            { valor, fotoObrigatoria: false, observacaoObrigatoria: false, ...campos },
+          ],
+        };
+      }
+      return {
+        ...prev,
+        opcoesRespostaConfig: configs.map((c) => (c.valor === valor ? { ...c, ...campos } : c)),
+      };
+    });
+  };
+
   const handleDuplicarResposta = (opcao: string) => {
     const config = itemForm.opcoesRespostaConfig?.find((c) => c.valor === opcao);
     let novoNome = `${opcao} (cópia)`;
@@ -800,6 +823,8 @@ export default function EditarTemplatePage() {
       fotoObrigatoria: config?.fotoObrigatoria ?? false,
       observacaoObrigatoria: config?.observacaoObrigatoria ?? false,
       pontuacao: config?.pontuacao,
+      sentido: config?.sentido,
+      icone: config?.icone,
     };
     setItemForm({
       ...itemForm,
@@ -1764,6 +1789,13 @@ export default function EditarTemplatePage() {
                                 </label>
                               </Tooltip>
                             </div>
+                            <SeletorSentidoIcone
+                              className="mt-2"
+                              sentido={config?.sentido ?? null}
+                              icone={config?.icone ?? null}
+                              sentidoDeduzido={sentidoDeduzidoDaOpcao(itemForm, opcao)}
+                              onChange={(v) => handleAtualizarSentidoIcone(opcao, v)}
+                            />
                           </div>
                         );
                       })}
@@ -1891,6 +1923,13 @@ export default function EditarTemplatePage() {
                               </label>
                             </Tooltip>
                           </div>
+                          <SeletorSentidoIcone
+                            className="mt-2 clear-both"
+                            sentido={config?.sentido ?? null}
+                            icone={config?.icone ?? null}
+                            sentidoDeduzido={sentidoDeduzidoDaOpcao(itemForm, resp.valor)}
+                            onChange={(v) => handleAtualizarSentidoIcone(resp.valor, v)}
+                          />
                         </div>
                       );
                     })}
