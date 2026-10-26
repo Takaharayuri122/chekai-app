@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Loader2, Mail } from 'lucide-react';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { FormModal } from '@/components/ui/form-modal';
 import { Button } from '@/components/ui/shadcn/button';
 import { Input } from '@/components/ui/shadcn/input';
@@ -20,13 +21,21 @@ export function EnviarRelatorioModal({ auditoriaId, emailSugerido = '', onEnviad
   const [texto, setTexto] = useState(emailSugerido);
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const [confirmandoDescarte, setConfirmandoDescarte] = useState(false);
+  const alterado = texto !== emailSugerido;
 
   useEffect(() => {
     if (!aberto) {
       setTexto(emailSugerido);
       setErro(null);
+      setConfirmandoDescarte(false);
     }
   }, [aberto, emailSugerido]);
+
+  const cancelar = () => {
+    if (alterado) setConfirmandoDescarte(true);
+    else setAberto(false);
+  };
 
   const enviar = async () => {
     const { emails, erro: erroLista } = interpretarDestinatarios(texto);
@@ -67,10 +76,10 @@ export function EnviarRelatorioModal({ auditoriaId, emailSugerido = '', onEnviad
         onClose={() => !enviando && setAberto(false)}
         title="Enviar relatório ao cliente"
         maxWidth="md"
-        isDirty={texto !== emailSugerido}
+        isDirty={alterado}
         footer={
           <>
-            <Button variant="outline" onClick={() => setAberto(false)} disabled={enviando}>
+            <Button variant="outline" onClick={cancelar} disabled={enviando}>
               Cancelar
             </Button>
             <Button onClick={enviar} disabled={enviando}>
@@ -102,6 +111,16 @@ export function EnviarRelatorioModal({ auditoriaId, emailSugerido = '', onEnviad
           {erro && <p className="text-sm text-destructive" role="alert">{erro}</p>}
         </div>
       </FormModal>
+      <ConfirmDialog
+        open={confirmandoDescarte}
+        onClose={() => setConfirmandoDescarte(false)}
+        onConfirm={() => setAberto(false)}
+        title="Descartar alterações?"
+        message="Você possui alterações não salvas. Se fechar agora, todas as modificações serão perdidas."
+        confirmLabel="Descartar"
+        cancelLabel="Continuar editando"
+        variant="warning"
+      />
     </>
   );
 }

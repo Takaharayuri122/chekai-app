@@ -748,16 +748,14 @@ export default function RelatorioPage() {
           </div>
         </div>
 
+        {resultado && <CartaoResultado resultado={resultado} />}
+        <EnviosRelatorio auditoriaId={id} atualizar={enviosVersao} />
+
         {/* Métricas Gerais */}
         <div className="relative flex flex-col rounded-lg border border-border bg-card shadow-sm">
           <div className="flex flex-1 flex-col gap-2 p-4 sm:p-6">
             <h2 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4">Métricas Gerais</h2>
-            {resultado ? (
-              <div className="mb-4 sm:mb-6 space-y-3">
-                <CartaoResultado resultado={resultado} />
-                <EnviosRelatorio auditoriaId={id} atualizar={enviosVersao} />
-              </div>
-            ) : (
+            {!resultado && (
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6">
                 <div className="flex flex-col gap-1 bg-muted rounded-lg p-3 sm:p-4">
                   <div className="text-muted-foreground text-xs sm:text-sm">Aproveitamento</div>
