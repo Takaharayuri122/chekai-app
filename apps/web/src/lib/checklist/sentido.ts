@@ -68,9 +68,10 @@ export function ehNaoConformidade(item: ItemComOpcoes | null | undefined, valor:
   return sentidoDaOpcao(item, valor) === 'negativa';
 }
 
-/** Classes da resposta selecionada; sem sentido (null) usa o estilo neutro da tela de execução. */
+/** Classes de um botão de resposta: `neutra` mapeia para warning; sem sentido (null) é o botão não selecionado. */
 export function classeDoSentido(sentido: SentidoResposta | null): string {
   if (sentido === 'positiva') return 'border-success bg-success/12 text-[hsl(160_84%_28%)]';
   if (sentido === 'negativa') return 'border-destructive bg-destructive/12 text-[hsl(0_72%_45%)]';
-  return 'border-warning bg-warning/15 text-[hsl(32_95%_34%)]';
+  if (sentido === 'neutra') return 'border-warning bg-warning/15 text-[hsl(32_95%_34%)]';
+  return 'border-border bg-card hover:bg-muted';
 }

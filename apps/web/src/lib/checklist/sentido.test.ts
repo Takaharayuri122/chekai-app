@@ -105,6 +105,6 @@ describe('classeDoSentido', () => {
     expect(classeDoSentido('positiva')).toContain('border-success');
     expect(classeDoSentido('negativa')).toContain('border-destructive');
     expect(classeDoSentido('neutra')).toContain('border-warning');
-    expect(classeDoSentido(null)).toContain('border-warning');
+    expect(classeDoSentido(null)).toBe('border-border bg-card hover:bg-muted');
   });
 });
