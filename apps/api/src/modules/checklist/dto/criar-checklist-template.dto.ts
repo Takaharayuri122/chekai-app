@@ -33,6 +33,7 @@ export class FaixaClassificacaoDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(32)
   emoji: string | null;
 
   @IsNumber()

@@ -11,11 +11,18 @@ CREATE TABLE IF NOT EXISTS auditoria_envios_relatorio (
   auditoria_id uuid NOT NULL REFERENCES auditorias(id) ON DELETE CASCADE,
   destinatarios text[] NOT NULL,
   automatico boolean NOT NULL,
-  enviado_por_id uuid NULL REFERENCES usuarios(id),
+  enviado_por_id uuid NULL REFERENCES usuarios(id) ON DELETE SET NULL,
   sucesso boolean NOT NULL,
   erro text NULL,
   criado_em timestamptz NOT NULL DEFAULT now()
 );
+
+-- Excluir o usuário não pode ser bloqueado pelo histórico de envios
+ALTER TABLE auditoria_envios_relatorio
+  DROP CONSTRAINT IF EXISTS auditoria_envios_relatorio_enviado_por_id_fkey;
+ALTER TABLE auditoria_envios_relatorio
+  ADD CONSTRAINT auditoria_envios_relatorio_enviado_por_id_fkey
+  FOREIGN KEY (enviado_por_id) REFERENCES usuarios(id) ON DELETE SET NULL;
 
 CREATE INDEX IF NOT EXISTS idx_auditoria_envios_relatorio_auditoria_id
   ON auditoria_envios_relatorio (auditoria_id);

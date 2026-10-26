@@ -25,7 +25,7 @@ export class AuditoriaEnvioRelatorio {
   @Column({ type: 'boolean' })
   automatico: boolean;
 
-  @ManyToOne(() => Usuario, { nullable: true })
+  @ManyToOne(() => Usuario, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'enviado_por_id' })
   enviadoPor: Usuario | null;
 
