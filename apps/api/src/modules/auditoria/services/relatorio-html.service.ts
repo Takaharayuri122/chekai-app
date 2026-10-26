@@ -630,19 +630,19 @@ export class RelatorioHtmlService {
   }
 
   /**
-   * Agrupa os itens como o cálculo do resultado (mesma chave e mesma ordem),
-   * para casar cada grupo com suas métricas pela posição.
+   * Agrupa os itens pela mesma chave do cálculo do resultado (`grupoId`),
+   * para casar cada grupo com suas métricas por essa chave.
    */
-  private agruparItens(itens: AuditoriaItem[]): AuditoriaItem[][] {
+  private agruparItens(itens: AuditoriaItem[]): { grupoId: string; itens: AuditoriaItem[] }[] {
     const porGrupo = new Map<string, AuditoriaItem[]>();
     for (const item of itens) {
       const chave = item.templateItem?.grupoId || 'sem-grupo';
       if (!porGrupo.has(chave)) porGrupo.set(chave, []);
       porGrupo.get(chave)!.push(item);
     }
-    return Array.from(porGrupo.values()).sort(
-      (a, b) => (a[0].templateItem?.grupo?.ordem || 0) - (b[0].templateItem?.grupo?.ordem || 0),
-    );
+    return Array.from(porGrupo.entries())
+      .map(([grupoId, grupoItens]) => ({ grupoId, itens: grupoItens }))
+      .sort((a, b) => (a.itens[0].templateItem?.grupo?.ordem || 0) - (b.itens[0].templateItem?.grupo?.ordem || 0));
   }
 
   private numero(valor: number): string {
@@ -1067,7 +1067,7 @@ export class RelatorioHtmlService {
    * Gera o detalhamento por grupo.
    */
   private gerarDetalhamentoPorGrupo(
-    gruposItens: AuditoriaItem[][],
+    gruposItens: { grupoId: string; itens: AuditoriaItem[] }[],
     metricas: ResultadoGrupo[],
     assetsPdf?: RelatorioAuditoriaPdfAssetsHtml,
   ): string {
@@ -1076,8 +1076,8 @@ export class RelatorioHtmlService {
       <h2 class="section-title">Detalhamento por Grupo</h2>
     `;
 
-    gruposItens.forEach((itens, indice) => {
-      const grupo = metricas[indice];
+    gruposItens.forEach(({ grupoId, itens }) => {
+      const grupo = metricas.find((m) => m.grupoId === grupoId);
       html += `
       <div class="grupo-section">
         <div class="grupo-header">

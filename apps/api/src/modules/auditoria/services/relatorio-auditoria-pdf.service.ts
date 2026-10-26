@@ -30,7 +30,7 @@ export class RelatorioAuditoriaPdfService {
   /**
    * @param usuario - ausente no envio automático (sem isolamento por usuário)
    */
-  async obterPdf(auditoriaId: string, usuario?: UsuarioAutenticado): Promise<{ buffer: Buffer; url: string }> {
+  async obterPdf(auditoriaId: string, usuario?: UsuarioAutenticado): Promise<{ buffer: Buffer; url: string; auditoria: Auditoria }> {
     const auditoria = await this.auditoriaService.buscarAuditoriaPorId(auditoriaId, usuario);
     if (auditoria.status !== 'finalizada') {
       throw new BadRequestException('Apenas auditorias finalizadas podem gerar PDF');
@@ -38,14 +38,14 @@ export class RelatorioAuditoriaPdfService {
 
     if (!this.estaDesatualizado(auditoria)) {
       const guardado = await this.baixarPdfGuardado(auditoria);
-      if (guardado) return guardado;
+      if (guardado) return { ...guardado, auditoria };
     }
 
     const resultado = await this.resultadoAuditoriaService.calcular(auditoria, usuario);
     const buffer = await this.relatorioPdfPuppeteerService.gerarPdf(auditoria, resultado);
     const url = await this.relatorioPdfPuppeteerService.salvarPdfNoStorage(auditoriaId, buffer);
     await this.auditoriaService.atualizarPdfUrl(auditoriaId, url);
-    return { buffer, url };
+    return { buffer, url, auditoria };
   }
 
   /** Sem PDF, ou auditoria/checklist/perguntas alterados depois da geração. */

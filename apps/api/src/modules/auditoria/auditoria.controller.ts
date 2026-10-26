@@ -280,8 +280,7 @@ export class AuditoriaController {
     @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; gestorId?: string },
     @Res() res: Response,
   ): Promise<void> {
-    const auditoria = await this.auditoriaService.buscarAuditoriaPorId(id, usuario);
-    const { buffer: pdfBuffer } = await this.relatorioAuditoriaPdfService.obterPdf(id, usuario);
+    const { buffer: pdfBuffer, auditoria } = await this.relatorioAuditoriaPdfService.obterPdf(id, usuario);
 
     const nomeArquivo = `relatorio-auditoria-${auditoria.unidade?.nome || 'unidade'}-${new Date().toISOString().split('T')[0]}.pdf`;
     

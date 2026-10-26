@@ -12,6 +12,7 @@ const resultadoBase = (extra: Partial<ResultadoAuditoria> = {}): ResultadoAudito
   contadores: { pontosPossiveis: 4, pontosRealizados: 2, naoConformidades: 1, fotos: 3, planosAcao: 2 },
   grupos: [
     {
+      grupoId: 'g1',
       nome: 'Grupo',
       aproveitamento: 50,
       pontosPossiveis: 4,
@@ -43,6 +44,7 @@ function auditoriaCom(resposta: string, legislacoes: unknown[] = [], templateIte
         fotos: [],
         templateItem: {
           pergunta: 'Pergunta?',
+          grupoId: 'g1',
           grupo: { id: 'g1', nome: 'Grupo', ordem: 1 },
           ...templateItem,
         },
@@ -172,5 +174,29 @@ describe('RelatorioHtmlService - ícone da resposta', () => {
     expect(service.gerarHtml(auditoriaCom('nao_avaliado'), resultadoBase())).toContain(
       '<div class="item-icon nao-respondida">?</div>',
     );
+  });
+});
+
+describe('RelatorioHtmlService - grupos casados pela chave', () => {
+  it('usa as métricas do grupo certo mesmo com ordem diferente da lista de métricas', () => {
+    const item = (id: string, grupoId: string, nome: string, ordem: number) => ({
+      id, resposta: 'conforme', legislacoes: [], fotos: [],
+      templateItem: { pergunta: id, grupoId, grupo: { id: grupoId, nome, ordem } },
+    });
+    const auditoria = {
+      ...auditoriaCom('conforme'),
+      itens: [item('p1', 'gA', 'Alfa', 2), item('p2', 'gB', 'Beta', 1)],
+    };
+    const metrica = (grupoId: string, nome: string, aproveitamento: number) => ({
+      grupoId, nome, aproveitamento, pontosPossiveis: 1, pontosRealizados: 1,
+      naoAplicaveis: 0, naoConformidades: 0, naoRespondidas: 0,
+    });
+    const html = new RelatorioHtmlService().gerarHtml(
+      auditoria,
+      resultadoBase({ grupos: [metrica('gA', 'Alfa', 11), metrica('gB', 'Beta', 22)] }),
+    );
+    const secaoBeta = html.slice(html.indexOf('<h3 class="grupo-title">Beta'));
+    expect(secaoBeta).toContain('22,00%');
+    expect(secaoBeta.slice(0, secaoBeta.indexOf('Alfa'))).not.toContain('11,00%');
   });
 });

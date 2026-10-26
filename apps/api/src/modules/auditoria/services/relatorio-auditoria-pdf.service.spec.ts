@@ -103,4 +103,23 @@ describe('RelatorioAuditoriaPdfService.obterPdf', () => {
     await service.obterPdf('a-1', usuario);
     expect(resultadoService.calcular).toHaveBeenCalledWith(expect.anything(), usuario);
   });
+
+  it('reaproveita o PDF quando os carimbos de tempo são iguais (como após atualizarPdfUrl)', async () => {
+    const t = new Date('2026-10-20T12:00:00Z');
+    const { service, puppeteer } = criar({
+      ...base,
+      atualizadoEm: t,
+      pdfGeradoEm: t,
+      template: { atualizadoEm: t },
+      itens: [{ templateItem: { atualizadoEm: t } }],
+    });
+    const r = await service.obterPdf('a-1', undefined);
+    expect(r.buffer.equals(PDF_GUARDADO)).toBe(true);
+    expect(puppeteer.gerarPdf).not.toHaveBeenCalled();
+  });
+
+  it('devolve a auditoria carregada', async () => {
+    const { service } = criar(base);
+    expect((await service.obterPdf('a-1', undefined)).auditoria).toBe(base);
+  });
 });

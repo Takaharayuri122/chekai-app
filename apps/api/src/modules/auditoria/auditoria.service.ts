@@ -675,10 +675,13 @@ export class AuditoriaService {
    * Atualiza a URL do PDF gerado na auditoria.
    */
   async atualizarPdfUrl(auditoriaId: string, pdfUrl: string): Promise<void> {
-    await this.auditoriaRepository.update(auditoriaId, {
-      pdfUrl,
-      pdfGeradoEm: new Date(),
-    });
+    // Mesmo relógio do banco para pdf_gerado_em e atualizado_em: o PDF recém-gerado não nasce "desatualizado"
+    await this.auditoriaRepository
+      .createQueryBuilder()
+      .update(Auditoria)
+      .set({ pdfUrl, pdfGeradoEm: () => 'CURRENT_TIMESTAMP' })
+      .where('id = :id', { id: auditoriaId })
+      .execute();
   }
 
   private async validarVinculoAuditorCliente(unidadeId: string, auditorId: string): Promise<void> {

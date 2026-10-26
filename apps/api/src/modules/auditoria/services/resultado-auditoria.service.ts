@@ -18,6 +18,8 @@ import {
 } from '../../checklist/regras';
 
 export interface ResultadoGrupo {
+  /** Chave de agrupamento (`grupoId` do item do checklist ou 'sem-grupo') */
+  grupoId: string;
   nome: string;
   aproveitamento: number | null;
   pontosPossiveis: number;
@@ -146,9 +148,9 @@ export class ResultadoAuditoriaService {
       if (!porGrupo.has(chave)) porGrupo.set(chave, []);
       porGrupo.get(chave)!.push(item);
     }
-    return Array.from(porGrupo.values())
-      .sort((a, b) => (a[0].templateItem?.grupo?.ordem || 0) - (b[0].templateItem?.grupo?.ordem || 0))
-      .map((grupoItens) => {
+    return Array.from(porGrupo.entries())
+      .sort(([, a], [, b]) => (a[0].templateItem?.grupo?.ordem || 0) - (b[0].templateItem?.grupo?.ordem || 0))
+      .map(([grupoId, grupoItens]) => {
         const pontuaveis = grupoItens.filter(
           (item) =>
             !isOpcaoSemPontuacao(item.resposta || '') &&
@@ -157,6 +159,7 @@ export class ResultadoAuditoriaService {
         const pontosPossiveis = pontuaveis.reduce((acc, i) => acc + getPontuacaoMaximaItem(i.templateItem), 0);
         const pontosRealizados = pontuaveis.reduce((acc, i) => acc + Number(i.pontuacao || 0), 0);
         return {
+          grupoId,
           nome: grupoItens[0].templateItem?.grupo?.nome || 'Sem Grupo',
           aproveitamento: pontosPossiveis > 0 ? arredondar((pontosRealizados / pontosPossiveis) * 100) : null,
           pontosPossiveis,
