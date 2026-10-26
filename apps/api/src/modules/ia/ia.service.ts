@@ -421,6 +421,7 @@ Retorne APENAS um JSON válido (sem markdown, sem backticks) com:
         itens: Array<{
           pergunta: string;
           resposta: string;
+          naoConforme?: boolean;
           observacao?: string;
           descricaoNaoConformidade?: string;
           descricaoIa?: string;
@@ -465,7 +466,7 @@ Retorne APENAS um JSON válido (sem markdown, sem backticks) com:
 - Aproveitamento: ${aproveitamento}%
 - Não conformidades: ${grupo.naoConformidades}
 - Principais problemas: ${grupo.itens
-          .filter((i) => i.resposta === 'nao_conforme')
+          .filter((i) => i.naoConforme)
           .slice(0, 3)
           .map((i) => i.pergunta)
           .join('; ')}`;

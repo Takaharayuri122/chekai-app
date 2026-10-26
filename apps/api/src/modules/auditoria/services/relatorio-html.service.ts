@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Auditoria } from '../entities/auditoria.entity';
 import { AuditoriaItem, RespostaItem } from '../entities/auditoria-item.entity';
 import { nomesLegislacoesDoItem } from '../../legislacao/lib/legislacoes-do-item';
-import { getPontuacaoMaximaItem } from '../../checklist/regras';
+import { ehNaoConformidade, getPontuacaoMaximaItem } from '../../checklist/regras';
 
 interface GrupoMetricas {
   nome: string;
@@ -978,7 +978,7 @@ export class RelatorioHtmlService {
       grupo.itens.forEach((item) => {
         const resposta = item.resposta;
         const isConforme = resposta === RespostaItem.CONFORME;
-        const isNaoConforme = resposta === RespostaItem.NAO_CONFORME;
+        const isNaoConforme = ehNaoConformidade(item.templateItem, resposta);
         const isNaoAplicavel = resposta === RespostaItem.NAO_APLICAVEL;
 
         const classeCard = isNaoConforme
@@ -1184,8 +1184,8 @@ export class RelatorioHtmlService {
           (acc, item) => acc + Number(item.pontuacao || 0),
           0,
         );
-        const naoConformidades = itens.filter(
-          (item) => item.resposta === RespostaItem.NAO_CONFORME,
+        const naoConformidades = itens.filter((item) =>
+          ehNaoConformidade(item.templateItem, item.resposta),
         ).length;
         const naoAplicaveis = itens.filter(
           (item) => item.resposta === RespostaItem.NAO_APLICAVEL,

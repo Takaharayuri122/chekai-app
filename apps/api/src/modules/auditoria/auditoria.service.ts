@@ -21,7 +21,7 @@ import { LegislacaoVinculoService } from '../legislacao/legislacao-vinculo.servi
 import { validarLegislacaoIds } from '../legislacao/lib/validar-legislacao-ids';
 import { resumirLegislacoes } from '../legislacao/lib/resumo-legislacao';
 import { ChecklistService } from '../checklist/checklist.service';
-import { calcularPontuacaoOpcao, getPontuacaoMaximaItem, isOpcaoSemPontuacao } from '../checklist/regras';
+import { calcularPontuacaoOpcao, ehNaoConformidade, getPontuacaoMaximaItem, isOpcaoSemPontuacao } from '../checklist/regras';
 import { PerfilUsuario } from '../usuario/entities/usuario.entity';
 import {
   IniciarAuditoriaDto,
@@ -508,10 +508,11 @@ export class AuditoriaService {
     usuarioAutenticado?: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
   ): Promise<AuditoriaItem[]> {
     await this.buscarAuditoriaPorId(auditoriaId, usuarioAutenticado);
-    return this.itemRepository.find({
-      where: { auditoriaId, resposta: RespostaItem.NAO_CONFORME },
+    const itens = await this.itemRepository.find({
+      where: { auditoriaId },
       relations: ['templateItem', 'fotos'],
     });
+    return itens.filter((item) => ehNaoConformidade(item.templateItem, item.resposta));
   }
 
   /**
@@ -602,8 +603,8 @@ export class AuditoriaService {
           0,
         );
         const pontuacaoObtida = itensPontuaveisGrupo.reduce((acc, item) => acc + item.pontuacao, 0);
-        const naoConformidades = itens.filter(
-          (item) => item.resposta === RespostaItem.NAO_CONFORME,
+        const naoConformidades = itens.filter((item) =>
+          ehNaoConformidade(item.templateItem, item.resposta),
         ).length;
         return {
           nome: grupoNome,
@@ -613,6 +614,7 @@ export class AuditoriaService {
           itens: itens.map((item) => ({
             pergunta: item.templateItem?.pergunta || '',
             resposta: item.resposta,
+            naoConforme: ehNaoConformidade(item.templateItem, item.resposta),
             observacao: item.observacao,
             descricaoNaoConformidade: item.descricaoNaoConformidade,
             descricaoIa: item.descricaoIa,
@@ -624,7 +626,7 @@ export class AuditoriaService {
       this.logger.log(`[gerarResumoExecutivo] Processados ${grupos.length} grupos`);
       
       const itensNaoConformes = auditoria.itens
-        .filter((item) => item.resposta === RespostaItem.NAO_CONFORME)
+        .filter((item) => ehNaoConformidade(item.templateItem, item.resposta))
         .map((item) => ({
           pergunta: item.templateItem?.pergunta || '',
           observacao: item.observacao,
