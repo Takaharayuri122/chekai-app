@@ -1,5 +1,5 @@
 import type { ResultadoAuditoria } from '@/lib/api';
-import type { FaixaClassificacao } from '@/lib/checklist/faixas';
+import { posicaoNaBarra, segmentosDaBarra } from '@/lib/checklist/barra-faixas';
 
 export const DICA_TENDENCIA = 'Comparado com a avaliação anterior';
 export const MAX_DESTINATARIOS = 5;
@@ -8,23 +8,7 @@ const MAX_ANTERIORES = 3;
 const EMAIL_VALIDO = /^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/;
 
 export function formatarPercentual(valor: number): string {
-  return `${valor.toFixed(2).replace('.', ',')} %`;
-}
-
-export interface SegmentoBarra {
-  nome: string;
-  cor: string;
-  inicio: number;
-  largura: number;
-}
-
-/** Cada faixa vai do seu início até o início da próxima (a última, até 100), sem vãos na barra. */
-export function segmentosDaBarra(faixas: readonly FaixaClassificacao[]): SegmentoBarra[] {
-  const ordenadas = [...faixas].sort((a, b) => a.de - b.de);
-  return ordenadas.map((f, i) => {
-    const fim = i < ordenadas.length - 1 ? ordenadas[i + 1].de : Math.max(100, f.ate);
-    return { nome: f.nome, cor: f.cor, inicio: f.de, largura: Math.max(0, fim - f.de) };
-  });
+  return `${valor.toFixed(2).replace('.', ',')}%`;
 }
 
 const CONTADORES: { chave: keyof ResultadoAuditoria['contadores']; rotulo: string }[] = [
@@ -61,7 +45,7 @@ export function modeloDoCartao(resultado: ResultadoAuditoria) {
     anteriores,
     mostrarHistorico: anteriores.length > 0,
     segmentos: segmentosDaBarra(resultado.faixas),
-    posicaoMarcador: Math.min(100, Math.max(0, resultado.aproveitamento)),
+    posicaoMarcador: posicaoNaBarra(resultado.aproveitamento),
     contadores: contadoresDoCartao(resultado.contadores),
   };
 }

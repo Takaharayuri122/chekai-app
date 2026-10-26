@@ -43,12 +43,12 @@ export function CartaoResultado({ resultado }: { resultado: ResultadoAuditoria }
 
         <div className="pt-4">
           <div className="relative">
-            <div className="relative flex h-3 overflow-hidden rounded-full bg-muted">
-              {m.segmentos.map((s) => (
+            <div className="relative h-3 overflow-hidden rounded-full bg-muted">
+              {m.segmentos.map((s, i) => (
                 <div
-                  key={s.nome}
-                  className="h-full"
-                  style={{ width: `${s.largura}%`, backgroundColor: s.cor }}
+                  key={i}
+                  className="absolute inset-y-0"
+                  style={{ left: `${s.inicio}%`, width: `${s.largura}%`, backgroundColor: s.cor }}
                   title={s.nome}
                 />
               ))}

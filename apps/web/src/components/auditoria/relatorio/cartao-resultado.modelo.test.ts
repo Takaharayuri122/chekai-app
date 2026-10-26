@@ -6,7 +6,6 @@ import {
   formatarPercentual,
   interpretarDestinatarios,
   modeloDoCartao,
-  segmentosDaBarra,
 } from './cartao-resultado.modelo';
 
 const resultado = (extra: Partial<ResultadoAuditoria> = {}): ResultadoAuditoria => ({
@@ -21,10 +20,10 @@ const resultado = (extra: Partial<ResultadoAuditoria> = {}): ResultadoAuditoria 
 });
 
 describe('formatarPercentual', () => {
-  it('usa vírgula, duas casas e espaço antes do %', () => {
-    expect(formatarPercentual(90.36)).toBe('90,36 %');
-    expect(formatarPercentual(100)).toBe('100,00 %');
-    expect(formatarPercentual(0)).toBe('0,00 %');
+  it('usa vírgula, duas casas e % colado (como no PDF)', () => {
+    expect(formatarPercentual(90.36)).toBe('90,36%');
+    expect(formatarPercentual(100)).toBe('100,00%');
+    expect(formatarPercentual(0)).toBe('0,00%');
   });
 });
 
@@ -32,7 +31,7 @@ describe('modeloDoCartao', () => {
   it('mostra o nome da faixa e o percentual', () => {
     const m = modeloDoCartao(resultado());
     expect(m.nomeClassificacao).toBe('Com Excelência');
-    expect(m.percentual).toBe('90,36 %');
+    expect(m.percentual).toBe('90,36%');
   });
 
   it('tendência caiu mostra ▼ em destructive', () => {
@@ -60,7 +59,7 @@ describe('modeloDoCartao', () => {
     const m = modeloDoCartao(resultado({ anteriores }));
     expect(m.mostrarHistorico).toBe(true);
     expect(m.anteriores).toHaveLength(3);
-    expect(m.anteriores[0].percentual).toBe('71,00 %');
+    expect(m.anteriores[0].percentual).toBe('71,00%');
   });
 
   it('a posição do marcador acompanha o aproveitamento e fica entre 0 e 100', () => {
@@ -70,22 +69,17 @@ describe('modeloDoCartao', () => {
   });
 });
 
-describe('segmentosDaBarra', () => {
-  it('cobre de 0 a 100 usando o início da faixa seguinte', () => {
-    const s = segmentosDaBarra(FAIXAS_PADRAO);
-    expect(s).toHaveLength(5);
-    expect(s[0]).toMatchObject({ nome: 'Crítico', inicio: 0, largura: 60 });
-    expect(s[1]).toMatchObject({ inicio: 60, largura: 10 });
-    expect(s[4]).toMatchObject({ nome: 'Com Excelência', inicio: 90, largura: 10 });
-  });
-
-  it('ordena faixas fora de ordem', () => {
-    const s = segmentosDaBarra([
-      { nome: 'B', cor: '#000000', emoji: null, de: 50, ate: 100 },
-      { nome: 'A', cor: '#111111', emoji: null, de: 0, ate: 49.99 },
+describe('barra do cartão', () => {
+  it('usa a geometria compartilhada com o PDF (deslocamento e vãos)', () => {
+    const faixas = [
+      { nome: 'A', cor: '#111111', emoji: null, de: 50, ate: 69.99 },
+      { nome: 'B', cor: '#222222', emoji: null, de: 80, ate: 100 },
+    ];
+    const m = modeloDoCartao(resultado({ faixas }));
+    expect(m.segmentos).toEqual([
+      { nome: 'A', cor: '#111111', inicio: 50, largura: expect.closeTo(19.99) },
+      { nome: 'B', cor: '#222222', inicio: 80, largura: 20 },
     ]);
-    expect(s.map((x) => x.nome)).toEqual(['A', 'B']);
-    expect(s[0].largura).toBe(50);
   });
 });
 

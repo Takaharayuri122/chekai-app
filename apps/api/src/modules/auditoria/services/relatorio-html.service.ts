@@ -10,6 +10,7 @@ import {
   classificar,
   sentidoDaOpcao,
 } from '../../checklist/regras';
+import { posicaoNaBarra, segmentosDaBarra } from './barra-faixas';
 import { ResultadoAuditoria, ResultadoGrupo } from './resultado-auditoria.service';
 
 const COR_SEM_FAIXA = '#9ca3af';
@@ -516,13 +517,17 @@ export class RelatorioHtmlService {
     .resultado-faixa { font-size: 14px; font-weight: 700; }
     .faixa-barra {
       position: relative;
-      display: flex;
       height: 14px;
       margin: 6px 0 14px;
     }
-    .faixa-segmento { height: 100%; }
-    .faixa-segmento:first-child { border-radius: 7px 0 0 7px; }
-    .faixa-segmento:last-child { border-radius: 0 7px 7px 0; }
+    .faixa-trilho {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      border-radius: 7px;
+      background: #EEF0F4;
+    }
+    .faixa-segmento { position: absolute; top: 0; bottom: 0; }
     .faixa-marcador {
       position: absolute;
       top: -4px;
@@ -721,23 +726,6 @@ export class RelatorioHtmlService {
   }
 
   /**
-   * Posição (0–100) da nota na barra: cada faixa ocupa largura proporcional ao seu intervalo.
-   */
-  private posicaoNaBarra(nota: number, faixas: FaixaClassificacao[]): number {
-    const ordenadas = [...faixas].sort((a, b) => a.de - b.de);
-    const total = ordenadas.reduce((acc, f) => acc + (f.ate - f.de), 0);
-    if (total <= 0) return 0;
-    let acumulado = 0;
-    for (const f of ordenadas) {
-      const largura = f.ate - f.de;
-      if (nota < f.de) return (acumulado / total) * 100;
-      if (nota <= f.ate) return ((acumulado + (nota - f.de)) / total) * 100;
-      acumulado += largura;
-    }
-    return 100;
-  }
-
-  /**
    * Cartão de resultado: nota, faixa, barra, anteriores e contadores.
    */
   private gerarCartaoResultado(resultado: ResultadoAuditoria): string {
@@ -749,15 +737,13 @@ export class RelatorioHtmlService {
         : tendencia === 'caiu'
           ? '<span style="color:#ef4444;">▼</span>'
           : '';
-    const ordenadas = [...faixas].sort((a, b) => a.de - b.de);
-    const total = ordenadas.reduce((acc, f) => acc + (f.ate - f.de), 0) || 1;
-    const segmentos = ordenadas
+    const segmentos = segmentosDaBarra(faixas)
       .map(
         (f) =>
-          `<div class="faixa-segmento" style="width:${(((f.ate - f.de) / total) * 100).toFixed(4)}%;background:${this.escapeHtml(f.cor)};"></div>`,
+          `<div class="faixa-segmento" style="left:${f.inicio.toFixed(4)}%;width:${f.largura.toFixed(4)}%;background:${this.escapeHtml(f.cor)};"></div>`,
       )
       .join('');
-    const marcador = `<div class="faixa-marcador" style="left:${this.posicaoNaBarra(resultado.aproveitamento, faixas).toFixed(2)}%;"></div>`;
+    const marcador = `<div class="faixa-marcador" style="left:${posicaoNaBarra(resultado.aproveitamento).toFixed(2)}%;"></div>`;
     const listaAnteriores = anteriores.length
       ? `<div class="anteriores">${anteriores
           .map((a) => `<span>${this.formatarDataCurta(a.dataFim)}<strong>${this.percentual(a.aproveitamento)}</strong></span>`)
@@ -773,7 +759,7 @@ export class RelatorioHtmlService {
         <span class="resultado-percentual" style="color:${this.escapeHtml(cor)};">${this.percentual(resultado.aproveitamento)} ${seta}</span>
         <span class="resultado-faixa" style="color:${this.escapeHtml(cor)};">${this.escapeHtml(classificacao.nome)}</span>
       </div>
-      <div class="faixa-barra">${segmentos}${marcador}</div>
+      <div class="faixa-barra"><div class="faixa-trilho">${segmentos}</div>${marcador}</div>
       ${listaAnteriores}
       <div class="contadores">
         ${contador(this.numero(contadores.pontosPossiveis), 'Pontos possíveis')}

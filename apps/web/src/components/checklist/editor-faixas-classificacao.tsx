@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/shadcn/dropdown-menu';
 import { ICONES_RESPOSTA } from '@/lib/checklist/icones';
+import { segmentosDaBarra } from '@/lib/checklist/barra-faixas';
 import type { FaixaClassificacao } from '@/lib/checklist/faixas';
 import { cn } from '@/lib/cn';
 import {
@@ -77,19 +78,18 @@ export function EditorFaixasClassificacao({ valor, onChange, onValidadeChange }:
       <div
         role="img"
         aria-label="Prévia das faixas de 0 a 100"
-        className="flex h-3 w-full overflow-hidden rounded-full bg-muted"
+        className="relative h-3 w-full overflow-hidden rounded-full bg-muted"
       >
         {avaliacao.valido &&
           avaliacao.faixas &&
-          [...avaliacao.faixas]
-            .sort((a, b) => a.de - b.de)
-            .map((f, i) => (
-              <div
-                key={i}
-                title={f.nome}
-                style={{ backgroundColor: f.cor, marginLeft: i === 0 ? `${f.de}%` : undefined, width: `${f.ate - f.de}%` }}
-              />
-            ))}
+          segmentosDaBarra(avaliacao.faixas).map((s, i) => (
+            <div
+              key={i}
+              title={s.nome}
+              className="absolute inset-y-0"
+              style={{ backgroundColor: s.cor, left: `${s.inicio}%`, width: `${s.largura}%` }}
+            />
+          ))}
       </div>
 
       <ul className="space-y-3">
