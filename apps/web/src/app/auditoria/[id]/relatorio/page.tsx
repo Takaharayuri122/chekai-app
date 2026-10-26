@@ -8,7 +8,6 @@ import {
   FileText,
   TrendingUp,
   AlertTriangle,
-  MinusCircle,
   CheckCircle2,
   XCircle,
   Clock,
@@ -28,17 +27,17 @@ import { HistoricoEvolucao } from '@/components/relatorio/historico-evolucao';
 import {
   auditoriaService,
   type Auditoria,
-  type AuditoriaItem,
   type AuditoriaHistoricoItem,
   type ResultadoAuditoria,
 } from '@/lib/api';
 import { classificar } from '@/lib/checklist/faixas';
-import { ehNaoConformidade } from '@/lib/checklist/sentido';
 import { CartaoResultado } from '@/components/auditoria/relatorio/cartao-resultado';
 import { EnviarRelatorioModal } from '@/components/auditoria/relatorio/enviar-relatorio-modal';
 import { EnviosRelatorio } from '@/components/auditoria/relatorio/envios-relatorio';
 import { toastService } from '@/lib/toast';
-import { getPontuacaoMaximaItem } from '@/lib/utils';
+import { formatarPercentual } from '@/components/auditoria/relatorio/cartao-resultado.modelo';
+import { formatarAproveitamentoGrupo, metricasDoRelatorio } from '@/components/auditoria/relatorio/metricas-relatorio';
+import { CLASSE_GLIFO_POR_TOM, CLASSE_ITEM_POR_TOM, visualDaResposta } from '@/components/auditoria/relatorio/visual-resposta';
 
 const RespostaItem = {
   CONFORME: 'conforme',
@@ -46,18 +45,6 @@ const RespostaItem = {
   NAO_APLICAVEL: 'nao_aplicavel',
   NAO_AVALIADO: 'nao_avaliado',
 } as const;
-
-interface GrupoMetricas {
-  grupoId: string;
-  nome: string;
-  pontuacaoPossivel: number;
-  pontuacaoObtida: number;
-  naoConformidades: number;
-  naoAplicaveis: number;
-  naoRespondidas: number;
-  aproveitamento: number;
-  itens: AuditoriaItem[];
-}
 
 interface ResumoExecutivo {
   resumo: string;
@@ -79,20 +66,11 @@ export default function RelatorioPage() {
   const [loading, setLoading] = useState(true);
   const [resumoExecutivo, setResumoExecutivo] = useState<ResumoExecutivo | null>(null);
   const [gerandoResumo, setGerandoResumo] = useState(false);
-  const [gruposMetricas, setGruposMetricas] = useState<GrupoMetricas[]>([]);
   const [baixandoPdf, setBaixandoPdf] = useState(false);
   const [pdfAberturaBloqueada, setPdfAberturaBloqueada] = useState<{
     blobUrl: string;
     nomeArquivo: string;
   } | null>(null);
-  const [metricasGerais, setMetricasGerais] = useState({
-    aproveitamento: 0,
-    pontosPossiveis: 0,
-    pontosRealizados: 0,
-    naoAplicaveis: 0,
-    naoConformidades: 0,
-    naoRespondidas: 0,
-  });
   const [fotoModal, setFotoModal] = useState<{ url: string; exif?: Record<string, unknown> | null } | null>(null);
   const [historicoEvolucao, setHistoricoEvolucao] = useState<AuditoriaHistoricoItem[]>([]);
   const [resultado, setResultado] = useState<ResultadoAuditoria | null>(null);
@@ -107,7 +85,6 @@ export default function RelatorioPage() {
         return;
       }
       setAuditoria(data);
-      calcularMetricas(data);
       auditoriaService.obterResultado(id).then(setResultado).catch(() => setResultado(null));
       if (data.resumoExecutivo) {
         setResumoExecutivo(data.resumoExecutivo);
@@ -119,78 +96,6 @@ export default function RelatorioPage() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const calcularMetricas = (aud: Auditoria) => {
-    const itensPorGrupo = new Map<string, AuditoriaItem[]>();
-    aud.itens.forEach((item) => {
-      const grupoId = item.templateItem?.grupoId || 'sem-grupo';
-      if (!itensPorGrupo.has(grupoId)) {
-        itensPorGrupo.set(grupoId, []);
-      }
-      itensPorGrupo.get(grupoId)!.push(item);
-    });
-
-    const grupos: GrupoMetricas[] = Array.from(itensPorGrupo.entries()).map(([grupoId, itens]) => {
-      const primeiroItem = itens[0];
-      const grupoNome = primeiroItem.templateItem?.grupo?.nome || 'Sem Grupo';
-      const pontuacaoPossivel = itens.reduce(
-        (acc, item) => acc + getPontuacaoMaximaItem(item.templateItem),
-        0,
-      );
-      const pontuacaoObtida = itens.reduce((acc, item) => acc + Number(item.pontuacao || 0), 0);
-      const naoConformidades = itens.filter(
-        (item) => ehNaoConformidade(item.templateItem, item.resposta),
-      ).length;
-      const naoAplicaveis = itens.filter(
-        (item) => item.resposta === RespostaItem.NAO_APLICAVEL,
-      ).length;
-      const naoRespondidas = itens.filter(
-        (item) => item.resposta === RespostaItem.NAO_AVALIADO,
-      ).length;
-      const aproveitamentoCalculado = pontuacaoPossivel > 0 
-        ? (pontuacaoObtida / pontuacaoPossivel) * 100 
-        : 0;
-      const aproveitamento = isNaN(aproveitamentoCalculado) || !isFinite(aproveitamentoCalculado) 
-        ? 0 
-        : Number(aproveitamentoCalculado);
-
-      return {
-        grupoId,
-        nome: grupoNome,
-        pontuacaoPossivel,
-        pontuacaoObtida,
-        naoConformidades,
-        naoAplicaveis,
-        naoRespondidas,
-        aproveitamento,
-        itens,
-      };
-    });
-
-    grupos.sort((a, b) => {
-      const ordemA = a.itens[0]?.templateItem?.grupo?.ordem || 0;
-      const ordemB = b.itens[0]?.templateItem?.grupo?.ordem || 0;
-      return ordemA - ordemB;
-    });
-
-    setGruposMetricas(grupos);
-
-    const pontuacaoTotal = typeof aud.pontuacaoTotal === 'string' 
-      ? parseFloat(aud.pontuacaoTotal) 
-      : Number(aud.pontuacaoTotal) || 0;
-    
-    const aproveitamentoFinal = isNaN(pontuacaoTotal) || !isFinite(pontuacaoTotal) ? 0 : Number(pontuacaoTotal);
-    
-    const metricas = {
-      aproveitamento: aproveitamentoFinal,
-      pontosPossiveis: Number(grupos.reduce((acc, g) => acc + g.pontuacaoPossivel, 0)),
-      pontosRealizados: Number(grupos.reduce((acc, g) => acc + g.pontuacaoObtida, 0)),
-      naoAplicaveis: Number(grupos.reduce((acc, g) => acc + g.naoAplicaveis, 0)),
-      naoConformidades: Number(grupos.reduce((acc, g) => acc + g.naoConformidades, 0)),
-      naoRespondidas: Number(grupos.reduce((acc, g) => acc + g.naoRespondidas, 0)),
-    };
-    setMetricasGerais(metricas);
   };
 
   const gerarResumoExecutivo = async () => {
@@ -309,10 +214,8 @@ export default function RelatorioPage() {
     return null;
   }
 
-  const aproveitamentoSeguro = resultado?.aproveitamento
-    ?? (typeof metricasGerais.aproveitamento === 'number'
-      ? metricasGerais.aproveitamento
-      : Number(metricasGerais.aproveitamento) || 0);
+  const { grupos: gruposMetricas, gerais: metricasGerais } = metricasDoRelatorio(auditoria, resultado);
+  const aproveitamentoSeguro = metricasGerais.aproveitamento;
   const nomeClassificacao = resultado?.classificacao.nome ?? classificar(aproveitamentoSeguro).nome;
   const emailSugerido = auditoria.unidade?.email || auditoria.unidade?.cliente?.email || '';
   const resumoDesatualizado = Boolean(
@@ -352,7 +255,7 @@ export default function RelatorioPage() {
               <div className="bg-gray-50 rounded-lg p-4">
                 <div className="text-sm text-gray-600">Aproveitamento</div>
                 <div className="text-3xl font-bold text-blue-600">
-                  {aproveitamentoSeguro.toFixed(2)}%
+                  {formatarPercentual(aproveitamentoSeguro)}
                 </div>
                 <div className="text-sm text-gray-500">
                   {nomeClassificacao}
@@ -393,7 +296,7 @@ export default function RelatorioPage() {
                   <tr key={grupo.grupoId} className="border-b">
                     <td className="border p-2 font-medium">{grupo.nome}</td>
                     <td className="border p-2 text-center font-semibold">
-                      {Number(grupo.aproveitamento || 0).toFixed(2)}%
+                      {formatarAproveitamentoGrupo(grupo.aproveitamento)}
                     </td>
                     <td className="border p-2 text-center">
                       {grupo.pontuacaoPossivel}
@@ -421,7 +324,7 @@ export default function RelatorioPage() {
                 <tr className="bg-gray-100 font-bold">
                   <td className="border p-2">GERAL</td>
                   <td className="border p-2 text-center">
-                    {aproveitamentoSeguro.toFixed(2)}%
+                    {formatarPercentual(aproveitamentoSeguro)}
                   </td>
                   <td className="border p-2 text-center">
                     {metricasGerais.pontosPossiveis}
@@ -499,35 +402,22 @@ export default function RelatorioPage() {
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-lg font-bold">{grupo.nome}</h3>
                   <div className="text-sm text-gray-600">
-                    Aproveitamento: <strong>{Number(grupo.aproveitamento || 0).toFixed(2)}%</strong> | Pontos: {grupo.pontuacaoObtida}/{grupo.pontuacaoPossivel}
+                    Aproveitamento: <strong>{formatarAproveitamentoGrupo(grupo.aproveitamento)}</strong> | Pontos: {grupo.pontuacaoObtida}/{grupo.pontuacaoPossivel}
                   </div>
                 </div>
                 <div className="space-y-4">
                   {grupo.itens.map((item) => {
                     const resposta = item.resposta;
-                    const isConforme = resposta === RespostaItem.CONFORME;
-                    const isNaoConforme = ehNaoConformidade(item.templateItem, resposta);
+                    const visual = visualDaResposta(item);
 
                     return (
                       <div
                         key={item.id}
-                        className={`p-4 rounded-lg border ${
-                          isNaoConforme
-                            ? 'bg-red-50 border-red-200'
-                            : isConforme
-                              ? 'bg-green-50 border-green-200'
-                              : 'bg-gray-50 border-gray-200'
-                        }`}
+                        className={`p-4 rounded-lg border ${CLASSE_ITEM_POR_TOM[visual.tom]}`}
                       >
                         <div className="flex items-start gap-3">
                           <div className="flex-shrink-0 mt-1">
-                            {isConforme ? (
-                              <span className="text-green-600 text-xl">✓</span>
-                            ) : isNaoConforme ? (
-                              <span className="text-red-600 text-xl">✗</span>
-                            ) : (
-                              <span className="text-yellow-600 text-xl">⚠</span>
-                            )}
+                            <span className={`text-xl ${CLASSE_GLIFO_POR_TOM[visual.tom]}`}>{visual.glifo}</span>
                           </div>
                           <div className="flex-1">
                             <p className="font-medium text-gray-900 mb-2">
@@ -760,7 +650,7 @@ export default function RelatorioPage() {
                 <div className="flex flex-col gap-1 bg-muted rounded-lg p-3 sm:p-4">
                   <div className="text-muted-foreground text-xs sm:text-sm">Aproveitamento</div>
                   <div className="font-display font-semibold text-primary text-2xl sm:text-3xl">
-                    {aproveitamentoSeguro.toFixed(2)}%
+                    {formatarPercentual(aproveitamentoSeguro)}
                   </div>
                   <div className="text-xs text-muted-foreground sm:text-sm">{nomeClassificacao}</div>
                 </div>
@@ -802,7 +692,7 @@ export default function RelatorioPage() {
                     <tr key={grupo.grupoId}>
                       <td className="font-medium">{grupo.nome}</td>
                       <td className="text-center font-semibold">
-                        {Number(grupo.aproveitamento || 0).toFixed(2)}%
+                        {formatarAproveitamentoGrupo(grupo.aproveitamento)}
                       </td>
                       <td className="text-center">{grupo.pontuacaoPossivel}</td>
                       <td className="text-center">{grupo.pontuacaoObtida}</td>
@@ -819,7 +709,7 @@ export default function RelatorioPage() {
                   ))}
                   <tr className="font-bold bg-muted">
                     <td>GERAL</td>
-                    <td className="text-center">{aproveitamentoSeguro.toFixed(2)}%</td>
+                    <td className="text-center">{formatarPercentual(aproveitamentoSeguro)}</td>
                     <td className="text-center">{metricasGerais.pontosPossiveis}</td>
                     <td className="text-center">{metricasGerais.pontosRealizados}</td>
                     <td className="text-center">{metricasGerais.naoAplicaveis}</td>
@@ -866,7 +756,7 @@ export default function RelatorioPage() {
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     <div>
                       <span className="text-muted-foreground">AP:</span>{' '}
-                      <span className="font-semibold">{Number(grupo.aproveitamento || 0).toFixed(2)}%</span>
+                      <span className="font-semibold">{formatarAproveitamentoGrupo(grupo.aproveitamento)}</span>
                     </div>
                     <div>
                       <span className="text-muted-foreground">PP:</span>{' '}
@@ -900,7 +790,7 @@ export default function RelatorioPage() {
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div>
                     <span className="text-muted-foreground">AP:</span>{' '}
-                    <span className="font-semibold">{aproveitamentoSeguro.toFixed(2)}%</span>
+                    <span className="font-semibold">{formatarPercentual(aproveitamentoSeguro)}</span>
                   </div>
                   <div>
                     <span className="text-muted-foreground">PP:</span>{' '}
@@ -961,7 +851,7 @@ export default function RelatorioPage() {
                   <h3 className="text-base sm:text-lg font-bold">{grupo.nome}</h3>
                   <div className="flex flex-col sm:flex-row sm:items-center gap-2">
                     <span className="text-xs sm:text-sm text-muted-foreground">
-                      Aproveitamento: <strong>{Number(grupo.aproveitamento || 0).toFixed(2)}%</strong>
+                      Aproveitamento: <strong>{formatarAproveitamentoGrupo(grupo.aproveitamento)}</strong>
                     </span>
                     <div className="inline-flex items-center gap-1 whitespace-nowrap rounded-full font-semibold px-2 py-0.5 text-[11px] border border-border bg-transparent">
                       {grupo.pontuacaoObtida}/{grupo.pontuacaoPossivel} pontos
@@ -971,30 +861,16 @@ export default function RelatorioPage() {
                 <div className="space-y-4">
                   {grupo.itens.map((item, itemIndex) => {
                     const resposta = item.resposta;
-                    const isConforme = resposta === RespostaItem.CONFORME;
-                    const isNaoConforme = ehNaoConformidade(item.templateItem, resposta);
-                    const isNaoAplicavel = resposta === RespostaItem.NAO_APLICAVEL;
+                    const visual = visualDaResposta(item);
 
                     return (
                       <div
                         key={item.id}
-                        className={`p-3 sm:p-4 rounded-lg border ${
-                          isNaoConforme
-                            ? 'bg-destructive/5 border-destructive/20'
-                            : isConforme
-                              ? 'bg-success/5 border-success/20'
-                              : 'bg-muted border-border'
-                        }`}
+                        className={`p-3 sm:p-4 rounded-lg border ${CLASSE_ITEM_POR_TOM[visual.tom]}`}
                       >
                         <div className="flex items-start gap-2 sm:gap-3">
                           <div className="flex-shrink-0 mt-0.5 sm:mt-1">
-                            {isConforme ? (
-                              <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-success" />
-                            ) : isNaoConforme ? (
-                              <XCircle className="w-4 h-4 sm:w-5 sm:h-5 text-destructive" />
-                            ) : (
-                              <MinusCircle className="w-4 h-4 sm:w-5 sm:h-5 text-warning" />
-                            )}
+                            <span className={`text-base leading-none sm:text-lg ${CLASSE_GLIFO_POR_TOM[visual.tom]}`} aria-hidden="true">{visual.glifo}</span>
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="font-medium text-sm sm:text-base text-foreground mb-2">
