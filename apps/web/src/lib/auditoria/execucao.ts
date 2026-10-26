@@ -1,4 +1,5 @@
 import { TipoRespostaCustomizada, type AuditoriaItem } from '@/lib/api';
+import { sentidoDaOpcao } from '@/lib/checklist/sentido';
 
 export type StatusItem = 'pendente' | 'conforme' | 'nao_conforme' | 'neutro' | 'respondido';
 
@@ -100,17 +101,14 @@ export function getPontuacaoParaOpcao(item: AuditoriaItem, opcao: string): numbe
   return base - idx;
 }
 
+/** Conforme/não conforme/neutro vêm do sentido da resposta (gravado ou deduzido), não do texto. */
 export function statusItem(item: AuditoriaItem): StatusItem {
   if (!estaRespondido(item)) return 'pendente';
   const t = item.templateItem;
-  if (t?.tipoRespostaCustomizada) return 'respondido';
-  if (t?.usarRespostasPersonalizadas && t.opcoesResposta?.length) {
-    const p = getPontuacaoParaOpcao(item, item.resposta);
-    if (typeof p !== 'number' || p === 0) return 'neutro';
-    return p > 0 ? 'conforme' : 'nao_conforme';
-  }
-  if (item.resposta === 'conforme') return 'conforme';
-  if (item.resposta === 'nao_conforme') return 'nao_conforme';
+  if (t?.tipoRespostaCustomizada && t.tipoRespostaCustomizada !== TipoRespostaCustomizada.SELECT) return 'respondido';
+  const sentido = sentidoDaOpcao(t, item.resposta);
+  if (sentido === 'positiva') return 'conforme';
+  if (sentido === 'negativa') return 'nao_conforme';
   return 'neutro';
 }
 
