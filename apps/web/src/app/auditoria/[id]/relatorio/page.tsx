@@ -30,7 +30,13 @@ import {
   type Auditoria,
   type AuditoriaItem,
   type AuditoriaHistoricoItem,
+  type ResultadoAuditoria,
 } from '@/lib/api';
+import { classificar } from '@/lib/checklist/faixas';
+import { ehNaoConformidade } from '@/lib/checklist/sentido';
+import { CartaoResultado } from '@/components/auditoria/relatorio/cartao-resultado';
+import { EnviarRelatorioModal } from '@/components/auditoria/relatorio/enviar-relatorio-modal';
+import { EnviosRelatorio } from '@/components/auditoria/relatorio/envios-relatorio';
 import { toastService } from '@/lib/toast';
 import { getPontuacaoMaximaItem } from '@/lib/utils';
 
@@ -89,6 +95,8 @@ export default function RelatorioPage() {
   });
   const [fotoModal, setFotoModal] = useState<{ url: string; exif?: Record<string, unknown> | null } | null>(null);
   const [historicoEvolucao, setHistoricoEvolucao] = useState<AuditoriaHistoricoItem[]>([]);
+  const [resultado, setResultado] = useState<ResultadoAuditoria | null>(null);
+  const [enviosVersao, setEnviosVersao] = useState(0);
 
   const carregarAuditoria = async () => {
     try {
@@ -100,6 +108,7 @@ export default function RelatorioPage() {
       }
       setAuditoria(data);
       calcularMetricas(data);
+      auditoriaService.obterResultado(id).then(setResultado).catch(() => setResultado(null));
       if (data.resumoExecutivo) {
         setResumoExecutivo(data.resumoExecutivo);
       } else {
@@ -131,7 +140,7 @@ export default function RelatorioPage() {
       );
       const pontuacaoObtida = itens.reduce((acc, item) => acc + Number(item.pontuacao || 0), 0);
       const naoConformidades = itens.filter(
-        (item) => item.resposta === RespostaItem.NAO_CONFORME,
+        (item) => ehNaoConformidade(item.templateItem, item.resposta),
       ).length;
       const naoAplicaveis = itens.filter(
         (item) => item.resposta === RespostaItem.NAO_APLICAVEL,
@@ -256,15 +265,6 @@ export default function RelatorioPage() {
     });
   };
 
-  const getClassificacao = (aproveitamento: number): string => {
-    if (aproveitamento < 0) return 'Abaixo do mínimo';
-    if (aproveitamento >= 90) return 'Com Excelência';
-    if (aproveitamento >= 80) return 'Bom';
-    if (aproveitamento >= 70) return 'Regular';
-    if (aproveitamento >= 60) return 'Atenção Necessária';
-    return 'Crítico';
-  };
-
   const getRiscoColor = (risco: string) => {
     switch (risco) {
       case 'baixo':
@@ -309,9 +309,12 @@ export default function RelatorioPage() {
     return null;
   }
 
-  const aproveitamentoSeguro = typeof metricasGerais.aproveitamento === 'number'
-    ? metricasGerais.aproveitamento
-    : Number(metricasGerais.aproveitamento) || 0;
+  const aproveitamentoSeguro = resultado?.aproveitamento
+    ?? (typeof metricasGerais.aproveitamento === 'number'
+      ? metricasGerais.aproveitamento
+      : Number(metricasGerais.aproveitamento) || 0);
+  const nomeClassificacao = resultado?.classificacao.nome ?? classificar(aproveitamentoSeguro).nome;
+  const emailSugerido = auditoria.unidade?.email || auditoria.unidade?.cliente?.email || '';
   const resumoDesatualizado = Boolean(
     auditoria?.resumoExecutivoGeradoEm
     && auditoria?.atualizadoEm
@@ -352,7 +355,7 @@ export default function RelatorioPage() {
                   {aproveitamentoSeguro.toFixed(2)}%
                 </div>
                 <div className="text-sm text-gray-500">
-                  {getClassificacao(aproveitamentoSeguro)}
+                  {nomeClassificacao}
                 </div>
               </div>
               <div className="bg-gray-50 rounded-lg p-4">
@@ -503,7 +506,7 @@ export default function RelatorioPage() {
                   {grupo.itens.map((item) => {
                     const resposta = item.resposta;
                     const isConforme = resposta === RespostaItem.CONFORME;
-                    const isNaoConforme = resposta === RespostaItem.NAO_CONFORME;
+                    const isNaoConforme = ehNaoConformidade(item.templateItem, resposta);
 
                     return (
                       <div
@@ -679,11 +682,18 @@ export default function RelatorioPage() {
         title="Relatório de Auditoria"
         backHref="/admin/auditorias"
         action={
-          <Button onClick={handleBaixarPdf} disabled={baixandoPdf}>
-            {baixandoPdf ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-            <span className="hidden sm:inline">Exportar PDF</span>
-            <span className="sm:hidden">PDF</span>
-          </Button>
+          <>
+            <EnviarRelatorioModal
+              auditoriaId={id}
+              emailSugerido={emailSugerido}
+              onEnviado={() => setEnviosVersao((v) => v + 1)}
+            />
+            <Button onClick={handleBaixarPdf} disabled={baixandoPdf}>
+              {baixandoPdf ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+              <span className="hidden sm:inline">Exportar PDF</span>
+              <span className="sm:hidden">PDF</span>
+            </Button>
+          </>
         }
       />
       <div className="px-4 py-4 lg:px-8 space-y-4">
@@ -742,31 +752,38 @@ export default function RelatorioPage() {
         <div className="relative flex flex-col rounded-lg border border-border bg-card shadow-sm">
           <div className="flex flex-1 flex-col gap-2 p-4 sm:p-6">
             <h2 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4">Métricas Gerais</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6">
-              <div className="flex flex-col gap-1 bg-muted rounded-lg p-3 sm:p-4">
-                <div className="text-muted-foreground text-xs sm:text-sm">Aproveitamento</div>
-                <div className="font-display font-semibold text-primary text-2xl sm:text-3xl">
-                  {aproveitamentoSeguro.toFixed(2)}%
-                </div>
-                <div className="text-xs text-muted-foreground sm:text-sm">{getClassificacao(aproveitamentoSeguro)}</div>
+            {resultado ? (
+              <div className="mb-4 sm:mb-6 space-y-3">
+                <CartaoResultado resultado={resultado} />
+                <EnviosRelatorio auditoriaId={id} atualizar={enviosVersao} />
               </div>
-              <div className="flex flex-col gap-1 bg-muted rounded-lg p-3 sm:p-4">
-                <div className="text-muted-foreground text-xs sm:text-sm">Pontos Realizados</div>
-                <div className="font-display font-semibold text-success text-2xl sm:text-3xl">
-                  {metricasGerais.pontosRealizados}
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6">
+                <div className="flex flex-col gap-1 bg-muted rounded-lg p-3 sm:p-4">
+                  <div className="text-muted-foreground text-xs sm:text-sm">Aproveitamento</div>
+                  <div className="font-display font-semibold text-primary text-2xl sm:text-3xl">
+                    {aproveitamentoSeguro.toFixed(2)}%
+                  </div>
+                  <div className="text-xs text-muted-foreground sm:text-sm">{nomeClassificacao}</div>
                 </div>
-                <div className="text-xs text-muted-foreground sm:text-sm">de {metricasGerais.pontosPossiveis} possíveis</div>
+                <div className="flex flex-col gap-1 bg-muted rounded-lg p-3 sm:p-4">
+                  <div className="text-muted-foreground text-xs sm:text-sm">Pontos Realizados</div>
+                  <div className="font-display font-semibold text-success text-2xl sm:text-3xl">
+                    {metricasGerais.pontosRealizados}
+                  </div>
+                  <div className="text-xs text-muted-foreground sm:text-sm">de {metricasGerais.pontosPossiveis} possíveis</div>
+                </div>
+                <div className="flex flex-col gap-1 bg-muted rounded-lg p-3 sm:p-4">
+                  <div className="text-muted-foreground text-xs sm:text-sm">Não Conformidades</div>
+                  <div className="font-display font-semibold text-destructive text-2xl sm:text-3xl">
+                    {metricasGerais.naoConformidades}
+                  </div>
+                  <div className="text-xs text-muted-foreground sm:text-sm">
+                    {metricasGerais.naoAplicaveis > 0 && `${metricasGerais.naoAplicaveis} não aplicáveis`}
+                  </div>
+                </div>
               </div>
-              <div className="flex flex-col gap-1 bg-muted rounded-lg p-3 sm:p-4">
-                <div className="text-muted-foreground text-xs sm:text-sm">Não Conformidades</div>
-                <div className="font-display font-semibold text-destructive text-2xl sm:text-3xl">
-                  {metricasGerais.naoConformidades}
-                </div>
-                <div className="text-xs text-muted-foreground sm:text-sm">
-                  {metricasGerais.naoAplicaveis > 0 && `${metricasGerais.naoAplicaveis} não aplicáveis`}
-                </div>
-              </div>
-            </div>
+            )}
 
             {/* Tabela de Métricas por Grupo - Desktop */}
             <div className="hidden sm:block overflow-x-auto">
@@ -957,7 +974,7 @@ export default function RelatorioPage() {
                   {grupo.itens.map((item, itemIndex) => {
                     const resposta = item.resposta;
                     const isConforme = resposta === RespostaItem.CONFORME;
-                    const isNaoConforme = resposta === RespostaItem.NAO_CONFORME;
+                    const isNaoConforme = ehNaoConformidade(item.templateItem, resposta);
                     const isNaoAplicavel = resposta === RespostaItem.NAO_APLICAVEL;
 
                     return (

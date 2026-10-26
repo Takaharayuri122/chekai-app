@@ -27,7 +27,13 @@ import {
   type Auditoria,
   type AuditoriaItem,
   type AuditoriaHistoricoItem,
+  type ResultadoAuditoria,
 } from '@/lib/api';
+import { classificar } from '@/lib/checklist/faixas';
+import { ehNaoConformidade } from '@/lib/checklist/sentido';
+import { CartaoResultado } from '@/components/auditoria/relatorio/cartao-resultado';
+import { EnviarRelatorioModal } from '@/components/auditoria/relatorio/enviar-relatorio-modal';
+import { EnviosRelatorio } from '@/components/auditoria/relatorio/envios-relatorio';
 import { toastService } from '@/lib/toast';
 import { planoAcaoService } from '@/lib/services/plano-acao.service';
 import { getPontuacaoMaximaItem } from '@/lib/utils';
@@ -88,6 +94,8 @@ export default function RelatorioPage() {
   });
   const [fotoModal, setFotoModal] = useState<{ url: string; exif?: Record<string, unknown> | null } | null>(null);
   const [historicoEvolucao, setHistoricoEvolucao] = useState<AuditoriaHistoricoItem[]>([]);
+  const [resultado, setResultado] = useState<ResultadoAuditoria | null>(null);
+  const [enviosVersao, setEnviosVersao] = useState(0);
 
   const carregarAuditoria = async () => {
     try {
@@ -99,6 +107,7 @@ export default function RelatorioPage() {
       }
       setAuditoria(data);
       calcularMetricas(data);
+      auditoriaService.obterResultado(id).then(setResultado).catch(() => setResultado(null));
       if (data.resumoExecutivo) {
         setResumoExecutivo(data.resumoExecutivo);
       } else {
@@ -130,7 +139,7 @@ export default function RelatorioPage() {
       );
       const pontuacaoObtida = itens.reduce((acc, item) => acc + Number(item.pontuacao || 0), 0);
       const naoConformidades = itens.filter(
-        (item) => item.resposta === RespostaItem.NAO_CONFORME,
+        (item) => ehNaoConformidade(item.templateItem, item.resposta),
       ).length;
       const naoAplicaveis = itens.filter(
         (item) => item.resposta === RespostaItem.NAO_APLICAVEL,
@@ -268,15 +277,6 @@ export default function RelatorioPage() {
     });
   };
 
-  const getClassificacao = (aproveitamento: number): string => {
-    if (aproveitamento < 0) return 'Abaixo do mínimo';
-    if (aproveitamento >= 90) return 'Com Excelência';
-    if (aproveitamento >= 80) return 'Bom';
-    if (aproveitamento >= 70) return 'Regular';
-    if (aproveitamento >= 60) return 'Atenção Necessária';
-    return 'Crítico';
-  };
-
   const getRiscoColor = (risco: string) => {
     switch (risco) {
       case 'baixo':
@@ -321,9 +321,12 @@ export default function RelatorioPage() {
     return null;
   }
 
-  const aproveitamentoSeguro = typeof metricasGerais.aproveitamento === 'number'
-    ? metricasGerais.aproveitamento
-    : Number(metricasGerais.aproveitamento) || 0;
+  const aproveitamentoSeguro = resultado?.aproveitamento
+    ?? (typeof metricasGerais.aproveitamento === 'number'
+      ? metricasGerais.aproveitamento
+      : Number(metricasGerais.aproveitamento) || 0);
+  const nomeClassificacao = resultado?.classificacao.nome ?? classificar(aproveitamentoSeguro).nome;
+  const emailSugerido = auditoria.unidade?.email || auditoria.unidade?.cliente?.email || '';
   const resumoDesatualizado = Boolean(
     auditoria?.resumoExecutivoGeradoEm
     && auditoria?.atualizadoEm
@@ -364,7 +367,7 @@ export default function RelatorioPage() {
                   {aproveitamentoSeguro.toFixed(2)}%
                 </div>
                 <div className="text-sm text-gray-500">
-                  {getClassificacao(aproveitamentoSeguro)}
+                  {nomeClassificacao}
                 </div>
               </div>
               <div className="bg-gray-50 rounded-lg p-4">
@@ -515,7 +518,7 @@ export default function RelatorioPage() {
                   {grupo.itens.map((item) => {
                     const resposta = item.resposta;
                     const isConforme = resposta === RespostaItem.CONFORME;
-                    const isNaoConforme = resposta === RespostaItem.NAO_CONFORME;
+                    const isNaoConforme = ehNaoConformidade(item.templateItem, resposta);
 
                     return (
                       <div
@@ -700,6 +703,11 @@ export default function RelatorioPage() {
             <Button variant="outline" size="icon" className="h-11 w-11 sm:hidden" onClick={handleGerarTarefas} aria-label="Gerar plano de ação">
               <ListChecks className="h-4 w-4" />
             </Button>
+            <EnviarRelatorioModal
+              auditoriaId={id}
+              emailSugerido={emailSugerido}
+              onEnviado={() => setEnviosVersao((v) => v + 1)}
+            />
             <Button onClick={handleBaixarPdf} disabled={baixandoPdf}>
               {baixandoPdf ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
               <span className="hidden sm:inline">Exportar PDF</span>
@@ -713,12 +721,17 @@ export default function RelatorioPage() {
           <span>Auditor: {auditoria.consultor?.nome || 'Não informado'}</span>
           <span>Checklist: {auditoria.template?.nome}</span>
         </p>
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <StatCard title={`Aproveitamento · ${getClassificacao(aproveitamentoSeguro)}`} value={`${aproveitamentoSeguro.toFixed(1).replace('.', ',')}%`} icon={TrendingUp} color="primary" />
-          <StatCard title={`Pontos (de ${metricasGerais.pontosPossiveis})`} value={metricasGerais.pontosRealizados} icon={CheckCircle2} color="success" />
-          <StatCard title="Não conformidades" value={metricasGerais.naoConformidades} icon={XCircle} color="error" />
-          <StatCard title="Não aplicáveis" value={metricasGerais.naoAplicaveis} icon={MinusCircle} color="info" />
-        </div>
+        {resultado ? (
+          <CartaoResultado resultado={resultado} />
+        ) : (
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <StatCard title={`Aproveitamento · ${nomeClassificacao}`} value={`${aproveitamentoSeguro.toFixed(1).replace('.', ',')}%`} icon={TrendingUp} color="primary" />
+            <StatCard title={`Pontos (de ${metricasGerais.pontosPossiveis})`} value={metricasGerais.pontosRealizados} icon={CheckCircle2} color="success" />
+            <StatCard title="Não conformidades" value={metricasGerais.naoConformidades} icon={XCircle} color="error" />
+            <StatCard title="Não aplicáveis" value={metricasGerais.naoAplicaveis} icon={MinusCircle} color="info" />
+          </div>
+        )}
+        <EnviosRelatorio auditoriaId={id} atualizar={enviosVersao} />
         <Tabs defaultValue="resumo">
           <TabsList className="w-full justify-start overflow-x-auto">
             <TabsTrigger value="resumo">Resumo</TabsTrigger>
@@ -989,12 +1002,12 @@ export default function RelatorioPage() {
           </div>
           </TabsContent>
           <TabsContent value="nc">
-            {gruposMetricas.every((g) => g.itens.every((i) => i.resposta !== RespostaItem.NAO_CONFORME)) ? (
+            {gruposMetricas.every((g) => g.itens.every((i) => !ehNaoConformidade(i.templateItem, i.resposta))) ? (
               <EmptyState icon={CheckCircle2} title="Nenhuma não conformidade" description="Todos os itens avaliados estão conformes ou não se aplicam." />
             ) : (
               <div className="space-y-4">
                 {gruposMetricas.map((grupo) => {
-                  const ncs = grupo.itens.filter((i) => i.resposta === RespostaItem.NAO_CONFORME);
+                  const ncs = grupo.itens.filter((i) => ehNaoConformidade(i.templateItem, i.resposta));
                   if (ncs.length === 0) return null;
                   return (
                     <section key={grupo.grupoId} className="rounded-lg border border-border bg-card p-4 shadow-sm">
@@ -1051,7 +1064,7 @@ export default function RelatorioPage() {
                     {grupo.itens.map((item, itemIndex) => {
                       const resposta = item.resposta;
                       const isConforme = resposta === RespostaItem.CONFORME;
-                      const isNaoConforme = resposta === RespostaItem.NAO_CONFORME;
+                      const isNaoConforme = ehNaoConformidade(item.templateItem, resposta);
                       const isNaoAplicavel = resposta === RespostaItem.NAO_APLICAVEL;
 
                       return (

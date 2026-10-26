@@ -69,6 +69,10 @@
 | Remover auditoria | ok | ok | n/a | Apenas MASTER/GESTOR no web |
 | Resumo executivo (IA) | ok | ok | parcial | Mobile recebe no push de volta |
 | PDF de relatório | ok | ok | - | Mobile não gera/visualiza PDF |
+| Ícone e sentido de cada resposta | ok | ok | - | Mobile ainda não mostra ícone/sentido das respostas |
+| Faixas de classificação configuráveis | ok | ok | - | Mobile ainda usa as faixas fixas |
+| Cartão de resultado do relatório | ok | ok | - | Mobile ainda não mostra o cartão |
+| Enviar relatório ao cliente por e-mail | ok | ok | - | Envio manual e automático ao finalizar; histórico de envios só no web |
 | Histórico por unidade | ok | ok | - | |
 | Respeitar permiteFoto/permiteObservacao na execução | ok | ok | pendente | Mobile: respeitar permiteFoto/permiteObservacao (texto nunca aceita foto) |
 
@@ -140,3 +144,4 @@
 |------|-----------|
 | 2026-04-11 | Matriz inicial compilada a partir do código web, mobile e API |
 | 2026-10-25 | Legislação automática: gestão e seletor de legislações só na web; mobile mantém o texto de referência |
+| 2026-10-26 | Respostas configuráveis, faixas de classificação, cartão de resultado e envio do relatório: web e API prontos; mobile pendente |
