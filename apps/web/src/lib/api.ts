@@ -683,6 +683,8 @@ export enum TipoRespostaCustomizada {
   NUMERO = 'numero',
   DATA = 'data',
   SELECT = 'select',
+  /** Assinatura desenhada na tela; a resposta é a imagem PNG (data URL). */
+  ASSINATURA = 'assinatura',
 }
 
 export const TIPO_RESPOSTA_LABELS: Record<TipoRespostaCustomizada, string> = {
@@ -690,6 +692,7 @@ export const TIPO_RESPOSTA_LABELS: Record<TipoRespostaCustomizada, string> = {
   [TipoRespostaCustomizada.NUMERO]: 'Número',
   [TipoRespostaCustomizada.DATA]: 'Data',
   [TipoRespostaCustomizada.SELECT]: 'Seleção',
+  [TipoRespostaCustomizada.ASSINATURA]: 'Assinatura',
 };
 
 export interface OpcaoRespostaConfig {

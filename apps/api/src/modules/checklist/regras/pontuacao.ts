@@ -7,6 +7,23 @@ export type ItemComOpcoes = Pick<
 
 const OPCOES_PADRAO = ['conforme', 'nao_conforme', 'nao_aplicavel', 'nao_avaliado'];
 
+/** Texto e assinatura nunca pontuam (peso 0) e não aceitam foto. */
+export function tipoSemPontuacao(tipo: TipoRespostaCustomizada | null | undefined): boolean {
+  return tipo === TipoRespostaCustomizada.TEXTO || tipo === TipoRespostaCustomizada.ASSINATURA;
+}
+
+/** Tamanho máximo da imagem da assinatura gravada na resposta (data URL). */
+export const TAMANHO_MAXIMO_ASSINATURA = 400_000;
+
+/** Verdadeiro quando o valor é a imagem PNG de uma assinatura dentro do limite de tamanho. */
+export function ehImagemDeAssinatura(valor: string | null | undefined): boolean {
+  return (
+    !!valor &&
+    valor.length <= TAMANHO_MAXIMO_ASSINATURA &&
+    /^data:image\/png;base64,[A-Za-z0-9+/]+=*$/.test(valor)
+  );
+}
+
 function normalizarRotulo(valor: string): string {
   return valor
     .normalize('NFD')
@@ -32,7 +49,7 @@ export function isOpcaoSemPontuacao(valor: string): boolean {
  */
 export function calcularPontuacaoOpcao(item: ItemComOpcoes | null | undefined, valor: string): number {
   if (!item) return 0;
-  if (item.tipoRespostaCustomizada === TipoRespostaCustomizada.TEXTO) return 0;
+  if (tipoSemPontuacao(item.tipoRespostaCustomizada)) return 0;
   if (isOpcaoSemPontuacao(valor)) return 0;
   const configs = item.opcoesRespostaConfig || [];
   const configOpcao = configs.find((c) => c.valor === valor);
@@ -58,7 +75,7 @@ export function calcularPontuacaoOpcao(item: ItemComOpcoes | null | undefined, v
  */
 export function getPontuacaoMaximaItem(item: ItemComOpcoes | null | undefined): number {
   if (!item) return 0;
-  if (item.tipoRespostaCustomizada === TipoRespostaCustomizada.TEXTO) return 0;
+  if (tipoSemPontuacao(item.tipoRespostaCustomizada)) return 0;
   const opcoesOrdenadas = item.usarRespostasPersonalizadas && item.opcoesResposta?.length
     ? item.opcoesResposta
     : OPCOES_PADRAO;

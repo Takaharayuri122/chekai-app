@@ -8,6 +8,7 @@ import { classeDoSentido, sentidoDaOpcao } from '@/lib/checklist/sentido';
 import { emojiDoIcone } from '@/components/checklist/seletor-sentido-icone.logic';
 import { Input } from '@/components/ui/shadcn/input';
 import { Textarea } from '@/components/ui/shadcn/textarea';
+import { CampoAssinatura } from './campo-assinatura';
 
 interface RespostasItemProps {
   item: AuditoriaItem;
@@ -58,6 +59,9 @@ export function RespostasItem({ item, valorCustomizado, somenteLeitura, onRespon
         onChange={(e) => onConfirmarCustomizado(e.target.value)}
       />
     );
+  }
+  if (t.tipoRespostaCustomizada === TipoRespostaCustomizada.ASSINATURA) {
+    return <CampoAssinatura valor={valor} somenteLeitura={somenteLeitura} onSalvar={onConfirmarCustomizado} />;
   }
   if (t.tipoRespostaCustomizada === TipoRespostaCustomizada.SELECT) {
     const opcoes = t.opcoesResposta ?? [];

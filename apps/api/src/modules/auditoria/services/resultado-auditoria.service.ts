@@ -5,7 +5,6 @@ import { Auditoria, StatusAuditoria } from '../entities/auditoria.entity';
 import { AuditoriaItem } from '../entities/auditoria-item.entity';
 import { PlanoAcaoTarefa } from '../../plano-acao/entities/plano-acao-tarefa.entity';
 import { PerfilUsuario } from '../../usuario/entities/usuario.entity';
-import { TipoRespostaCustomizada } from '../../checklist/entities/template-item.entity';
 import {
   FAIXAS_PADRAO,
   FaixaClassificacao,
@@ -15,6 +14,7 @@ import {
   getPontuacaoMaximaItem,
   isOpcaoSemPontuacao,
   sentidoDaOpcao,
+  tipoSemPontuacao,
 } from '../../checklist/regras';
 
 export interface ResultadoGrupo {
@@ -154,7 +154,7 @@ export class ResultadoAuditoriaService {
         const pontuaveis = grupoItens.filter(
           (item) =>
             !isOpcaoSemPontuacao(item.resposta || '') &&
-            item.templateItem?.tipoRespostaCustomizada !== TipoRespostaCustomizada.TEXTO,
+            !tipoSemPontuacao(item.templateItem?.tipoRespostaCustomizada),
         );
         const pontosPossiveis = pontuaveis.reduce((acc, i) => acc + getPontuacaoMaximaItem(i.templateItem), 0);
         const pontosRealizados = pontuaveis.reduce((acc, i) => acc + Number(i.pontuacao || 0), 0);

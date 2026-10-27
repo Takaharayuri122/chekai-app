@@ -46,7 +46,24 @@ describe('visualDaResposta', () => {
     expect(visualDaResposta(item('conforme', t)).tom).toBe('destructive');
   });
 
-  it('pergunta de texto não tem sentido', () => {
-    expect(visualDaResposta(item('qualquer', { tipoRespostaCustomizada: TipoRespostaCustomizada.TEXTO }))).toEqual({ tom: 'nenhum', glifo: '?' });
+  it('pergunta de texto sem resposta fica com "?"', () => {
+    expect(visualDaResposta(item('', { tipoRespostaCustomizada: TipoRespostaCustomizada.TEXTO }))).toEqual({ tom: 'nenhum', glifo: '?' });
+  });
+});
+
+describe('visualDaResposta - assinatura e respostas sem sentido', () => {
+  const PNG = 'data:image/png;base64,iVBORw0KGgo=';
+
+  it('assinatura registrada vira imagem com ícone de caneta', async () => {
+    const { imagemDaAssinatura, visualDaResposta } = await import('./visual-resposta');
+    const item = { resposta: PNG, templateItem: { tipoRespostaCustomizada: 'assinatura' } } as never;
+    expect(imagemDaAssinatura(item)).toBe(PNG);
+    expect(visualDaResposta(item)).toEqual({ tom: 'muted', glifo: '✎' });
+  });
+
+  it('texto respondido fica neutro e não com "?"', async () => {
+    const { visualDaResposta } = await import('./visual-resposta');
+    const item = { resposta: 'Maria', templateItem: { tipoRespostaCustomizada: 'texto' } } as never;
+    expect(visualDaResposta(item)).toEqual({ tom: 'muted', glifo: '—' });
   });
 });
