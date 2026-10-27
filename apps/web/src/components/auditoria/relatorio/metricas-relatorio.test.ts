@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { TipoRespostaCustomizada, type AuditoriaItem, type ResultadoAuditoria, type TemplateItem } from '@/lib/api';
-import { formatarAproveitamentoGrupo, metricasDoRelatorio } from './metricas-relatorio';
+import { formatarAproveitamentoGrupo, metricasDoRelatorio, numeroDaPergunta, rotuloDoGrupo } from './metricas-relatorio';
 
 const tpl = (grupoId: string, ordem: number, extra: Partial<TemplateItem> = {}) =>
   ({ grupoId, grupo: { id: grupoId, nome: `Grupo ${grupoId}`, ordem }, usarRespostasPersonalizadas: false, ...extra }) as TemplateItem;
@@ -81,5 +81,19 @@ describe('formatarAproveitamentoGrupo', () => {
   it('mostra "—" quando o grupo não tem pontos possíveis', () => {
     expect(formatarAproveitamentoGrupo(null)).toBe('—');
     expect(formatarAproveitamentoGrupo(75)).toBe('75,00%');
+  });
+});
+
+describe('numeração do relatório', () => {
+  it('numera os grupos pela ordem e as perguntas pela ordem dentro do grupo', () => {
+    const fora = [
+      item('b2', 'conforme', 1, tpl('b', 2, { ordem: 2 })),
+      item('a1', 'conforme', 1, tpl('a', 1, { ordem: 1 })),
+      item('b1', 'conforme', 1, tpl('b', 2, { ordem: 1 })),
+    ];
+    const { grupos } = metricasDoRelatorio({ itens: fora, pontuacaoTotal: 100 }, null);
+    expect(grupos.map(rotuloDoGrupo)).toEqual(['1. Grupo a', '2. Grupo b']);
+    expect(grupos[1].itens.map((i) => i.id)).toEqual(['b1', 'b2']);
+    expect(numeroDaPergunta(grupos[1], 1)).toBe('2.2');
   });
 });
