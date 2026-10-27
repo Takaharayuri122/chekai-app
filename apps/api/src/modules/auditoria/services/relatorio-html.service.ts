@@ -8,8 +8,10 @@ import {
   ICONE_PADRAO_POR_SENTIDO,
   SentidoResposta,
   classificar,
+  ehImagemDeAssinatura,
   sentidoDaOpcao,
 } from '../../checklist/regras';
+import { TipoRespostaCustomizada } from '../../checklist/entities/template-item.entity';
 import { posicaoNaBarra, segmentosDaBarra } from './barra-faixas';
 import { ResultadoAuditoria, ResultadoGrupo } from './resultado-auditoria.service';
 
@@ -33,6 +35,8 @@ interface ItemDoRelatorio {
   /** Ícone escolhido na configuração da opção (emoji), em vez do símbolo padrão do sentido. */
   readonly iconePersonalizado: boolean;
   readonly respostaTexto: string;
+  /** Imagem da assinatura (data URL PNG) quando a pergunta é de assinatura. */
+  readonly assinatura: string | null;
 }
 
 interface GrupoDoRelatorio {
@@ -230,6 +234,10 @@ const ESTILOS = `
     .numero { flex-shrink: 0; min-width: 26px; font-weight: 700; color: var(--tinta-fraca); margin-right: 4px; font-variant-numeric: tabular-nums; }
     .numero-grupo { font-weight: 800; color: var(--marca); margin-right: 6px; }
     .item-obs { font-size: 10px; color: var(--tinta-suave); margin-top: 2px; }
+    .assinatura-imagem {
+      display: block; height: 64px; max-width: 240px; object-fit: contain; margin-top: 6px;
+      padding: 4px 8px; border-bottom: 1px solid var(--tinta-fraca);
+    }
     .item-resposta { font-size: 10px; font-weight: 700; white-space: nowrap; padding-top: 1px; }
     .item-resposta.positiva { color: #047857; }
     .item-resposta.negativa { color: var(--negativa); }
@@ -316,11 +324,18 @@ export class RelatorioHtmlService {
   private itemDoRelatorio(item: AuditoriaItem, numero: string): ItemDoRelatorio {
     const respondida = !!item.resposta && item.resposta !== RespostaItem.NAO_AVALIADO;
     const sentido = respondida ? (sentidoDaOpcao(item.templateItem, item.resposta) ?? 'neutra') : null;
+    const assinatura =
+      item.templateItem?.tipoRespostaCustomizada === TipoRespostaCustomizada.ASSINATURA &&
+      ehImagemDeAssinatura(item.resposta)
+        ? item.resposta
+        : null;
     return {
       item,
       numero,
       ...this.visualDaResposta(item, sentido),
-      respostaTexto: this.rotuloDaResposta(item.resposta),
+      ...(assinatura ? { icone: '✎', iconePersonalizado: false } : {}),
+      respostaTexto: assinatura ? 'Assinado' : this.rotuloDaResposta(item.resposta),
+      assinatura,
     };
   }
 
@@ -675,7 +690,7 @@ export class RelatorioHtmlService {
             ? `<span class="grupo-ap" style="background:${this.escapeHtml(this.corDaNota(ap, faixas))};">${this.percentual(ap)}</span>`
             : '';
         const linhas = itens
-          .map(({ item, numero, classe, icone, iconePersonalizado, respostaTexto }) => {
+          .map(({ item, numero, classe, icone, iconePersonalizado, respostaTexto, assinatura }) => {
             const negativa = classe === 'negativa';
             const iconeHtml = iconePersonalizado ? `<span class="emoji">${this.escapeHtml(icone)}</span>` : this.escapeHtml(icone);
             return `
@@ -683,6 +698,7 @@ export class RelatorioHtmlService {
         <span class="item-icone ${classe}${iconePersonalizado ? ' personalizado' : ''}">${iconeHtml}</span>
         <div>
           <div class="item-pergunta"><span class="numero">${numero}</span>${this.escapeHtml(item.templateItem?.pergunta || 'Pergunta não encontrada')}</div>
+          ${assinatura ? `<img class="assinatura-imagem" src="${assinatura}" alt="Assinatura" />` : ''}
           ${!negativa && item.observacao ? `<div class="item-obs">Observação: ${this.escapeHtml(item.observacao)}</div>` : ''}
           ${!negativa ? this.gerarFotos(item, assetsPdf, 'pequenas') : ''}
         </div>

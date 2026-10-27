@@ -1,4 +1,5 @@
 import { TemplateItem, TipoRespostaCustomizada } from './entities/template-item.entity';
+import { tipoSemPontuacao } from './regras/pontuacao';
 
 export type ItemConfiguravel = Pick<
   TemplateItem,
@@ -46,7 +47,7 @@ export function normalizarOpcoesConfig(item: Partial<ItemConfiguravel>): void {
  * Normaliza as opções e aplica as regras forçadas RN-CHK-014 e RN-CHK-015.
  */
 export function aplicarRegrasForcadas(item: Partial<ItemConfiguravel>): void {
-  const texto = item.tipoRespostaCustomizada === TipoRespostaCustomizada.TEXTO;
+  const texto = tipoSemPontuacao(item.tipoRespostaCustomizada);
   if (texto) {
     item.peso = 0;
     item.permiteFoto = false;

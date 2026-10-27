@@ -61,6 +61,7 @@ import {
   type LegislacaoResumo,
   RESPOSTAS_PADRAO,
 } from '@/lib/api';
+import { tipoSemPontuacao } from '@/lib/checklist/pontuacao';
 import { toastService } from '@/lib/toast';
 import { SeletorLegislacoes } from '@/components/legislacao/seletor-legislacoes';
 import { nomesLegislacoesDoItem } from '@/lib/legislacao/legislacoes-do-item';
@@ -586,7 +587,7 @@ export default function NovoTemplatePage() {
       pergunta: item.pergunta,
       categoria: item.categoria,
       criticidade: item.criticidade,
-      peso: item.tipoRespostaCustomizada === TipoRespostaCustomizada.TEXTO ? 0 : item.peso,
+      peso: tipoSemPontuacao(item.tipoRespostaCustomizada) ? 0 : item.peso,
       legislacaoIds: item.legislacoes?.map((l) => l.id) ?? [],
       referenciaAnterior: item.legislacoes?.length ? null : item.legislacaoReferencia ?? null,
       legislacaoAlterada: false,
@@ -610,7 +611,7 @@ export default function NovoTemplatePage() {
         pergunta: itemForm.pergunta,
         categoria: itemForm.categoria,
         criticidade: itemForm.criticidade,
-        peso: itemForm.tipoRespostaCustomizada === TipoRespostaCustomizada.TEXTO ? 0 : itemForm.peso,
+        peso: tipoSemPontuacao(itemForm.tipoRespostaCustomizada) ? 0 : itemForm.peso,
         ...(itemForm.legislacaoAlterada ? { legislacaoIds: itemForm.legislacaoIds ?? [] } : {}),
         obrigatorio: itemForm.obrigatorio,
         opcoesResposta: itemForm.usarRespostasPersonalizadas && !itemForm.tipoRespostaCustomizada ? itemForm.opcoesResposta : (itemForm.tipoRespostaCustomizada === TipoRespostaCustomizada.SELECT ? itemForm.opcoesResposta : undefined),
@@ -1304,7 +1305,7 @@ export default function NovoTemplatePage() {
                     ))}
                   </select>
                 </div>
-                {itemForm.tipoRespostaCustomizada !== TipoRespostaCustomizada.TEXTO && (
+                {!tipoSemPontuacao(itemForm.tipoRespostaCustomizada) && (
                   <div className="flex flex-col">
                     <label className="flex items-center justify-between gap-2 py-1">
                       <span className="font-medium text-foreground text-xs sm:text-sm flex items-center gap-1">
@@ -1374,7 +1375,7 @@ export default function NovoTemplatePage() {
                       ...itemForm,
                       tipoRespostaCustomizada: valor,
                       usarRespostasPersonalizadas: valor !== undefined,
-                      peso: valor === TipoRespostaCustomizada.TEXTO ? 0 : itemForm.peso,
+                      peso: tipoSemPontuacao(valor) ? 0 : itemForm.peso,
                     });
                   }}
                 >
@@ -1383,6 +1384,7 @@ export default function NovoTemplatePage() {
                   <option value={TipoRespostaCustomizada.NUMERO}>{TIPO_RESPOSTA_LABELS[TipoRespostaCustomizada.NUMERO]}</option>
                   <option value={TipoRespostaCustomizada.DATA}>{TIPO_RESPOSTA_LABELS[TipoRespostaCustomizada.DATA]}</option>
                   <option value={TipoRespostaCustomizada.SELECT}>{TIPO_RESPOSTA_LABELS[TipoRespostaCustomizada.SELECT]}</option>
+                  <option value={TipoRespostaCustomizada.ASSINATURA}>{TIPO_RESPOSTA_LABELS[TipoRespostaCustomizada.ASSINATURA]}</option>
                 </select>
                 <label className="flex items-center justify-between gap-2 py-0.5">
                   <span className="text-xs text-muted-foreground">
@@ -1390,6 +1392,7 @@ export default function NovoTemplatePage() {
                     {itemForm.tipoRespostaCustomizada === TipoRespostaCustomizada.TEXTO && 'Campo de texto livre (não pontua)'}
                     {itemForm.tipoRespostaCustomizada === TipoRespostaCustomizada.NUMERO && 'Campo numérico'}
                     {itemForm.tipoRespostaCustomizada === TipoRespostaCustomizada.DATA && 'Seletor de data'}
+                    {itemForm.tipoRespostaCustomizada === TipoRespostaCustomizada.ASSINATURA && 'Assinatura na tela com o dedo ou o mouse (não pontua)'}
                     {!itemForm.tipoRespostaCustomizada && 'Use botões de resposta padrão'}
                   </span>
                 </label>

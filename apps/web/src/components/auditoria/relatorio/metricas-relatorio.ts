@@ -1,5 +1,5 @@
 import { TipoRespostaCustomizada, type AuditoriaItem, type ResultadoAuditoria } from '@/lib/api';
-import { getPontuacaoMaximaItem, isOpcaoSemPontuacao } from '@/lib/checklist/pontuacao';
+import { getPontuacaoMaximaItem, isOpcaoSemPontuacao, tipoSemPontuacao } from '@/lib/checklist/pontuacao';
 import { ehNaoConformidade, ehRotuloNaoAplicavel, sentidoDaOpcao } from '@/lib/checklist/sentido';
 import { formatarPercentual } from './cartao-resultado.modelo';
 
@@ -42,7 +42,7 @@ function metricasDoGrupo(grupoId: string, itens: AuditoriaItem[]): GrupoMetricas
   const pontuaveis = itens.filter(
     (i) =>
       !isOpcaoSemPontuacao(i.resposta || '') &&
-      i.templateItem?.tipoRespostaCustomizada !== TipoRespostaCustomizada.TEXTO,
+      !tipoSemPontuacao(i.templateItem?.tipoRespostaCustomizada),
   );
   const pontuacaoPossivel = pontuaveis.reduce((acc, i) => acc + getPontuacaoMaximaItem(i.templateItem), 0);
   const pontuacaoObtida = pontuaveis.reduce((acc, i) => acc + Number(i.pontuacao || 0), 0);

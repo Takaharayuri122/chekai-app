@@ -75,6 +75,7 @@
 | Enviar relatório ao cliente por e-mail | ok | ok | - | Envio manual e automático ao finalizar; histórico de envios só no web |
 | Histórico por unidade | ok | ok | - | |
 | Respeitar permiteFoto/permiteObservacao na execução | ok | ok | pendente | Mobile: respeitar permiteFoto/permiteObservacao (texto nunca aceita foto) |
+| Resposta do tipo assinatura (assinar na tela) | ok | ok | pendente | Web funciona no navegador do celular; o app mobile ainda mostra a pergunta como campo de texto e a API recusa texto nesse tipo |
 
 ## Relatório Técnico
 
@@ -145,3 +146,4 @@
 | 2026-04-11 | Matriz inicial compilada a partir do código web, mobile e API |
 | 2026-10-25 | Legislação automática: gestão e seletor de legislações só na web; mobile mantém o texto de referência |
 | 2026-10-26 | Respostas configuráveis, faixas de classificação, cartão de resultado e envio do relatório: web e API prontos; mobile pendente |
+| 2026-10-27 | Resposta do tipo assinatura: web, API e PDF prontos; app mobile pendente |

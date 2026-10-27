@@ -80,6 +80,7 @@ import {
   TipoRespostaCustomizada,
   TIPO_RESPOSTA_LABELS,
 } from '@/lib/api';
+import { tipoSemPontuacao } from '@/lib/checklist/pontuacao';
 import { toastService } from '@/lib/toast';
 import { useAuthStore } from '@/lib/store';
 import { calcularPontuacoesEmSequencia, isOpcaoSemPontuacao } from '@/lib/utils';
@@ -634,7 +635,7 @@ export default function EditarTemplatePage() {
       pergunta: item.pergunta,
       categoria: item.categoria,
       criticidade: item.criticidade,
-      peso: item.tipoRespostaCustomizada === TipoRespostaCustomizada.TEXTO ? 0 : item.peso,
+      peso: tipoSemPontuacao(item.tipoRespostaCustomizada) ? 0 : item.peso,
       legislacaoIds: item.legislacoes?.map((l) => l.id) ?? [],
       referenciaAnterior: item.legislacoes?.length ? null : item.legislacaoReferencia ?? null,
       legislacaoAlterada: false,
@@ -646,7 +647,7 @@ export default function EditarTemplatePage() {
       opcoesRespostaConfig: configs,
       grupoId: item.grupoId,
       secao: item.secao || '',
-      permiteFoto: item.tipoRespostaCustomizada === TipoRespostaCustomizada.TEXTO ? false : item.permiteFoto ?? true,
+      permiteFoto: tipoSemPontuacao(item.tipoRespostaCustomizada) ? false : item.permiteFoto ?? true,
       permiteObservacao: item.permiteObservacao ?? true,
     });
     setShowItemModal(true);
@@ -660,7 +661,7 @@ export default function EditarTemplatePage() {
         pergunta: itemForm.pergunta,
         categoria: itemForm.categoria,
         criticidade: itemForm.criticidade,
-        peso: itemForm.tipoRespostaCustomizada === TipoRespostaCustomizada.TEXTO ? 0 : itemForm.peso,
+        peso: tipoSemPontuacao(itemForm.tipoRespostaCustomizada) ? 0 : itemForm.peso,
         ...(itemForm.legislacaoAlterada ? { legislacaoIds: itemForm.legislacaoIds ?? [] } : {}),
         obrigatorio: itemForm.obrigatorio,
         opcoesResposta: itemForm.usarRespostasPersonalizadas && !itemForm.tipoRespostaCustomizada ? itemForm.opcoesResposta : (itemForm.tipoRespostaCustomizada === TipoRespostaCustomizada.SELECT ? itemForm.opcoesResposta : undefined),
@@ -669,7 +670,7 @@ export default function EditarTemplatePage() {
         opcoesRespostaConfig: itemForm.opcoesRespostaConfig,
         grupoId: itemForm.grupoId || undefined,
         secao: itemForm.secao || undefined,
-        permiteFoto: itemForm.tipoRespostaCustomizada === TipoRespostaCustomizada.TEXTO ? false : itemForm.permiteFoto,
+        permiteFoto: tipoSemPontuacao(itemForm.tipoRespostaCustomizada) ? false : itemForm.permiteFoto,
         permiteObservacao: itemForm.permiteObservacao,
       };
       if (editingItem) {
@@ -1570,7 +1571,7 @@ export default function EditarTemplatePage() {
                     ))}
                   </select>
                 </div>
-                {itemForm.tipoRespostaCustomizada !== TipoRespostaCustomizada.TEXTO && (
+                {!tipoSemPontuacao(itemForm.tipoRespostaCustomizada) && (
                   <div className="flex flex-col">
                     <label className="flex items-center justify-between gap-2 py-1">
                       <span className="font-medium text-foreground text-xs sm:text-sm flex items-center gap-1">
@@ -1616,14 +1617,14 @@ export default function EditarTemplatePage() {
                     </span>
                     <Switch
                       checked={itemForm.permiteFoto ?? true}
-                      disabled={itemForm.tipoRespostaCustomizada === TipoRespostaCustomizada.TEXTO}
+                      disabled={tipoSemPontuacao(itemForm.tipoRespostaCustomizada)}
                       onCheckedChange={(v) => setItemForm({ ...itemForm, permiteFoto: v })}
                     />
                   </label>
-                  {itemForm.tipoRespostaCustomizada === TipoRespostaCustomizada.TEXTO && (
+                  {tipoSemPontuacao(itemForm.tipoRespostaCustomizada) && (
                     <p className="flex items-center gap-1 text-xs text-muted-foreground">
                       <Lock className="h-3 w-3 shrink-0" aria-hidden />
-                      Desativado: respostas em texto não recebem fotos
+                      Desativado: respostas em texto ou assinatura não recebem fotos
                     </p>
                   )}
                 </div>
@@ -1676,11 +1677,11 @@ export default function EditarTemplatePage() {
                       tipoRespostaCustomizada: valor,
                       usarRespostasPersonalizadas: valor !== undefined,
                       peso: pesoAoTrocarTipo(itemForm.tipoRespostaCustomizada, valor, itemForm.peso),
-                      // Texto não recebe fotos; ao sair de texto, as fotos voltam a ser permitidas
+                      // Texto e assinatura não recebem fotos; ao sair deles, as fotos voltam a ser permitidas
                       permiteFoto:
-                        valor === TipoRespostaCustomizada.TEXTO
+                        tipoSemPontuacao(valor)
                           ? false
-                          : itemForm.tipoRespostaCustomizada === TipoRespostaCustomizada.TEXTO
+                          : tipoSemPontuacao(itemForm.tipoRespostaCustomizada)
                             ? true
                             : itemForm.permiteFoto,
                     });
@@ -1691,6 +1692,7 @@ export default function EditarTemplatePage() {
                   <option value={TipoRespostaCustomizada.NUMERO}>{TIPO_RESPOSTA_LABELS[TipoRespostaCustomizada.NUMERO]}</option>
                   <option value={TipoRespostaCustomizada.DATA}>{TIPO_RESPOSTA_LABELS[TipoRespostaCustomizada.DATA]}</option>
                   <option value={TipoRespostaCustomizada.SELECT}>{TIPO_RESPOSTA_LABELS[TipoRespostaCustomizada.SELECT]}</option>
+                  <option value={TipoRespostaCustomizada.ASSINATURA}>{TIPO_RESPOSTA_LABELS[TipoRespostaCustomizada.ASSINATURA]}</option>
                 </select>
                 <label className="flex items-center justify-between gap-2 py-0.5">
                   <span className="text-xs text-muted-foreground">
@@ -1698,6 +1700,7 @@ export default function EditarTemplatePage() {
                     {itemForm.tipoRespostaCustomizada === TipoRespostaCustomizada.TEXTO && 'Campo de texto livre'}
                     {itemForm.tipoRespostaCustomizada === TipoRespostaCustomizada.NUMERO && 'Campo numérico'}
                     {itemForm.tipoRespostaCustomizada === TipoRespostaCustomizada.DATA && 'Seletor de data'}
+                    {itemForm.tipoRespostaCustomizada === TipoRespostaCustomizada.ASSINATURA && 'Assinatura na tela com o dedo ou o mouse (não pontua)'}
                     {!itemForm.tipoRespostaCustomizada && 'Use botões de resposta padrão'}
                   </span>
                 </label>

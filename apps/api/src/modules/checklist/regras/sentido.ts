@@ -9,6 +9,7 @@ const TIPOS_SEM_SENTIDO = [
   TipoRespostaCustomizada.TEXTO,
   TipoRespostaCustomizada.NUMERO,
   TipoRespostaCustomizada.DATA,
+  TipoRespostaCustomizada.ASSINATURA,
 ];
 
 function neutraPorPadraoOuRotulo(valor: string): boolean {
