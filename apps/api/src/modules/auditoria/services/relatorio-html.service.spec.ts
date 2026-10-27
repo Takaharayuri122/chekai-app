@@ -227,6 +227,28 @@ describe('RelatorioHtmlService - ícone da resposta', () => {
   });
 });
 
+describe('RelatorioHtmlService - assinatura', () => {
+  const PNG = 'data:image/png;base64,iVBORw0KGgo=';
+
+  it('mostra a imagem da assinatura e "Assinado"', () => {
+    const html = new RelatorioHtmlService().gerarHtml(
+      auditoriaCom(PNG, [], { tipoRespostaCustomizada: 'assinatura' }),
+      resultadoBase(),
+    );
+    expect(html).toContain(`<img class="assinatura-imagem" src="${PNG}" alt="Assinatura" />`);
+    expect(html).toContain('>Assinado</span>');
+  });
+
+  it('não vira imagem se o valor não for PNG', () => {
+    const html = new RelatorioHtmlService().gerarHtml(
+      auditoriaCom('"><script>x</script>', [], { tipoRespostaCustomizada: 'assinatura' }),
+      resultadoBase(),
+    );
+    expect(html).not.toContain('class="assinatura-imagem"');
+    expect(html).not.toContain('<script>x');
+  });
+});
+
 describe('RelatorioHtmlService - numeração', () => {
   it('numera os grupos pela ordem e as perguntas pela ordem dentro do grupo', () => {
     const item = (pergunta: string, grupoId: string, nome: string, ordemGrupo: number, ordem: number) => ({

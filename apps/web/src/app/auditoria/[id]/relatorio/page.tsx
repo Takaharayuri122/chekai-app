@@ -37,7 +37,7 @@ import { EnviosRelatorio } from '@/components/auditoria/relatorio/envios-relator
 import { toastService } from '@/lib/toast';
 import { formatarPercentual } from '@/components/auditoria/relatorio/cartao-resultado.modelo';
 import { formatarAproveitamentoGrupo, numeroDaPergunta, rotuloDoGrupo, metricasDoRelatorio } from '@/components/auditoria/relatorio/metricas-relatorio';
-import { CLASSE_GLIFO_POR_TOM, CLASSE_ITEM_POR_TOM, visualDaResposta } from '@/components/auditoria/relatorio/visual-resposta';
+import { CLASSE_GLIFO_POR_TOM, CLASSE_ITEM_POR_TOM, visualDaResposta, imagemDaAssinatura } from '@/components/auditoria/relatorio/visual-resposta';
 
 const RespostaItem = {
   CONFORME: 'conforme',
@@ -428,7 +428,9 @@ export default function RelatorioPage() {
                               <div>
                                 <span className="font-medium text-gray-700">Resposta: </span>
                                 <span>
-                                  {resposta === RespostaItem.CONFORME
+                                  {imagemDaAssinatura(item) ? (
+                                    <img src={imagemDaAssinatura(item)!} alt="Assinatura" className="mt-1 block h-16 max-w-[240px] object-contain" />
+                                  ) : resposta === RespostaItem.CONFORME
                                     ? 'Conforme'
                                     : resposta === RespostaItem.NAO_CONFORME
                                       ? 'Não Conforme'
@@ -884,7 +886,9 @@ export default function RelatorioPage() {
                                   Resposta:
                                 </span>{' '}
                                 <span className="text-xs sm:text-sm">
-                                  {resposta === RespostaItem.CONFORME
+                                  {imagemDaAssinatura(item) ? (
+                                    <img src={imagemDaAssinatura(item)!} alt="Assinatura" className="mt-1 block h-16 max-w-[240px] object-contain" />
+                                  ) : resposta === RespostaItem.CONFORME
                                     ? 'Sim'
                                     : resposta === RespostaItem.NAO_CONFORME
                                       ? 'Não'

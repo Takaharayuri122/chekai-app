@@ -24,9 +24,11 @@ import { ChecklistService } from '../checklist/checklist.service';
 import {
   calcularNotaDaAuditoria,
   calcularPontuacaoOpcao,
+  ehImagemDeAssinatura,
   ehNaoConformidade,
   getPontuacaoMaximaItem,
   isOpcaoSemPontuacao,
+  tipoSemPontuacao,
 } from '../checklist/regras';
 import { PerfilUsuario } from '../usuario/entities/usuario.entity';
 import {
@@ -286,6 +288,10 @@ export class AuditoriaService {
         if (isNaN(data.getTime())) {
           throw new BadRequestException('Resposta deve ser uma data válida');
         }
+      } else if (templateItem.tipoRespostaCustomizada === TipoRespostaCustomizada.ASSINATURA) {
+        if (!ehImagemDeAssinatura(dto.resposta)) {
+          throw new BadRequestException('A assinatura deve ser uma imagem PNG de até 400 KB');
+        }
       } else if (templateItem.tipoRespostaCustomizada === 'select') {
         // Para 'select', validar que a resposta está nas opções disponíveis
         if (!templateItem.opcoesResposta || templateItem.opcoesResposta.length === 0) {
@@ -363,7 +369,7 @@ export class AuditoriaService {
     // RN-FOT-005: aceita a foto (apps antigos), mas registra aviso.
     if (
       item.templateItem?.permiteFoto === false ||
-      item.templateItem?.tipoRespostaCustomizada === TipoRespostaCustomizada.TEXTO
+      tipoSemPontuacao(item.templateItem?.tipoRespostaCustomizada)
     ) {
       this.logger.warn(
         `Foto recebida em item sem permissão de foto (auditoria ${auditoriaId}, item ${itemId})`,

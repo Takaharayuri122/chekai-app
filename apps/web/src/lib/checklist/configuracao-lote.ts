@@ -9,6 +9,7 @@ import {
   type TemplateItem,
   type TipoRespostaLote,
 } from '../api';
+import { tipoSemPontuacao } from './pontuacao';
 
 export type SecaoLote =
   | 'tipoResposta'
@@ -211,8 +212,8 @@ export function pesoAoTrocarTipo(
   novo: TipoRespostaCustomizada | undefined,
   peso: number | undefined,
 ): number | undefined {
-  if (novo === TipoRespostaCustomizada.TEXTO) return 0;
-  if (anterior === TipoRespostaCustomizada.TEXTO && peso === 0) return 1;
+  if (tipoSemPontuacao(novo)) return 0;
+  if (tipoSemPontuacao(anterior) && peso === 0) return 1;
   return peso;
 }
 

@@ -46,6 +46,8 @@ export enum TipoRespostaCustomizada {
   NUMERO = 'numero',
   DATA = 'data',
   SELECT = 'select',
+  /** Assinatura desenhada na tela; a resposta é a imagem PNG (data URL). */
+  ASSINATURA = 'assinatura',
 }
 
 /**
