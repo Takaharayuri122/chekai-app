@@ -69,6 +69,8 @@ export type TipoRespostaLote = 'padrao' | 'personalizada' | 'texto' | 'numero' |
 export interface OpcaoLote {
   valor: string;
   pontuacao?: number | null;
+  sentido?: 'positiva' | 'negativa' | 'neutra' | null;
+  icone?: string | null;
   fotoObrigatoria: boolean;
   observacaoObrigatoria: boolean;
 }

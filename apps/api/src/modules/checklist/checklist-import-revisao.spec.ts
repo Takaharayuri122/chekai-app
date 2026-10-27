@@ -3,15 +3,12 @@ import { RESPOSTAS_PADRAO_VALORES } from './checklist-regras';
 import { PerguntaImportada } from './dto/importar-checklist.dto';
 import { CategoriaItem, CriticidadeItem, TemplateItem } from './entities/template-item.entity';
 import { configuracaoParaItem } from './checklist-import-mapeamento';
-import { AuditoriaService } from '../auditoria/auditoria.service';
+import { calcularPontuacaoOpcao } from './regras';
 
 /** Mesma regra de pontuação da auditoria, aplicada ao item como ele volta do banco (JSON). */
 function pontuar(item: Partial<TemplateItem>, valor: string): number {
   const salvo = JSON.parse(JSON.stringify(item)) as TemplateItem;
-  const proto = AuditoriaService.prototype as unknown as {
-    calcularPontuacaoOpcao: (i: TemplateItem, v: string) => number;
-  };
-  return proto.calcularPontuacaoOpcao.call(proto, salvo, valor);
+  return calcularPontuacaoOpcao(salvo, valor);
 }
 
 function pergunta(chave: string, texto: string, parcial: Partial<PerguntaImportada> = {}): PerguntaImportada {
@@ -160,6 +157,27 @@ describe('checklist-import-revisao', () => {
         expect(r.sugestoes[0].configuracaoSugerida.opcoes).toEqual([]);
       }
     });
+  });
+
+  it('opção da IA preserva sentido válido e descarta valor desconhecido', () => {
+    const base = { fotoObrigatoria: false, observacaoObrigatoria: false };
+    const r = interpretarRespostaIa(
+      resposta([
+        {
+          chave: 'l1',
+          tipoResposta: 'personalizada',
+          opcoes: [
+            { valor: 'Sim', sentido: 'positiva', ...base },
+            { valor: 'Talvez', sentido: 'neutra', ...base },
+            { valor: 'Não', sentido: 'ruim', ...base },
+          ],
+        },
+      ]),
+      originais,
+    );
+    const opcoes = r.sugestoes[0].configuracaoSugerida.opcoes;
+    expect(opcoes.map((o) => o.sentido)).toEqual(['positiva', 'neutra', undefined]);
+    expect('sentido' in opcoes[2]).toBe(false);
   });
 
   it('opção da IA sem pontuação fica sem pontuação explícita (não null)', () => {

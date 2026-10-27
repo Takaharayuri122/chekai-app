@@ -25,7 +25,7 @@ function item(parcial: {
   grupo?: { id: string; nome: string; ordem: number } | null;
   secao?: string;
   opcoes?: string[];
-  configs?: { valor: string; pontuacao?: number | null }[];
+  configs?: { valor: string; pontuacao?: number | null; sentido?: 'positiva' | 'negativa' | 'neutra' }[];
   tipoCustom?: string;
 }): AuditoriaItem {
   seq += 1;
@@ -75,6 +75,18 @@ describe('estaRespondido / statusItem', () => {
     expect(statusItem(item({ resposta: 'Bom', opcoes, configs }))).toBe('conforme');
     expect(statusItem(item({ resposta: 'Regular', opcoes, configs }))).toBe('neutro');
     expect(statusItem(item({ resposta: 'Ruim', opcoes, configs }))).toBe('nao_conforme');
+  });
+  it('opção personalizada "Não" sem pontuação conta como não conformidade pelo sentido deduzido', () => {
+    const opcoes = ['Sim', 'Não'];
+    expect(statusItem(item({ resposta: 'Sim', opcoes }))).toBe('conforme');
+    expect(statusItem(item({ resposta: 'Não', opcoes }))).toBe('nao_conforme');
+    expect(naoConformidades([item({ resposta: 'Não', opcoes }), item({ resposta: 'Sim', opcoes })])).toHaveLength(1);
+  });
+  it('sentido gravado prevalece sobre a pontuação', () => {
+    const opcoes = ['Sim', 'Não'];
+    const configs = [{ valor: 'Sim', pontuacao: 1, sentido: 'negativa' as const }, { valor: 'Não', pontuacao: 0, sentido: 'positiva' as const }];
+    expect(statusItem(item({ resposta: 'Sim', opcoes, configs }))).toBe('nao_conforme');
+    expect(statusItem(item({ resposta: 'Não', opcoes, configs }))).toBe('conforme');
   });
   it('campo customizado preenchido é respondido', () => {
     expect(statusItem(item({ resposta: '12', tipoCustom: 'numero' }))).toBe('respondido');

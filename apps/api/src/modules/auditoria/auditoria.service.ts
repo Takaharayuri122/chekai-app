@@ -21,6 +21,7 @@ import { LegislacaoVinculoService } from '../legislacao/legislacao-vinculo.servi
 import { validarLegislacaoIds } from '../legislacao/lib/validar-legislacao-ids';
 import { resumirLegislacoes } from '../legislacao/lib/resumo-legislacao';
 import { ChecklistService } from '../checklist/checklist.service';
+import { calcularPontuacaoOpcao, ehNaoConformidade, getPontuacaoMaximaItem, isOpcaoSemPontuacao } from '../checklist/regras';
 import { PerfilUsuario } from '../usuario/entities/usuario.entity';
 import {
   IniciarAuditoriaDto,
@@ -155,6 +156,7 @@ export class AuditoriaService {
   async listarHistoricoPorUnidade(
     unidadeId: string,
     usuarioAutenticado: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
+    templateId?: string,
   ): Promise<Auditoria[]> {
     const queryBuilder = this.auditoriaRepository
       .createQueryBuilder('auditoria')
@@ -162,6 +164,9 @@ export class AuditoriaService {
       .leftJoinAndSelect('auditoria.consultor', 'consultor')
       .where('auditoria.unidadeId = :unidadeId', { unidadeId })
       .andWhere('auditoria.status = :status', { status: StatusAuditoria.FINALIZADA });
+    if (templateId) {
+      queryBuilder.andWhere('auditoria.templateId = :templateId', { templateId });
+    }
     if (usuarioAutenticado.perfil === PerfilUsuario.MASTER || usuarioAutenticado.perfil === PerfilUsuario.GESTOR) {
       queryBuilder.andWhere(
         '(auditoria.consultorId = :userId OR consultor.gestorId = :userId)',
@@ -315,7 +320,7 @@ export class AuditoriaService {
     } else {
       item.referenciaLegal = dto.referenciaLegal ?? item.referenciaLegal;
     }
-    item.pontuacao = this.calcularPontuacaoOpcao(templateItem, dto.resposta);
+    item.pontuacao = calcularPontuacaoOpcao(templateItem, dto.resposta);
     const salvo = await this.itemRepository.save(item);
     resumirLegislacoes([salvo]);
     return salvo;
@@ -406,54 +411,6 @@ export class AuditoriaService {
   }
 
   /**
-   * Calcula a pontuação de uma opção de resposta: usa valor explícito da config quando existir,
-   * senão usa o algoritmo sequencial (base da primeira opção menos o índice).
-   */
-  private isOpcaoSemPontuacao(valor: string): boolean {
-    return ['nao_aplicavel', 'nao_avaliado'].includes(valor.toLowerCase());
-  }
-
-  private calcularPontuacaoOpcao(templateItem: TemplateItem | null | undefined, valorResposta: string): number {
-    if (!templateItem) return 0;
-    if (templateItem.tipoRespostaCustomizada === TipoRespostaCustomizada.TEXTO) return 0;
-    if (this.isOpcaoSemPontuacao(valorResposta)) return 0;
-    const configs = templateItem.opcoesRespostaConfig || [];
-    const configOpcao = configs.find((c) => c.valor === valorResposta);
-    if (configOpcao?.pontuacao != null && typeof configOpcao.pontuacao === 'number') {
-      return configOpcao.pontuacao;
-    }
-    if (configOpcao && configOpcao.pontuacao === null) return 0;
-    const opcoesOrdenadas = templateItem.usarRespostasPersonalizadas && templateItem.opcoesResposta?.length
-      ? templateItem.opcoesResposta
-      : ['conforme', 'nao_conforme', 'nao_aplicavel', 'nao_avaliado'];
-    const opcoesPontuaveis = opcoesOrdenadas.filter((op) => !this.isOpcaoSemPontuacao(op));
-    const indice = opcoesPontuaveis.indexOf(valorResposta);
-    const configPrimeira = configs.find((c) => c.valor === opcoesPontuaveis[0]);
-    const base = configPrimeira?.pontuacao != null && typeof configPrimeira.pontuacao === 'number'
-      ? configPrimeira.pontuacao
-      : 1;
-    return indice >= 0 ? base - indice : 0;
-  }
-
-  /**
-   * Retorna a pontuação máxima possível para um item: máximo entre as pontuações
-   * de cada opção pontuável, usando a mesma regra de cálculo.
-   */
-  private getPontuacaoMaximaItem(templateItem: TemplateItem | null | undefined): number {
-    if (!templateItem) return 0;
-    if (templateItem.tipoRespostaCustomizada === TipoRespostaCustomizada.TEXTO) return 0;
-    const opcoesOrdenadas = templateItem.usarRespostasPersonalizadas && templateItem.opcoesResposta?.length
-      ? templateItem.opcoesResposta
-      : ['conforme', 'nao_conforme', 'nao_aplicavel', 'nao_avaliado'];
-    const opcoesPontuaveis = opcoesOrdenadas.filter((op) => !this.isOpcaoSemPontuacao(op));
-    if (opcoesPontuaveis.length === 0) return 0;
-    const pontuacoes = opcoesPontuaveis.map((valor) =>
-      this.calcularPontuacaoOpcao(templateItem, valor),
-    );
-    return Math.max(...pontuacoes);
-  }
-
-  /**
    * Finaliza uma auditoria.
    */
   async finalizarAuditoria(
@@ -477,14 +434,14 @@ export class AuditoriaService {
       );
     }
     const itensPontuaveis = auditoria.itens.filter(
-      (item) => !this.isOpcaoSemPontuacao(item.resposta || ''),
+      (item) => !isOpcaoSemPontuacao(item.resposta || ''),
     );
     const pontuacaoObtida = itensPontuaveis.reduce(
       (acc, item) => acc + item.pontuacao,
       0,
     );
     const pontuacaoMaxima = itensPontuaveis.reduce(
-      (acc, item) => acc + this.getPontuacaoMaximaItem(item.templateItem),
+      (acc, item) => acc + getPontuacaoMaximaItem(item.templateItem),
       0,
     );
     const pontuacaoPercentual =
@@ -555,10 +512,11 @@ export class AuditoriaService {
     usuarioAutenticado?: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
   ): Promise<AuditoriaItem[]> {
     await this.buscarAuditoriaPorId(auditoriaId, usuarioAutenticado);
-    return this.itemRepository.find({
-      where: { auditoriaId, resposta: RespostaItem.NAO_CONFORME },
+    const itens = await this.itemRepository.find({
+      where: { auditoriaId },
       relations: ['templateItem', 'fotos'],
     });
+    return itens.filter((item) => ehNaoConformidade(item.templateItem, item.resposta));
   }
 
   /**
@@ -642,15 +600,15 @@ export class AuditoriaService {
         const primeiroItem = itens[0];
         const grupoNome = primeiroItem.templateItem?.grupo?.nome || 'Sem Grupo';
         const itensPontuaveisGrupo = itens.filter(
-          (item) => !this.isOpcaoSemPontuacao(item.resposta || ''),
+          (item) => !isOpcaoSemPontuacao(item.resposta || ''),
         );
         const pontuacaoPossivel = itensPontuaveisGrupo.reduce(
-          (acc, item) => acc + this.getPontuacaoMaximaItem(item.templateItem),
+          (acc, item) => acc + getPontuacaoMaximaItem(item.templateItem),
           0,
         );
         const pontuacaoObtida = itensPontuaveisGrupo.reduce((acc, item) => acc + item.pontuacao, 0);
-        const naoConformidades = itens.filter(
-          (item) => item.resposta === RespostaItem.NAO_CONFORME,
+        const naoConformidades = itens.filter((item) =>
+          ehNaoConformidade(item.templateItem, item.resposta),
         ).length;
         return {
           nome: grupoNome,
@@ -660,6 +618,7 @@ export class AuditoriaService {
           itens: itens.map((item) => ({
             pergunta: item.templateItem?.pergunta || '',
             resposta: item.resposta,
+            naoConforme: ehNaoConformidade(item.templateItem, item.resposta),
             observacao: item.observacao,
             descricaoNaoConformidade: item.descricaoNaoConformidade,
             descricaoIa: item.descricaoIa,
@@ -671,7 +630,7 @@ export class AuditoriaService {
       this.logger.log(`[gerarResumoExecutivo] Processados ${grupos.length} grupos`);
       
       const itensNaoConformes = auditoria.itens
-        .filter((item) => item.resposta === RespostaItem.NAO_CONFORME)
+        .filter((item) => ehNaoConformidade(item.templateItem, item.resposta))
         .map((item) => ({
           pergunta: item.templateItem?.pergunta || '',
           observacao: item.observacao,
@@ -716,10 +675,13 @@ export class AuditoriaService {
    * Atualiza a URL do PDF gerado na auditoria.
    */
   async atualizarPdfUrl(auditoriaId: string, pdfUrl: string): Promise<void> {
-    await this.auditoriaRepository.update(auditoriaId, {
-      pdfUrl,
-      pdfGeradoEm: new Date(),
-    });
+    // Mesmo relógio do banco para pdf_gerado_em e atualizado_em: o PDF recém-gerado não nasce "desatualizado"
+    await this.auditoriaRepository
+      .createQueryBuilder()
+      .update(Auditoria)
+      .set({ pdfUrl, pdfGeradoEm: () => 'CURRENT_TIMESTAMP' })
+      .where('id = :id', { id: auditoriaId })
+      .execute();
   }
 
   private async validarVinculoAuditorCliente(unidadeId: string, auditorId: string): Promise<void> {

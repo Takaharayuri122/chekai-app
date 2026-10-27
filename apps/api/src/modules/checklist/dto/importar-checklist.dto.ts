@@ -104,6 +104,8 @@ export interface ConfiguracaoPerguntaImportada {
   opcoes: {
     valor: string;
     pontuacao?: number | null;
+    sentido?: 'positiva' | 'negativa' | 'neutra' | null;
+    icone?: string | null;
     fotoObrigatoria: boolean;
     observacaoObrigatoria: boolean;
   }[];

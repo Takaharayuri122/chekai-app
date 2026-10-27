@@ -253,6 +253,8 @@ export function opcoesComuns(itens: TemplateItem[]): OpcaoLote[] | null {
       observacaoObrigatoria: c?.observacaoObrigatoria ?? false,
     };
     if (c && c.pontuacao !== undefined) opcao.pontuacao = c.pontuacao;
+    if (c?.sentido) opcao.sentido = c.sentido;
+    if (c?.icone) opcao.icone = c.icone;
     return opcao;
   });
 }

@@ -3,8 +3,12 @@ import { abrirPdfBlobEmNovaAba, type ResultadoAberturaPdf } from './pdf-abertura
 import { toastService } from './toast';
 import type { ModeloSecao } from './relatorio-tecnico/modelo-secoes';
 import { erroTratadoNasTelasDeLegislacao } from './legislacao/leitura';
+import type { SentidoResposta } from './checklist/sentido';
+import type { FaixaClassificacao } from './checklist/faixas';
 
 export type { ResultadoAberturaPdf } from './pdf-abertura';
+export type { SentidoResposta } from './checklist/sentido';
+export type { FaixaClassificacao } from './checklist/faixas';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 
@@ -621,6 +625,8 @@ export interface ChecklistTemplate {
   status: StatusTemplate;
   itens: TemplateItem[];
   grupos: ChecklistGrupo[];
+  faixasClassificacao?: FaixaClassificacao[] | null;
+  enviarRelatorioAoFinalizar?: boolean;
   criadoEm: string;
   atualizadoEm: string;
 }
@@ -691,6 +697,8 @@ export interface OpcaoRespostaConfig {
   fotoObrigatoria: boolean;
   observacaoObrigatoria: boolean;
   pontuacao?: number | null;
+  sentido?: SentidoResposta;
+  icone?: string;
 }
 
 export interface CriarTemplateItemRequest {
@@ -739,6 +747,9 @@ export interface OpcaoLote {
   /** Valor da opção antes da edição (ausente = opção nova); usado para atualizar respostas já dadas. */
   valorOriginal?: string;
   pontuacao?: number | null;
+  /** Sentido escolhido pelo gestor; ausente = deduzido da pontuação. */
+  sentido?: SentidoResposta | null;
+  icone?: string | null;
   fotoObrigatoria: boolean;
   observacaoObrigatoria: boolean;
 }
@@ -859,6 +870,9 @@ export interface CriarTemplateRequest {
   tipoAtividade?: TipoAtividade;
   versao?: string;
   itens?: CriarTemplateItemRequest[];
+  /** null volta às faixas padrão; omitido mantém as atuais. */
+  faixasClassificacao?: FaixaClassificacao[] | null;
+  enviarRelatorioAoFinalizar?: boolean;
 }
 
 export const checklistService = {
@@ -1017,6 +1031,45 @@ export interface AuditoriaHistoricoItem {
   template?: { nome?: string };
 }
 
+export interface ResultadoGrupo {
+  grupoId: string;
+  nome: string;
+  aproveitamento: number | null;
+  pontosPossiveis: number;
+  pontosRealizados: number;
+  naoAplicaveis: number;
+  naoConformidades: number;
+  naoRespondidas: number;
+}
+
+export interface ResultadoAuditoria {
+  aproveitamento: number;
+  classificacao: { nome: string; cor: string | null; emoji: string | null };
+  faixas: FaixaClassificacao[];
+  tendencia: 'subiu' | 'caiu' | 'igual' | null;
+  anteriores: { id: string; dataFim: string; aproveitamento: number }[];
+  contadores: {
+    pontosPossiveis: number;
+    pontosRealizados: number;
+    naoConformidades: number;
+    fotos: number;
+    planosAcao: number;
+  };
+  grupos: ResultadoGrupo[];
+}
+
+export interface AuditoriaEnvioRelatorio {
+  id: string;
+  auditoriaId: string;
+  destinatarios: string[];
+  /** true quando disparado ao finalizar; false quando enviado manualmente */
+  automatico: boolean;
+  enviadoPorId: string | null;
+  sucesso: boolean;
+  erro: string | null;
+  criadoEm: string;
+}
+
 export interface AuditoriaItem {
   pontuacao?: number;
   id: string;
@@ -1048,8 +1101,24 @@ export const auditoriaService = {
     return response.data.data;
   },
 
-  async listarHistoricoUnidade(unidadeId: string): Promise<AuditoriaHistoricoItem[]> {
-    const response = await api.get(`/auditorias/historico-unidade/${unidadeId}`);
+  async listarHistoricoUnidade(unidadeId: string, templateId?: string): Promise<AuditoriaHistoricoItem[]> {
+    const response = await api.get(`/auditorias/historico-unidade/${unidadeId}`, { params: { templateId } });
+    const raw = response.data?.data ?? response.data;
+    return Array.isArray(raw) ? raw : [];
+  },
+
+  async obterResultado(id: string): Promise<ResultadoAuditoria> {
+    const response = await api.get(`/auditorias/${id}/resultado`);
+    return response.data.data;
+  },
+
+  async enviarRelatorio(id: string, destinatarios?: string[]): Promise<AuditoriaEnvioRelatorio> {
+    const response = await api.post(`/auditorias/${id}/enviar-relatorio`, { destinatarios });
+    return response.data.data;
+  },
+
+  async listarEnviosRelatorio(id: string): Promise<AuditoriaEnvioRelatorio[]> {
+    const response = await api.get(`/auditorias/${id}/envios-relatorio`);
     const raw = response.data?.data ?? response.data;
     return Array.isArray(raw) ? raw : [];
   },

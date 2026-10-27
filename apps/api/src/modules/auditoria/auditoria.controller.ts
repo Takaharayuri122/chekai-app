@@ -13,6 +13,7 @@ import {
   UseInterceptors,
   UploadedFile,
   BadRequestException,
+  Logger,
   Res,
 } from '@nestjs/common';
 import { Response } from 'express';
@@ -25,12 +26,14 @@ import {
   ApiConsumes,
   ApiBody,
 } from '@nestjs/swagger';
-import { ConfigService } from '@nestjs/config';
 import { AuditoriaService } from './auditoria.service';
-import { RelatorioPdfPuppeteerService } from './services/relatorio-pdf-puppeteer.service';
+import { EnvioRelatorioService } from './services/envio-relatorio.service';
+import { EnviarRelatorioDto } from './dto/enviar-relatorio.dto';
+import { AuditoriaEnvioRelatorio } from './entities/auditoria-envio-relatorio.entity';
+import { RelatorioAuditoriaPdfService } from './services/relatorio-auditoria-pdf.service';
+import { ResultadoAuditoriaService, ResultadoAuditoria } from './services/resultado-auditoria.service';
 import { ComprimirImagemService } from './services/comprimir-imagem.service';
 import { ExtrairExifService } from './services/extrair-exif.service';
-import { SupabaseService } from '../supabase/supabase.service';
 import {
   IniciarAuditoriaDto,
   ResponderItemDto,
@@ -41,7 +44,7 @@ import { RolesGuard } from '../../core/guards/roles.guard';
 import { Roles } from '../../core/decorators/roles.decorator';
 import { CurrentUser } from '../../core/decorators/current-user.decorator';
 import { PerfilUsuario } from '../usuario/entities/usuario.entity';
-import { Auditoria } from './entities/auditoria.entity';
+import { Auditoria, StatusAuditoria } from './entities/auditoria.entity';
 import { AuditoriaItem } from './entities/auditoria-item.entity';
 import { PaginatedResult } from '../../shared/types/pagination.interface';
 
@@ -53,20 +56,16 @@ import { PaginatedResult } from '../../shared/types/pagination.interface';
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class AuditoriaController {
-  private readonly bucketName: string;
+  private readonly logger = new Logger(AuditoriaController.name);
 
   constructor(
     private readonly auditoriaService: AuditoriaService,
-    private readonly relatorioPdfPuppeteerService: RelatorioPdfPuppeteerService,
+    private readonly envioRelatorioService: EnvioRelatorioService,
+    private readonly relatorioAuditoriaPdfService: RelatorioAuditoriaPdfService,
+    private readonly resultadoAuditoriaService: ResultadoAuditoriaService,
     private readonly comprimirImagemService: ComprimirImagemService,
     private readonly extrairExifService: ExtrairExifService,
-    private readonly supabaseService: SupabaseService,
-    private readonly configService: ConfigService,
-  ) {
-    this.bucketName =
-      this.configService.get<string>('SUPABASE_STORAGE_BUCKET_RELATORIOS') ||
-      'relatorios';
-  }
+  ) {}
 
   @Post()
   @UseGuards(RolesGuard)
@@ -106,8 +105,9 @@ export class AuditoriaController {
   async listarHistoricoUnidade(
     @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; gestorId?: string },
     @Param('unidadeId', ParseUUIDPipe) unidadeId: string,
+    @Query('templateId', new ParseUUIDPipe({ optional: true })) templateId?: string,
   ): Promise<Auditoria[]> {
-    return this.auditoriaService.listarHistoricoPorUnidade(unidadeId, usuario);
+    return this.auditoriaService.listarHistoricoPorUnidade(unidadeId, usuario, templateId);
   }
 
   @Put(':id/itens/:itemId')
@@ -207,7 +207,41 @@ export class AuditoriaController {
     @Body() dto: FinalizarAuditoriaDto,
     @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; gestorId?: string },
   ): Promise<Auditoria> {
-    return this.auditoriaService.finalizarAuditoria(id, dto, usuario);
+    const auditoria = await this.auditoriaService.finalizarAuditoria(id, dto, usuario);
+    // Envio automático em segundo plano: não atrasa nem derruba a resposta da finalização.
+    if (auditoria.template?.enviarRelatorioAoFinalizar) {
+      void this.envioRelatorioService
+        .enviar(auditoria.id, { automatico: true })
+        .catch((e) => this.logger.error(`Falha no envio automático do relatório da auditoria ${auditoria.id}`, e instanceof Error ? e.stack : String(e)));
+    }
+    return auditoria;
+  }
+
+  @Post(':id/enviar-relatorio')
+  @ApiOperation({ summary: 'Envia o relatório da auditoria finalizada por e-mail' })
+  @ApiResponse({ status: 201, description: 'Registro da tentativa de envio' })
+  @ApiResponse({ status: 400, description: 'Auditoria não está finalizada ou e-mails inválidos' })
+  async enviarRelatorio(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: EnviarRelatorioDto,
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; gestorId?: string },
+  ): Promise<AuditoriaEnvioRelatorio> {
+    const auditoria = await this.auditoriaService.buscarAuditoriaPorId(id, usuario);
+    if (auditoria.status !== StatusAuditoria.FINALIZADA) {
+      throw new BadRequestException('Apenas auditorias finalizadas podem ter o relatório enviado');
+    }
+    return this.envioRelatorioService.enviar(id, { destinatarios: dto.destinatarios, usuario, automatico: false });
+  }
+
+  @Get(':id/envios-relatorio')
+  @ApiOperation({ summary: 'Lista os envios do relatório da auditoria, do mais recente ao mais antigo' })
+  @ApiResponse({ status: 200, description: 'Envios registrados' })
+  async listarEnviosRelatorio(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; gestorId?: string },
+  ): Promise<AuditoriaEnvioRelatorio[]> {
+    await this.auditoriaService.buscarAuditoriaPorId(id, usuario);
+    return this.envioRelatorioService.listar(id);
   }
 
   @Put(':id/reabrir')
@@ -221,6 +255,19 @@ export class AuditoriaController {
     @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; gestorId?: string },
   ): Promise<Auditoria> {
     return this.auditoriaService.reabrirAuditoria(id, usuario);
+  }
+
+  @Get(':id/resultado')
+  @UseGuards(RolesGuard)
+  @Roles(PerfilUsuario.MASTER, PerfilUsuario.GESTOR, PerfilUsuario.AUDITOR)
+  @ApiOperation({ summary: 'Resultado da auditoria: nota, classificação, tendência e métricas por grupo' })
+  @ApiResponse({ status: 200, description: 'Cartão de resultado da auditoria' })
+  async obterResultado(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; gestorId?: string },
+  ): Promise<ResultadoAuditoria> {
+    const auditoria = await this.auditoriaService.buscarAuditoriaPorId(id, usuario);
+    return this.resultadoAuditoriaService.calcular(auditoria, usuario);
   }
 
   @Get(':id/nao-conformes')
@@ -274,84 +321,8 @@ export class AuditoriaController {
     @CurrentUser() usuario: { id: string; perfil: PerfilUsuario; gestorId?: string },
     @Res() res: Response,
   ): Promise<void> {
-    const auditoria = await this.auditoriaService.buscarAuditoriaPorId(id, usuario);
+    const { buffer: pdfBuffer, auditoria } = await this.relatorioAuditoriaPdfService.obterPdf(id, usuario);
 
-    if (auditoria.status !== 'finalizada') {
-      throw new BadRequestException('Apenas auditorias finalizadas podem gerar PDF');
-    }
-
-    const historico = await this.auditoriaService.listarHistoricoPorUnidade(auditoria.unidadeId, usuario);
-
-    const pdfGeradoEm = auditoria.pdfGeradoEm ? new Date(auditoria.pdfGeradoEm) : null;
-    const atualizadoEm = auditoria.atualizadoEm ? new Date(auditoria.atualizadoEm) : null;
-    const auditoriaAlteradaAposPdf =
-      !pdfGeradoEm || (atualizadoEm && atualizadoEm.getTime() > pdfGeradoEm.getTime());
-
-    let pdfBuffer: Buffer;
-    let pdfUrl = auditoria.pdfUrl;
-
-    if (auditoriaAlteradaAposPdf) {
-      pdfBuffer = await this.relatorioPdfPuppeteerService.gerarPdf(auditoria, historico);
-      pdfUrl = await this.relatorioPdfPuppeteerService.salvarPdfNoStorage(id, pdfBuffer);
-      await this.auditoriaService.atualizarPdfUrl(id, pdfUrl);
-    } else {
-      const pdfExistenteNoBucket = await this.relatorioPdfPuppeteerService.verificarPdfExistente(id);
-
-      if (pdfExistenteNoBucket) {
-        const supabase = this.supabaseService.getClient();
-        const urlParts = pdfExistenteNoBucket.split(`/storage/v1/object/public/${this.bucketName}/`);
-        const filePath = urlParts.length > 1 ? urlParts[1] : null;
-
-        if (filePath) {
-          const { data, error } = await supabase.storage
-            .from(this.bucketName)
-            .download(filePath);
-
-          if (!error && data) {
-            pdfBuffer = Buffer.from(await data.arrayBuffer());
-            pdfUrl = pdfExistenteNoBucket;
-            if (!auditoria.pdfUrl || auditoria.pdfUrl !== pdfExistenteNoBucket) {
-              await this.auditoriaService.atualizarPdfUrl(id, pdfExistenteNoBucket);
-            }
-          } else {
-            pdfBuffer = await this.relatorioPdfPuppeteerService.gerarPdf(auditoria, historico);
-            pdfUrl = await this.relatorioPdfPuppeteerService.salvarPdfNoStorage(id, pdfBuffer);
-            await this.auditoriaService.atualizarPdfUrl(id, pdfUrl);
-          }
-        } else {
-          pdfBuffer = await this.relatorioPdfPuppeteerService.gerarPdf(auditoria, historico);
-          pdfUrl = await this.relatorioPdfPuppeteerService.salvarPdfNoStorage(id, pdfBuffer);
-          await this.auditoriaService.atualizarPdfUrl(id, pdfUrl);
-        }
-      } else if (pdfUrl) {
-        const supabase = this.supabaseService.getClient();
-        const urlParts = pdfUrl.split(`/storage/v1/object/public/${this.bucketName}/`);
-        const filePath = urlParts.length > 1 ? urlParts[1] : null;
-
-        if (filePath) {
-          const { data, error } = await supabase.storage
-            .from(this.bucketName)
-            .download(filePath);
-
-          if (!error && data) {
-            pdfBuffer = Buffer.from(await data.arrayBuffer());
-          } else {
-            pdfBuffer = await this.relatorioPdfPuppeteerService.gerarPdf(auditoria, historico);
-            pdfUrl = await this.relatorioPdfPuppeteerService.salvarPdfNoStorage(id, pdfBuffer);
-            await this.auditoriaService.atualizarPdfUrl(id, pdfUrl);
-          }
-        } else {
-          pdfBuffer = await this.relatorioPdfPuppeteerService.gerarPdf(auditoria, historico);
-          pdfUrl = await this.relatorioPdfPuppeteerService.salvarPdfNoStorage(id, pdfBuffer);
-          await this.auditoriaService.atualizarPdfUrl(id, pdfUrl);
-        }
-      } else {
-        pdfBuffer = await this.relatorioPdfPuppeteerService.gerarPdf(auditoria, historico);
-        pdfUrl = await this.relatorioPdfPuppeteerService.salvarPdfNoStorage(id, pdfBuffer);
-        await this.auditoriaService.atualizarPdfUrl(id, pdfUrl);
-      }
-    }
-    
     const nomeArquivo = `relatorio-auditoria-${auditoria.unidade?.nome || 'unidade'}-${new Date().toISOString().split('T')[0]}.pdf`;
     
     // Validar buffer antes de enviar

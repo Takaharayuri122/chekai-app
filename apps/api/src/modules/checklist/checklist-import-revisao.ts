@@ -92,7 +92,8 @@ VALORES PERMITIDOS:
 - tipoResposta: ${TIPOS_RESPOSTA_LOTE.join(', ')}
 - peso: número inteiro maior ou igual a 0 (no máximo ${PESO_MAX})
 - permiteFoto, permiteObservacao: true ou false
-- opcoes: lista de { "valor": string, "pontuacao": número de -10 a 10, "fotoObrigatoria": boolean, "observacaoObrigatoria": boolean }
+- opcoes: lista de { "valor": string, "pontuacao": número de -10 a 10, "sentido": "positiva" | "negativa" | "neutra", "fotoObrigatoria": boolean, "observacaoObrigatoria": boolean }
+- sentido: se a resposta é boa (positiva), ruim (negativa) ou não avalia (neutra, como "não se aplica"); omita se não tiver certeza
 - pontuacao: omita para usar a pontuação padrão; use null apenas em opções que não pontuam (como "não aplicável")
 
 Responda APENAS com JSON no formato:
@@ -106,6 +107,8 @@ function enumOuOriginal<T extends string>(valor: unknown, permitidos: readonly T
     ? (valor as T)
     : original;
 }
+
+const SENTIDOS: readonly string[] = ['positiva', 'negativa', 'neutra'];
 
 function opcoesValidas(valor: unknown): ConfiguracaoPerguntaImportada['opcoes'] | undefined {
   if (!Array.isArray(valor)) return undefined;
@@ -127,6 +130,10 @@ function opcoesValidas(valor: unknown): ConfiguracaoPerguntaImportada['opcoes'] 
       fotoObrigatoria: o.fotoObrigatoria === true,
       observacaoObrigatoria: o.observacaoObrigatoria === true,
     };
+    // Sentido fora dos três valores é omitido (cai na dedução)
+    if (typeof o.sentido === 'string' && SENTIDOS.includes(o.sentido)) {
+      opcao.sentido = o.sentido as Opcao['sentido'];
+    }
     // Ausente = pontuação padrão; null explícito = não pontua
     if (p !== undefined) opcao.pontuacao = p as number | null;
     resultado.push(opcao);

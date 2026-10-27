@@ -43,7 +43,11 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { AppLayout, Tooltip, ConfirmDialog, FormModal } from '@/components';
+import { EditorFaixasClassificacao } from '@/components/checklist/editor-faixas-classificacao';
+import type { FaixaClassificacao } from '@/lib/checklist/faixas';
 import { PainelConfiguracaoLote } from '@/components/checklist/painel-configuracao-lote';
+import { SeletorSentidoIcone } from '@/components/checklist/seletor-sentido-icone';
+import { camposDaConfig, sentidoDeduzidoDaOpcao, type SentidoIcone } from '@/components/checklist/seletor-sentido-icone.logic';
 import { BarraSelecao } from '@/components/checklist/barra-selecao';
 import { Checkbox } from '@/components/ui/shadcn/checkbox';
 import { SeletorLegislacoes } from '@/components/legislacao/seletor-legislacoes';
@@ -264,6 +268,10 @@ export default function EditarTemplatePage() {
     tipoAtividade: TipoAtividade.OUTRO,
     versao: '1.0',
   });
+  // null = faixas padrão do sistema
+  const [faixas, setFaixas] = useState<FaixaClassificacao[] | null>(null);
+  const [faixasValidas, setFaixasValidas] = useState(true);
+  const [enviarAoFinalizar, setEnviarAoFinalizar] = useState(false);
 
   // Modal de Grupo
   const [showGrupoModal, setShowGrupoModal] = useState(false);
@@ -404,6 +412,9 @@ export default function EditarTemplatePage() {
         tipoAtividade: data.tipoAtividade,
         versao: data.versao || '1.0',
       });
+      setFaixas(data.faixasClassificacao ?? null);
+      setFaixasValidas(true);
+      setEnviarAoFinalizar(data.enviarRelatorioAoFinalizar ?? false);
       // Expandir todos os grupos por padrão
       if (data.grupos) {
         setExpandedGrupos(new Set(data.grupos.map((g) => g.id)));
@@ -428,9 +439,17 @@ export default function EditarTemplatePage() {
       toastService.warning('O nome do template é obrigatório');
       return;
     }
+    if (!faixasValidas) {
+      toastService.warning('Corrija as faixas de classificação antes de salvar');
+      return;
+    }
     setSaving(true);
     try {
-      await checklistService.atualizarTemplate(templateId, formData);
+      await checklistService.atualizarTemplate(templateId, {
+        ...formData,
+        faixasClassificacao: faixas,
+        enviarRelatorioAoFinalizar: enviarAoFinalizar,
+      });
       toastService.success('Checklist atualizado com sucesso!');
       router.push('/admin/templates');
     } catch (error) {
@@ -786,6 +805,27 @@ export default function EditarTemplatePage() {
     });
   };
 
+  /** Grava o que o gestor escolheu; sem escolha, o sentido continua sendo deduzido. */
+  const handleAtualizarSentidoIcone = (valor: string, escolha: SentidoIcone) => {
+    setItemForm((prev) => {
+      const configs = prev.opcoesRespostaConfig || [];
+      const campos = camposDaConfig(escolha);
+      if (!configs.some((c) => c.valor === valor)) {
+        return {
+          ...prev,
+          opcoesRespostaConfig: [
+            ...configs,
+            { valor, fotoObrigatoria: false, observacaoObrigatoria: false, ...campos },
+          ],
+        };
+      }
+      return {
+        ...prev,
+        opcoesRespostaConfig: configs.map((c) => (c.valor === valor ? { ...c, ...campos } : c)),
+      };
+    });
+  };
+
   const handleDuplicarResposta = (opcao: string) => {
     const config = itemForm.opcoesRespostaConfig?.find((c) => c.valor === opcao);
     let novoNome = `${opcao} (cópia)`;
@@ -800,6 +840,8 @@ export default function EditarTemplatePage() {
       fotoObrigatoria: config?.fotoObrigatoria ?? false,
       observacaoObrigatoria: config?.observacaoObrigatoria ?? false,
       pontuacao: config?.pontuacao,
+      sentido: config?.sentido,
+      icone: config?.icone,
     };
     setItemForm({
       ...itemForm,
@@ -983,7 +1025,7 @@ export default function EditarTemplatePage() {
             </div>
             <p className="text-xs sm:text-sm text-muted-foreground truncate">{template?.nome}</p>
           </div>
-          <button onClick={handleSalvar} disabled={saving} className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 bg-primary text-primary-foreground hover:bg-primary/90 gap-1 flex-shrink-0">
+          <button onClick={handleSalvar} disabled={saving || !faixasValidas} className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 h-9 px-3 bg-primary text-primary-foreground hover:bg-primary/90 gap-1 flex-shrink-0">
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             <span className="hidden sm:inline">Salvar</span>
           </button>
@@ -1050,6 +1092,34 @@ export default function EditarTemplatePage() {
                 </div>
               </div>
             </div>
+          </div>
+        </motion.div>
+
+        {/* Classificação e envio */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 }}
+          className="relative flex flex-col rounded-lg border border-border bg-card shadow-sm"
+        >
+          <div className="flex flex-1 flex-col gap-4 p-4 sm:p-6">
+            <h2 className="flex items-center gap-2 font-display font-semibold text-base">Classificação</h2>
+            <EditorFaixasClassificacao
+              valor={faixas}
+              onChange={setFaixas}
+              onValidadeChange={setFaixasValidas}
+            />
+            <label className="flex items-start justify-between gap-4 rounded-lg border border-border p-3 sm:p-4">
+              <span className="min-w-0">
+                <span className="block text-sm font-medium text-foreground">
+                  Enviar o relatório ao cliente quando a auditoria for finalizada
+                </span>
+                <span className="block text-xs text-muted-foreground">
+                  Vai para o e-mail da unidade; se não houver, para o e-mail do cliente.
+                </span>
+              </span>
+              <Switch checked={enviarAoFinalizar} onCheckedChange={setEnviarAoFinalizar} />
+            </label>
           </div>
         </motion.div>
 
@@ -1764,6 +1834,13 @@ export default function EditarTemplatePage() {
                                 </label>
                               </Tooltip>
                             </div>
+                            <SeletorSentidoIcone
+                              className="mt-2"
+                              sentido={config?.sentido ?? null}
+                              icone={config?.icone ?? null}
+                              sentidoDeduzido={sentidoDeduzidoDaOpcao(itemForm, opcao)}
+                              onChange={(v) => handleAtualizarSentidoIcone(opcao, v)}
+                            />
                           </div>
                         );
                       })}
@@ -1891,6 +1968,13 @@ export default function EditarTemplatePage() {
                               </label>
                             </Tooltip>
                           </div>
+                          <SeletorSentidoIcone
+                            className="mt-2 clear-both"
+                            sentido={config?.sentido ?? null}
+                            icone={config?.icone ?? null}
+                            sentidoDeduzido={sentidoDeduzidoDaOpcao(itemForm, resp.valor)}
+                            onChange={(v) => handleAtualizarSentidoIcone(resp.valor, v)}
+                          />
                         </div>
                       );
                     })}

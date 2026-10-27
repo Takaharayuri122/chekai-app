@@ -4,7 +4,8 @@ import { CheckCircle2, MinusCircle, XCircle } from 'lucide-react';
 import { TipoRespostaCustomizada, type AuditoriaItem } from '@/lib/api';
 import { renderEmoji } from '@/lib/emoji';
 import { cn } from '@/lib/cn';
-import { getPontuacaoParaOpcao } from '@/lib/auditoria/execucao';
+import { classeDoSentido, sentidoDaOpcao } from '@/lib/checklist/sentido';
+import { emojiDoIcone } from '@/components/checklist/seletor-sentido-icone.logic';
 import { Input } from '@/components/ui/shadcn/input';
 import { Textarea } from '@/components/ui/shadcn/textarea';
 
@@ -15,11 +16,6 @@ interface RespostasItemProps {
   onResponder: (valor: string) => void;
   onAlterarCustomizado: (valor: string) => void;
   onConfirmarCustomizado: (valor: string) => void;
-}
-
-function classeSelecionada(pontuacao: number | null | undefined): string {
-  if (typeof pontuacao !== 'number' || pontuacao === 0) return 'border-warning bg-warning/15 text-[hsl(32_95%_34%)]';
-  return pontuacao > 0 ? 'border-success bg-success/12 text-[hsl(160_84%_28%)]' : 'border-destructive bg-destructive/12 text-[hsl(0_72%_45%)]';
 }
 
 const BOTAO = 'flex min-h-[48px] items-center justify-center gap-2 rounded-md border px-3 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60';
@@ -87,14 +83,17 @@ export function RespostasItem({ item, valorCustomizado, somenteLeitura, onRespon
       <div className={cn('grid gap-2', t.opcoesResposta.length <= 3 ? 'grid-cols-3' : 'grid-cols-2 sm:grid-cols-3')}>
         {t.opcoesResposta.map((opcao) => {
           const selecionada = item.resposta === opcao;
+          const sentido = sentidoDaOpcao(t, opcao);
+          const icone = emojiDoIcone(t.opcoesRespostaConfig?.find((c) => c.valor === opcao)?.icone);
           return (
             <button
               key={opcao}
               type="button"
               disabled={somenteLeitura}
               onClick={() => onResponder(opcao)}
-              className={cn(BOTAO, selecionada ? classeSelecionada(getPontuacaoParaOpcao(item, opcao)) : 'border-border bg-card hover:bg-muted')}
+              className={cn(BOTAO, classeDoSentido(selecionada ? sentido ?? 'neutra' : null))}
             >
+              {icone && <span aria-hidden="true">{icone}</span>}
               <span className="truncate">{renderEmoji(opcao)}</span>
             </button>
           );

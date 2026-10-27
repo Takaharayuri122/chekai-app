@@ -5,6 +5,8 @@ import { Transporter } from 'nodemailer';
 import * as fs from 'fs';
 import * as path from 'path';
 
+export type AnexoEmail = { nome: string; conteudo: Buffer; tipo: string };
+
 type EmailProvider = 'smtp' | 'sendgrid' | 'mailersend' | 'resend' | 'ethereal';
 
 /**
@@ -102,24 +104,25 @@ export class EmailService {
   /**
    * Envia um e-mail genérico.
    */
-  async enviarEmail(destinatario: string, assunto: string, html: string): Promise<void> {
+  async enviarEmail(destinatario: string | string[], assunto: string, html: string, anexos: AnexoEmail[] = []): Promise<void> {
+    const para = Array.isArray(destinatario) ? destinatario : [destinatario];
     if (this.provider === 'mailersend') {
-      await this.enviarEmailMailerSend(destinatario, assunto, html);
+      await this.enviarEmailMailerSend(para, assunto, html, anexos);
     } else if (this.provider === 'resend') {
-      await this.enviarEmailResend(destinatario, assunto, html);
+      await this.enviarEmailResend(para, assunto, html, anexos);
     } else if (this.provider === 'sendgrid') {
-      await this.enviarEmailSendGrid(destinatario, assunto, html);
+      await this.enviarEmailSendGrid(para, assunto, html, anexos);
     } else if (this.provider === 'ethereal') {
-      await this.enviarEmailEthereal(destinatario, assunto, html);
+      await this.enviarEmailEthereal(para, assunto, html, anexos);
     } else {
-      await this.enviarEmailSmtp(destinatario, assunto, html);
+      await this.enviarEmailSmtp(para, assunto, html, anexos);
     }
   }
 
   /**
    * Envia e-mail via SMTP.
    */
-  private async enviarEmailSmtp(destinatario: string, assunto: string, html: string): Promise<void> {
+  private async enviarEmailSmtp(destinatario: string[], assunto: string, html: string, anexos: AnexoEmail[]): Promise<void> {
     if (!this.transporter) {
       throw new Error('Transporter SMTP não inicializado.');
     }
@@ -132,6 +135,7 @@ export class EmailService {
         to: destinatario,
         subject: assunto,
         html,
+        attachments: anexos.map((a) => ({ filename: a.nome, content: a.conteudo, contentType: a.tipo })),
       });
     } catch (error) {
       if (error instanceof Error) {
@@ -152,12 +156,12 @@ export class EmailService {
   /**
    * Envia e-mail via Ethereal Mail (desenvolvimento) e loga a URL de preview.
    */
-  private async enviarEmailEthereal(destinatario: string, assunto: string, html: string): Promise<void> {
+  private async enviarEmailEthereal(destinatario: string[], assunto: string, html: string, anexos: AnexoEmail[]): Promise<void> {
     if (this.etherealReady) {
       await this.etherealReady;
     }
     if (!this.transporter) {
-      this.logger.warn(`[Ethereal] E-mail não enviado (transporter indisponível): "${assunto}" -> ${destinatario}`);
+      this.logger.warn(`[Ethereal] E-mail não enviado (transporter indisponível): "${assunto}" -> ${destinatario.join(', ')}`);
       return;
     }
     try {
@@ -166,6 +170,7 @@ export class EmailService {
         to: destinatario,
         subject: assunto,
         html,
+        attachments: anexos.map((a) => ({ filename: a.nome, content: a.conteudo, contentType: a.tipo })),
       });
       const previewUrl = nodemailer.getTestMessageUrl(info);
       if (previewUrl) {
@@ -179,7 +184,7 @@ export class EmailService {
   /**
    * Envia e-mail via SendGrid Web API.
    */
-  private async enviarEmailSendGrid(destinatario: string, assunto: string, html: string): Promise<void> {
+  private async enviarEmailSendGrid(destinatario: string[], assunto: string, html: string, anexos: AnexoEmail[]): Promise<void> {
     const sendgridApiKey = this.configService.get<string>('SENDGRID_API_KEY');
     if (!sendgridApiKey) {
       throw new Error('SENDGRID_API_KEY não configurada. Configure a variável de ambiente.');
@@ -198,7 +203,7 @@ export class EmailService {
         body: JSON.stringify({
           personalizations: [
             {
-              to: [{ email: destinatario }],
+              to: destinatario.map((email) => ({ email })),
             },
           ],
           from: { email: sendgridFrom },
@@ -209,6 +214,14 @@ export class EmailService {
               value: html,
             },
           ],
+          ...(anexos.length > 0 && {
+            attachments: anexos.map((a) => ({
+              content: a.conteudo.toString('base64'),
+              filename: a.nome,
+              type: a.tipo,
+              disposition: 'attachment',
+            })),
+          }),
         }),
       });
       if (!response.ok) {
@@ -235,7 +248,7 @@ export class EmailService {
   /**
    * Envia e-mail via MailerSend HTTP API.
    */
-  private async enviarEmailMailerSend(destinatario: string, assunto: string, html: string): Promise<void> {
+  private async enviarEmailMailerSend(destinatario: string[], assunto: string, html: string, anexos: AnexoEmail[]): Promise<void> {
     const apiKey = this.configService.get<string>('MAILERSEND_API_KEY');
     if (!apiKey) {
       throw new Error('MAILERSEND_API_KEY não configurada. Configure a variável de ambiente.');
@@ -254,9 +267,16 @@ export class EmailService {
         },
         body: JSON.stringify({
           from: { email: fromEmail, name: fromName },
-          to: [{ email: destinatario }],
+          to: destinatario.map((email) => ({ email })),
           subject: assunto,
           html,
+          ...(anexos.length > 0 && {
+            attachments: anexos.map((a) => ({
+              content: a.conteudo.toString('base64'),
+              filename: a.nome,
+              disposition: 'attachment',
+            })),
+          }),
         }),
       });
       if (!response.ok) {
@@ -283,7 +303,7 @@ export class EmailService {
   /**
    * Envia e-mail via Resend HTTP API (https://api.resend.com/emails).
    */
-  private async enviarEmailResend(destinatario: string, assunto: string, html: string): Promise<void> {
+  private async enviarEmailResend(destinatario: string[], assunto: string, html: string, anexos: AnexoEmail[]): Promise<void> {
     const apiKey = this.configService.get<string>('RESEND_API_KEY');
     if (!apiKey) {
       throw new Error('RESEND_API_KEY não configurada. Configure a variável de ambiente.');
@@ -305,9 +325,12 @@ export class EmailService {
         },
         body: JSON.stringify({
           from,
-          to: [destinatario],
+          to: destinatario,
           subject: assunto,
           html,
+          ...(anexos.length > 0 && {
+            attachments: anexos.map((a) => ({ filename: a.nome, content: a.conteudo.toString('base64') })),
+          }),
         }),
       });
       if (!response.ok) {
@@ -359,6 +382,41 @@ export class EmailService {
   }
 
   /**
+   * Envia o relatório da auditoria: PDF em anexo ou, quando grande demais, link para baixá-lo.
+   */
+  async enviarEmailRelatorioAuditoria(
+    destinatarios: string[],
+    dados: {
+      unidade: string;
+      checklist: string;
+      data: string;
+      resultado: string;
+      auditor: string;
+      codigo: string;
+      pdf: Buffer;
+      link?: { url: string; validoAte: string };
+    },
+  ): Promise<void> {
+    const esc = (v: string) => v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    const paragrafo = (texto: string) => `<p style="margin: 0 0 15px 0; color: #1B2A4A; font-size: 15px;">${texto}</p>`;
+    const blocoArquivo = dados.link
+      ? paragrafo('O relatório é grande demais para seguir em anexo. Use o botão abaixo para baixá-lo.') +
+        `<div style="text-align: center; margin: 25px 0;"><a href="${esc(dados.link.url)}" style="display: inline-block; background: linear-gradient(135deg, #00B8A9 0%, #0891b2 100%); color: #FFFFFF; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-size: 15px; font-weight: 600;">Baixar relatório</a></div>` +
+        paragrafo(`O relatório está disponível neste link até ${esc(dados.link.validoAte)}.`)
+      : paragrafo('O relatório em PDF segue em anexo.');
+    const html = this.carregarTemplate('relatorio-auditoria.html', {
+      unidade: esc(dados.unidade),
+      checklist: esc(dados.checklist),
+      data: esc(dados.data),
+      resultado: esc(dados.resultado),
+      auditor: esc(dados.auditor),
+      blocoArquivo,
+    });
+    const anexos = dados.link ? [] : [{ nome: `relatorio-${dados.codigo}.pdf`, conteudo: dados.pdf, tipo: 'application/pdf' }];
+    await this.enviarEmail(destinatarios, `Relatório de auditoria — ${dados.unidade} — ${dados.data}`, html, anexos);
+  }
+
+  /**
    * Envia e-mail de confirmação para quem entrou na lista de espera.
    */
   async enviarEmailListaEspera(destinatario: string): Promise<void> {
@@ -375,7 +433,7 @@ export class EmailService {
     let template = fs.readFileSync(caminhoTemplate, 'utf-8');
     Object.keys(variaveis).forEach((chave) => {
       const regex = new RegExp(`{{${chave}}}`, 'g');
-      template = template.replace(regex, variaveis[chave]);
+      template = template.replace(regex, () => variaveis[chave]);
     });
     return template;
   }

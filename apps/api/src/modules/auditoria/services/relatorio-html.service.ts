@@ -2,17 +2,19 @@ import { Injectable } from '@nestjs/common';
 import { Auditoria } from '../entities/auditoria.entity';
 import { AuditoriaItem, RespostaItem } from '../entities/auditoria-item.entity';
 import { nomesLegislacoesDoItem } from '../../legislacao/lib/legislacoes-do-item';
+import {
+  FaixaClassificacao,
+  ICONES_RESPOSTA,
+  ICONE_PADRAO_POR_SENTIDO,
+  SentidoResposta,
+  classificar,
+  sentidoDaOpcao,
+} from '../../checklist/regras';
+import { posicaoNaBarra, segmentosDaBarra } from './barra-faixas';
+import { ResultadoAuditoria, ResultadoGrupo } from './resultado-auditoria.service';
 
-interface GrupoMetricas {
-  nome: string;
-  pontuacaoPossivel: number;
-  pontuacaoObtida: number;
-  naoConformidades: number;
-  naoAplicaveis: number;
-  naoRespondidas: number;
-  aproveitamento: number;
-  itens: AuditoriaItem[];
-}
+const COR_SEM_FAIXA = '#9ca3af';
+const FUSO = 'America/Sao_Paulo';
 
 /** Mapas opcionais para embutir fotos já normalizadas no HTML (geração PDF). */
 export interface RelatorioAuditoriaPdfAssetsHtml {
@@ -26,16 +28,14 @@ export interface RelatorioAuditoriaPdfAssetsHtml {
 export class RelatorioHtmlService {
   /**
    * Gera o HTML completo do relatório de auditoria.
-   * @param historico - Lista de auditorias finalizadas da mesma unidade (para seção de evolução)
+   * @param resultado - Cartão de resultado (fonte única de aproveitamento, faixa, contadores e grupos)
    */
   gerarHtml(
     auditoria: Auditoria,
-    historico?: Auditoria[],
+    resultado: ResultadoAuditoria,
     assetsPdf?: RelatorioAuditoriaPdfAssetsHtml,
   ): string {
-    const grupos = this.calcularGruposMetricas(auditoria);
-    const metricasGerais = this.calcularMetricasGerais(grupos, auditoria);
-    const aproveitamento = Number(auditoria.pontuacaoTotal) || 0;
+    const gruposItens = this.agruparItens(auditoria.itens ?? []);
 
     return `<!DOCTYPE html>
 <html lang="pt-BR">
@@ -471,38 +471,6 @@ export class RelatorioHtmlService {
     .distrib-bar:first-child { border-radius: 4px 0 0 4px; }
     .distrib-bar:last-child { border-radius: 0 4px 4px 0; }
     .distrib-bar:only-child { border-radius: 4px; }
-    .historico-section {
-      margin-top: 16px;
-      padding: 12px;
-      border: 1px solid #E5E9F0;
-      border-radius: 6px;
-      background: #F9FAFB;
-    }
-    .historico-title {
-      font-size: 14px;
-      font-weight: 700;
-      color: #1B2A4A;
-      margin-bottom: 10px;
-    }
-    .historico-list {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-    }
-    .historico-list li {
-      padding: 6px 8px;
-      font-size: 11px;
-      color: #1B2A4A;
-      border-bottom: 1px solid #E5E9F0;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .historico-list li:last-child { border-bottom: none; }
-    .historico-list li.atual {
-      background: rgba(0, 184, 169, 0.1);
-      font-weight: 600;
-    }
     .item-fotos {
       display: flex;
       flex-wrap: wrap;
@@ -524,6 +492,99 @@ export class RelatorioHtmlService {
       flex-direction: column;
       gap: 6px;
     }
+    .item-icon.nao-respondida { color: #9ca3af; }
+    .item-card.nao-respondida {
+      background: #F4F7FA;
+      border-color: #E5E9F0;
+    }
+    .header-meta a { color: #00B8A9; text-decoration: none; }
+    .resultado-card {
+      border: 1px solid #E5E9F0;
+      border-radius: 6px;
+      padding: 12px;
+      margin-bottom: 10px;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+    .resultado-topo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+    .resultado-emoji { font-size: 32px; line-height: 1; }
+    .resultado-percentual { font-size: 28px; font-weight: 700; }
+    .resultado-faixa { font-size: 14px; font-weight: 700; }
+    .faixa-barra {
+      position: relative;
+      height: 14px;
+      margin: 6px 0 14px;
+    }
+    .faixa-trilho {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      border-radius: 7px;
+      background: #EEF0F4;
+    }
+    .faixa-segmento { position: absolute; top: 0; bottom: 0; }
+    .faixa-marcador {
+      position: absolute;
+      top: -4px;
+      width: 4px;
+      height: 22px;
+      margin-left: -2px;
+      background: #1B2A4A;
+      border: 1px solid #FFFFFF;
+      border-radius: 2px;
+    }
+    .anteriores {
+      display: flex;
+      gap: 16px;
+      font-size: 11px;
+      margin-bottom: 10px;
+    }
+    .anteriores strong { margin-left: 4px; }
+    .contadores {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
+    }
+    .contador {
+      background: #F4F7FA;
+      border: 1px solid #E5E9F0;
+      border-radius: 6px;
+      padding: 8px;
+      text-align: center;
+    }
+    .contador-valor { font-size: 18px; font-weight: 700; }
+    .contador-rotulo { font-size: 10px; opacity: 0.7; text-transform: uppercase; }
+    .pagina-final {
+      page-break-before: always;
+      break-before: page;
+    }
+    .resumo-quadro {
+      width: 100%;
+      border: 1px solid #E5E9F0;
+      border-radius: 6px;
+      margin-bottom: 40px;
+    }
+    .resumo-quadro td { padding: 6px 10px; font-size: 12px; border-bottom: 1px solid #E5E9F0; }
+    .resumo-quadro td:first-child { width: 40%; font-weight: 600; background: #F4F7FA; }
+    .data-local { font-size: 13px; margin: 48px 0 56px; text-align: center; }
+    .assinaturas {
+      display: flex;
+      gap: 48px;
+      justify-content: space-between;
+    }
+    .assinatura {
+      flex: 1;
+      border-top: 1px solid #1B2A4A;
+      padding-top: 6px;
+      text-align: center;
+      font-size: 12px;
+    }
+    .assinatura-papel { font-size: 10px; opacity: 0.7; text-transform: uppercase; }
     @media print {
       body {
         padding: 8px;
@@ -562,10 +623,11 @@ export class RelatorioHtmlService {
 <body>
   <div class="container">
     ${this.gerarCabecalho(auditoria)}
-    ${this.gerarMetricasGerais(metricasGerais, aproveitamento, grupos)}
-    ${historico?.length ? this.gerarHistoricoEvolucao(historico, auditoria.id) : ''}
-    ${this.gerarDetalhamentoPorGrupo(grupos, assetsPdf)}
+    ${this.gerarCartaoResultado(resultado)}
+    ${this.gerarMetricasGerais(resultado)}
+    ${this.gerarDetalhamentoPorGrupo(gruposItens, resultado.grupos, assetsPdf)}
     ${this.gerarResumoExecutivo(auditoria.resumoExecutivo)}
+    ${this.gerarPaginaFinal(auditoria, resultado)}
   </div>
 </body>
 </html>
@@ -573,113 +635,183 @@ export class RelatorioHtmlService {
   }
 
   /**
-   * Gera o cabeçalho do relatório.
+   * Agrupa os itens pela mesma chave do cálculo do resultado (`grupoId`),
+   * para casar cada grupo com suas métricas por essa chave.
+   */
+  private agruparItens(itens: AuditoriaItem[]): { grupoId: string; itens: AuditoriaItem[] }[] {
+    const porGrupo = new Map<string, AuditoriaItem[]>();
+    for (const item of itens) {
+      const chave = item.templateItem?.grupoId || 'sem-grupo';
+      if (!porGrupo.has(chave)) porGrupo.set(chave, []);
+      porGrupo.get(chave)!.push(item);
+    }
+    return Array.from(porGrupo.entries())
+      .map(([grupoId, grupoItens]) => ({ grupoId, itens: grupoItens }))
+      .sort((a, b) => (a.itens[0].templateItem?.grupo?.ordem || 0) - (b.itens[0].templateItem?.grupo?.ordem || 0));
+  }
+
+  private numero(valor: number): string {
+    return Number(valor).toLocaleString('pt-BR', { maximumFractionDigits: 2 });
+  }
+
+  /** Percentual com 2 casas e vírgula (ex.: 82,50%). */
+  private percentual(valor: number): string {
+    return `${Number(valor).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
+  }
+
+  private formatarDataHora(data: Date | string | null | undefined): string {
+    if (!data) return 'N/A';
+    return new Date(data).toLocaleString('pt-BR', {
+      timeZone: FUSO,
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  }
+
+  private formatarDataCurta(data: Date | string): string {
+    return new Date(data).toLocaleDateString('pt-BR', {
+      timeZone: FUSO,
+      day: '2-digit',
+      month: '2-digit',
+      year: '2-digit',
+    });
+  }
+
+  private formatarDuracao(auditoria: Auditoria): string {
+    if (!auditoria.dataInicio || !auditoria.dataFim) return 'N/A';
+    const minutosTotais = Math.round(
+      (new Date(auditoria.dataFim).getTime() - new Date(auditoria.dataInicio).getTime()) / 60000,
+    );
+    if (minutosTotais < 1) return 'menos de 1 min';
+    const dias = Math.floor(minutosTotais / 1440);
+    const horas = Math.floor((minutosTotais % 1440) / 60);
+    const minutos = minutosTotais % 60;
+    return [dias ? `${dias} d` : '', horas ? `${horas} h` : '', minutos ? `${minutos} min` : '']
+      .filter(Boolean)
+      .join(' ');
+  }
+
+  private nomeCliente(auditoria: Auditoria): string {
+    return auditoria.unidade?.cliente?.nomeFantasia || auditoria.unidade?.cliente?.razaoSocial || 'Cliente';
+  }
+
+  /**
+   * Gera o cabeçalho do relatório com os dados da avaliação.
    */
   private gerarCabecalho(auditoria: Auditoria): string {
-    const dataInicio = auditoria.dataInicio
-      ? new Date(auditoria.dataInicio).toLocaleDateString('pt-BR', {
-          day: '2-digit',
-          month: 'short',
-          year: 'numeric',
-        })
-      : 'N/A';
-    const dataFim = auditoria.dataFim
-      ? new Date(auditoria.dataFim).toLocaleDateString('pt-BR', {
-          day: '2-digit',
-          month: 'short',
-          year: 'numeric',
-        })
-      : 'N/A';
+    const codigo = (auditoria.id ?? '').slice(0, 8).toUpperCase();
+    const temCoordenadas = auditoria.latitudeInicio != null && auditoria.longitudeInicio != null;
+    const linkMapa = temCoordenadas
+      ? `<span class="header-meta"><a href="https://www.google.com/maps?q=${Number(auditoria.latitudeInicio)},${Number(auditoria.longitudeInicio)}">Ver no mapa</a></span>`
+      : '';
     return `
     <div class="header">
-      <h1>${this.escapeHtml(auditoria.unidade?.nome || 'Unidade')}</h1>
+      <h1>${this.escapeHtml(auditoria.template?.nome || 'Checklist')}</h1>
       <div class="subtitle">
-        ${this.escapeHtml(
-          auditoria.unidade?.cliente?.nomeFantasia ||
-            auditoria.unidade?.cliente?.razaoSocial ||
-            'Cliente',
-        )}
+        ${this.escapeHtml(this.nomeCliente(auditoria))} — ${this.escapeHtml(auditoria.unidade?.nome || 'Unidade')}
       </div>
       <div class="header-info">
-        <span>👤 Auditor: ${this.escapeHtml(auditoria.consultor?.nome || 'Não informado')}</span>
-        <span>📅 Data: ${dataInicio} - ${dataFim}</span>
-        ${auditoria.dataInicio && auditoria.dataFim
-          ? `<span>⏱️ Duração: ${Math.round(
-              (new Date(auditoria.dataFim).getTime() -
-                new Date(auditoria.dataInicio).getTime()) /
-                (1000 * 60 * 60 * 24),
-            )} dias</span>`
-          : ''}
+        <span>Auditor: ${this.escapeHtml(auditoria.consultor?.nome || 'Não informado')}</span>
+        <span>Código: ${this.escapeHtml(codigo)}</span>
+        <span>Início: ${this.formatarDataHora(auditoria.dataInicio)}</span>
+        <span>Fim: ${this.formatarDataHora(auditoria.dataFim)}</span>
+        <span>Duração: ${this.escapeHtml(this.formatarDuracao(auditoria))}</span>
+        ${linkMapa}
       </div>
     </div>
     `;
   }
 
   /**
-   * Gera a seção de métricas gerais.
+   * Cartão de resultado: nota, faixa, barra, anteriores e contadores.
    */
-  private gerarMetricasGerais(
-    metricas: {
-      pontosPossiveis: number;
-      pontosRealizados: number;
-      naoAplicaveis: number;
-      naoConformidades: number;
-      naoRespondidas: number;
-    },
-    aproveitamento: number,
-    grupos: GrupoMetricas[],
-  ): string {
-    const classificacao = this.getClassificacao(aproveitamento);
+  private gerarCartaoResultado(resultado: ResultadoAuditoria): string {
+    const { classificacao, faixas, tendencia, anteriores, contadores } = resultado;
+    const cor = classificacao.cor ?? '#1B2A4A';
+    const seta =
+      tendencia === 'subiu'
+        ? '<span style="color:#10b981;">▲</span>'
+        : tendencia === 'caiu'
+          ? '<span style="color:#ef4444;">▼</span>'
+          : '';
+    const segmentos = segmentosDaBarra(faixas)
+      .map(
+        (f) =>
+          `<div class="faixa-segmento" style="left:${f.inicio.toFixed(4)}%;width:${f.largura.toFixed(4)}%;background:${this.escapeHtml(f.cor)};"></div>`,
+      )
+      .join('');
+    const marcador = `<div class="faixa-marcador" style="left:${posicaoNaBarra(resultado.aproveitamento).toFixed(2)}%;"></div>`;
+    const listaAnteriores = anteriores.length
+      ? `<div class="anteriores">${anteriores
+          .map((a) => `<span>${this.formatarDataCurta(a.dataFim)}<strong>${this.percentual(a.aproveitamento)}</strong></span>`)
+          .join('')}</div>`
+      : '';
+    const contador = (valor: number | string, rotulo: string) =>
+      `<div class="contador"><div class="contador-valor">${valor}</div><div class="contador-rotulo">${rotulo}</div></div>`;
 
     return `
-    <div class="section">
-      <h2 class="section-title">Métricas Gerais</h2>
-      <div class="metrics-grid">
-        <div class="metric-card">
-          <div class="metric-label">Aproveitamento</div>
-          <div class="metric-value primary">${aproveitamento.toFixed(2)}%</div>
-          <div class="metric-desc">${classificacao}</div>
-        </div>
-        <div class="metric-card">
-          <div class="metric-label">Pontos Realizados</div>
-          <div class="metric-value success">${metricas.pontosRealizados}</div>
-          <div class="metric-desc">de ${metricas.pontosPossiveis} possíveis</div>
-        </div>
-        <div class="metric-card">
-          <div class="metric-label">Não Conformidades</div>
-          <div class="metric-value error">${metricas.naoConformidades}</div>
-          ${metricas.naoAplicaveis > 0
-            ? `<div class="metric-desc">${metricas.naoAplicaveis} não aplicáveis</div>`
-            : ''}
-        </div>
+    <div class="resultado-card">
+      <div class="resultado-topo">
+        <span class="resultado-emoji">${this.escapeHtml(classificacao.emoji ?? '')}</span>
+        <span class="resultado-percentual" style="color:${this.escapeHtml(cor)};">${this.percentual(resultado.aproveitamento)} ${seta}</span>
+        <span class="resultado-faixa" style="color:${this.escapeHtml(cor)};">${this.escapeHtml(classificacao.nome)}</span>
       </div>
-      ${this.gerarTabelaMetricas(grupos, metricas, aproveitamento)}
-      <div class="charts-block">
-        ${this.gerarGraficoAproveitamentoGrupos(grupos, aproveitamento)}
-        ${this.gerarGraficoDistribuicaoPontos(metricas)}
+      <div class="faixa-barra"><div class="faixa-trilho">${segmentos}</div>${marcador}</div>
+      ${listaAnteriores}
+      <div class="contadores">
+        ${contador(this.numero(contadores.pontosPossiveis), 'Pontos possíveis')}
+        ${contador(this.numero(contadores.pontosRealizados), 'Pontos realizados')}
+        ${contador(contadores.naoConformidades, 'Não conformidades')}
+        ${contador(contadores.fotos, 'Fotos')}
+        ${contador(contadores.planosAcao, 'Planos de ação')}
       </div>
     </div>
     `;
   }
 
-  private corBarraAproveitamento(ap: number): string {
-    if (ap >= 70) return '#10b981';
-    if (ap >= 60) return '#f59e0b';
-    return '#ef4444';
+  /**
+   * Tabela por grupo e gráficos, a partir do resultado.
+   */
+  private gerarMetricasGerais(resultado: ResultadoAuditoria): string {
+    const { contadores, grupos, faixas } = resultado;
+    return `
+    <div class="section">
+      <h2 class="section-title">Métricas Gerais</h2>
+      ${this.gerarTabelaMetricas(resultado)}
+      <div class="charts-block">
+        ${this.gerarGraficoAproveitamentoGrupos(grupos, resultado.aproveitamento, faixas)}
+        ${this.gerarGraficoDistribuicaoPontos({
+          pontosPossiveis: contadores.pontosPossiveis,
+          pontosRealizados: contadores.pontosRealizados,
+        })}
+      </div>
+    </div>
+    `;
   }
 
-  private gerarGraficoAproveitamentoGrupos(grupos: GrupoMetricas[], aproveitamentoGeral: number): string {
+  private corBarraAproveitamento(ap: number, faixas: FaixaClassificacao[]): string {
+    return classificar(ap, faixas).cor ?? COR_SEM_FAIXA;
+  }
+
+  private gerarGraficoAproveitamentoGrupos(
+    grupos: ResultadoGrupo[],
+    aproveitamentoGeral: number,
+    faixas: FaixaClassificacao[],
+  ): string {
     const barrasGrupos = grupos.map((g, idx) => ({
       indice: idx + 1,
       valor: Math.min(100, Math.max(0, Number(g.aproveitamento ?? 0))),
-      cor: this.corBarraAproveitamento(Number(g.aproveitamento ?? 0)),
+      cor: this.corBarraAproveitamento(Number(g.aproveitamento ?? 0), faixas),
     }));
     const barras = [
       ...barrasGrupos,
       {
         indice: 'GERAL',
         valor: Math.min(100, Math.max(0, aproveitamentoGeral)),
-        cor: this.corBarraAproveitamento(aproveitamentoGeral),
+        cor: this.corBarraAproveitamento(aproveitamentoGeral, faixas),
       },
     ] as { indice: number | string; valor: number; cor: string }[];
     const w = 560;
@@ -726,9 +858,13 @@ export class RelatorioHtmlService {
         <h3 class="chart-title">% de aproveitamento por grupo do formulário</h3>
         <div class="chart-svg-wrap">${svg}</div>
         <div class="chart-legend">
-          <span class="chart-legend-item"><span class="chart-legend-color" style="background:#10b981;"></span> ≥70% (Bom)</span>
-          <span class="chart-legend-item"><span class="chart-legend-color" style="background:#f59e0b;"></span> 60–70% (Atenção)</span>
-          <span class="chart-legend-item"><span class="chart-legend-color" style="background:#ef4444;"></span> &lt;60% (Crítico)</span>
+          ${[...faixas]
+            .sort((a, b) => a.de - b.de)
+            .map(
+              (f) =>
+                `<span class="chart-legend-item"><span class="chart-legend-color" style="background:${this.escapeHtml(f.cor)};"></span> ${this.escapeHtml(f.nome)} (${this.numero(f.de)}–${this.numero(f.ate)}%)</span>`,
+            )
+            .join('')}
         </div>
       </div>`;
   }
@@ -787,117 +923,35 @@ export class RelatorioHtmlService {
       </div>`;
   }
 
-  private gerarHistoricoEvolucao(historico: Auditoria[], auditoriaId: string): string {
-    const itensOrdenados = [...historico]
-      .filter((a) => a.dataFim != null)
-      .sort((a, b) => new Date(a.dataFim!).getTime() - new Date(b.dataFim!).getTime())
-      .map((a) => ({
-        data: a.dataFim
-          ? new Date(a.dataFim).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })
-          : '—',
-        valor: Math.min(100, Math.max(0, Number(a.pontuacaoTotal) ?? 0)),
-      }));
-    const lineChartSvg =
-      itensOrdenados.length >= 2
-        ? this.gerarSvgGraficoLinhaEvolucao(itensOrdenados)
-        : '';
-    const itens = historico.slice(0, 10).map((a) => {
-      const dataFim = a.dataFim
-        ? new Date(a.dataFim).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })
-        : '—';
-      const valor = Number(a.pontuacaoTotal) ?? 0;
-      const nome = (a.template as { nome?: string })?.nome ?? 'Auditoria';
-      const isAtual = a.id === auditoriaId;
-      return { dataFim, valor, nome, isAtual };
-    });
-    const linhas = itens
-      .map(
-        (i) =>
-          `<li class="${i.isAtual ? 'atual' : ''}"><span>${i.dataFim} — ${this.escapeHtml(i.nome)}${i.isAtual ? ' (esta)' : ''}</span><strong>${i.valor.toFixed(1)}%</strong></li>`,
-      )
-      .join('');
-    return `
-      <div class="section">
-        <h2 class="section-title">Histórico de evolução</h2>
-        ${lineChartSvg}
-        <p class="legend" style="margin-top:4px;">Legenda: linha tracejada = 70% (meta mínima). Ordenado da mais antiga à mais recente.</p>
-        <div class="historico-section" style="margin-top:12px;">
-          <p class="historico-title">Relatórios anteriores (mais recente primeiro)</p>
-          <ul class="historico-list">${linhas}</ul>
-          ${historico.length > 10 ? `<p class="legend">Exibindo as 10 mais recentes de ${historico.length}.</p>` : ''}
-        </div>
-      </div>`;
-  }
-
-  private gerarSvgGraficoLinhaEvolucao(
-    itens: { data: string; valor: number }[],
-  ): string {
-    const w = 600;
-    const h = 260;
-    const margin = { top: 16, right: 16, bottom: 40, left: 44 };
-    const chartW = w - margin.left - margin.right;
-    const chartH = h - margin.top - margin.bottom;
-    const scaleY = (v: number) => margin.top + chartH - (v / 100) * chartH;
-    const scaleX = (i: number) => margin.left + (i / Math.max(1, itens.length - 1)) * chartW;
-    const refY = scaleY(70);
-    const gridLines = [0, 25, 50, 75, 100]
-      .map(
-        (tick) =>
-          `<line x1="${margin.left}" y1="${scaleY(tick)}" x2="${margin.left + chartW}" y2="${scaleY(tick)}" stroke="#e5e7eb" stroke-dasharray="3 3" stroke-width="1"/>`,
-      )
-      .join('');
-    const yTicks = [0, 25, 50, 75, 100]
-      .map(
-        (tick) =>
-          `<text x="${margin.left - 8}" y="${scaleY(tick) + 4}" text-anchor="end" font-size="11" fill="#6b7280">${tick}%</text>`,
-      )
-      .join('');
-    const points = itens.map((p, i) => `${scaleX(i)},${scaleY(p.valor)}`).join(' ');
-    const linePath = itens.length >= 2 ? `M ${points.replace(/ /g, ' L ')}` : '';
-    const dots = itens
-      .map(
-        (p, i) =>
-          `<circle cx="${scaleX(i)}" cy="${scaleY(p.valor)}" r="4" fill="#6366f1"/><text x="${scaleX(i)}" y="${scaleY(p.valor) - 8}" text-anchor="middle" font-size="10" font-weight="600" fill="#1f2937">${p.valor.toFixed(1)}%</text>`,
-      )
-      .join('');
-    const xLabels = itens
-      .map(
-        (p, i) =>
-          `<text x="${scaleX(i)}" y="${margin.top + chartH + 18}" text-anchor="middle" font-size="10" fill="#374151">${this.escapeHtml(p.data)}</text>`,
-      )
-      .join('');
-    return `
-      <div class="chart-svg-wrap">
-        <svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" style="max-width:100%;height:auto;">
-          ${gridLines}
-          <line x1="${margin.left}" y1="${refY}" x2="${margin.left + chartW}" y2="${refY}" stroke="#f59e0b" stroke-dasharray="2 2" stroke-width="1"/>
-          ${yTicks}
-          ${linePath ? `<polyline points="${points}" fill="none" stroke="#6366f1" stroke-width="2"/>` : ''}
-          ${dots}
-          ${xLabels}
-        </svg>
-      </div>`;
-  }
-
   /**
-   * Gera a tabela de métricas por grupo.
+   * Gera a tabela de métricas por grupo (linha "Geral" inclusa).
    */
-  private gerarTabelaMetricas(
-    grupos: GrupoMetricas[],
-    metricasGerais: {
-      pontosPossiveis: number;
-      pontosRealizados: number;
-      naoAplicaveis: number;
-      naoConformidades: number;
-      naoRespondidas: number;
-    },
-    aproveitamento: number,
-  ): string {
-    let tabela = `
+  private gerarTabelaMetricas(resultado: ResultadoAuditoria): string {
+    const { grupos, contadores } = resultado;
+    const soma = (campo: 'naoAplicaveis' | 'naoRespondidas') => grupos.reduce((acc, g) => acc + g[campo], 0);
+    const celulaNc = (n: number) =>
+      n > 0 ? `<span class="badge badge-error">${n}</span>` : '<span style="color: #9ca3af;">0</span>';
+
+    const linhas = grupos
+      .map(
+        (g) => `
+          <tr>
+            <td>${this.escapeHtml(g.nome)}</td>
+            <td class="text-center" style="font-weight: 600;">${g.aproveitamento != null ? this.percentual(g.aproveitamento) : '—'}</td>
+            <td class="text-center">${this.numero(g.pontosPossiveis)}</td>
+            <td class="text-center">${this.numero(g.pontosRealizados)}</td>
+            <td class="text-center">${g.naoAplicaveis}</td>
+            <td class="text-center">${celulaNc(g.naoConformidades)}</td>
+            <td class="text-center">${g.naoRespondidas}</td>
+          </tr>`,
+      )
+      .join('');
+
+    return `
       <table>
         <thead>
           <tr>
-            <th>GRUPO</th>
+            <th>Grupo</th>
             <th class="text-center">AP</th>
             <th class="text-center">PP</th>
             <th class="text-center">PR</th>
@@ -907,53 +961,100 @@ export class RelatorioHtmlService {
           </tr>
         </thead>
         <tbody>
-    `;
-
-    grupos.forEach((grupo) => {
-      tabela += `
-          <tr>
-            <td>${this.escapeHtml(grupo.nome)}</td>
-            <td class="text-center" style="font-weight: 600;">${Number(grupo.aproveitamento || 0).toFixed(2)}%</td>
-            <td class="text-center">${grupo.pontuacaoPossivel}</td>
-            <td class="text-center">${grupo.pontuacaoObtida}</td>
-            <td class="text-center">${grupo.naoAplicaveis}</td>
-            <td class="text-center">${
-              grupo.naoConformidades > 0
-                ? `<span class="badge badge-error">${grupo.naoConformidades}</span>`
-                : '<span style="color: #9ca3af;">0</span>'
-            }</td>
-            <td class="text-center">${grupo.naoRespondidas}</td>
-          </tr>
-      `;
-    });
-
-    tabela += `
+          ${linhas}
           <tr class="total">
-            <td>GERAL</td>
-            <td class="text-center">${aproveitamento.toFixed(2)}%</td>
-            <td class="text-center">${metricasGerais.pontosPossiveis}</td>
-            <td class="text-center">${metricasGerais.pontosRealizados}</td>
-            <td class="text-center">${metricasGerais.naoAplicaveis}</td>
-            <td class="text-center">${metricasGerais.naoConformidades}</td>
-            <td class="text-center">${metricasGerais.naoRespondidas}</td>
+            <td>Geral</td>
+            <td class="text-center">${this.percentual(resultado.aproveitamento)}</td>
+            <td class="text-center">${this.numero(contadores.pontosPossiveis)}</td>
+            <td class="text-center">${this.numero(contadores.pontosRealizados)}</td>
+            <td class="text-center">${soma('naoAplicaveis')}</td>
+            <td class="text-center">${contadores.naoConformidades}</td>
+            <td class="text-center">${soma('naoRespondidas')}</td>
           </tr>
         </tbody>
       </table>
       <div class="legend">
-        <strong>AP:</strong> Aproveitamento | <strong>PP:</strong> Pontos Possíveis | 
-        <strong>PR:</strong> Pontos Realizados | <strong>NA:</strong> Não Aplicáveis | 
-        <strong>NC:</strong> Não Conformidades | <strong>NR:</strong> Não Respondidas
+        AP: Aproveitamento | PP: Pontos possíveis | PR: Pontos realizados | NA: Não aplicáveis | NC: Não conformidades | NR: Não respondidas
       </div>
     `;
+  }
 
-    return tabela;
+  /**
+   * Ícone, cor e classe do item: o sentido da resposta define a cor; o ícone configurado
+   * na opção (código do catálogo ou caractere) substitui o padrão do sentido.
+   */
+  private visualDaResposta(
+    item: AuditoriaItem,
+    sentido: SentidoResposta | null,
+  ): { classe: string; icone: string } {
+    if (!sentido) return { classe: 'nao-respondida', icone: '?' };
+    const configurado = (item.templateItem?.opcoesRespostaConfig || []).find((c) => c.valor === item.resposta)?.icone;
+    const icone = configurado
+      ? (ICONES_RESPOSTA.find((i) => i.codigo === configurado)?.emoji ?? configurado)
+      : ICONE_PADRAO_POR_SENTIDO[sentido];
+    const classe = sentido === 'positiva' ? 'conforme' : sentido === 'negativa' ? 'nao-conforme' : 'nao-aplicavel';
+    return { classe, icone };
+  }
+
+  private rotuloDaResposta(resposta: string | null | undefined): string {
+    switch (resposta) {
+      case RespostaItem.CONFORME:
+        return 'Conforme';
+      case RespostaItem.NAO_CONFORME:
+        return 'Não conforme';
+      case RespostaItem.NAO_APLICAVEL:
+        return 'Não aplicável';
+      case RespostaItem.NAO_AVALIADO:
+      case null:
+      case undefined:
+      case '':
+        return 'Não respondida';
+      default:
+        return this.escapeHtml(resposta);
+    }
+  }
+
+  /**
+   * Última página: quadro de resumo e linhas para assinatura.
+   */
+  private gerarPaginaFinal(auditoria: Auditoria, resultado: ResultadoAuditoria): string {
+    const linha = (rotulo: string, valor: string) => `<tr><td>${rotulo}</td><td>${valor}</td></tr>`;
+    const { contadores, classificacao } = resultado;
+    const auditor = auditoria.consultor?.nome || 'Auditor';
+    const responsavel = auditoria.unidade?.responsavel || 'Responsável pela unidade';
+    return `
+    <div class="section pagina-final">
+      <h2 class="section-title">RESUMO DA AVALIAÇÃO</h2>
+      <table class="resumo-quadro">
+        <tbody>
+          ${linha('Checklist', this.escapeHtml(auditoria.template?.nome || 'Checklist'))}
+          ${linha('Unidade', this.escapeHtml(auditoria.unidade?.nome || 'Unidade'))}
+          ${linha('Início', this.formatarDataHora(auditoria.dataInicio))}
+          ${linha('Fim', this.formatarDataHora(auditoria.dataFim))}
+          ${linha('Duração', this.escapeHtml(this.formatarDuracao(auditoria)))}
+          ${linha('Auditor', this.escapeHtml(auditoria.consultor?.nome || 'Não informado'))}
+          ${linha('Aproveitamento', this.percentual(resultado.aproveitamento))}
+          ${linha('Faixa', this.escapeHtml(classificacao.nome))}
+          ${linha('Pontos possíveis', this.numero(contadores.pontosPossiveis))}
+          ${linha('Pontos realizados', this.numero(contadores.pontosRealizados))}
+          ${linha('Não conformidades', String(contadores.naoConformidades))}
+        </tbody>
+      </table>
+      <p class="data-local">____________________, ____ de ______________ de ________</p>
+      <div class="assinaturas">
+        <div class="assinatura">${this.escapeHtml(auditor)}<div class="assinatura-papel">Auditor</div></div>
+        <div class="assinatura">${this.escapeHtml(responsavel)}<div class="assinatura-papel">Responsável pela unidade</div></div>
+      </div>
+    </div>
+    `;
   }
 
   /**
    * Gera o detalhamento por grupo.
    */
   private gerarDetalhamentoPorGrupo(
-    grupos: GrupoMetricas[],
+    gruposItens: { grupoId: string; itens: AuditoriaItem[] }[],
+    metricas: ResultadoGrupo[],
     assetsPdf?: RelatorioAuditoriaPdfAssetsHtml,
   ): string {
     let html = `
@@ -961,51 +1062,30 @@ export class RelatorioHtmlService {
       <h2 class="section-title">Detalhamento por Grupo</h2>
     `;
 
-    grupos.forEach((grupo) => {
+    gruposItens.forEach(({ grupoId, itens }) => {
+      const grupo = metricas.find((m) => m.grupoId === grupoId);
       html += `
       <div class="grupo-section">
         <div class="grupo-header">
-          <h3 class="grupo-title">${this.escapeHtml(grupo.nome)}</h3>
+          <h3 class="grupo-title">${this.escapeHtml(grupo?.nome ?? itens[0]?.templateItem?.grupo?.nome ?? 'Sem Grupo')}</h3>
           <div class="grupo-metrics">
-            Aproveitamento: <strong>${Number(grupo.aproveitamento || 0).toFixed(2)}%</strong> | 
-            Pontos: ${grupo.pontuacaoObtida}/${grupo.pontuacaoPossivel}
+            Aproveitamento: <strong>${grupo?.aproveitamento != null ? this.percentual(grupo.aproveitamento) : '—'}</strong> | 
+            Pontos: ${this.numero(grupo?.pontosRealizados ?? 0)}/${this.numero(grupo?.pontosPossiveis ?? 0)}
           </div>
         </div>
         <div class="items">
       `;
 
-      grupo.itens.forEach((item) => {
+      itens.forEach((item) => {
         const resposta = item.resposta;
-        const isConforme = resposta === RespostaItem.CONFORME;
-        const isNaoConforme = resposta === RespostaItem.NAO_CONFORME;
-        const isNaoAplicavel = resposta === RespostaItem.NAO_APLICAVEL;
-
-        const classeCard = isNaoConforme
-          ? 'nao-conforme'
-          : isConforme
-            ? 'conforme'
-            : 'nao-aplicavel';
-
-        const icon = isConforme
-          ? '✓'
-          : isNaoConforme
-            ? '✗'
-            : '⚠';
-
-        const classeIcon = isNaoConforme
-          ? 'nao-conforme'
-          : isConforme
-            ? 'conforme'
-            : 'nao-aplicavel';
-
-        const respostaTexto =
-          resposta === RespostaItem.CONFORME
-            ? 'Conforme'
-            : resposta === RespostaItem.NAO_CONFORME
-              ? 'Não Conforme'
-              : resposta === RespostaItem.NAO_APLICAVEL
-                ? 'Não Aplicável'
-                : this.escapeHtml(resposta);
+        const respondida = !!resposta && resposta !== RespostaItem.NAO_AVALIADO;
+        const sentido = sentidoDaOpcao(item.templateItem, resposta);
+        const isNaoConforme = sentido === 'negativa';
+        const visual = this.visualDaResposta(item, respondida ? (sentido ?? 'neutra') : null);
+        const classeCard = visual.classe;
+        const classeIcon = visual.classe;
+        const icon = this.escapeHtml(visual.icone);
+        const respostaTexto = this.rotuloDaResposta(resposta);
 
         const legislacaoItem = isNaoConforme ? nomesLegislacoesDoItem(item) : null;
 
@@ -1155,166 +1235,6 @@ export class RelatorioHtmlService {
       </div>
     </div>
     `;
-  }
-
-  private static calcularPontuacaoOpcao(
-    templateItem: {
-      opcoesRespostaConfig?: Array<{ valor?: string; pontuacao?: number | null }>;
-      opcoesResposta?: string[];
-      usarRespostasPersonalizadas?: boolean;
-    } | null | undefined,
-    valorResposta: string,
-  ): number {
-    if (!templateItem) return 0;
-    const configs = templateItem.opcoesRespostaConfig || [];
-    const configOpcao = configs.find((c) => c.valor === valorResposta);
-    if (configOpcao?.pontuacao != null && typeof configOpcao.pontuacao === 'number') {
-      return configOpcao.pontuacao;
-    }
-    if (configOpcao && configOpcao.pontuacao === null) return 0;
-    const opcoesOrdenadas = templateItem.usarRespostasPersonalizadas && templateItem.opcoesResposta?.length
-      ? templateItem.opcoesResposta
-      : ['conforme', 'nao_conforme', 'nao_aplicavel', 'nao_avaliado'];
-    const indice = opcoesOrdenadas.indexOf(valorResposta);
-    const configPrimeira = configs.find((c) => c.valor === opcoesOrdenadas[0]);
-    const base = configPrimeira?.pontuacao != null && typeof configPrimeira.pontuacao === 'number'
-      ? configPrimeira.pontuacao
-      : 1;
-    return indice >= 0 ? base - indice : 0;
-  }
-
-  /**
-   * Retorna a pontuação máxima possível para um item: máximo entre as pontuações
-   * de cada opção, usando a mesma regra de cálculo (explícita ou sequencial).
-   */
-  private getPontuacaoMaximaItem(
-    templateItem: {
-      opcoesRespostaConfig?: Array<{ valor?: string; pontuacao?: number | null }>;
-      opcoesResposta?: string[];
-      usarRespostasPersonalizadas?: boolean;
-      tipoRespostaCustomizada?: string;
-    } | null | undefined,
-  ): number {
-    if (!templateItem) return 0;
-    if (templateItem.tipoRespostaCustomizada === 'texto') return 0;
-    const opcoesOrdenadas = templateItem.usarRespostasPersonalizadas && templateItem.opcoesResposta?.length
-      ? templateItem.opcoesResposta
-      : ['conforme', 'nao_conforme', 'nao_aplicavel', 'nao_avaliado'];
-    if (opcoesOrdenadas.length === 0) return 0;
-    const pontuacoes = opcoesOrdenadas.map((valor) =>
-      RelatorioHtmlService.calcularPontuacaoOpcao(templateItem, valor),
-    );
-    return Math.max(...pontuacoes);
-  }
-
-  /**
-   * Calcula os grupos de métricas.
-   */
-  private calcularGruposMetricas(auditoria: Auditoria): GrupoMetricas[] {
-    const itensPorGrupo = new Map<string, AuditoriaItem[]>();
-    auditoria.itens.forEach((item) => {
-      const grupoId = item.templateItem?.grupoId || 'sem-grupo';
-      if (!itensPorGrupo.has(grupoId)) {
-        itensPorGrupo.set(grupoId, []);
-      }
-      itensPorGrupo.get(grupoId)!.push(item);
-    });
-
-    const grupos: GrupoMetricas[] = Array.from(itensPorGrupo.entries()).map(
-      ([grupoId, itens]) => {
-        const primeiroItem = itens[0];
-        const grupoNome =
-          primeiroItem.templateItem?.grupo?.nome || 'Sem Grupo';
-        const pontuacaoPossivel = itens.reduce(
-          (acc, item) => acc + this.getPontuacaoMaximaItem(item.templateItem),
-          0,
-        );
-        const pontuacaoObtida = itens.reduce(
-          (acc, item) => acc + Number(item.pontuacao || 0),
-          0,
-        );
-        const naoConformidades = itens.filter(
-          (item) => item.resposta === RespostaItem.NAO_CONFORME,
-        ).length;
-        const naoAplicaveis = itens.filter(
-          (item) => item.resposta === RespostaItem.NAO_APLICAVEL,
-        ).length;
-        const naoRespondidas = itens.filter(
-          (item) => item.resposta === RespostaItem.NAO_AVALIADO,
-        ).length;
-        const aproveitamentoCalculado =
-          pontuacaoPossivel > 0
-            ? (pontuacaoObtida / pontuacaoPossivel) * 100
-            : 0;
-        const aproveitamento =
-          isNaN(aproveitamentoCalculado) || !isFinite(aproveitamentoCalculado)
-            ? 0
-            : Number(aproveitamentoCalculado);
-
-        return {
-          nome: grupoNome,
-          pontuacaoPossivel,
-          pontuacaoObtida,
-          naoConformidades,
-          naoAplicaveis,
-          naoRespondidas,
-          aproveitamento,
-          itens,
-        };
-      },
-    );
-
-    grupos.sort((a, b) => {
-      const ordemA = a.itens[0]?.templateItem?.grupo?.ordem || 0;
-      const ordemB = b.itens[0]?.templateItem?.grupo?.ordem || 0;
-      return ordemA - ordemB;
-    });
-
-    return grupos;
-  }
-
-  /**
-   * Calcula as métricas gerais.
-   */
-  private calcularMetricasGerais(
-    grupos: GrupoMetricas[],
-    auditoria: Auditoria,
-  ): {
-    pontosPossiveis: number;
-    pontosRealizados: number;
-    naoAplicaveis: number;
-    naoConformidades: number;
-    naoRespondidas: number;
-  } {
-    return {
-      pontosPossiveis: Number(
-        grupos.reduce((acc, g) => acc + g.pontuacaoPossivel, 0),
-      ),
-      pontosRealizados: Number(
-        grupos.reduce((acc, g) => acc + g.pontuacaoObtida, 0),
-      ),
-      naoAplicaveis: Number(
-        grupos.reduce((acc, g) => acc + g.naoAplicaveis, 0),
-      ),
-      naoConformidades: Number(
-        grupos.reduce((acc, g) => acc + g.naoConformidades, 0),
-      ),
-      naoRespondidas: Number(
-        grupos.reduce((acc, g) => acc + g.naoRespondidas, 0),
-      ),
-    };
-  }
-
-  /**
-   * Retorna a classificação do aproveitamento.
-   */
-  private getClassificacao(aproveitamento: number): string {
-    if (aproveitamento < 0) return 'Abaixo do mínimo';
-    if (aproveitamento >= 90) return 'Com Excelência';
-    if (aproveitamento >= 80) return 'Bom';
-    if (aproveitamento >= 70) return 'Regular';
-    if (aproveitamento >= 60) return 'Atenção Necessária';
-    return 'Crítico';
   }
 
   /**

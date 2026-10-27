@@ -23,8 +23,10 @@ import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalList
 import { CSS } from '@dnd-kit/utilities';
 import { Tooltip } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/shadcn/button';
+import { SeletorSentidoIcone } from './seletor-sentido-icone';
+import { sentidoDeduzidoNoLote } from './seletor-sentido-icone.logic';
 import { lerPontos, TAMANHO_MAXIMO_OPCAO } from '@/lib/checklist/configuracao-lote';
-import type { OpcaoLote, RespostaEmUso, TipoRespostaLote } from '@/lib/api';
+import type { OpcaoLote, RespostaEmUso, SentidoResposta, TipoRespostaLote } from '@/lib/api';
 import { cn } from '@/lib/cn';
 
 const ROTULO_PADRAO: Record<string, string> = {
@@ -123,6 +125,7 @@ interface LinhaProps {
   tipo: TipoRespostaLote;
   compacto: boolean;
   uso?: RespostaEmUso;
+  sentidoDeduzido: SentidoResposta;
   alca?: { attributes: DraggableAttributes; listeners: DraggableSyntheticListeners; setActivatorNodeRef: (el: HTMLElement | null) => void };
   levantada?: boolean;
   onAtualizar: EditorRespostasLoteProps['onAtualizar'];
@@ -131,7 +134,7 @@ interface LinhaProps {
 }
 
 /** Uma resposta personalizada: alça, texto, pontos, foto, observação e remover. */
-function LinhaPersonalizada({ opcao, indice, tipo, compacto, uso, alca, levantada, onAtualizar, onRenomear, onRemover }: LinhaProps) {
+function LinhaPersonalizada({ opcao, indice, tipo, compacto, uso, sentidoDeduzido, alca, levantada, onAtualizar, onRenomear, onRemover }: LinhaProps) {
   const nome = nomeOpcao(opcao, indice);
   const alcaBotao = (
     <button
@@ -201,6 +204,14 @@ function LinhaPersonalizada({ opcao, indice, tipo, compacto, uso, alca, levantad
     />
   );
   const pontos = <CampoPontos opcao={opcao} indice={indice} tipo={tipo} compacto={compacto} onAtualizar={onAtualizar} />;
+  const sentido = (
+    <SeletorSentidoIcone
+      sentido={opcao.sentido ?? null}
+      icone={opcao.icone ?? null}
+      sentidoDeduzido={sentidoDeduzido}
+      onChange={(v) => onAtualizar(indice, v)}
+    />
+  );
 
   const destaque = levantada && 'shadow-xl ring-2 ring-primary';
   if (compacto) {
@@ -216,17 +227,21 @@ function LinhaPersonalizada({ opcao, indice, tipo, compacto, uso, alca, levantad
           {foto}
           {obs}
         </div>
+        <div className="pl-[50px]">{sentido}</div>
       </div>
     );
   }
   return (
-    <div className={cn(GRADE_PERSONALIZADA, 'rounded-lg bg-card px-2 py-1.5', destaque)}>
-      {alcaBotao}
-      {texto}
-      {pontos}
-      {foto}
-      {obs}
-      {remover}
+    <div className={cn('rounded-lg bg-card px-2 py-1.5', destaque)}>
+      <div className={GRADE_PERSONALIZADA}>
+        {alcaBotao}
+        {texto}
+        {pontos}
+        {foto}
+        {obs}
+        {remover}
+      </div>
+      <div className="pt-1.5 pl-9">{sentido}</div>
     </div>
   );
 }
@@ -245,7 +260,7 @@ function LinhaOrdenavel(props: Omit<LinhaProps, 'alca' | 'levantada'> & { chave:
         aria-hidden
         className={cn(
           'flex items-center justify-center rounded-lg border-2 border-dashed border-primary/60 bg-primary/5 text-xs font-semibold text-primary',
-          props.compacto ? 'h-[104px] rounded-xl' : 'h-12',
+          props.compacto ? 'h-[152px] rounded-xl' : 'h-[100px]',
         )}
       >
         Soltar aqui · posição {props.posicao}
@@ -296,7 +311,8 @@ export function EditorRespostasLote({
           <span className="text-center">Obs.</span>
         </div>
         {opcoes.map((o, idx) => (
-          <div key={o.valor} className={GRADE_PADRAO}>
+          <div key={o.valor} className="flex flex-col gap-1.5 border-b border-border pb-2 last:border-b-0">
+          <div className={GRADE_PADRAO}>
             <span className="truncate text-sm">{nomeOpcao(o, idx)}</span>
             <CampoPontos opcao={o} indice={idx} tipo={tipo} compacto={false} onAtualizar={onAtualizar} />
             <Alternar
@@ -315,6 +331,13 @@ export function EditorRespostasLote({
               icone={<MessageSquare className="h-4 w-4" aria-hidden />}
               onClick={() => onAtualizar(idx, { observacaoObrigatoria: !o.observacaoObrigatoria })}
             />
+          </div>
+          <SeletorSentidoIcone
+            sentido={o.sentido ?? null}
+            icone={o.icone ?? null}
+            sentidoDeduzido={sentidoDeduzidoNoLote(opcoes, tipo, o.valor)}
+            onChange={(v) => onAtualizar(idx, v)}
+          />
           </div>
         ))}
         <p className="text-xs text-muted-foreground">Para mudar os textos ou a ordem, use Opções personalizadas.</p>
@@ -404,6 +427,7 @@ export function EditorRespostasLote({
                 tipo={tipo}
                 compacto={compacto}
                 uso={usoDe(o)}
+                sentidoDeduzido={sentidoDeduzidoNoLote(opcoes, tipo, o.valor)}
                 onAtualizar={onAtualizar}
                 onRenomear={onRenomear}
                 onRemover={onRemover}
@@ -423,6 +447,7 @@ export function EditorRespostasLote({
                     tipo={tipo}
                     compacto={compacto}
                     uso={usoDe(ativa)}
+                    sentidoDeduzido={sentidoDeduzidoNoLote(opcoes, tipo, ativa.valor)}
                     levantada
                     onAtualizar={() => undefined}
                     onRenomear={() => undefined}
