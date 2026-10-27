@@ -7,8 +7,23 @@ export type ItemComOpcoes = Pick<
 
 export const OPCOES_PADRAO = ['conforme', 'nao_conforme', 'nao_aplicavel', 'nao_avaliado'];
 
+function normalizarRotulo(valor: string): string {
+  return valor
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+/** Verdadeiro para `nao_aplicavel` e rótulos como "N/A", "Não se aplica", "Não aplicável". */
+export function ehRotuloNaoAplicavel(valor: string): boolean {
+  return ['na', 'n a', 'nao se aplica', 'nao aplicavel'].includes(normalizarRotulo(valor));
+}
+
+/** Não aplicável (padrão ou rótulo personalizado) e não avaliado ficam fora da nota. */
 export function isOpcaoSemPontuacao(valor: string): boolean {
-  return ['nao_aplicavel', 'nao_avaliado'].includes(valor.toLowerCase());
+  return ['nao_aplicavel', 'nao_avaliado'].includes(valor.toLowerCase()) || ehRotuloNaoAplicavel(valor);
 }
 
 /**

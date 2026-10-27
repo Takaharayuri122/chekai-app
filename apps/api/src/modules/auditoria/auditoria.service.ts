@@ -21,7 +21,13 @@ import { LegislacaoVinculoService } from '../legislacao/legislacao-vinculo.servi
 import { validarLegislacaoIds } from '../legislacao/lib/validar-legislacao-ids';
 import { resumirLegislacoes } from '../legislacao/lib/resumo-legislacao';
 import { ChecklistService } from '../checklist/checklist.service';
-import { calcularPontuacaoOpcao, ehNaoConformidade, getPontuacaoMaximaItem, isOpcaoSemPontuacao } from '../checklist/regras';
+import {
+  calcularNotaDaAuditoria,
+  calcularPontuacaoOpcao,
+  ehNaoConformidade,
+  getPontuacaoMaximaItem,
+  isOpcaoSemPontuacao,
+} from '../checklist/regras';
 import { PerfilUsuario } from '../usuario/entities/usuario.entity';
 import {
   IniciarAuditoriaDto,
@@ -433,19 +439,7 @@ export class AuditoriaService {
         `Existem ${itensObrigatoriosNaoAvaliados.length} itens obrigatórios não avaliados`,
       );
     }
-    const itensPontuaveis = auditoria.itens.filter(
-      (item) => !isOpcaoSemPontuacao(item.resposta || ''),
-    );
-    const pontuacaoObtida = itensPontuaveis.reduce(
-      (acc, item) => acc + item.pontuacao,
-      0,
-    );
-    const pontuacaoMaxima = itensPontuaveis.reduce(
-      (acc, item) => acc + getPontuacaoMaximaItem(item.templateItem),
-      0,
-    );
-    const pontuacaoPercentual =
-      pontuacaoMaxima > 0 ? (pontuacaoObtida / pontuacaoMaxima) * 100 : 0;
+    const { percentual: pontuacaoPercentual } = calcularNotaDaAuditoria(auditoria.itens);
     auditoria.status = StatusAuditoria.FINALIZADA;
     auditoria.dataFim = new Date();
     if (dto.latitude !== undefined) {
