@@ -137,7 +137,8 @@ describe('RelatorioHtmlService - não conformidades e desempenho', () => {
     auditoria.itens[0].descricaoNaoConformidade = 'Validade vencida';
     const html = service.gerarHtml(auditoria, resultadoBase());
     const secao = html.slice(html.indexOf('<h2 class="secao-titulo">Não conformidades'), html.indexOf('<h2 class="secao-titulo">Respostas por grupo'));
-    expect(secao).toContain('<div class="nc-grupo">Grupo</div>');
+    expect(secao).toContain('<div class="nc-grupo">Grupo 1 · Grupo</div>');
+    expect(secao).toContain('<span class="numero">1.1</span>Pergunta?');
     expect(secao).toContain('Validade vencida');
     expect(secao).toContain('1 item');
   });
@@ -150,7 +151,7 @@ describe('RelatorioHtmlService - não conformidades e desempenho', () => {
 
   it('barra do grupo usa a cor da faixa e o nome do grupo, não o número', () => {
     const html = service.gerarHtml(auditoriaCom('conforme'), resultadoBase());
-    expect(html).toContain('<td class="grupo-nome">Grupo</td>');
+    expect(html).toContain('<td class="grupo-nome"><span class="numero-grupo">1.</span>Grupo</td>');
     expect(html).toContain('width:50.00%;background:#DC2626;');
   });
 
@@ -226,6 +227,25 @@ describe('RelatorioHtmlService - ícone da resposta', () => {
   });
 });
 
+describe('RelatorioHtmlService - numeração', () => {
+  it('numera os grupos pela ordem e as perguntas pela ordem dentro do grupo', () => {
+    const item = (pergunta: string, grupoId: string, nome: string, ordemGrupo: number, ordem: number) => ({
+      id: pergunta, resposta: 'conforme', legislacoes: [], fotos: [],
+      templateItem: { pergunta, ordem, grupoId, grupo: { id: grupoId, nome, ordem: ordemGrupo } },
+    });
+    const auditoria = {
+      ...auditoriaCom('conforme'),
+      itens: [item('B2', 'gB', 'Beta', 2, 2), item('A1', 'gA', 'Alfa', 1, 1), item('B1', 'gB', 'Beta', 2, 1)],
+    };
+    const html = new RelatorioHtmlService().gerarHtml(auditoria, resultadoBase({ grupos: [] }));
+    expect(html).toContain('<span class="numero-grupo">2.</span>Beta</h3>');
+    expect(html).toContain('<span class="numero">1.1</span>A1');
+    expect(html).toContain('<span class="numero">2.1</span>B1');
+    expect(html).toContain('<span class="numero">2.2</span>B2');
+    expect(html.indexOf('2.1</span>B1')).toBeLessThan(html.indexOf('2.2</span>B2'));
+  });
+});
+
 describe('RelatorioHtmlService - grupos casados pela chave', () => {
   it('usa as métricas do grupo certo mesmo com ordem diferente da lista de métricas', () => {
     const item = (id: string, grupoId: string, nome: string, ordem: number) => ({
@@ -245,7 +265,7 @@ describe('RelatorioHtmlService - grupos casados pela chave', () => {
       resultadoBase({ grupos: [metrica('gA', 'Alfa', 11), metrica('gB', 'Beta', 22)] }),
     );
     const respostas = html.slice(html.indexOf('<h2 class="secao-titulo">Respostas por grupo'));
-    const secaoBeta = respostas.slice(respostas.indexOf('<h3 class="grupo-titulo">Beta'));
+    const secaoBeta = respostas.slice(respostas.indexOf('<h3 class="grupo-titulo"><span class="numero-grupo">1.</span>Beta'));
     expect(secaoBeta).toContain('22,00%');
     expect(secaoBeta.slice(0, secaoBeta.indexOf('Alfa'))).not.toContain('11,00%');
   });
