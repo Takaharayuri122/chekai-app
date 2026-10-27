@@ -1,11 +1,6 @@
-const OPCOES_SEM_PONTUACAO = ['nao_aplicavel', 'nao_avaliado'];
+import { isOpcaoSemPontuacao } from './checklist/pontuacao';
 
-/**
- * Verifica se uma opção de resposta não participa do cálculo de pontuação.
- */
-export function isOpcaoSemPontuacao(valor: string): boolean {
-  return OPCOES_SEM_PONTUACAO.includes(valor.toLowerCase());
-}
+export { isOpcaoSemPontuacao };
 
 /**
  * Calcula pontuações em sequência decrescente, pulando opções sem pontuação (N/A, Não Avaliado).

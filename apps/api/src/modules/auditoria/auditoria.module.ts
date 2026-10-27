@@ -11,6 +11,7 @@ import { AuditoriaController } from './auditoria.controller';
 import { RelatorioPdfPuppeteerService } from './services/relatorio-pdf-puppeteer.service';
 import { RelatorioAuditoriaPdfService } from './services/relatorio-auditoria-pdf.service';
 import { EnvioRelatorioService } from './services/envio-relatorio.service';
+import { RecalculoNotaService } from './services/recalculo-nota.service';
 import { EmailModule } from '../email/email.module';
 import { ResultadoAuditoriaService } from './services/resultado-auditoria.service';
 import { PlanoAcaoTarefa } from '../plano-acao/entities/plano-acao-tarefa.entity';
@@ -49,6 +50,7 @@ import { PdfModule } from '../pdf/pdf.module';
     RelatorioHtmlService,
     ResultadoAuditoriaService,
     EnvioRelatorioService,
+    RecalculoNotaService,
     ComprimirImagemService,
     ExtrairExifService,
   ],
