@@ -5,6 +5,8 @@ import { formatarPercentual } from './cartao-resultado.modelo';
 
 export interface GrupoMetricas {
   grupoId: string;
+  /** Posição do grupo no relatório (1, 2, 3…), igual ao PDF. */
+  numero: number;
   nome: string;
   pontuacaoPossivel: number;
   pontuacaoObtida: number;
@@ -46,6 +48,7 @@ function metricasDoGrupo(grupoId: string, itens: AuditoriaItem[]): GrupoMetricas
   const pontuacaoObtida = pontuaveis.reduce((acc, i) => acc + Number(i.pontuacao || 0), 0);
   return {
     grupoId,
+    numero: 0,
     nome: itens[0]?.templateItem?.grupo?.nome || 'Sem Grupo',
     pontuacaoPossivel,
     pontuacaoObtida,
@@ -53,7 +56,7 @@ function metricasDoGrupo(grupoId: string, itens: AuditoriaItem[]): GrupoMetricas
     naoAplicaveis: itens.filter(ehNaoAplicavel).length,
     naoRespondidas: itens.filter((i) => !i.resposta || i.resposta === 'nao_avaliado').length,
     aproveitamento: pontuacaoPossivel > 0 ? arredondar((pontuacaoObtida / pontuacaoPossivel) * 100) : null,
-    itens,
+    itens: [...itens].sort((a, b) => (a.templateItem?.ordem ?? 0) - (b.templateItem?.ordem ?? 0)),
   };
 }
 
@@ -74,7 +77,8 @@ export function metricasDoRelatorio(
   }
   const locais = Array.from(porGrupo.entries())
     .map(([grupoId, itens]) => metricasDoGrupo(grupoId, itens))
-    .sort((a, b) => (a.itens[0]?.templateItem?.grupo?.ordem || 0) - (b.itens[0]?.templateItem?.grupo?.ordem || 0));
+    .sort((a, b) => (a.itens[0]?.templateItem?.grupo?.ordem || 0) - (b.itens[0]?.templateItem?.grupo?.ordem || 0))
+    .map((g, indice) => ({ ...g, numero: indice + 1 }));
 
   const daApi = new Map((resultado?.grupos ?? []).map((g) => [g.grupoId, g]));
   const grupos = locais.map((g): GrupoMetricas => {
@@ -104,6 +108,16 @@ export function metricasDoRelatorio(
     naoRespondidas: soma('naoRespondidas'),
   };
   return { grupos, gerais };
+}
+
+/** Nome do grupo com a numeração do relatório (ex.: "2. Hortifrútis"). */
+export function rotuloDoGrupo(grupo: Pick<GrupoMetricas, 'numero' | 'nome'>): string {
+  return `${grupo.numero}. ${grupo.nome}`;
+}
+
+/** Número da pergunta no relatório: grupo.posição (ex.: 2.4), igual ao PDF. */
+export function numeroDaPergunta(grupo: Pick<GrupoMetricas, 'numero'>, indice: number): string {
+  return `${grupo.numero}.${indice + 1}`;
 }
 
 /** Aproveitamento de um grupo para tabela e cartões: "—" quando não há pontos possíveis. */
