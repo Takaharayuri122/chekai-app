@@ -70,11 +70,49 @@ export class PdfPreparacaoService {
       </div>`;
   }
 
+  /**
+   * Cabeçalho do relatório de auditoria: a consultoria assina o documento (logo à esquerda)
+   * e o cliente aparece à direita. Sem logo da consultoria, usa a do ChekAI.
+   */
+  montarHeaderAuditoriaHtml(opcoes: {
+    readonly logoChekAiDataUri: string;
+    readonly logoConsultoriaDataUri: string | null;
+    readonly logoClienteDataUri: string | null;
+    readonly nomeCliente: string;
+  }): string {
+    const logoEsquerda = opcoes.logoConsultoriaDataUri || opcoes.logoChekAiDataUri;
+    const cliente = opcoes.logoClienteDataUri
+      ? `<img src="${opcoes.logoClienteDataUri}" style="height:34px;max-width:150px;object-fit:contain;" alt="" />`
+      : `<span style="font-size:10px;font-weight:700;color:#1B2A4A;">${this.escapeHtmlTemplate(opcoes.nomeCliente)}</span>`;
+    return `
+      <div style="width:100%;-webkit-print-color-adjust:exact;padding:0 12mm 6px;box-sizing:border-box;font-family:'Inter',Arial,sans-serif;">
+        <div style="display:flex;justify-content:space-between;align-items:center;height:38px;border-bottom:1.5px solid #00B8A9;padding-bottom:6px;">
+          <img src="${logoEsquerda}" style="height:34px;max-width:170px;object-fit:contain;" alt="" />
+          ${cliente}
+        </div>
+      </div>`;
+  }
+
+  /**
+   * Rodapé do relatório de auditoria: ChekAI discreto, código do documento e página.
+   */
+  montarFooterAuditoriaHtml(opcoes: { readonly logoChekAiDataUri: string; readonly referenciaId: string }): string {
+    const ref = opcoes.referenciaId.replace(/-/g, '').slice(0, 8).toUpperCase();
+    return `
+      <div style="width:100%;padding:0 12mm;box-sizing:border-box;font-family:'Inter',Arial,sans-serif;font-size:7.5px;color:#8A97AB;">
+        <div style="display:flex;justify-content:space-between;align-items:center;border-top:1px solid #E5E9F0;padding-top:5px;">
+          <span style="display:flex;align-items:center;gap:4px;">Gerado com <img src="${opcoes.logoChekAiDataUri}" style="height:11px;object-fit:contain;" alt="ChekAI" /></span>
+          <span>Código ${this.escapeHtmlTemplate(ref)}</span>
+          <span>Página <span class="pageNumber"></span> de <span class="totalPages"></span></span>
+        </div>
+      </div>`;
+  }
+
   async prepararRelatorioTecnico(relatorio: RelatorioTecnico): Promise<PreparoRelatorioTecnicoPdf> {
     const logoChekAiDataUri = await this.obterLogoChekAiDataUri();
     const logoClienteUrl = relatorio.cliente?.logoUrl ?? null;
     const logoClienteDataUri = logoClienteUrl
-      ? await this.imagemUrlParaDataUriJpeg(logoClienteUrl, 112).catch(() => null)
+      ? await this.logoUrlParaDataUriPng(logoClienteUrl).catch(() => null)
       : null;
     const fotosPorId: Record<string, string> = {};
     const lista = relatorio.fotos || [];
@@ -106,8 +144,8 @@ export class PdfPreparacaoService {
     const logoConsultoriaUrl = gestor?.logoUrl || null;
     const logoClienteUrl = (auditoria.unidade?.cliente as { logoUrl?: string | null })?.logoUrl || null;
     const [logoConsultoriaDataUri, logoClienteDataUri] = await Promise.all([
-      logoConsultoriaUrl ? this.imagemUrlParaDataUriJpeg(logoConsultoriaUrl, 112).catch(() => null) : Promise.resolve(null),
-      logoClienteUrl ? this.imagemUrlParaDataUriJpeg(logoClienteUrl, 112).catch(() => null) : Promise.resolve(null),
+      logoConsultoriaUrl ? this.logoUrlParaDataUriPng(logoConsultoriaUrl).catch(() => null) : Promise.resolve(null),
+      logoClienteUrl ? this.logoUrlParaDataUriPng(logoClienteUrl).catch(() => null) : Promise.resolve(null),
     ]);
     const fotosPorId: Record<string, string> = {};
     const fotos: { id: string; url: string }[] = [];
@@ -121,7 +159,7 @@ export class PdfPreparacaoService {
     for (let i = 0; i < fotos.length; i += 1) {
       const { id, url } = fotos[i];
       try {
-        fotosPorId[id] = await this.imagemUrlParaDataUriJpeg(url, 200);
+        fotosPorId[id] = await this.imagemUrlParaDataUriJpeg(url, 400);
       } catch (err) {
         this.logger.warn(`Foto auditoria ${id}: falha ao embutir`, err);
       }
@@ -151,7 +189,7 @@ export class PdfPreparacaoService {
     let out: Buffer;
     try {
       const buf = await this.fetchBuffer(url);
-      out = await sharp(buf).resize(160, 160, { fit: 'inside' }).png().toBuffer();
+      out = await sharp(buf).resize(400, 400, { fit: 'inside', withoutEnlargement: true }).png().toBuffer();
     } catch (err) {
       // A logo é decorativa: sem ela o PDF ainda deve ser gerado (e não fica em cache para tentar de novo)
       this.logger.warn(`Logo ChekAI indisponível (${url}): ${err instanceof Error ? err.message : String(err)}`);
@@ -173,6 +211,16 @@ export class PdfPreparacaoService {
     } finally {
       clearTimeout(timer);
     }
+  }
+
+  /** Logos ficam em PNG para manter a transparência (em JPEG o fundo transparente vira preto). */
+  private async logoUrlParaDataUriPng(url: string): Promise<string> {
+    const buf = await this.fetchBuffer(url);
+    const out = await sharp(buf)
+      .resize(480, 160, { fit: 'inside', withoutEnlargement: true })
+      .png()
+      .toBuffer();
+    return `data:image/png;base64,${out.toString('base64')}`;
   }
 
   private async imagemUrlParaDataUriJpeg(url: string, maxLado: number): Promise<string> {

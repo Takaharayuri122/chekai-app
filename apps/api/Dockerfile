@@ -47,7 +47,9 @@ RUN apk add --no-cache \
     freetype \
     harfbuzz \
     ca-certificates \
-    ttf-freefont
+    ttf-freefont \
+    font-inter \
+    font-noto-emoji
 
 # Criar usuário não-root
 RUN addgroup --system --gid 1001 nodejs
