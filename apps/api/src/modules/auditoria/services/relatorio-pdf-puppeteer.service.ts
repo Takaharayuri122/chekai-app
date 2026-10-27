@@ -175,12 +175,15 @@ export class RelatorioPdfPuppeteerService {
         ),
       );
       await page.evaluateHandle('document.fonts.ready');
-      const headerTemplate = this.pdfPreparacao.montarHeaderTemplateHtml({
+      const cliente = auditoria.unidade?.cliente;
+      const headerTemplate = this.pdfPreparacao.montarHeaderAuditoriaHtml({
         logoChekAiDataUri: preparo.logoChekAiDataUri,
-        logoClienteDataUri: preparo.logoClienteDataUri,
         logoConsultoriaDataUri: preparo.logoConsultoriaDataUri,
+        logoClienteDataUri: preparo.logoClienteDataUri,
+        nomeCliente: cliente?.nomeFantasia || cliente?.razaoSocial || '',
       });
-      const footerTemplate = this.pdfPreparacao.montarFooterTemplateHtml({
+      const footerTemplate = this.pdfPreparacao.montarFooterAuditoriaHtml({
+        logoChekAiDataUri: preparo.logoChekAiDataUri,
         referenciaId: auditoria.id,
       });
       const pdfBuffer = await page.pdf({
@@ -191,10 +194,10 @@ export class RelatorioPdfPuppeteerService {
         headerTemplate,
         footerTemplate,
         margin: {
-          top: '18mm',
-          right: '5mm',
+          top: '24mm',
+          right: '12mm',
           bottom: '16mm',
-          left: '5mm',
+          left: '12mm',
         },
       });
       registrarMetricaGeracaoPdf(
