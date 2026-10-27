@@ -26,6 +26,8 @@ type ClasseResposta = 'positiva' | 'negativa' | 'neutra' | 'nao-respondida';
 
 interface ItemDoRelatorio {
   readonly item: AuditoriaItem;
+  /** Número da pergunta no relatório: grupo.posição (ex.: 2.4). */
+  readonly numero: string;
   readonly classe: ClasseResposta;
   readonly icone: string;
   /** Ícone escolhido na configuração da opção (emoji), em vez do símbolo padrão do sentido. */
@@ -35,6 +37,7 @@ interface ItemDoRelatorio {
 
 interface GrupoDoRelatorio {
   readonly grupoId: string;
+  readonly numero: number;
   readonly nome: string;
   readonly metricas: ResultadoGrupo | undefined;
   readonly itens: ItemDoRelatorio[];
@@ -222,7 +225,10 @@ const ESTILOS = `
     .item-icone.neutra { background: var(--neutra); }
     .item-icone.nao-respondida { background: #FFFFFF; color: var(--tinta-fraca); border: 1px dashed var(--tinta-fraca); }
     .item-icone.personalizado { background: transparent; font-size: 14px; }
+    .item-pergunta, .nc-pergunta { display: flex; }
     .item-pergunta { font-size: 10.5px; }
+    .numero { flex-shrink: 0; min-width: 26px; font-weight: 700; color: var(--tinta-fraca); margin-right: 4px; font-variant-numeric: tabular-nums; }
+    .numero-grupo { font-weight: 800; color: var(--marca); margin-right: 6px; }
     .item-obs { font-size: 10px; color: var(--tinta-suave); margin-top: 2px; }
     .item-resposta { font-size: 10px; font-weight: 700; white-space: nowrap; padding-top: 1px; }
     .item-resposta.positiva { color: #047857; }
@@ -269,7 +275,7 @@ export class RelatorioHtmlService {
 <body>
   ${this.gerarCapa(auditoria)}
   ${this.gerarCartaoResultado(resultado)}
-  ${this.gerarDesempenhoPorGrupo(resultado)}
+  ${this.gerarDesempenhoPorGrupo(resultado, new Map(grupos.map((g) => [g.grupoId, g.numero])))}
   ${this.gerarResumoExecutivo(auditoria.resumoExecutivo)}
   ${this.gerarNaoConformidades(grupos, assetsPdf)}
   ${this.gerarRespostasPorGrupo(grupos, resultado.faixas, assetsPdf)}
@@ -292,22 +298,27 @@ export class RelatorioHtmlService {
     }
     return Array.from(porGrupo.entries())
       .sort(([, a], [, b]) => (a[0].templateItem?.grupo?.ordem || 0) - (b[0].templateItem?.grupo?.ordem || 0))
-      .map(([grupoId, grupoItens]) => {
+      .map(([grupoId, grupoItens], indice) => {
         const grupoMetricas = metricas.find((m) => m.grupoId === grupoId);
+        const numero = indice + 1;
         return {
           grupoId,
+          numero,
           nome: grupoMetricas?.nome ?? grupoItens[0]?.templateItem?.grupo?.nome ?? 'Sem grupo',
           metricas: grupoMetricas,
-          itens: grupoItens.map((item) => this.itemDoRelatorio(item)),
+          itens: [...grupoItens]
+            .sort((a, b) => (a.templateItem?.ordem ?? 0) - (b.templateItem?.ordem ?? 0))
+            .map((item, posicao) => this.itemDoRelatorio(item, `${numero}.${posicao + 1}`)),
         };
       });
   }
 
-  private itemDoRelatorio(item: AuditoriaItem): ItemDoRelatorio {
+  private itemDoRelatorio(item: AuditoriaItem, numero: string): ItemDoRelatorio {
     const respondida = !!item.resposta && item.resposta !== RespostaItem.NAO_AVALIADO;
     const sentido = respondida ? (sentidoDaOpcao(item.templateItem, item.resposta) ?? 'neutra') : null;
     return {
       item,
+      numero,
       ...this.visualDaResposta(item, sentido),
       respostaTexto: this.rotuloDaResposta(item.resposta),
     };
@@ -363,6 +374,10 @@ export class RelatorioHtmlService {
 
   private corDaNota(valor: number, faixas: FaixaClassificacao[]): string {
     return classificar(valor, faixas).cor ?? COR_SEM_FAIXA;
+  }
+
+  private numeroDoGrupoHtml(numero: number | undefined): string {
+    return numero ? `<span class="numero-grupo">${numero}.</span>` : '';
   }
 
   private dado(rotulo: string, valor: string): string {
@@ -481,7 +496,7 @@ export class RelatorioHtmlService {
   /**
    * Tabela por grupo com barra de aproveitamento na cor da faixa (linha "Geral" inclusa).
    */
-  private gerarDesempenhoPorGrupo(resultado: ResultadoAuditoria): string {
+  private gerarDesempenhoPorGrupo(resultado: ResultadoAuditoria, numeroDoGrupo: Map<string, number>): string {
     const { grupos, contadores, faixas } = resultado;
     const soma = (campo: 'naoAplicaveis' | 'naoRespondidas') => grupos.reduce((acc, g) => acc + g[campo], 0);
     const quantidade = (n: number, destaque = false) =>
@@ -528,7 +543,7 @@ export class RelatorioHtmlService {
         ${grupos
           .map((g) =>
             linha(
-              this.escapeHtml(g.nome),
+              `${this.numeroDoGrupoHtml(numeroDoGrupo.get(g.grupoId))}${this.escapeHtml(g.nome)}`,
               g.aproveitamento,
               g.pontosRealizados,
               g.pontosPossiveis,
@@ -612,18 +627,18 @@ export class RelatorioHtmlService {
     assetsPdf?: RelatorioAuditoriaPdfAssetsHtml,
   ): string {
     const naoConformes = grupos.flatMap((g) =>
-      g.itens.filter((i) => i.classe === 'negativa').map((i) => ({ grupo: g.nome, ...i })),
+      g.itens.filter((i) => i.classe === 'negativa').map((i) => ({ grupo: `Grupo ${g.numero} · ${g.nome}`, ...i })),
     );
     const corpo = naoConformes.length
       ? naoConformes
-          .map(({ grupo, item, respostaTexto }) => {
+          .map(({ grupo, item, numero, respostaTexto }) => {
             const legislacao = nomesLegislacoesDoItem(item);
             const detalhe = (rotulo: string, valor: string | null | undefined) =>
               valor ? `<div class="detalhe-rotulo">${rotulo}</div><div>${this.escapeHtml(valor)}</div>` : '';
             return `
     <div class="nc-card">
       <div class="nc-grupo">${this.escapeHtml(grupo)}</div>
-      <div class="nc-pergunta">${this.escapeHtml(item.templateItem?.pergunta || 'Pergunta não encontrada')}</div>
+      <div class="nc-pergunta"><span class="numero">${numero}</span>${this.escapeHtml(item.templateItem?.pergunta || 'Pergunta não encontrada')}</div>
       <div class="detalhes">
         <div class="detalhe-rotulo">Resposta</div><div>${respostaTexto}</div>
         ${detalhe('Justificativa', item.descricaoNaoConformidade)}
@@ -653,21 +668,21 @@ export class RelatorioHtmlService {
     assetsPdf?: RelatorioAuditoriaPdfAssetsHtml,
   ): string {
     const html = grupos
-      .map(({ nome, metricas, itens }) => {
+      .map(({ numero: numeroGrupo, nome, metricas, itens }) => {
         const ap = metricas?.aproveitamento;
         const selo =
           ap != null
             ? `<span class="grupo-ap" style="background:${this.escapeHtml(this.corDaNota(ap, faixas))};">${this.percentual(ap)}</span>`
             : '';
         const linhas = itens
-          .map(({ item, classe, icone, iconePersonalizado, respostaTexto }) => {
+          .map(({ item, numero, classe, icone, iconePersonalizado, respostaTexto }) => {
             const negativa = classe === 'negativa';
             const iconeHtml = iconePersonalizado ? `<span class="emoji">${this.escapeHtml(icone)}</span>` : this.escapeHtml(icone);
             return `
       <div class="item ${classe}">
         <span class="item-icone ${classe}${iconePersonalizado ? ' personalizado' : ''}">${iconeHtml}</span>
         <div>
-          <div class="item-pergunta">${this.escapeHtml(item.templateItem?.pergunta || 'Pergunta não encontrada')}</div>
+          <div class="item-pergunta"><span class="numero">${numero}</span>${this.escapeHtml(item.templateItem?.pergunta || 'Pergunta não encontrada')}</div>
           ${!negativa && item.observacao ? `<div class="item-obs">Observação: ${this.escapeHtml(item.observacao)}</div>` : ''}
           ${!negativa ? this.gerarFotos(item, assetsPdf, 'pequenas') : ''}
         </div>
@@ -678,7 +693,7 @@ export class RelatorioHtmlService {
         return `
     <div class="grupo">
       <div class="grupo-cabecalho">
-        <h3 class="grupo-titulo">${this.escapeHtml(nome)}</h3>
+        <h3 class="grupo-titulo">${this.numeroDoGrupoHtml(numeroGrupo)}${this.escapeHtml(nome)}</h3>
         <div class="grupo-metricas">Pontos ${this.numero(metricas?.pontosRealizados ?? 0)} / ${this.numero(metricas?.pontosPossiveis ?? 0)}${selo}</div>
       </div>
       ${linhas}

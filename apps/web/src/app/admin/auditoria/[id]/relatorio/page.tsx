@@ -36,7 +36,7 @@ import { EnviosRelatorio } from '@/components/auditoria/relatorio/envios-relator
 import { toastService } from '@/lib/toast';
 import { planoAcaoService } from '@/lib/services/plano-acao.service';
 import { formatarPercentual } from '@/components/auditoria/relatorio/cartao-resultado.modelo';
-import { formatarAproveitamentoGrupo, metricasDoRelatorio } from '@/components/auditoria/relatorio/metricas-relatorio';
+import { formatarAproveitamentoGrupo, numeroDaPergunta, rotuloDoGrupo, metricasDoRelatorio } from '@/components/auditoria/relatorio/metricas-relatorio';
 import { CLASSE_GLIFO_POR_TOM, CLASSE_ITEM_POR_TOM, visualDaResposta } from '@/components/auditoria/relatorio/visual-resposta';
 import { nomesLegislacoesDoItem } from '@/lib/legislacao/legislacoes-do-item';
 
@@ -308,7 +308,7 @@ export default function RelatorioPage() {
               <tbody>
                 {gruposMetricas.map((grupo) => (
                   <tr key={grupo.grupoId} className="border-b">
-                    <td className="border p-2 font-medium">{grupo.nome}</td>
+                    <td className="border p-2 font-medium">{rotuloDoGrupo(grupo)}</td>
                     <td className="border p-2 text-center font-semibold">
                       {formatarAproveitamentoGrupo(grupo.aproveitamento)}
                     </td>
@@ -414,13 +414,13 @@ export default function RelatorioPage() {
             {gruposMetricas.map((grupo) => (
               <div key={grupo.grupoId} className="border rounded-lg p-6">
                 <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-bold">{grupo.nome}</h3>
+                  <h3 className="text-lg font-bold">{rotuloDoGrupo(grupo)}</h3>
                   <div className="text-sm text-gray-600">
                     Aproveitamento: <strong>{formatarAproveitamentoGrupo(grupo.aproveitamento)}</strong> | Pontos: {grupo.pontuacaoObtida}/{grupo.pontuacaoPossivel}
                   </div>
                 </div>
                 <div className="space-y-4">
-                  {grupo.itens.map((item) => {
+                  {grupo.itens.map((item, indice) => {
                     const resposta = item.resposta;
                     const visual = visualDaResposta(item);
 
@@ -435,6 +435,7 @@ export default function RelatorioPage() {
                           </div>
                           <div className="flex-1">
                             <p className="font-medium text-gray-900 mb-2">
+                              <span className="mr-1.5 font-semibold tabular-nums text-muted-foreground">{numeroDaPergunta(grupo, indice)}</span>
                               {item.templateItem?.pergunta || 'Pergunta não encontrada'}
                             </p>
                             <div className="space-y-1 text-sm">
@@ -653,7 +654,7 @@ export default function RelatorioPage() {
                   <tbody>
                     {gruposMetricas.map((grupo) => (
                       <tr key={grupo.grupoId}>
-                        <td className="font-medium">{grupo.nome}</td>
+                        <td className="font-medium">{rotuloDoGrupo(grupo)}</td>
                         <td className="text-center font-semibold">
                           {formatarAproveitamentoGrupo(grupo.aproveitamento)}
                         </td>
@@ -715,7 +716,7 @@ export default function RelatorioPage() {
               <div className="sm:hidden space-y-3">
                 {gruposMetricas.map((grupo) => (
                   <div key={grupo.grupoId} className="bg-muted rounded-lg p-3 border border-border">
-                    <div className="font-semibold text-sm mb-2">{grupo.nome}</div>
+                    <div className="font-semibold text-sm mb-2">{rotuloDoGrupo(grupo)}</div>
                     <div className="grid grid-cols-2 gap-2 text-xs">
                       <div>
                         <span className="text-muted-foreground">AP:</span>{' '}
@@ -903,7 +904,7 @@ export default function RelatorioPage() {
                   if (ncs.length === 0) return null;
                   return (
                     <section key={grupo.grupoId} className="rounded-lg border border-border bg-card p-4 shadow-sm">
-                      <h3 className="mb-3 font-display font-semibold">{grupo.nome}</h3>
+                      <h3 className="mb-3 font-display font-semibold">{rotuloDoGrupo(grupo)}</h3>
                       <ul className="space-y-3">
                         {ncs.map((item) => (
                           <li key={item.id} className="rounded-md border border-destructive/20 bg-destructive/5 p-3 text-sm">
@@ -942,7 +943,7 @@ export default function RelatorioPage() {
               >
                 <div className="p-4 sm:p-6">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4 mb-4">
-                    <h3 className="text-base sm:text-lg font-bold">{grupo.nome}</h3>
+                    <h3 className="text-base sm:text-lg font-bold">{rotuloDoGrupo(grupo)}</h3>
                     <div className="flex flex-col sm:flex-row sm:items-center gap-2">
                       <span className="text-xs sm:text-sm text-muted-foreground">
                         Aproveitamento: <strong>{formatarAproveitamentoGrupo(grupo.aproveitamento)}</strong>
@@ -968,7 +969,8 @@ export default function RelatorioPage() {
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="font-medium text-sm sm:text-base text-foreground mb-2">
-                                {item.templateItem?.pergunta || 'Pergunta não encontrada'}
+                                <span className="mr-1.5 font-semibold tabular-nums text-muted-foreground">{numeroDaPergunta(grupo, itemIndex)}</span>
+                              {item.templateItem?.pergunta || 'Pergunta não encontrada'}
                               </p>
                               <div className="space-y-1.5 sm:space-y-2">
                                 <div>
