@@ -1,5 +1,5 @@
 import { TipoRespostaCustomizada } from '../entities/template-item.entity';
-import { calcularPontuacaoOpcao, isOpcaoSemPontuacao, ItemComOpcoes } from './pontuacao';
+import { calcularPontuacaoOpcao, ehRotuloNaoAplicavel, isOpcaoSemPontuacao, ItemComOpcoes } from './pontuacao';
 
 export type SentidoResposta = 'positiva' | 'negativa' | 'neutra';
 
@@ -10,20 +10,6 @@ const TIPOS_SEM_SENTIDO = [
   TipoRespostaCustomizada.NUMERO,
   TipoRespostaCustomizada.DATA,
 ];
-
-function normalizarRotulo(valor: string): string {
-  return valor
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, ' ')
-    .trim();
-}
-
-/** Verdadeiro para `nao_aplicavel` e rótulos como "N/A", "Não se aplica", "Não aplicável". */
-export function ehRotuloNaoAplicavel(valor: string): boolean {
-  return ['na', 'n a', 'nao se aplica', 'nao aplicavel'].includes(normalizarRotulo(valor));
-}
 
 function neutraPorPadraoOuRotulo(valor: string): boolean {
   return valor === 'nao_aplicavel' || ehRotuloNaoAplicavel(valor);

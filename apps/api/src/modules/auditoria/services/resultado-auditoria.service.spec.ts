@@ -105,3 +105,26 @@ describe('ResultadoAuditoriaService.calcular', () => {
     expect(r.grupos[0].aproveitamento).toBeNull();
   });
 });
+
+describe('ResultadoAuditoriaService - não aplicável personalizado', () => {
+  it('"Não Aplicável" de opção personalizada não desconta do grupo', async () => {
+    const templateItem = {
+      grupoId: 'g1',
+      grupo,
+      usarRespostasPersonalizadas: true,
+      opcoesResposta: ['Conforme', 'Não Conforme', 'Não Aplicável'],
+      opcoesRespostaConfig: [],
+    };
+    const item = (resposta: string, pontuacao: number) => ({ resposta, pontuacao, fotos: [], templateItem });
+    const { service } = criarServico();
+    const r = await service.calcular(
+      auditoriaBase({
+        status: StatusAuditoria.EM_ANDAMENTO,
+        pontuacaoTotal: null,
+        itens: [item('Conforme', 1), item('Não Aplicável', 0), item('Não Aplicável', 0)],
+      }),
+    );
+    expect(r.grupos[0]).toMatchObject({ pontosPossiveis: 1, pontosRealizados: 1, aproveitamento: 100, naoAplicaveis: 2 });
+    expect(r.aproveitamento).toBe(100);
+  });
+});

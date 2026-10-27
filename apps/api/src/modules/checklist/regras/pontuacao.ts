@@ -7,8 +7,23 @@ export type ItemComOpcoes = Pick<
 
 const OPCOES_PADRAO = ['conforme', 'nao_conforme', 'nao_aplicavel', 'nao_avaliado'];
 
+function normalizarRotulo(valor: string): string {
+  return valor
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+/** Verdadeiro para `nao_aplicavel` e rótulos como "N/A", "Não se aplica", "Não aplicável". */
+export function ehRotuloNaoAplicavel(valor: string): boolean {
+  return ['na', 'n a', 'nao se aplica', 'nao aplicavel'].includes(normalizarRotulo(valor));
+}
+
+/** Não aplicável (padrão ou rótulo personalizado) e não avaliado ficam fora da nota. */
 export function isOpcaoSemPontuacao(valor: string): boolean {
-  return ['nao_aplicavel', 'nao_avaliado'].includes(valor.toLowerCase());
+  return ['nao_aplicavel', 'nao_avaliado'].includes(valor.toLowerCase()) || ehRotuloNaoAplicavel(valor);
 }
 
 /**
@@ -50,4 +65,17 @@ export function getPontuacaoMaximaItem(item: ItemComOpcoes | null | undefined): 
   const opcoesPontuaveis = opcoesOrdenadas.filter((op) => !isOpcaoSemPontuacao(op));
   if (opcoesPontuaveis.length === 0) return 0;
   return Math.max(...opcoesPontuaveis.map((valor) => calcularPontuacaoOpcao(item, valor)));
+}
+
+/**
+ * Nota da auditoria: soma dos pontos obtidos sobre a soma das pontuações máximas,
+ * só com as respostas que pontuam (não aplicável e não avaliado ficam fora).
+ */
+export function calcularNotaDaAuditoria(
+  itens: readonly { resposta?: string | null; pontuacao?: number | string | null; templateItem?: ItemComOpcoes | null }[],
+): { obtida: number; maxima: number; percentual: number } {
+  const pontuaveis = itens.filter((item) => !isOpcaoSemPontuacao(item.resposta || ''));
+  const obtida = pontuaveis.reduce((acc, item) => acc + Number(item.pontuacao || 0), 0);
+  const maxima = pontuaveis.reduce((acc, item) => acc + getPontuacaoMaximaItem(item.templateItem), 0);
+  return { obtida, maxima, percentual: maxima > 0 ? (obtida / maxima) * 100 : 0 };
 }
