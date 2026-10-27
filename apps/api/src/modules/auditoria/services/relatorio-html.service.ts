@@ -21,6 +21,232 @@ export interface RelatorioAuditoriaPdfAssetsHtml {
   readonly fotosDataUriPorId?: Record<string, string>;
 }
 
+/** Classe visual do item, derivada do sentido da resposta. */
+type ClasseResposta = 'positiva' | 'negativa' | 'neutra' | 'nao-respondida';
+
+interface ItemDoRelatorio {
+  readonly item: AuditoriaItem;
+  /** Número da pergunta no relatório: grupo.posição (ex.: 2.4). */
+  readonly numero: string;
+  readonly classe: ClasseResposta;
+  readonly icone: string;
+  /** Ícone escolhido na configuração da opção (emoji), em vez do símbolo padrão do sentido. */
+  readonly iconePersonalizado: boolean;
+  readonly respostaTexto: string;
+}
+
+interface GrupoDoRelatorio {
+  readonly grupoId: string;
+  readonly numero: number;
+  readonly nome: string;
+  readonly metricas: ResultadoGrupo | undefined;
+  readonly itens: ItemDoRelatorio[];
+}
+
+const ESTILOS = `
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --tinta: #1B2A4A;
+      --tinta-suave: #5B6B85;
+      --tinta-fraca: #8A97AB;
+      --linha: #E5E9F0;
+      --fundo-suave: #F5F7FA;
+      --marca: #00B8A9;
+      --positiva: #10B981;
+      --positiva-fundo: #ECFDF5;
+      --negativa: #DC2626;
+      --negativa-fundo: #FEF2F2;
+      --neutra: #94A3B8;
+      --neutra-fundo: #F1F5F9;
+    }
+    html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif,
+        'Apple Color Emoji', 'Noto Color Emoji', 'Segoe UI Emoji';
+      color: var(--tinta);
+      background: #FFFFFF;
+      font-size: 11px;
+      line-height: 1.45;
+    }
+    .emoji { font-family: 'Apple Color Emoji', 'Noto Color Emoji', 'Segoe UI Emoji', sans-serif; }
+
+    /* Capa */
+    .capa { margin-bottom: 18px; }
+    .capa-rotulo {
+      font-size: 9px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase;
+      color: var(--marca); margin-bottom: 4px;
+    }
+    .capa h1 { font-size: 22px; font-weight: 800; line-height: 1.2; letter-spacing: -0.2px; }
+    .capa-local { font-size: 13px; color: var(--tinta-suave); margin-top: 2px; }
+    .dados-avaliacao {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px 16px;
+      margin-top: 14px; padding: 12px 14px; background: var(--fundo-suave); border-radius: 8px;
+    }
+    .dado-rotulo { font-size: 8.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px; color: var(--tinta-fraca); }
+    .dado-valor { font-size: 11px; font-weight: 600; margin-top: 1px; }
+    .dado-valor a { color: var(--marca); text-decoration: none; }
+
+    /* Resultado */
+    .resultado {
+      display: grid; grid-template-columns: 150px 1fr; gap: 22px; align-items: center;
+      padding: 16px 18px; border: 1px solid var(--linha); border-radius: 10px; margin-bottom: 12px;
+      break-inside: avoid; page-break-inside: avoid;
+    }
+    .resultado > * { min-width: 0; }
+    .medidor { position: relative; width: 150px; height: 150px; }
+    .medidor svg { display: block; }
+    .medidor-centro {
+      position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    }
+    .medidor-valor { font-size: 25px; font-weight: 800; letter-spacing: -0.5px; line-height: 1; }
+    .medidor-legenda { font-size: 8.5px; color: var(--tinta-fraca); text-transform: uppercase; letter-spacing: 0.6px; margin-top: 4px; }
+    .faixa-atual { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+    .faixa-selo {
+      display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 999px;
+      font-size: 13px; font-weight: 700; color: #FFFFFF;
+    }
+    .faixa-selo .emoji { font-size: 13px; }
+    .tendencia { font-size: 11px; font-weight: 600; }
+    .tendencia.subiu { color: var(--positiva); }
+    .tendencia.caiu { color: var(--negativa); }
+    .tendencia.igual { color: var(--tinta-suave); }
+    .faixa-texto { font-size: 10.5px; color: var(--tinta-suave); margin-bottom: 12px; }
+    .faixa-barra { position: relative; height: 10px; margin-bottom: 4px; }
+    .faixa-trilho { position: absolute; inset: 0; overflow: hidden; border-radius: 5px; background: #EEF1F5; }
+    .faixa-segmento { position: absolute; top: 0; bottom: 0; }
+    .faixa-marcador {
+      position: absolute; top: -5px; width: 4px; height: 20px; margin-left: -2px;
+      background: var(--tinta); border: 1.5px solid #FFFFFF; border-radius: 3px; box-shadow: 0 0 0 0.5px var(--tinta);
+    }
+    .faixa-escala { position: relative; height: 12px; font-size: 8px; color: var(--tinta-fraca); }
+    .faixa-escala span { position: absolute; transform: translateX(-50%); }
+    .faixa-escala span:first-child { transform: none; }
+    .faixa-escala span:last-child { transform: translateX(-100%); }
+    .anteriores { display: flex; gap: 6px; margin-top: 12px; align-items: stretch; }
+    .anterior {
+      flex: 1; border: 1px solid var(--linha); border-radius: 6px; padding: 5px 8px; text-align: center;
+    }
+    .anterior.atual { border-color: var(--tinta); }
+    .anterior-data { font-size: 8.5px; color: var(--tinta-fraca); }
+    .anterior-valor { font-size: 12px; font-weight: 700; }
+
+    .contadores { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 20px; }
+    .contador { border: 1px solid var(--linha); border-radius: 8px; padding: 8px 10px; }
+    .contador-valor { font-size: 18px; font-weight: 800; line-height: 1.1; }
+    .contador-valor small { font-size: 10px; font-weight: 600; color: var(--tinta-fraca); }
+    .contador-rotulo { font-size: 8.5px; color: var(--tinta-suave); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
+    .contador.alerta { border-color: #FCA5A5; background: var(--negativa-fundo); }
+    .contador.alerta .contador-valor { color: var(--negativa); }
+
+    /* Seções */
+    .secao { margin-bottom: 20px; }
+    .secao-titulo {
+      display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+      font-size: 14px; font-weight: 800; padding-bottom: 6px; margin-bottom: 10px;
+      border-bottom: 2px solid var(--tinta);
+      break-after: avoid; page-break-after: avoid;
+    }
+    .secao-titulo small { font-size: 10px; font-weight: 500; color: var(--tinta-suave); }
+
+    /* Desempenho por grupo */
+    .tabela-grupos { width: 100%; border-collapse: collapse; break-inside: avoid; page-break-inside: avoid; }
+    .tabela-grupos th {
+      font-size: 8.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--tinta-fraca);
+      text-align: center; padding: 0 4px 6px; border-bottom: 1px solid var(--linha);
+    }
+    .tabela-grupos th:first-child { text-align: left; }
+    .tabela-grupos td { padding: 7px 4px; border-bottom: 1px solid var(--linha); text-align: center; font-size: 10.5px; }
+    .tabela-grupos td.grupo-nome { text-align: left; font-weight: 600; width: 34%; }
+    .tabela-grupos td.grupo-barra { width: 26%; }
+    .tabela-grupos tr.total td { font-weight: 800; border-bottom: none; background: var(--fundo-suave); }
+    .barra-grupo { height: 8px; border-radius: 4px; background: #EEF1F5; overflow: hidden; }
+    .barra-grupo div { height: 100%; border-radius: 4px; }
+    .valor-ap { font-weight: 700; }
+    .nc-destaque { color: var(--negativa); font-weight: 700; }
+    .zero { color: var(--tinta-fraca); }
+    .legenda { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 8px; font-size: 9px; color: var(--tinta-suave); }
+    .legenda-item { display: inline-flex; align-items: center; gap: 5px; }
+    .legenda-cor { width: 9px; height: 9px; border-radius: 2px; }
+    .legenda-siglas { margin-top: 4px; font-size: 8.5px; color: var(--tinta-fraca); }
+
+    /* Não conformidades */
+    .sem-nc {
+      padding: 12px 14px; border-radius: 8px; background: var(--positiva-fundo); color: #047857;
+      font-weight: 600; break-inside: avoid;
+    }
+    .nc-card {
+      border: 1px solid #FECACA; border-left: 4px solid var(--negativa); border-radius: 6px;
+      padding: 10px 12px; margin-bottom: 8px; break-inside: avoid; page-break-inside: avoid;
+    }
+    .nc-grupo { font-size: 8.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--negativa); }
+    .nc-pergunta { font-size: 11.5px; font-weight: 700; margin: 2px 0 6px; }
+    .detalhes { display: grid; grid-template-columns: 88px 1fr; gap: 3px 10px; font-size: 10.5px; }
+    .detalhe-rotulo { color: var(--tinta-fraca); font-weight: 600; }
+    .fotos { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .foto { display: block; width: 150px; height: 112px; object-fit: cover; border-radius: 4px; border: 1px solid var(--linha); }
+    .fotos.pequenas .foto { width: 96px; height: 72px; }
+
+    /* Análise da avaliação (resumo executivo) */
+    .analise { border: 1px solid var(--linha); border-radius: 8px; padding: 12px 14px; break-inside: avoid; }
+    .analise-texto { font-size: 11px; line-height: 1.6; white-space: pre-line; margin-bottom: 10px; }
+    .analise-colunas { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 10px; }
+    .analise-subtitulo { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+    .analise-lista { list-style: none; }
+    .analise-lista li { display: flex; gap: 6px; padding: 2px 0; }
+    .analise-lista .marca { font-weight: 700; flex-shrink: 0; }
+    .recomendacao { display: flex; gap: 8px; padding: 6px 8px; background: var(--fundo-suave); border-radius: 4px; margin-bottom: 4px; }
+    .recomendacao b { color: var(--marca); }
+    .risco { display: inline-block; padding: 3px 10px; border-radius: 999px; font-weight: 700; font-size: 10px; }
+    .risco-baixo { background: var(--positiva-fundo); color: #047857; }
+    .risco-medio { background: #FFFBEB; color: #B45309; }
+    .risco-alto, .risco-critico { background: var(--negativa-fundo); color: var(--negativa); }
+
+    /* Respostas por grupo */
+    .grupo { margin-bottom: 14px; }
+    .grupo-cabecalho {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      padding: 7px 10px; background: var(--fundo-suave); border-radius: 6px;
+      break-after: avoid; page-break-after: avoid; break-inside: avoid;
+    }
+    .grupo-titulo { font-size: 11.5px; font-weight: 800; }
+    .grupo-metricas { font-size: 10px; color: var(--tinta-suave); white-space: nowrap; }
+    .grupo-ap { display: inline-block; padding: 1px 8px; border-radius: 999px; color: #FFFFFF; font-weight: 700; margin-left: 6px; }
+    .item {
+      display: grid; grid-template-columns: 20px 1fr auto; gap: 8px; align-items: start;
+      padding: 6px 10px; border-bottom: 1px solid var(--linha); break-inside: avoid; page-break-inside: avoid;
+    }
+    .item.negativa { background: var(--negativa-fundo); }
+    .item-icone {
+      width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      font-size: 10px; font-weight: 800; color: #FFFFFF; line-height: 1;
+    }
+    .item-icone.positiva { background: var(--positiva); }
+    .item-icone.negativa { background: var(--negativa); }
+    .item-icone.neutra { background: var(--neutra); }
+    .item-icone.nao-respondida { background: #FFFFFF; color: var(--tinta-fraca); border: 1px dashed var(--tinta-fraca); }
+    .item-icone.personalizado { background: transparent; font-size: 14px; }
+    .item-pergunta, .nc-pergunta { display: flex; }
+    .item-pergunta { font-size: 10.5px; }
+    .numero { flex-shrink: 0; min-width: 26px; font-weight: 700; color: var(--tinta-fraca); margin-right: 4px; font-variant-numeric: tabular-nums; }
+    .numero-grupo { font-weight: 800; color: var(--marca); margin-right: 6px; }
+    .item-obs { font-size: 10px; color: var(--tinta-suave); margin-top: 2px; }
+    .item-resposta { font-size: 10px; font-weight: 700; white-space: nowrap; padding-top: 1px; }
+    .item-resposta.positiva { color: #047857; }
+    .item-resposta.negativa { color: var(--negativa); }
+    .item-resposta.neutra, .item-resposta.nao-respondida { color: var(--tinta-fraca); }
+
+    /* Assinaturas */
+    .fechamento { margin-top: 28px; break-inside: avoid; page-break-inside: avoid; }
+    .fechamento-resumo {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px 16px;
+      padding: 12px 14px; background: var(--fundo-suave); border-radius: 8px; margin-bottom: 40px;
+    }
+    .data-local { font-size: 12px; text-align: center; margin-bottom: 56px; color: var(--tinta-suave); }
+    .assinaturas { display: flex; gap: 48px; }
+    .assinatura { flex: 1; border-top: 1px solid var(--tinta); padding-top: 6px; text-align: center; font-size: 11px; font-weight: 600; }
+    .assinatura-papel { font-size: 8.5px; font-weight: 500; color: var(--tinta-fraca); text-transform: uppercase; letter-spacing: 0.6px; margin-top: 2px; }
+`;
+
 /**
  * Serviço responsável pela geração do HTML do relatório de auditoria.
  */
@@ -35,7 +261,7 @@ export class RelatorioHtmlService {
     resultado: ResultadoAuditoria,
     assetsPdf?: RelatorioAuditoriaPdfAssetsHtml,
   ): string {
-    const gruposItens = this.agruparItens(auditoria.itens ?? []);
+    const grupos = this.montarGrupos(auditoria.itens ?? [], resultado.grupos);
 
     return `<!DOCTYPE html>
 <html lang="pt-BR">
@@ -44,591 +270,16 @@ export class RelatorioHtmlService {
   <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Relatório de Auditoria - ${this.escapeHtml(auditoria.unidade?.nome || 'Unidade')}</title>
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-      line-height: 1.4;
-      color: #1B2A4A;
-      background: #FFFFFF;
-      padding: 8px;
-      font-size: 14px;
-    }
-    .container {
-      max-width: 1200px;
-      margin: 0 auto;
-    }
-    .header {
-      border-bottom: 1px solid #E5E9F0;
-      padding-bottom: 8px;
-      margin-bottom: 12px;
-    }
-    .header h1 {
-      font-size: 18px;
-      font-weight: 700;
-      color: #1B2A4A;
-      margin-bottom: 2px;
-    }
-    .header .subtitle {
-      font-size: 13px;
-      color: #1B2A4A;
-      opacity: 0.7;
-      margin-bottom: 6px;
-    }
-    .header-info {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
-      font-size: 11px;
-      color: #1B2A4A;
-      opacity: 0.7;
-    }
-    .header-info span {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-    }
-    .section {
-      margin-bottom: 12px;
-    }
-    .section-title {
-      font-size: 16px;
-      font-weight: 700;
-      color: #1B2A4A;
-      margin-bottom: 8px;
-      padding-bottom: 4px;
-      border-bottom: 1px solid #E5E9F0;
-    }
-    .metrics-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 8px;
-      margin-bottom: 8px;
-    }
-    .metric-card {
-      background: #F4F7FA;
-      border-radius: 6px;
-      padding: 10px;
-      border: 1px solid #E5E9F0;
-    }
-    .metric-label {
-      font-size: 11px;
-      color: #1B2A4A;
-      opacity: 0.7;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      margin-bottom: 6px;
-    }
-    .metric-value {
-      font-size: 24px;
-      font-weight: 700;
-      margin-bottom: 4px;
-    }
-    .metric-value.primary { color: #00B8A9; }
-    .metric-value.success { color: #10b981; }
-    .metric-value.error { color: #ef4444; }
-    .metric-desc {
-      font-size: 11px;
-      color: #1B2A4A;
-      opacity: 0.7;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-bottom: 8px;
-      font-size: 11px;
-    }
-    thead {
-      background: #00B8A9;
-      color: #ffffff;
-    }
-    th {
-      padding: 6px 4px;
-      text-align: left;
-      font-weight: 600;
-      font-size: 9px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-    th.text-center { text-align: center; }
-    tbody tr {
-      border-bottom: 1px solid #E5E9F0;
-    }
-    tbody tr:hover {
-      background: #F4F7FA;
-    }
-    tbody tr.total {
-      background: #F4F7FA;
-      font-weight: 700;
-    }
-    td {
-      padding: 6px 4px;
-      font-size: 11px;
-    }
-    td.text-center { text-align: center; }
-    .badge {
-      display: inline-block;
-      padding: 4px 8px;
-      border-radius: 4px;
-      font-size: 11px;
-      font-weight: 600;
-    }
-    .badge-error {
-      background: rgba(239, 68, 68, 0.1);
-      color: #ef4444;
-    }
-    .grupo-section {
-      margin-bottom: 10px;
-      border: 1px solid #E5E9F0;
-      border-radius: 6px;
-      padding: 8px;
-    }
-    .grupo-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 6px;
-      padding-bottom: 4px;
-      border-bottom: 1px solid #E5E9F0;
-    }
-    .grupo-title {
-      font-size: 16px;
-      font-weight: 700;
-      color: #1B2A4A;
-    }
-    .grupo-metrics {
-      font-size: 12px;
-      color: #1B2A4A;
-      opacity: 0.7;
-    }
-    .item-card {
-      margin-bottom: 6px;
-      padding: 8px;
-      border-radius: 4px;
-      border: 1px solid #E5E9F0;
-      break-inside: avoid;
-      page-break-inside: avoid;
-    }
-    .item-card.conforme {
-      background: rgba(16, 185, 129, 0.1);
-      border-color: rgba(16, 185, 129, 0.3);
-    }
-    .item-card.nao-conforme {
-      background: rgba(239, 68, 68, 0.1);
-      border-color: rgba(239, 68, 68, 0.3);
-    }
-    .item-card.nao-aplicavel {
-      background: rgba(245, 158, 11, 0.1);
-      border-color: rgba(245, 158, 11, 0.3);
-    }
-    .item-header {
-      display: flex;
-      align-items: start;
-      gap: 6px;
-      margin-bottom: 3px;
-    }
-    .item-icon {
-      font-size: 16px;
-      flex-shrink: 0;
-      margin-top: 1px;
-    }
-    .item-icon.conforme { color: #10b981; }
-    .item-icon.nao-conforme { color: #ef4444; }
-    .item-icon.nao-aplicavel { color: #f59e0b; }
-    .item-content {
-      flex: 1;
-    }
-    .item-pergunta {
-      font-weight: 600;
-      color: #1B2A4A;
-      margin-bottom: 4px;
-      font-size: 12px;
-      line-height: 1.4;
-    }
-    .item-details {
-      font-size: 11px;
-      color: #1B2A4A;
-      opacity: 0.8;
-      line-height: 1.4;
-    }
-    .item-detail {
-      margin-bottom: 2px;
-    }
-    .item-detail-label {
-      font-weight: 600;
-      color: #1B2A4A;
-      font-size: 11px;
-      display: inline;
-    }
-    .item-detail-value {
-      color: #1B2A4A;
-      opacity: 0.7;
-      font-size: 11px;
-      display: inline;
-    }
-    .item-detail-error {
-      color: #ef4444;
-      font-size: 11px;
-      display: inline;
-    }
-    .resumo-section {
-      background: #FFFFFF;
-      border-radius: 6px;
-      padding: 10px;
-      border: 1px solid #E5E9F0;
-      break-inside: avoid;
-    }
-    .resumo-title {
-      font-size: 16px;
-      font-weight: 700;
-      color: #1B2A4A;
-      margin-bottom: 8px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .resumo-content {
-      margin-bottom: 10px;
-    }
-    .resumo-subtitle {
-      font-size: 12px;
-      font-weight: 600;
-      color: #1B2A4A;
-      margin-bottom: 4px;
-      margin-top: 8px;
-    }
-    .resumo-text {
-      font-size: 12px;
-      color: #1B2A4A;
-      opacity: 0.8;
-      line-height: 1.6;
-      white-space: pre-line;
-    }
-    .resumo-list {
-      list-style: none;
-      padding: 0;
-    }
-    .resumo-list li {
-      padding: 4px 0;
-      font-size: 12px;
-      color: #1B2A4A;
-      opacity: 0.8;
-      display: flex;
-      align-items: start;
-      gap: 8px;
-    }
-    .resumo-list li::before {
-      content: '•';
-      color: #00B8A9;
-      font-weight: 700;
-      margin-right: 4px;
-    }
-    .resumo-list.success li::before { color: #10b981; }
-    .resumo-list.error li::before { color: #ef4444; }
-    .resumo-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 12px;
-      margin-top: 8px;
-    }
-    .risco-badge {
-      display: inline-block;
-      padding: 8px 16px;
-      border-radius: 6px;
-      font-weight: 600;
-      font-size: 13px;
-    }
-    .risco-baixo {
-      background: rgba(16, 185, 129, 0.1);
-      color: #10b981;
-    }
-    .risco-medio {
-      background: rgba(245, 158, 11, 0.1);
-      color: #f59e0b;
-    }
-    .risco-alto, .risco-critico {
-      background: rgba(239, 68, 68, 0.1);
-      color: #ef4444;
-    }
-    .legend {
-      font-size: 10px;
-      color: #1B2A4A;
-      opacity: 0.7;
-      margin-top: 8px;
-      padding-top: 8px;
-      border-top: 1px solid #E5E9F0;
-    }
-    .chart-section {
-      margin-top: 6px;
-      padding-top: 6px;
-      border-top: 1px solid #E5E9F0;
-      break-inside: avoid;
-      page-break-inside: avoid;
-    }
-    .chart-section:first-child {
-      margin-top: 0;
-      padding-top: 0;
-      border-top: none;
-    }
-    .chart-title {
-      font-size: 14px;
-      font-weight: 700;
-      color: #1B2A4A;
-      margin-bottom: 6px;
-    }
-    .chart-bars {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      margin-bottom: 12px;
-    }
-    .chart-bar-row {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 11px;
-    }
-    .chart-bar-label {
-      min-width: 120px;
-      color: #1B2A4A;
-      font-weight: 500;
-    }
-    .chart-bar-track {
-      flex: 1;
-      height: 20px;
-      background: #E5E9F0;
-      border-radius: 4px;
-      overflow: hidden;
-    }
-    .chart-bar-fill {
-      height: 100%;
-      border-radius: 4px;
-      min-width: 2px;
-    }
-    .chart-bar-value {
-      min-width: 44px;
-      text-align: right;
-      font-weight: 600;
-      color: #1B2A4A;
-    }
-    .chart-legend {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
-      margin-top: 10px;
-      font-size: 10px;
-      color: #1B2A4A;
-      opacity: 0.8;
-    }
-    .chart-legend-item {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .chart-legend-color {
-      width: 12px;
-      height: 12px;
-      border-radius: 2px;
-    }
-    .chart-svg-wrap {
-      margin-top: 2px;
-      margin-bottom: 2px;
-      overflow: visible;
-    }
-    .chart-svg-wrap svg {
-      display: block;
-      overflow: visible;
-      max-width: 100%;
-      height: auto;
-    }
-    .charts-block {
-      break-inside: avoid;
-      page-break-inside: avoid;
-    }
-    .distrib-chart {
-      display: flex;
-      width: 100%;
-      align-items: center;
-      margin-top: 10px;
-      gap: 0;
-      min-height: 32px;
-    }
-    .distrib-bar {
-      height: 32px;
-      border-radius: 2px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 11px;
-      font-weight: 600;
-      color: #fff;
-      min-width: 0;
-    }
-    .distrib-bar:first-child { border-radius: 4px 0 0 4px; }
-    .distrib-bar:last-child { border-radius: 0 4px 4px 0; }
-    .distrib-bar:only-child { border-radius: 4px; }
-    .item-fotos {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 6px;
-    }
-    .item-foto {
-      display: block;
-      max-width: 180px;
-      max-height: 180px;
-      width: auto;
-      height: auto;
-      object-fit: cover;
-      border: 1px solid #E5E9F0;
-      border-radius: 4px;
-    }
-    .items {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-    .item-icon.nao-respondida { color: #9ca3af; }
-    .item-card.nao-respondida {
-      background: #F4F7FA;
-      border-color: #E5E9F0;
-    }
-    .header-meta a { color: #00B8A9; text-decoration: none; }
-    .resultado-card {
-      border: 1px solid #E5E9F0;
-      border-radius: 6px;
-      padding: 12px;
-      margin-bottom: 10px;
-      break-inside: avoid;
-      page-break-inside: avoid;
-    }
-    .resultado-topo {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 10px;
-    }
-    .resultado-emoji { font-size: 32px; line-height: 1; }
-    .resultado-percentual { font-size: 28px; font-weight: 700; }
-    .resultado-faixa { font-size: 14px; font-weight: 700; }
-    .faixa-barra {
-      position: relative;
-      height: 14px;
-      margin: 6px 0 14px;
-    }
-    .faixa-trilho {
-      position: absolute;
-      inset: 0;
-      overflow: hidden;
-      border-radius: 7px;
-      background: #EEF0F4;
-    }
-    .faixa-segmento { position: absolute; top: 0; bottom: 0; }
-    .faixa-marcador {
-      position: absolute;
-      top: -4px;
-      width: 4px;
-      height: 22px;
-      margin-left: -2px;
-      background: #1B2A4A;
-      border: 1px solid #FFFFFF;
-      border-radius: 2px;
-    }
-    .anteriores {
-      display: flex;
-      gap: 16px;
-      font-size: 11px;
-      margin-bottom: 10px;
-    }
-    .anteriores strong { margin-left: 4px; }
-    .contadores {
-      display: grid;
-      grid-template-columns: repeat(5, 1fr);
-      gap: 8px;
-    }
-    .contador {
-      background: #F4F7FA;
-      border: 1px solid #E5E9F0;
-      border-radius: 6px;
-      padding: 8px;
-      text-align: center;
-    }
-    .contador-valor { font-size: 18px; font-weight: 700; }
-    .contador-rotulo { font-size: 10px; opacity: 0.7; text-transform: uppercase; }
-    .pagina-final {
-      page-break-before: always;
-      break-before: page;
-    }
-    .resumo-quadro {
-      width: 100%;
-      border: 1px solid #E5E9F0;
-      border-radius: 6px;
-      margin-bottom: 40px;
-    }
-    .resumo-quadro td { padding: 6px 10px; font-size: 12px; border-bottom: 1px solid #E5E9F0; }
-    .resumo-quadro td:first-child { width: 40%; font-weight: 600; background: #F4F7FA; }
-    .data-local { font-size: 13px; margin: 48px 0 56px; text-align: center; }
-    .assinaturas {
-      display: flex;
-      gap: 48px;
-      justify-content: space-between;
-    }
-    .assinatura {
-      flex: 1;
-      border-top: 1px solid #1B2A4A;
-      padding-top: 6px;
-      text-align: center;
-      font-size: 12px;
-    }
-    .assinatura-papel { font-size: 10px; opacity: 0.7; text-transform: uppercase; }
-    @media print {
-      body {
-        padding: 8px;
-      }
-      .section {
-        page-break-after: auto;
-        page-break-inside: auto;
-      }
-      .charts-block {
-        break-inside: avoid;
-        page-break-inside: avoid;
-      }
-      .chart-section {
-        break-inside: avoid;
-        page-break-inside: avoid;
-      }
-      .grupo-section {
-        page-break-inside: auto;
-        break-inside: auto;
-      }
-      .grupo-header {
-        break-after: avoid;
-        page-break-after: avoid;
-      }
-      .item-card {
-        break-inside: avoid;
-        page-break-inside: avoid;
-      }
-      .items {
-        orphans: 2;
-        widows: 2;
-      }
-    }
-  </style>
+  <style>${ESTILOS}</style>
 </head>
 <body>
-  <div class="container">
-    ${this.gerarCabecalho(auditoria)}
-    ${this.gerarCartaoResultado(resultado)}
-    ${this.gerarMetricasGerais(resultado)}
-    ${this.gerarDetalhamentoPorGrupo(gruposItens, resultado.grupos, assetsPdf)}
-    ${this.gerarResumoExecutivo(auditoria.resumoExecutivo)}
-    ${this.gerarPaginaFinal(auditoria, resultado)}
-  </div>
+  ${this.gerarCapa(auditoria)}
+  ${this.gerarCartaoResultado(resultado)}
+  ${this.gerarDesempenhoPorGrupo(resultado, new Map(grupos.map((g) => [g.grupoId, g.numero])))}
+  ${this.gerarResumoExecutivo(auditoria.resumoExecutivo)}
+  ${this.gerarNaoConformidades(grupos, assetsPdf)}
+  ${this.gerarRespostasPorGrupo(grupos, resultado.faixas, assetsPdf)}
+  ${this.gerarFechamento(auditoria, resultado)}
 </body>
 </html>
     `.trim();
@@ -638,7 +289,7 @@ export class RelatorioHtmlService {
    * Agrupa os itens pela mesma chave do cálculo do resultado (`grupoId`),
    * para casar cada grupo com suas métricas por essa chave.
    */
-  private agruparItens(itens: AuditoriaItem[]): { grupoId: string; itens: AuditoriaItem[] }[] {
+  private montarGrupos(itens: AuditoriaItem[], metricas: ResultadoGrupo[]): GrupoDoRelatorio[] {
     const porGrupo = new Map<string, AuditoriaItem[]>();
     for (const item of itens) {
       const chave = item.templateItem?.grupoId || 'sem-grupo';
@@ -646,8 +297,31 @@ export class RelatorioHtmlService {
       porGrupo.get(chave)!.push(item);
     }
     return Array.from(porGrupo.entries())
-      .map(([grupoId, grupoItens]) => ({ grupoId, itens: grupoItens }))
-      .sort((a, b) => (a.itens[0].templateItem?.grupo?.ordem || 0) - (b.itens[0].templateItem?.grupo?.ordem || 0));
+      .sort(([, a], [, b]) => (a[0].templateItem?.grupo?.ordem || 0) - (b[0].templateItem?.grupo?.ordem || 0))
+      .map(([grupoId, grupoItens], indice) => {
+        const grupoMetricas = metricas.find((m) => m.grupoId === grupoId);
+        const numero = indice + 1;
+        return {
+          grupoId,
+          numero,
+          nome: grupoMetricas?.nome ?? grupoItens[0]?.templateItem?.grupo?.nome ?? 'Sem grupo',
+          metricas: grupoMetricas,
+          itens: [...grupoItens]
+            .sort((a, b) => (a.templateItem?.ordem ?? 0) - (b.templateItem?.ordem ?? 0))
+            .map((item, posicao) => this.itemDoRelatorio(item, `${numero}.${posicao + 1}`)),
+        };
+      });
+  }
+
+  private itemDoRelatorio(item: AuditoriaItem, numero: string): ItemDoRelatorio {
+    const respondida = !!item.resposta && item.resposta !== RespostaItem.NAO_AVALIADO;
+    const sentido = respondida ? (sentidoDaOpcao(item.templateItem, item.resposta) ?? 'neutra') : null;
+    return {
+      item,
+      numero,
+      ...this.visualDaResposta(item, sentido),
+      respostaTexto: this.rotuloDaResposta(item.resposta),
+    };
   }
 
   private numero(valor: number): string {
@@ -698,302 +372,219 @@ export class RelatorioHtmlService {
     return auditoria.unidade?.cliente?.nomeFantasia || auditoria.unidade?.cliente?.razaoSocial || 'Cliente';
   }
 
-  /**
-   * Gera o cabeçalho do relatório com os dados da avaliação.
-   */
-  private gerarCabecalho(auditoria: Auditoria): string {
-    const codigo = (auditoria.id ?? '').slice(0, 8).toUpperCase();
-    const temCoordenadas = auditoria.latitudeInicio != null && auditoria.longitudeInicio != null;
-    const linkMapa = temCoordenadas
-      ? `<span class="header-meta"><a href="https://www.google.com/maps?q=${Number(auditoria.latitudeInicio)},${Number(auditoria.longitudeInicio)}">Ver no mapa</a></span>`
-      : '';
-    return `
-    <div class="header">
-      <h1>${this.escapeHtml(auditoria.template?.nome || 'Checklist')}</h1>
-      <div class="subtitle">
-        ${this.escapeHtml(this.nomeCliente(auditoria))} — ${this.escapeHtml(auditoria.unidade?.nome || 'Unidade')}
-      </div>
-      <div class="header-info">
-        <span>Auditor: ${this.escapeHtml(auditoria.consultor?.nome || 'Não informado')}</span>
-        <span>Código: ${this.escapeHtml(codigo)}</span>
-        <span>Início: ${this.formatarDataHora(auditoria.dataInicio)}</span>
-        <span>Fim: ${this.formatarDataHora(auditoria.dataFim)}</span>
-        <span>Duração: ${this.escapeHtml(this.formatarDuracao(auditoria))}</span>
-        ${linkMapa}
-      </div>
-    </div>
-    `;
+  private corDaNota(valor: number, faixas: FaixaClassificacao[]): string {
+    return classificar(valor, faixas).cor ?? COR_SEM_FAIXA;
+  }
+
+  private numeroDoGrupoHtml(numero: number | undefined): string {
+    return numero ? `<span class="numero-grupo">${numero}.</span>` : '';
+  }
+
+  private dado(rotulo: string, valor: string): string {
+    return `<div><div class="dado-rotulo">${rotulo}</div><div class="dado-valor">${valor}</div></div>`;
   }
 
   /**
-   * Cartão de resultado: nota, faixa, barra, anteriores e contadores.
+   * Capa: nome do checklist, cliente e unidade, e os dados da avaliação.
+   */
+  private gerarCapa(auditoria: Auditoria): string {
+    const codigo = (auditoria.id ?? '').slice(0, 8).toUpperCase();
+    const temCoordenadas = auditoria.latitudeInicio != null && auditoria.longitudeInicio != null;
+    const local = temCoordenadas
+      ? `<a href="https://www.google.com/maps?q=${Number(auditoria.latitudeInicio)},${Number(auditoria.longitudeInicio)}">Ver no mapa</a>`
+      : 'Não registrada';
+    return `
+  <header class="capa">
+    <div class="capa-rotulo">Relatório de auditoria</div>
+    <h1>${this.escapeHtml(auditoria.template?.nome || 'Checklist')}</h1>
+    <div class="capa-local">${this.escapeHtml(this.nomeCliente(auditoria))} · ${this.escapeHtml(auditoria.unidade?.nome || 'Unidade')}</div>
+    <div class="dados-avaliacao">
+      ${this.dado('Auditor', this.escapeHtml(auditoria.consultor?.nome || 'Não informado'))}
+      ${this.dado('Responsável pela unidade', this.escapeHtml(auditoria.unidade?.responsavel || 'Não informado'))}
+      ${this.dado('Código', this.escapeHtml(codigo))}
+      ${this.dado('Localização', local)}
+      ${this.dado('Início', this.formatarDataHora(auditoria.dataInicio))}
+      ${this.dado('Fim', this.formatarDataHora(auditoria.dataFim))}
+      ${this.dado('Duração', this.escapeHtml(this.formatarDuracao(auditoria)))}
+    </div>
+  </header>`;
+  }
+
+  /** Anel com o aproveitamento, na cor da faixa. */
+  private gerarMedidor(aproveitamento: number, cor: string): string {
+    const raio = 62;
+    const espessura = 13;
+    const circunferencia = 2 * Math.PI * raio;
+    const preenchido = (posicaoNaBarra(aproveitamento) / 100) * circunferencia;
+    return `
+      <div class="medidor">
+        <svg width="150" height="150" viewBox="0 0 150 150">
+          <circle cx="75" cy="75" r="${raio}" fill="none" stroke="#EEF1F5" stroke-width="${espessura}"/>
+          <circle cx="75" cy="75" r="${raio}" fill="none" stroke="${this.escapeHtml(cor)}" stroke-width="${espessura}"
+            stroke-linecap="round" stroke-dasharray="${preenchido.toFixed(2)} ${circunferencia.toFixed(2)}"
+            transform="rotate(-90 75 75)"/>
+        </svg>
+        <div class="medidor-centro">
+          <div class="medidor-valor" style="color:${this.escapeHtml(cor)};">${this.percentual(aproveitamento)}</div>
+          <div class="medidor-legenda">Aproveitamento</div>
+        </div>
+      </div>`;
+  }
+
+  private textoTendencia(resultado: ResultadoAuditoria): string {
+    const ultima = resultado.anteriores[0];
+    if (!resultado.tendencia || !ultima) return '';
+    const diferenca = Math.abs(resultado.aproveitamento - ultima.aproveitamento);
+    const pontos = `${diferenca.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} p.p.`;
+    if (resultado.tendencia === 'subiu') return `<span class="tendencia subiu">▲ ${pontos} desde a última avaliação</span>`;
+    if (resultado.tendencia === 'caiu') return `<span class="tendencia caiu">▼ ${pontos} desde a última avaliação</span>`;
+    return '<span class="tendencia igual">Igual à última avaliação</span>';
+  }
+
+  /**
+   * Cartão de resultado: anel com a nota, faixa, barra de faixas, avaliações anteriores e contadores.
    */
   private gerarCartaoResultado(resultado: ResultadoAuditoria): string {
-    const { classificacao, faixas, tendencia, anteriores, contadores } = resultado;
-    const cor = classificacao.cor ?? '#1B2A4A';
-    const seta =
-      tendencia === 'subiu'
-        ? '<span style="color:#10b981;">▲</span>'
-        : tendencia === 'caiu'
-          ? '<span style="color:#ef4444;">▼</span>'
-          : '';
-    const segmentos = segmentosDaBarra(faixas)
+    const { classificacao, faixas, anteriores, contadores } = resultado;
+    const cor = classificacao.cor ?? COR_SEM_FAIXA;
+    const segmentos = segmentosDaBarra(faixas);
+    const barra = segmentos
       .map(
         (f) =>
           `<div class="faixa-segmento" style="left:${f.inicio.toFixed(4)}%;width:${f.largura.toFixed(4)}%;background:${this.escapeHtml(f.cor)};"></div>`,
       )
       .join('');
-    const marcador = `<div class="faixa-marcador" style="left:${posicaoNaBarra(resultado.aproveitamento).toFixed(2)}%;"></div>`;
-    const listaAnteriores = anteriores.length
-      ? `<div class="anteriores">${anteriores
-          .map((a) => `<span>${this.formatarDataCurta(a.dataFim)}<strong>${this.percentual(a.aproveitamento)}</strong></span>`)
-          .join('')}</div>`
+    const marcos = Array.from(new Set([0, ...segmentos.map((s) => Math.round(s.inicio)), 100])).sort((a, b) => a - b);
+    const escala = marcos.map((m) => `<span style="left:${m}%;">${m}</span>`).join('');
+    const emoji = classificacao.emoji ? `<span class="emoji">${this.escapeHtml(classificacao.emoji)}</span>` : '';
+    const historico = anteriores.length
+      ? `<div class="anteriores">${[...anteriores]
+          .reverse()
+          .map(
+            (a) =>
+              `<div class="anterior"><div class="anterior-data">${this.formatarDataCurta(a.dataFim)}</div><div class="anterior-valor" style="color:${this.escapeHtml(this.corDaNota(a.aproveitamento, faixas))};">${this.percentual(a.aproveitamento)}</div></div>`,
+          )
+          .join('')}<div class="anterior atual"><div class="anterior-data">Esta avaliação</div><div class="anterior-valor" style="color:${this.escapeHtml(cor)};">${this.percentual(resultado.aproveitamento)}</div></div></div>`
       : '';
-    const contador = (valor: number | string, rotulo: string) =>
-      `<div class="contador"><div class="contador-valor">${valor}</div><div class="contador-rotulo">${rotulo}</div></div>`;
+    const naoAplicaveis = resultado.grupos.reduce((acc, g) => acc + g.naoAplicaveis, 0);
+    const contador = (valor: string, rotulo: string, alerta = false) =>
+      `<div class="contador${alerta ? ' alerta' : ''}"><div class="contador-valor">${valor}</div><div class="contador-rotulo">${rotulo}</div></div>`;
 
     return `
-    <div class="resultado-card">
-      <div class="resultado-topo">
-        <span class="resultado-emoji">${this.escapeHtml(classificacao.emoji ?? '')}</span>
-        <span class="resultado-percentual" style="color:${this.escapeHtml(cor)};">${this.percentual(resultado.aproveitamento)} ${seta}</span>
-        <span class="resultado-faixa" style="color:${this.escapeHtml(cor)};">${this.escapeHtml(classificacao.nome)}</span>
+  <section class="resultado">
+    ${this.gerarMedidor(resultado.aproveitamento, cor)}
+    <div>
+      <div class="faixa-atual">
+        <span class="faixa-selo" style="background:${this.escapeHtml(cor)};">${emoji}${this.escapeHtml(classificacao.nome)}</span>
+        ${this.textoTendencia(resultado)}
       </div>
-      <div class="faixa-barra"><div class="faixa-trilho">${segmentos}</div>${marcador}</div>
-      ${listaAnteriores}
-      <div class="contadores">
-        ${contador(this.numero(contadores.pontosPossiveis), 'Pontos possíveis')}
-        ${contador(this.numero(contadores.pontosRealizados), 'Pontos realizados')}
-        ${contador(contadores.naoConformidades, 'Não conformidades')}
-        ${contador(contadores.fotos, 'Fotos')}
-        ${contador(contadores.planosAcao, 'Planos de ação')}
-      </div>
+      <div class="faixa-texto">${this.numero(contadores.pontosRealizados)} de ${this.numero(contadores.pontosPossiveis)} pontos possíveis</div>
+      <div class="faixa-barra"><div class="faixa-trilho">${barra}</div><div class="faixa-marcador" style="left:${posicaoNaBarra(resultado.aproveitamento).toFixed(2)}%;"></div></div>
+      <div class="faixa-escala">${escala}</div>
+      ${historico}
     </div>
-    `;
+  </section>
+  <section class="contadores">
+    ${contador(`${this.numero(contadores.pontosRealizados)}<small> / ${this.numero(contadores.pontosPossiveis)}</small>`, 'Pontos realizados')}
+    ${contador(String(contadores.naoConformidades), 'Não conformidades', contadores.naoConformidades > 0)}
+    ${contador(String(naoAplicaveis), 'Não aplicáveis')}
+    ${contador(String(contadores.fotos), 'Fotos')}
+    ${contador(String(contadores.planosAcao), 'Planos de ação')}
+  </section>`;
   }
 
   /**
-   * Tabela por grupo e gráficos, a partir do resultado.
+   * Tabela por grupo com barra de aproveitamento na cor da faixa (linha "Geral" inclusa).
    */
-  private gerarMetricasGerais(resultado: ResultadoAuditoria): string {
-    const { contadores, grupos, faixas } = resultado;
-    return `
-    <div class="section">
-      <h2 class="section-title">Métricas Gerais</h2>
-      ${this.gerarTabelaMetricas(resultado)}
-      <div class="charts-block">
-        ${this.gerarGraficoAproveitamentoGrupos(grupos, resultado.aproveitamento, faixas)}
-        ${this.gerarGraficoDistribuicaoPontos({
-          pontosPossiveis: contadores.pontosPossiveis,
-          pontosRealizados: contadores.pontosRealizados,
-        })}
-      </div>
-    </div>
-    `;
-  }
-
-  private corBarraAproveitamento(ap: number, faixas: FaixaClassificacao[]): string {
-    return classificar(ap, faixas).cor ?? COR_SEM_FAIXA;
-  }
-
-  private gerarGraficoAproveitamentoGrupos(
-    grupos: ResultadoGrupo[],
-    aproveitamentoGeral: number,
-    faixas: FaixaClassificacao[],
-  ): string {
-    const barrasGrupos = grupos.map((g, idx) => ({
-      indice: idx + 1,
-      valor: Math.min(100, Math.max(0, Number(g.aproveitamento ?? 0))),
-      cor: this.corBarraAproveitamento(Number(g.aproveitamento ?? 0), faixas),
-    }));
-    const barras = [
-      ...barrasGrupos,
-      {
-        indice: 'GERAL',
-        valor: Math.min(100, Math.max(0, aproveitamentoGeral)),
-        cor: this.corBarraAproveitamento(aproveitamentoGeral, faixas),
-      },
-    ] as { indice: number | string; valor: number; cor: string }[];
-    const w = 560;
-    const h = 260;
-    const margin = { top: 16, right: 16, bottom: 40, left: 44 };
-    const chartW = w - margin.left - margin.right;
-    const chartH = h - margin.top - margin.bottom;
-    const n = barras.length;
-    const barMaxWidth = 48;
-    const gap = n > 0 ? (chartW - n * barMaxWidth) / (n + 1) : 0;
-    const scaleY = (v: number) => margin.top + chartH - (v / 100) * chartH;
-    const gridLines = [0, 25, 50, 75, 100]
-      .map(
-        (tick) =>
-          `<line x1="${margin.left}" y1="${scaleY(tick)}" x2="${margin.left + chartW}" y2="${scaleY(tick)}" stroke="#e5e7eb" stroke-dasharray="3 3" stroke-width="1"/>`,
-      )
-      .join('');
-    const yTicks = [0, 25, 50, 75, 100]
-      .map(
-        (tick) =>
-          `<text x="${margin.left - 8}" y="${scaleY(tick) + 4}" text-anchor="end" font-size="12" fill="#6b7280">${tick}%</text>`,
-      )
-      .join('');
-    const barsSvg = barras
-      .map((b, i) => {
-        const x = margin.left + gap + i * (barMaxWidth + gap);
-        const barH = (b.valor / 100) * chartH;
-        const y = margin.top + chartH - barH;
-        const label = typeof b.indice === 'number' ? String(b.indice) : 'GERAL';
-        return `<g>
-          <rect x="${x}" y="${y}" width="${barMaxWidth}" height="${Math.max(barH, 0)}" fill="${b.cor}" rx="4" ry="4"/>
-          <text x="${x + barMaxWidth / 2}" y="${margin.top + chartH + 18}" text-anchor="middle" font-size="11" fill="#374151">${this.escapeHtml(label)}</text>
-          <text x="${x + barMaxWidth / 2}" y="${y - 6}" text-anchor="middle" font-size="11" font-weight="600" fill="#1f2937">${b.valor.toFixed(1)}%</text>
-        </g>`;
-      })
-      .join('');
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" style="max-width:100%;height:auto;">
-      ${gridLines}
-      ${yTicks}
-      ${barsSvg}
-    </svg>`;
-    return `
-      <div class="chart-section">
-        <h3 class="chart-title">% de aproveitamento por grupo do formulário</h3>
-        <div class="chart-svg-wrap">${svg}</div>
-        <div class="chart-legend">
-          ${[...faixas]
-            .sort((a, b) => a.de - b.de)
-            .map(
-              (f) =>
-                `<span class="chart-legend-item"><span class="chart-legend-color" style="background:${this.escapeHtml(f.cor)};"></span> ${this.escapeHtml(f.nome)} (${this.numero(f.de)}–${this.numero(f.ate)}%)</span>`,
-            )
-            .join('')}
-        </div>
-      </div>`;
-  }
-
-  private gerarGraficoDistribuicaoPontos(metricas: {
-    pontosPossiveis: number;
-    pontosRealizados: number;
-  }): string {
-    const realizados = metricas.pontosRealizados;
-    const naoObtidos = Math.max(0, metricas.pontosPossiveis - realizados);
-    const total = metricas.pontosPossiveis || 1;
-    const pctReal = total > 0 ? (realizados / total) * 100 : 0;
-    const pctNao = total > 0 ? (naoObtidos / total) * 100 : 0;
-    const w = 400;
-    const h = 200;
-    const cx = w / 2;
-    const cy = 68;
-    const outerR = 52;
-    const innerR = 34;
-    const angleReal = (pctReal / 100) * 360;
-    const angleNao = (pctNao / 100) * 360;
-    const toRad = (deg: number) => (deg * Math.PI) / 180;
-    const arc = (startAngle: number, endAngle: number, r: number) => {
-      const x1 = cx + r * Math.sin(toRad(startAngle));
-      const y1 = cy - r * Math.cos(toRad(startAngle));
-      const x2 = cx + r * Math.sin(toRad(endAngle));
-      const y2 = cy - r * Math.cos(toRad(endAngle));
-      const large = endAngle - startAngle > 180 ? 1 : 0;
-      return `M ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2}`;
-    };
-    const pathReal = angleReal > 0 ? `${arc(0, angleReal, outerR)} L ${cx + innerR * Math.sin(toRad(angleReal))} ${cy - innerR * Math.cos(toRad(angleReal))} ${arc(angleReal, 0, innerR)} Z` : '';
-    const pathNao = angleNao > 0 ? `${arc(angleReal, angleReal + angleNao, outerR)} L ${cx + innerR * Math.sin(toRad(angleReal + angleNao))} ${cy - innerR * Math.cos(toRad(angleReal + angleNao))} ${arc(angleReal + angleNao, angleReal, innerR)} Z` : '';
-    const labelY = 158;
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" style="max-width:100%;height:auto;overflow:visible;">
-      ${pathReal ? `<path d="${pathReal}" fill="#10b981" stroke="#fff" stroke-width="2"/>` : ''}
-      ${pathNao ? `<path d="${pathNao}" fill="#ef4444" stroke="#fff" stroke-width="2"/>` : ''}
-      <circle cx="${cx}" cy="${cy}" r="${innerR - 2}" fill="#fff"/>
-      <text x="${cx}" y="${cy - 4}" text-anchor="middle" font-size="14" font-weight="600" fill="#1f2937">${total}</text>
-      <text x="${cx}" y="${cy + 11}" text-anchor="middle" font-size="11" fill="#6b7280">total</text>
-      <g transform="translate(0, ${labelY})">
-        <g transform="translate(40, 0)">
-          <circle cx="0" cy="0" r="4" fill="#10b981"/>
-          <text x="10" y="3" font-size="11" fill="#374151">Pontos realizados</text>
-        </g>
-        <g transform="translate(220, 0)">
-          <circle cx="0" cy="0" r="4" fill="#ef4444"/>
-          <text x="10" y="3" font-size="11" fill="#374151">Pontos não obtidos</text>
-        </g>
-      </g>
-    </svg>`;
-    return `
-      <div class="chart-section">
-        <h3 class="chart-title">Distribuição de pontos</h3>
-        <div class="chart-svg-wrap">${svg}</div>
-        <p class="legend" style="margin-top:4px;">Legenda: quantidade de pontos e percentual em relação ao total possível.</p>
-      </div>`;
-  }
-
-  /**
-   * Gera a tabela de métricas por grupo (linha "Geral" inclusa).
-   */
-  private gerarTabelaMetricas(resultado: ResultadoAuditoria): string {
-    const { grupos, contadores } = resultado;
+  private gerarDesempenhoPorGrupo(resultado: ResultadoAuditoria, numeroDoGrupo: Map<string, number>): string {
+    const { grupos, contadores, faixas } = resultado;
     const soma = (campo: 'naoAplicaveis' | 'naoRespondidas') => grupos.reduce((acc, g) => acc + g[campo], 0);
-    const celulaNc = (n: number) =>
-      n > 0 ? `<span class="badge badge-error">${n}</span>` : '<span style="color: #9ca3af;">0</span>';
-
-    const linhas = grupos
+    const quantidade = (n: number, destaque = false) =>
+      n > 0 ? `<span class="${destaque ? 'nc-destaque' : ''}">${n}</span>` : '<span class="zero">0</span>';
+    const barra = (ap: number | null) =>
+      ap == null
+        ? ''
+        : `<div class="barra-grupo"><div style="width:${posicaoNaBarra(ap).toFixed(2)}%;background:${this.escapeHtml(this.corDaNota(ap, faixas))};"></div></div>`;
+    const linha = (
+      nome: string,
+      ap: number | null,
+      pr: number,
+      pp: number,
+      na: number,
+      nc: number,
+      nr: number,
+      classe = '',
+    ) => `
+        <tr${classe ? ` class="${classe}"` : ''}>
+          <td class="grupo-nome">${nome}</td>
+          <td class="grupo-barra">${barra(ap)}</td>
+          <td class="valor-ap">${ap != null ? this.percentual(ap) : '—'}</td>
+          <td>${this.numero(pr)} / ${this.numero(pp)}</td>
+          <td>${quantidade(na)}</td>
+          <td>${quantidade(nc, true)}</td>
+          <td>${quantidade(nr)}</td>
+        </tr>`;
+    const legendaFaixas = [...faixas]
+      .sort((a, b) => a.de - b.de)
       .map(
-        (g) => `
-          <tr>
-            <td>${this.escapeHtml(g.nome)}</td>
-            <td class="text-center" style="font-weight: 600;">${g.aproveitamento != null ? this.percentual(g.aproveitamento) : '—'}</td>
-            <td class="text-center">${this.numero(g.pontosPossiveis)}</td>
-            <td class="text-center">${this.numero(g.pontosRealizados)}</td>
-            <td class="text-center">${g.naoAplicaveis}</td>
-            <td class="text-center">${celulaNc(g.naoConformidades)}</td>
-            <td class="text-center">${g.naoRespondidas}</td>
-          </tr>`,
+        (f) =>
+          `<span class="legenda-item"><span class="legenda-cor" style="background:${this.escapeHtml(f.cor)};"></span>${this.escapeHtml(f.nome)} (${this.numero(f.de)}–${this.numero(f.ate)}%)</span>`,
       )
       .join('');
 
     return `
-      <table>
-        <thead>
-          <tr>
-            <th>Grupo</th>
-            <th class="text-center">AP</th>
-            <th class="text-center">PP</th>
-            <th class="text-center">PR</th>
-            <th class="text-center">NA</th>
-            <th class="text-center">NC</th>
-            <th class="text-center">NR</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${linhas}
-          <tr class="total">
-            <td>Geral</td>
-            <td class="text-center">${this.percentual(resultado.aproveitamento)}</td>
-            <td class="text-center">${this.numero(contadores.pontosPossiveis)}</td>
-            <td class="text-center">${this.numero(contadores.pontosRealizados)}</td>
-            <td class="text-center">${soma('naoAplicaveis')}</td>
-            <td class="text-center">${contadores.naoConformidades}</td>
-            <td class="text-center">${soma('naoRespondidas')}</td>
-          </tr>
-        </tbody>
-      </table>
-      <div class="legend">
-        AP: Aproveitamento | PP: Pontos possíveis | PR: Pontos realizados | NA: Não aplicáveis | NC: Não conformidades | NR: Não respondidas
-      </div>
-    `;
+  <section class="secao">
+    <h2 class="secao-titulo">Desempenho por grupo</h2>
+    <table class="tabela-grupos">
+      <thead>
+        <tr><th>Grupo</th><th></th><th>AP</th><th>Pontos</th><th>NA</th><th>NC</th><th>NR</th></tr>
+      </thead>
+      <tbody>
+        ${grupos
+          .map((g) =>
+            linha(
+              `${this.numeroDoGrupoHtml(numeroDoGrupo.get(g.grupoId))}${this.escapeHtml(g.nome)}`,
+              g.aproveitamento,
+              g.pontosRealizados,
+              g.pontosPossiveis,
+              g.naoAplicaveis,
+              g.naoConformidades,
+              g.naoRespondidas,
+            ),
+          )
+          .join('')}
+        ${linha(
+          'Geral',
+          resultado.aproveitamento,
+          contadores.pontosRealizados,
+          contadores.pontosPossiveis,
+          soma('naoAplicaveis'),
+          contadores.naoConformidades,
+          soma('naoRespondidas'),
+          'total',
+        )}
+      </tbody>
+    </table>
+    <div class="legenda">${legendaFaixas}</div>
+    <div class="legenda-siglas">AP: Aproveitamento | Pontos: realizados / possíveis | NA: Não aplicáveis | NC: Não conformidades | NR: Não respondidas</div>
+  </section>`;
   }
 
   /**
-   * Ícone, cor e classe do item: o sentido da resposta define a cor; o ícone configurado
+   * Ícone e classe do item: o sentido da resposta define a cor; o ícone configurado
    * na opção (código do catálogo ou caractere) substitui o padrão do sentido.
    */
   private visualDaResposta(
     item: AuditoriaItem,
     sentido: SentidoResposta | null,
-  ): { classe: string; icone: string } {
-    if (!sentido) return { classe: 'nao-respondida', icone: '?' };
+  ): { classe: ClasseResposta; icone: string; iconePersonalizado: boolean } {
+    if (!sentido) return { classe: 'nao-respondida', icone: '?', iconePersonalizado: false };
     const configurado = (item.templateItem?.opcoesRespostaConfig || []).find((c) => c.valor === item.resposta)?.icone;
-    const icone = configurado
-      ? (ICONES_RESPOSTA.find((i) => i.codigo === configurado)?.emoji ?? configurado)
-      : ICONE_PADRAO_POR_SENTIDO[sentido];
-    const classe = sentido === 'positiva' ? 'conforme' : sentido === 'negativa' ? 'nao-conforme' : 'nao-aplicavel';
-    return { classe, icone };
+    if (configurado) {
+      const icone = ICONES_RESPOSTA.find((i) => i.codigo === configurado)?.emoji ?? configurado;
+      return { classe: sentido, icone, iconePersonalizado: true };
+    }
+    return { classe: sentido, icone: ICONE_PADRAO_POR_SENTIDO[sentido], iconePersonalizado: false };
   }
 
   private rotuloDaResposta(resposta: string | null | undefined): string {
@@ -1014,227 +605,164 @@ export class RelatorioHtmlService {
     }
   }
 
+  private gerarFotos(item: AuditoriaItem, assetsPdf: RelatorioAuditoriaPdfAssetsHtml | undefined, classe = ''): string {
+    if (!item.fotos?.length) return '';
+    const fotos = item.fotos
+      .map((foto) => {
+        const embutida = assetsPdf?.fotosDataUriPorId?.[foto.id];
+        return embutida
+          ? `<img class="foto" src="${embutida}" alt="Foto do item" />`
+          : `<img class="foto" data-foto-id="${this.escapeHtml(foto.id)}" alt="Foto do item" />`;
+      })
+      .join('');
+    return `<div class="fotos${classe ? ` ${classe}` : ''}">${fotos}</div>`;
+  }
+
   /**
-   * Última página: quadro de resumo e linhas para assinatura.
+   * Lista das não conformidades com tudo o que o cliente precisa para corrigir:
+   * justificativa, observação, legislação, análise e fotos.
    */
-  private gerarPaginaFinal(auditoria: Auditoria, resultado: ResultadoAuditoria): string {
-    const linha = (rotulo: string, valor: string) => `<tr><td>${rotulo}</td><td>${valor}</td></tr>`;
-    const { contadores, classificacao } = resultado;
+  private gerarNaoConformidades(
+    grupos: GrupoDoRelatorio[],
+    assetsPdf?: RelatorioAuditoriaPdfAssetsHtml,
+  ): string {
+    const naoConformes = grupos.flatMap((g) =>
+      g.itens.filter((i) => i.classe === 'negativa').map((i) => ({ grupo: `Grupo ${g.numero} · ${g.nome}`, ...i })),
+    );
+    const corpo = naoConformes.length
+      ? naoConformes
+          .map(({ grupo, item, numero, respostaTexto }) => {
+            const legislacao = nomesLegislacoesDoItem(item);
+            const detalhe = (rotulo: string, valor: string | null | undefined) =>
+              valor ? `<div class="detalhe-rotulo">${rotulo}</div><div>${this.escapeHtml(valor)}</div>` : '';
+            return `
+    <div class="nc-card">
+      <div class="nc-grupo">${this.escapeHtml(grupo)}</div>
+      <div class="nc-pergunta"><span class="numero">${numero}</span>${this.escapeHtml(item.templateItem?.pergunta || 'Pergunta não encontrada')}</div>
+      <div class="detalhes">
+        <div class="detalhe-rotulo">Resposta</div><div>${respostaTexto}</div>
+        ${detalhe('Justificativa', item.descricaoNaoConformidade)}
+        ${detalhe('Observação', item.observacao)}
+        ${detalhe('Legislação', legislacao)}
+        ${detalhe('Análise', item.descricaoIa)}
+      </div>
+      ${this.gerarFotos(item, assetsPdf)}
+    </div>`;
+          })
+          .join('')
+      : '<div class="sem-nc">Nenhuma não conformidade encontrada nesta avaliação.</div>';
+
+    return `
+  <section class="secao">
+    <h2 class="secao-titulo">Não conformidades${naoConformes.length ? ` <small>${naoConformes.length} ${naoConformes.length === 1 ? 'item' : 'itens'}</small>` : ''}</h2>
+    ${corpo}
+  </section>`;
+  }
+
+  /**
+   * Todas as respostas, grupo a grupo, em lista compacta.
+   */
+  private gerarRespostasPorGrupo(
+    grupos: GrupoDoRelatorio[],
+    faixas: FaixaClassificacao[],
+    assetsPdf?: RelatorioAuditoriaPdfAssetsHtml,
+  ): string {
+    const html = grupos
+      .map(({ numero: numeroGrupo, nome, metricas, itens }) => {
+        const ap = metricas?.aproveitamento;
+        const selo =
+          ap != null
+            ? `<span class="grupo-ap" style="background:${this.escapeHtml(this.corDaNota(ap, faixas))};">${this.percentual(ap)}</span>`
+            : '';
+        const linhas = itens
+          .map(({ item, numero, classe, icone, iconePersonalizado, respostaTexto }) => {
+            const negativa = classe === 'negativa';
+            const iconeHtml = iconePersonalizado ? `<span class="emoji">${this.escapeHtml(icone)}</span>` : this.escapeHtml(icone);
+            return `
+      <div class="item ${classe}">
+        <span class="item-icone ${classe}${iconePersonalizado ? ' personalizado' : ''}">${iconeHtml}</span>
+        <div>
+          <div class="item-pergunta"><span class="numero">${numero}</span>${this.escapeHtml(item.templateItem?.pergunta || 'Pergunta não encontrada')}</div>
+          ${!negativa && item.observacao ? `<div class="item-obs">Observação: ${this.escapeHtml(item.observacao)}</div>` : ''}
+          ${!negativa ? this.gerarFotos(item, assetsPdf, 'pequenas') : ''}
+        </div>
+        <span class="item-resposta ${classe}">${respostaTexto}</span>
+      </div>`;
+          })
+          .join('');
+        return `
+    <div class="grupo">
+      <div class="grupo-cabecalho">
+        <h3 class="grupo-titulo">${this.numeroDoGrupoHtml(numeroGrupo)}${this.escapeHtml(nome)}</h3>
+        <div class="grupo-metricas">Pontos ${this.numero(metricas?.pontosRealizados ?? 0)} / ${this.numero(metricas?.pontosPossiveis ?? 0)}${selo}</div>
+      </div>
+      ${linhas}
+    </div>`;
+      })
+      .join('');
+
+    return `
+  <section class="secao">
+    <h2 class="secao-titulo">Respostas por grupo</h2>
+    ${html}
+  </section>`;
+  }
+
+  /**
+   * Fechamento: dados principais da avaliação e linhas para assinatura.
+   */
+  private gerarFechamento(auditoria: Auditoria, resultado: ResultadoAuditoria): string {
     const auditor = auditoria.consultor?.nome || 'Auditor';
     const responsavel = auditoria.unidade?.responsavel || 'Responsável pela unidade';
     return `
-    <div class="section pagina-final">
-      <h2 class="section-title">RESUMO DA AVALIAÇÃO</h2>
-      <table class="resumo-quadro">
-        <tbody>
-          ${linha('Checklist', this.escapeHtml(auditoria.template?.nome || 'Checklist'))}
-          ${linha('Unidade', this.escapeHtml(auditoria.unidade?.nome || 'Unidade'))}
-          ${linha('Início', this.formatarDataHora(auditoria.dataInicio))}
-          ${linha('Fim', this.formatarDataHora(auditoria.dataFim))}
-          ${linha('Duração', this.escapeHtml(this.formatarDuracao(auditoria)))}
-          ${linha('Auditor', this.escapeHtml(auditoria.consultor?.nome || 'Não informado'))}
-          ${linha('Aproveitamento', this.percentual(resultado.aproveitamento))}
-          ${linha('Faixa', this.escapeHtml(classificacao.nome))}
-          ${linha('Pontos possíveis', this.numero(contadores.pontosPossiveis))}
-          ${linha('Pontos realizados', this.numero(contadores.pontosRealizados))}
-          ${linha('Não conformidades', String(contadores.naoConformidades))}
-        </tbody>
-      </table>
-      <p class="data-local">____________________, ____ de ______________ de ________</p>
-      <div class="assinaturas">
-        <div class="assinatura">${this.escapeHtml(auditor)}<div class="assinatura-papel">Auditor</div></div>
-        <div class="assinatura">${this.escapeHtml(responsavel)}<div class="assinatura-papel">Responsável pela unidade</div></div>
-      </div>
+  <section class="fechamento">
+    <h2 class="secao-titulo">Assinaturas</h2>
+    <div class="fechamento-resumo">
+      ${this.dado('Unidade', this.escapeHtml(auditoria.unidade?.nome || 'Unidade'))}
+      ${this.dado('Fim da avaliação', this.formatarDataHora(auditoria.dataFim))}
+      ${this.dado('Aproveitamento', this.percentual(resultado.aproveitamento))}
+      ${this.dado('Faixa', this.escapeHtml(resultado.classificacao.nome))}
     </div>
-    `;
+    <p class="data-local">____________________, ____ de ______________ de ________</p>
+    <div class="assinaturas">
+      <div class="assinatura">${this.escapeHtml(auditor)}<div class="assinatura-papel">Auditor</div></div>
+      <div class="assinatura">${this.escapeHtml(responsavel)}<div class="assinatura-papel">Responsável pela unidade</div></div>
+    </div>
+  </section>`;
   }
 
   /**
-   * Gera o detalhamento por grupo.
+   * Análise da avaliação gerada pela IA (resumo executivo).
    */
-  private gerarDetalhamentoPorGrupo(
-    gruposItens: { grupoId: string; itens: AuditoriaItem[] }[],
-    metricas: ResultadoGrupo[],
-    assetsPdf?: RelatorioAuditoriaPdfAssetsHtml,
-  ): string {
-    let html = `
-    <div class="section">
-      <h2 class="section-title">Detalhamento por Grupo</h2>
-    `;
-
-    gruposItens.forEach(({ grupoId, itens }) => {
-      const grupo = metricas.find((m) => m.grupoId === grupoId);
-      html += `
-      <div class="grupo-section">
-        <div class="grupo-header">
-          <h3 class="grupo-title">${this.escapeHtml(grupo?.nome ?? itens[0]?.templateItem?.grupo?.nome ?? 'Sem Grupo')}</h3>
-          <div class="grupo-metrics">
-            Aproveitamento: <strong>${grupo?.aproveitamento != null ? this.percentual(grupo.aproveitamento) : '—'}</strong> | 
-            Pontos: ${this.numero(grupo?.pontosRealizados ?? 0)}/${this.numero(grupo?.pontosPossiveis ?? 0)}
-          </div>
-        </div>
-        <div class="items">
-      `;
-
-      itens.forEach((item) => {
-        const resposta = item.resposta;
-        const respondida = !!resposta && resposta !== RespostaItem.NAO_AVALIADO;
-        const sentido = sentidoDaOpcao(item.templateItem, resposta);
-        const isNaoConforme = sentido === 'negativa';
-        const visual = this.visualDaResposta(item, respondida ? (sentido ?? 'neutra') : null);
-        const classeCard = visual.classe;
-        const classeIcon = visual.classe;
-        const icon = this.escapeHtml(visual.icone);
-        const respostaTexto = this.rotuloDaResposta(resposta);
-
-        const legislacaoItem = isNaoConforme ? nomesLegislacoesDoItem(item) : null;
-
-        html += `
-          <div class="item-card ${classeCard}">
-            <div class="item-header">
-              <div class="item-icon ${classeIcon}">${icon}</div>
-              <div class="item-content">
-                <div class="item-pergunta">
-                  ${this.escapeHtml(item.templateItem?.pergunta || 'Pergunta não encontrada')}
-                </div>
-                <div class="item-details">
-                  <div class="item-detail">
-                    <span class="item-detail-label">Resposta: </span>
-                    <span class="item-detail-value">${respostaTexto}</span>
-                  </div>
-                  ${item.observacao
-                    ? `<div class="item-detail">
-                        <span class="item-detail-label">Observação: </span>
-                        <span class="item-detail-value">${this.escapeHtml(item.observacao)}</span>
-                      </div>`
-                    : ''}
-                  ${item.descricaoNaoConformidade
-                    ? `<div class="item-detail">
-                        <span class="item-detail-label item-detail-error">Justificativa: </span>
-                        <span class="item-detail-value">${this.escapeHtml(item.descricaoNaoConformidade)}</span>
-                      </div>`
-                    : ''}
-                  ${legislacaoItem
-                    ? `<div class="item-detail">
-                        <span class="item-detail-label">Legislação: </span>
-                        <span class="item-detail-value">${this.escapeHtml(legislacaoItem)}</span>
-                      </div>`
-                    : ''}
-                  ${item.descricaoIa
-                    ? `<div class="item-detail">
-                        <span class="item-detail-label">Análise IA: </span>
-                        <span class="item-detail-value">${this.escapeHtml(item.descricaoIa)}</span>
-                      </div>`
-                    : ''}
-                  ${item.fotos && item.fotos.length > 0
-                    ? `<div class="item-detail">
-                        <span class="item-detail-label">Fotos: </span>
-                        <div class="item-fotos">
-                          ${item.fotos
-                            .map((foto) => {
-                              const embutida = assetsPdf?.fotosDataUriPorId?.[foto.id];
-                              return embutida
-                                ? `<img class="item-foto" src="${embutida}" alt="Foto do item" />`
-                                : `<img class="item-foto" data-foto-id="${this.escapeHtml(foto.id)}" alt="Foto do item" />`;
-                            })
-                            .join('')}
-                        </div>
-                      </div>`
-                    : ''}
-                </div>
-              </div>
-            </div>
-          </div>
-        `;
-      });
-
-      html += `
-        </div>
-      </div>
-      `;
-    });
-
-    html += `</div>`;
-    return html;
-  }
-
-  /**
-   * Gera o resumo executivo.
-   */
-  private gerarResumoExecutivo(
-    resumo: Auditoria['resumoExecutivo'],
-  ): string {
+  private gerarResumoExecutivo(resumo: Auditoria['resumoExecutivo']): string {
     if (!resumo) {
       return '';
     }
+    const lista = (itens: string[] | undefined, marca: string, cor: string) =>
+      `<ul class="analise-lista">${(itens ?? [])
+        .map((t) => `<li><span class="marca" style="color:${cor};">${marca}</span><span>${this.escapeHtml(t)}</span></li>`)
+        .join('')}</ul>`;
 
     return `
-    <div class="section">
-      <div class="resumo-section">
-        <h2 class="resumo-title">✨ Resumo Executivo</h2>
-        <div class="resumo-content">
-          <div>
-            <div class="resumo-subtitle">Resumo</div>
-            <div class="resumo-text">${this.escapeHtml(resumo.resumo || '')}</div>
-          </div>
-          <div class="resumo-grid">
-            <div>
-              <div class="resumo-subtitle" style="color: #10b981;">Pontos Fortes</div>
-              <ul class="resumo-list success" style="list-style: none; padding: 0;">
-                ${resumo.pontosFortes
-                  ?.map(
-                    (ponto) =>
-                      `<li style="padding: 4px 0; font-size: 12px; color: #1B2A4A; opacity: 0.8; display: flex; align-items: start; gap: 8px;"><span style="color: #10b981;">✓</span><span>${this.escapeHtml(ponto)}</span></li>`,
-                  )
-                  .join('') || ''}
-              </ul>
-            </div>
-            <div>
-              <div class="resumo-subtitle" style="color: #ef4444;">Pontos Fracos</div>
-              <ul class="resumo-list error" style="list-style: none; padding: 0;">
-                ${resumo.pontosFracos
-                  ?.map(
-                    (ponto) =>
-                      `<li style="padding: 4px 0; font-size: 12px; color: #1B2A4A; opacity: 0.8; display: flex; align-items: start; gap: 8px;"><span style="color: #ef4444;">✗</span><span>${this.escapeHtml(ponto)}</span></li>`,
-                  )
-                  .join('') || ''}
-              </ul>
-            </div>
-          </div>
-          <div>
-            <div class="resumo-subtitle">Recomendações Prioritárias</div>
-            <ul style="list-style: none; padding: 0;">
-              ${resumo.recomendacoesPrioritarias
-                ?.map(
-                  (rec, idx) =>
-                    `<li style="padding: 8px; background: #F4F7FA; border-radius: 4px; margin-bottom: 8px; font-size: 12px; display: flex; align-items: start; gap: 8px;"><span style="font-weight: 600; color: #00B8A9;">${idx + 1}.</span><span style="color: #1B2A4A; opacity: 0.8;">${this.escapeHtml(rec)}</span></li>`,
-                )
-                .join('') || ''}
-            </ul>
-          </div>
-          <div class="resumo-grid">
-            <div>
-              <div class="resumo-subtitle">Risco Geral</div>
-              <span class="risco-badge risco-${resumo.riscoGeral}">
-                ${this.getRiscoLabel(resumo.riscoGeral)}
-              </span>
-            </div>
-            <div>
-              <div class="resumo-subtitle">Tendências Identificadas</div>
-              <ul style="list-style: none; padding: 0;">
-                ${resumo.tendencias
-                  ?.map(
-                    (tendencia) =>
-                      `<li style="padding: 4px 0; font-size: 12px; color: #1B2A4A; opacity: 0.8; display: flex; align-items: start; gap: 8px;"><span style="color: #00B8A9;">→</span><span>${this.escapeHtml(tendencia)}</span></li>`,
-                  )
-                  .join('') || ''}
-              </ul>
-            </div>
-          </div>
-        </div>
+  <section class="secao">
+    <h2 class="secao-titulo">Análise da avaliação</h2>
+    <div class="analise">
+      <div class="analise-texto">${this.escapeHtml(resumo.resumo || '')}</div>
+      <div class="analise-colunas">
+        <div><div class="analise-subtitulo" style="color:#047857;">Pontos fortes</div>${lista(resumo.pontosFortes, '✓', '#10B981')}</div>
+        <div><div class="analise-subtitulo" style="color:#DC2626;">Pontos fracos</div>${lista(resumo.pontosFracos, '✗', '#DC2626')}</div>
+      </div>
+      ${resumo.recomendacoesPrioritarias?.length
+        ? `<div class="analise-subtitulo">Recomendações prioritárias</div>${resumo.recomendacoesPrioritarias
+            .map((rec, idx) => `<div class="recomendacao"><b>${idx + 1}.</b><span>${this.escapeHtml(rec)}</span></div>`)
+            .join('')}`
+        : ''}
+      <div class="analise-colunas" style="margin-top:10px;margin-bottom:0;">
+        <div><div class="analise-subtitulo">Risco geral</div><span class="risco risco-${this.escapeHtml(resumo.riscoGeral)}">${this.getRiscoLabel(resumo.riscoGeral)}</span></div>
+        <div><div class="analise-subtitulo">Tendências identificadas</div>${lista(resumo.tendencias, '→', '#00B8A9')}</div>
       </div>
     </div>
-    `;
+  </section>`;
   }
 
   /**
@@ -1251,7 +779,7 @@ export class RelatorioHtmlService {
       case 'critico':
         return 'Crítico';
       default:
-        return risco;
+        return this.escapeHtml(risco);
     }
   }
 
