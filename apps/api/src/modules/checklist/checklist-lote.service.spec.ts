@@ -76,18 +76,18 @@ describe('ChecklistLoteService', () => {
     expect(r).toMatchObject({ totalAfetados: 1, ignorados: 0, simulado: false });
   });
 
-  it('tipo texto em lote força peso 0 e permiteFoto false', async () => {
+  it('tipo texto em lote força peso 0 e mantém permiteFoto', async () => {
     montarTemplate([criarItem({ peso: 3 })]);
 
-    await service.configurar(TEMPLATE_ID, { alteracoes: { tipoResposta: 'texto' } }, usuario);
+    await service.configurar(TEMPLATE_ID, { alteracoes: { tipoResposta: 'texto', permiteFoto: true } }, usuario);
 
     const [salvo] = save.mock.calls[0][1] as TemplateItem[];
     expect(salvo.tipoRespostaCustomizada).toBe(TipoRespostaCustomizada.TEXTO);
     expect(salvo.peso).toBe(0);
-    expect(salvo.permiteFoto).toBe(false);
+    expect(salvo.permiteFoto).toBe(true);
   });
 
-  it('sair de texto sem permiteFoto explícito restaura permiteFoto true', async () => {
+  it('sair de texto mantém a permissão de foto do item', async () => {
     montarTemplate([
       criarItem({
         tipoRespostaCustomizada: TipoRespostaCustomizada.TEXTO,
@@ -100,7 +100,7 @@ describe('ChecklistLoteService', () => {
     await service.configurar(TEMPLATE_ID, { alteracoes: { tipoResposta: 'padrao' } }, usuario);
 
     const [salvo] = save.mock.calls[0][1] as TemplateItem[];
-    expect(salvo.permiteFoto).toBe(true);
+    expect(salvo.permiteFoto).toBe(false);
     expect(salvo.usarRespostasPersonalizadas).toBe(false);
   });
 

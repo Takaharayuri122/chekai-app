@@ -63,14 +63,14 @@ describe('checklist-import-revisao', () => {
     expect(r.sugestoes[0].alteracoes).not.toContain('criticidade');
   });
 
-  it('IA muda tipo para texto → permiteFoto false, peso 0, conferir true com motivo', () => {
+  it('IA muda tipo para texto → mantém permiteFoto, peso 0, conferir true com motivo', () => {
     const r = interpretarRespostaIa(
       resposta([{ chave: 'l1', tipoResposta: 'texto', peso: 5, permiteFoto: true }]),
       originais,
     );
     const s = r.sugestoes[0];
     expect(s.configuracaoSugerida.tipoResposta).toBe('texto');
-    expect(s.configuracaoSugerida.permiteFoto).toBe(false);
+    expect(s.configuracaoSugerida.permiteFoto).toBe(true);
     expect(s.configuracaoSugerida.peso).toBe(0);
     expect(s.configuracaoSugerida.opcoes).toEqual([]);
     expect(s.conferir).toBe(true);

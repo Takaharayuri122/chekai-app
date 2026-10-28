@@ -69,7 +69,7 @@ const TIPOS_RESPOSTA: { valor: TipoRespostaLote; rotulo: string }[] = [
 ];
 
 const TEXTO_TIPO: Partial<Record<TipoRespostaLote, string>> = {
-  texto: 'O auditor escreve a resposta. Respostas em texto não têm opções, não pontuam e não recebem fotos.',
+  texto: 'O auditor escreve a resposta. Respostas em texto não têm opções e não pontuam.',
   numero: 'O auditor informa um número. Não há opções de resposta.',
   data: 'O auditor escolhe uma data. Não há opções de resposta.',
 };

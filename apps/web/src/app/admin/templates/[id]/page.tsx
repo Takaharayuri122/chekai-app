@@ -23,7 +23,6 @@ import {
   Star,
   HelpCircle,
   ListChecks,
-  Lock,
 } from 'lucide-react';
 import {
   DndContext,
@@ -647,7 +646,7 @@ export default function EditarTemplatePage() {
       opcoesRespostaConfig: configs,
       grupoId: item.grupoId,
       secao: item.secao || '',
-      permiteFoto: tipoSemPontuacao(item.tipoRespostaCustomizada) ? false : item.permiteFoto ?? true,
+      permiteFoto: item.permiteFoto ?? true,
       permiteObservacao: item.permiteObservacao ?? true,
     });
     setShowItemModal(true);
@@ -670,7 +669,7 @@ export default function EditarTemplatePage() {
         opcoesRespostaConfig: itemForm.opcoesRespostaConfig,
         grupoId: itemForm.grupoId || undefined,
         secao: itemForm.secao || undefined,
-        permiteFoto: tipoSemPontuacao(itemForm.tipoRespostaCustomizada) ? false : itemForm.permiteFoto,
+        permiteFoto: itemForm.permiteFoto,
         permiteObservacao: itemForm.permiteObservacao,
       };
       if (editingItem) {
@@ -1617,16 +1616,9 @@ export default function EditarTemplatePage() {
                     </span>
                     <Switch
                       checked={itemForm.permiteFoto ?? true}
-                      disabled={tipoSemPontuacao(itemForm.tipoRespostaCustomizada)}
                       onCheckedChange={(v) => setItemForm({ ...itemForm, permiteFoto: v })}
                     />
                   </label>
-                  {tipoSemPontuacao(itemForm.tipoRespostaCustomizada) && (
-                    <p className="flex items-center gap-1 text-xs text-muted-foreground">
-                      <Lock className="h-3 w-3 shrink-0" aria-hidden />
-                      Desativado: respostas em texto ou assinatura não recebem fotos
-                    </p>
-                  )}
                 </div>
                 <div className="flex flex-col gap-1 rounded-lg bg-muted/50 p-3">
                   <label className="flex cursor-pointer items-center justify-between gap-3">
@@ -1677,13 +1669,6 @@ export default function EditarTemplatePage() {
                       tipoRespostaCustomizada: valor,
                       usarRespostasPersonalizadas: valor !== undefined,
                       peso: pesoAoTrocarTipo(itemForm.tipoRespostaCustomizada, valor, itemForm.peso),
-                      // Texto e assinatura não recebem fotos; ao sair deles, as fotos voltam a ser permitidas
-                      permiteFoto:
-                        tipoSemPontuacao(valor)
-                          ? false
-                          : tipoSemPontuacao(itemForm.tipoRespostaCustomizada)
-                            ? true
-                            : itemForm.permiteFoto,
                     });
                   }}
                 >

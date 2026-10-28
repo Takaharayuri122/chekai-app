@@ -74,7 +74,7 @@
 | Cartão de resultado do relatório | ok | ok | - | Mobile ainda não mostra o cartão |
 | Enviar relatório ao cliente por e-mail | ok | ok | - | Envio manual e automático ao finalizar; histórico de envios só no web |
 | Histórico por unidade | ok | ok | - | |
-| Respeitar permiteFoto/permiteObservacao na execução | ok | ok | pendente | Mobile: respeitar permiteFoto/permiteObservacao (texto nunca aceita foto) |
+| Respeitar permiteFoto/permiteObservacao na execução | ok | ok | pendente | Mobile: respeitar permiteFoto/permiteObservacao (vale também para texto e assinatura) |
 | Resposta do tipo assinatura (assinar na tela) | ok | ok | pendente | Web funciona no navegador do celular; o app mobile ainda mostra a pergunta como campo de texto e a API recusa texto nesse tipo |
 
 ## Relatório Técnico

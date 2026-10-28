@@ -59,7 +59,7 @@ describe('configuracao-lote', () => {
     expect(montarAlteracoes(e)).toEqual({ obrigatorio: true, criticidade: 'alta' });
   });
 
-  it('texto trava opcoes e permiteFoto e não os envia', () => {
+  it('texto trava só as opções e envia a permissão de foto', () => {
     const e = estadoInicialLote();
     e.ligadas.tipoResposta = true;
     e.tipoResposta = 'texto';
@@ -68,8 +68,8 @@ describe('configuracao-lote', () => {
     e.ligadas.permiteObservacao = true;
     const t = secoesTravadas(e);
     expect(t.opcoes).toBe('Não se aplica a respostas em texto');
-    expect(t.permiteFoto).toBe('Desativado: respostas em texto não recebem fotos');
-    expect(montarAlteracoes(e)).toEqual({ tipoResposta: 'texto', permiteObservacao: true });
+    expect(t.permiteFoto).toBeUndefined();
+    expect(montarAlteracoes(e)).toEqual({ tipoResposta: 'texto', permiteFoto: true, permiteObservacao: true });
   });
 
   it('numero e data travam opcoes', () => {

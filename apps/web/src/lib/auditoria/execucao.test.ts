@@ -182,8 +182,10 @@ describe('aceitaFoto / aceitaObservacao', () => {
     return it;
   }
 
-  it('texto não aceita foto mesmo com permiteFoto indefinido', () => {
-    expect(aceitaFoto(comTemplate({ tipoRespostaCustomizada: 'texto' }))).toBe(false);
+  it('texto e assinatura aceitam foto quando permitido', () => {
+    expect(aceitaFoto(comTemplate({ tipoRespostaCustomizada: 'texto' }))).toBe(true);
+    expect(aceitaFoto(comTemplate({ tipoRespostaCustomizada: 'assinatura', permiteFoto: true }))).toBe(true);
+    expect(aceitaFoto(comTemplate({ tipoRespostaCustomizada: 'texto', permiteFoto: false }))).toBe(false);
   });
 
   it('permiteFoto false não aceita foto', () => {

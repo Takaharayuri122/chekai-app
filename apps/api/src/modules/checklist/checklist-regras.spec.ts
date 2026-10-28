@@ -9,7 +9,7 @@ const base = (): Partial<ItemConfiguravel> => ({
 });
 
 describe('aplicarRegrasForcadas', () => {
-  it('texto: peso 0, sem foto, sem opções e sem pontuação', () => {
+  it('texto: peso 0, sem opções e sem pontuação, mantendo a permissão de foto', () => {
     const item: Partial<ItemConfiguravel> = {
       tipoRespostaCustomizada: TipoRespostaCustomizada.TEXTO,
       usarRespostasPersonalizadas: true,
@@ -23,9 +23,9 @@ describe('aplicarRegrasForcadas', () => {
     };
     aplicarRegrasForcadas(item);
     expect(item.peso).toBe(0);
-    expect(item.permiteFoto).toBe(false);
+    expect(item.permiteFoto).toBe(true);
     expect(item.opcoesResposta).toBeNull();
-    expect(item.opcoesRespostaConfig!.every((c) => !c.fotoObrigatoria && c.pontuacao == null)).toBe(true);
+    expect(item.opcoesRespostaConfig!.every((c) => c.pontuacao == null)).toBe(true);
     expect(item.opcoesRespostaConfig!.find((c) => c.valor === 'conforme')!.observacaoObrigatoria).toBe(true);
   });
 

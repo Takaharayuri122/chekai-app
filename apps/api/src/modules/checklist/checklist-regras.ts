@@ -50,7 +50,6 @@ export function aplicarRegrasForcadas(item: Partial<ItemConfiguravel>): void {
   const texto = tipoSemPontuacao(item.tipoRespostaCustomizada);
   if (texto) {
     item.peso = 0;
-    item.permiteFoto = false;
     item.opcoesResposta = null as unknown as string[];
   }
 

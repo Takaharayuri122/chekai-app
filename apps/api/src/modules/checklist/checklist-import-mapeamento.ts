@@ -50,10 +50,9 @@ export function normalizarConfiguracao(
   c: ConfiguracaoPerguntaImportada,
 ): ConfiguracaoPerguntaImportada {
   const texto = c.tipoResposta === 'texto';
-  const permiteFoto = texto ? false : c.permiteFoto;
+  const { permiteFoto } = c;
   return {
     ...c,
-    permiteFoto,
     peso: texto ? 0 : c.peso,
     opcoes: texto
       ? []

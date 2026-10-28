@@ -74,7 +74,6 @@ export function secoesTravadas(e: EstadoLote): Partial<Record<SecaoLote, string>
   }
   if (e.tipoResposta === 'texto') {
     travadas.opcoes = 'Não se aplica a respostas em texto';
-    travadas.permiteFoto = 'Desativado: respostas em texto não recebem fotos';
   } else if (e.tipoResposta === 'numero' || e.tipoResposta === 'data') {
     travadas.opcoes = 'Não se aplica a respostas em número ou data';
   }

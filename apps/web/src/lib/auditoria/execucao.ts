@@ -1,6 +1,5 @@
 import { TipoRespostaCustomizada, type AuditoriaItem } from '@/lib/api';
 import { sentidoDaOpcao } from '@/lib/checklist/sentido';
-import { tipoSemPontuacao } from '@/lib/checklist/pontuacao';
 
 export type StatusItem = 'pendente' | 'conforme' | 'nao_conforme' | 'neutro' | 'respondido';
 
@@ -13,10 +12,9 @@ export interface SecaoExecucao {
 
 const OPCOES_PADRAO = ['conforme', 'nao_conforme', 'nao_aplicavel', 'nao_avaliado'];
 
-/** Itens antigos sem os campos novos aceitam foto; resposta em texto ou assinatura nunca aceita foto. */
+/** Itens antigos sem os campos novos aceitam foto. */
 export function aceitaFoto(item: AuditoriaItem): boolean {
-  const t = item.templateItem;
-  return t?.permiteFoto !== false && !tipoSemPontuacao(t?.tipoRespostaCustomizada);
+  return item.templateItem?.permiteFoto !== false;
 }
 
 export function aceitaObservacao(item: AuditoriaItem): boolean {

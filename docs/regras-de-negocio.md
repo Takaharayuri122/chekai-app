@@ -97,7 +97,7 @@
 | RN-CHK-011 | Apenas o gestor dono do template pode editar/remover itens e grupos |
 | RN-CHK-012 | Remoção de itens e grupos é soft delete (`ativo = false`) |
 | RN-CHK-013 | Geração de templates com IA via `IaService` e RAG via legislação, com auditoria de tokens |
-| RN-CHK-014 | Pergunta com resposta em **texto** tem `permiteFoto = false`, `peso = 0`, sem opções e sem pontuação. A API força esses valores ao salvar (individual, em lote e na importação) |
+| RN-CHK-014 | Pergunta com resposta em **texto** tem `peso = 0`, sem opções e sem pontuação. A API força esses valores ao salvar (individual, em lote e na importação). A permissão de foto (`permiteFoto`) é configurável como em qualquer pergunta |
 | RN-CHK-015 | `permiteFoto = false` implica `fotoObrigatoria = false` em todas as opções; `permiteObservacao = false` implica `observacaoObrigatoria = false` |
 | RN-CHK-016 | Configuração em lote (`PUT /checklists/templates/:id/itens/lote`, MASTER/GESTOR dono do template): aplica só os campos enviados a todos os itens ativos do template, de um grupo ou de `itemIds` informados (itemIds e grupoId juntos ou fora do template = 400). As regras RN-CHK-014/015 são reaplicadas; itens sem mudança são ignorados; `simular: true` devolve as contagens sem salvar |
 | RN-CHK-017 | Revisão por IA da importação (`POST /checklists/importar/checklist/revisar`, MASTER/GESTOR): um grupo por chamada (máx. 40 perguntas), com RAG de legislação e auditoria de tokens (`metodoChamado = checklistImport.revisao`). A IA só sugere (corrige texto e propõe configuração) — não cria, remove nem reordena perguntas; valores inválidos voltam ao original e RN-CHK-014/015 são reaplicadas. Alterações em tipo de resposta, peso, foto, observação ou opções, ou conflito vindo da planilha, marcam a pergunta como "conferir". Sem saldo → `sem_creditos`; erro → `falha` (a importação segue sem revisão) |
@@ -105,7 +105,7 @@
 | RN-CHK-019 | Sentido da resposta: cada resposta de uma pergunta é positiva, negativa ou neutra. O sentido gravado na configuração da resposta sempre prevalece; sem ele, é deduzido na leitura (nunca gravado por migração): nas respostas padrão, conforme é positiva, não conforme é negativa e não se aplica / não avaliado são neutras; em respostas personalizadas, rótulos como "N/A" e "Não se aplica" são neutros e as demais são classificadas pela pontuação — a de maior pontuação é positiva, a de menor é negativa e as intermediárias ou empatadas são neutras (dedução pela maior e menor pontuação). Perguntas de texto, número e data não têm sentido. Uma não conformidade é toda resposta de sentido negativo, não só `nao_conforme`: o "Não" de uma pergunta [Sim, Não] conta nas métricas dos grupos, no resumo executivo, na listagem de itens não conformes, no ícone do relatório e na geração do plano de ação (RN-PAC-008). O valor gravado em `auditoria_itens.resposta` não muda |
 | RN-CHK-020 | Faixas de classificação: cada checklist pode ter suas próprias faixas (nome, cor, emoji, de e até, de 0 a 100); sem faixas próprias, valem as padrão — Crítico (0 a 59,99), Atenção Necessária (60 a 69,99), Regular (70 a 79,99), Bom (80 a 89,99) e Com Excelência (90 a 100). Validação: nome obrigatório (até 20 caracteres), cor no formato #RRGGBB, início menor que o fim, valores entre 0 e 100 e sem sobreposição entre faixas. Nota abaixo de 0 é "Abaixo do mínimo"; nota que cai num vão entre faixas é "Sem classificação". A faixa é calculada na leitura, sempre pelas faixas atuais do checklist; a nota de auditoria finalizada é a gravada na finalização e só é recalculada pela correção da RN-CHK-021, enquanto a de auditoria em andamento é calculada na hora (pontos obtidos ÷ pontos possíveis). O resultado mostra ainda a tendência frente à auditoria finalizada anterior da mesma unidade e do mesmo checklist e as últimas três notas |
 | RN-CHK-021 | Não aplicável fica fora da nota: a resposta não aplicável, padrão (`nao_aplicavel`) ou personalizada com rótulo como "N/A", "Não se aplica" ou "Não aplicável", não soma pontos obtidos nem pontos possíveis, no item, no grupo e na nota geral; um grupo só com respostas não aplicáveis fica sem aproveitamento. As auditorias finalizadas antes desta regra têm a nota recalculada automaticamente ao subir a API (só quando a nota muda), e o PDF guardado é refeito com a nota nova; e-mails já enviados não mudam |
-| RN-CHK-022 | Resposta do tipo assinatura: a pessoa assina na tela com o dedo ou o mouse e a resposta grava a imagem PNG da assinatura (até 400 KB); a API recusa qualquer outro valor nesse tipo. Como o texto, a assinatura não pontua (peso 0), não tem sentido e não aceita foto; a observação continua permitida. No relatório (tela e PDF) aparece a imagem da assinatura com "Assinado" |
+| RN-CHK-022 | Resposta do tipo assinatura: a pessoa assina na tela com o dedo ou o mouse e a resposta grava a imagem PNG da assinatura (até 400 KB); a API recusa qualquer outro valor nesse tipo. Como o texto, a assinatura não pontua (peso 0) e não tem sentido; foto e observação seguem a configuração da pergunta. No relatório (tela e PDF) aparece a imagem da assinatura com "Assinado" |
 
 ---
 
@@ -148,7 +148,7 @@
 | RN-FOT-002 | Upload: imagem obrigatória, validação de MIME type (`image/*`), compressão via sharp, extração de EXIF |
 | RN-FOT-003 | Análise por IA: campo `analiseIa` e flag `processadoPorIa` por foto |
 | RN-FOT-004 | No mobile: múltiplas seleções, upload e processamento IA em sequência (não paralelo), grid 2 colunas |
-| RN-FOT-005 | Item com `permiteFoto = false` (inclui texto) não oferece anexar foto no web. Enquanto o app mobile não for atualizado, a API aceita a foto mesmo assim e registra log de aviso, para não perder fotos de apps antigos |
+| RN-FOT-005 | Item com `permiteFoto = false` não oferece anexar foto no web. Enquanto o app mobile não for atualizado, a API aceita a foto mesmo assim e registra log de aviso, para não perder fotos de apps antigos |
 
 ---
 
@@ -379,4 +379,5 @@
 | 2026-10-26 | RN-REL-014: novo visual do PDF (marca da consultoria no cabeçalho, seção de não conformidades e respostas em lista compacta) | Claude |
 | 2026-10-26 | RN-CHK-021: não aplicável personalizado fora da nota e recálculo das finalizadas | Claude |
 | 2026-10-27 | RN-CHK-022: resposta do tipo assinatura | Claude |
+| 2026-10-27 | RN-CHK-014, RN-CHK-022, RN-FOT-005: texto e assinatura voltam a aceitar foto quando a pergunta permite | Claude |
 | 2026-10-26 | RN-EML-005: envio do relatório da auditoria por e-mail (automático e manual) com registro das tentativas | Claude |

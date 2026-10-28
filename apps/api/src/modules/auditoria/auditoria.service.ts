@@ -28,7 +28,6 @@ import {
   ehNaoConformidade,
   getPontuacaoMaximaItem,
   isOpcaoSemPontuacao,
-  tipoSemPontuacao,
 } from '../checklist/regras';
 import { PerfilUsuario } from '../usuario/entities/usuario.entity';
 import {
@@ -367,10 +366,7 @@ export class AuditoriaService {
       throw new NotFoundException('Item não encontrado');
     }
     // RN-FOT-005: aceita a foto (apps antigos), mas registra aviso.
-    if (
-      item.templateItem?.permiteFoto === false ||
-      tipoSemPontuacao(item.templateItem?.tipoRespostaCustomizada)
-    ) {
+    if (item.templateItem?.permiteFoto === false) {
       this.logger.warn(
         `Foto recebida em item sem permissão de foto (auditoria ${auditoriaId}, item ${itemId})`,
       );

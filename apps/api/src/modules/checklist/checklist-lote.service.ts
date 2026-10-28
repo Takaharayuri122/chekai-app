@@ -137,8 +137,7 @@ export class ChecklistLoteService {
       if (alteracoes.tipoResposta) {
         aplicarTipoResposta(item, alteracoes.tipoResposta, opcoesNovas);
         if (eraTexto && alteracoes.tipoResposta !== 'texto') {
-          // Texto zera o peso e bloqueia fotos; ao sair de texto, voltam aos valores padrão
-          if (alteracoes.permiteFoto === undefined) item.permiteFoto = true;
+          // Texto zera o peso; ao sair de texto, volta ao peso padrão
           if (!item.peso) item.peso = 1;
         }
       }
