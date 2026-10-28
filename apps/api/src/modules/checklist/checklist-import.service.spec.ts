@@ -56,7 +56,8 @@ describe('ChecklistImportService.confirmar', () => {
       usuario,
     );
     const item = salvos.find((s) => s.pergunta === 'P1');
-    expect(item.permiteFoto).toBe(false);
+    expect(item.peso).toBe(0);
+    expect(item.opcoesResposta).toBeNull();
   });
 
   it('pergunta vazia é ignorada com aviso', async () => {

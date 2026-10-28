@@ -100,11 +100,11 @@ describe('mapearLinhaImportada', () => {
     expect(p.configuracao.opcoes.map((o) => o.pontuacao)).toEqual([5, undefined]);
   });
 
-  it('tipo "Texto livre" → texto, peso 0, permiteFoto false', () => {
+  it('tipo "Texto livre" → texto, peso 0, mantém permiteFoto', () => {
     const p = mapearLinhaImportada(linha({ tipoResposta: 'Texto livre', pontuacaoMaxima: 3 }), 0);
     expect(p.configuracao.tipoResposta).toBe('texto');
     expect(p.configuracao.peso).toBe(0);
-    expect(p.configuracao.permiteFoto).toBe(false);
+    expect(p.configuracao.permiteFoto).toBe(true);
     expect(p.configuracao.opcoes).toEqual([]);
   });
 
@@ -213,10 +213,10 @@ describe('normalizarConfiguracao', () => {
     opcoes: [{ valor: 'A', pontuacao: 1, fotoObrigatoria: true, observacaoObrigatoria: true }],
   });
 
-  it('texto zera peso, foto e opções sem mutar a entrada', () => {
+  it('texto zera peso e opções sem mutar a entrada e mantém a foto', () => {
     const entrada = { ...base(), tipoResposta: 'texto' as const };
     const r = normalizarConfiguracao(entrada);
-    expect(r).toMatchObject({ peso: 0, permiteFoto: false, opcoes: [] });
+    expect(r).toMatchObject({ peso: 0, permiteFoto: true, opcoes: [] });
     expect(entrada.peso).toBe(2);
     expect(entrada.opcoes).toHaveLength(1);
   });
@@ -242,11 +242,11 @@ describe('configuracaoParaItem', () => {
     expect(item.opcoesRespostaConfig?.map((o) => o.valor)).toEqual(['Sim', 'Não']);
     expect(item.permiteFoto).toBe(true);
   });
-  it('texto força peso 0 e sem foto', () => {
+  it('texto força peso 0 e mantém a foto', () => {
     const c = mapearLinhaImportada(linha({ tipoResposta: 'texto' }), 0).configuracao;
     const item = configuracaoParaItem(c);
     expect(item.peso).toBe(0);
-    expect(item.permiteFoto).toBe(false);
+    expect(item.permiteFoto).toBe(true);
   });
 });
 
