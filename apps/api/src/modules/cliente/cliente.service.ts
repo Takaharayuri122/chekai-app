@@ -22,6 +22,8 @@ import {
   createPaginatedResult,
 } from '../../shared/types/pagination.interface';
 
+export type StatusAtivoFiltro = 'ativos' | 'inativos';
+
 /**
  * Serviço responsável pela gestão de clientes e unidades.
  */
@@ -96,7 +98,7 @@ export class ClienteService {
    * Lista clientes com paginação. Auditor vê apenas clientes vinculados a ele.
    */
   async listarClientes(
-    params: PaginationParams,
+    params: PaginationParams & { status?: StatusAtivoFiltro },
     usuarioAutenticado?: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
   ): Promise<PaginatedResult<Cliente>> {
     const queryBuilder = this.clienteRepository
@@ -111,6 +113,9 @@ export class ClienteService {
       } else {
         queryBuilder.andWhere('cliente.gestorId = :gestorId', { gestorId: usuarioAutenticado.id });
       }
+    }
+    if (params.status) {
+      queryBuilder.andWhere('cliente.ativo = :ativo', { ativo: params.status === 'ativos' });
     }
     queryBuilder
       .orderBy('cliente.criadoEm', 'DESC')
@@ -169,15 +174,16 @@ export class ClienteService {
   }
 
   /**
-   * Remove um cliente (soft delete).
+   * Inativa ou reativa um cliente (lógico). Cliente inativo não recebe novas auditorias.
    */
-  async removerCliente(
+  async definirAtivoCliente(
     id: string,
+    ativo: boolean,
     usuarioAutenticado?: { id: string; perfil: PerfilUsuario },
-  ): Promise<void> {
+  ): Promise<Cliente> {
     const cliente = await this.buscarClientePorId(id, usuarioAutenticado);
-    cliente.ativo = false;
-    await this.clienteRepository.save(cliente);
+    cliente.ativo = ativo;
+    return this.clienteRepository.save(cliente);
   }
 
   /**
@@ -268,15 +274,16 @@ export class ClienteService {
   }
 
   /**
-   * Remove uma unidade (soft delete).
+   * Inativa ou reativa uma unidade (lógico). Unidade inativa não recebe novas auditorias.
    */
-  async removerUnidade(
+  async definirAtivoUnidade(
     id: string,
+    ativo: boolean,
     usuarioAutenticado?: { id: string; perfil: PerfilUsuario },
-  ): Promise<void> {
+  ): Promise<Unidade> {
     const unidade = await this.buscarUnidadePorId(id, usuarioAutenticado);
-    unidade.ativo = false;
-    await this.unidadeRepository.save(unidade);
+    unidade.ativo = ativo;
+    return this.unidadeRepository.save(unidade);
   }
 
   /**

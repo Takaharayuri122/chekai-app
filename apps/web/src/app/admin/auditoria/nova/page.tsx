@@ -55,10 +55,12 @@ export default function NovaAuditoriaPage() {
     const carregarDados = async () => {
       try {
         const [clientesRes, templatesRes] = await Promise.all([
-          clienteService.listar(),
+          clienteService.listar(1, 100, 'ativos'),
           checklistService.listarTemplates(1, 100),
         ]);
-        setClientes(clientesRes.items || []);
+        setClientes(
+          (clientesRes.items || []).map((c) => ({ ...c, unidades: (c.unidades || []).filter((u) => u.ativo) })),
+        );
         const apenasAtivos = (templatesRes.items || []).filter((t) => t.status === StatusTemplate.ATIVO);
         setTemplates(apenasAtivos);
       } catch {

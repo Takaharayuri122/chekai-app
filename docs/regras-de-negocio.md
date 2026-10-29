@@ -73,7 +73,8 @@
 | RN-CLI-004 | Unidade pertence a um cliente; possui geolocalização e `raioGeofencing` (default 100m) |
 | RN-CLI-005 | Unidade pode ter N auditores (N:N via `unidade_auditores`); auditores da unidade devem estar no pool de auditores do cliente |
 | RN-CLI-006 | AUDITOR vê apenas clientes/unidades aos quais está vinculado (N:N) |
-| RN-CLI-007 | Remoção de cliente/unidade é soft delete (`ativo = false`) |
+| RN-CLI-007 | Cliente e unidade não são excluídos: MASTER/GESTOR podem inativar ou ativar (`PATCH /clientes/:id/ativo`, `PATCH /unidades/:id/ativo`). A inativação é lógica (`ativo = false`) e nenhum dado é apagado |
+| RN-CLI-011 | Cliente inativo (e todas as suas unidades) ou unidade inativa não recebe novas auditorias — validado na API em `iniciarAuditoria` para todos os perfis; auditorias já em andamento podem ser finalizadas e o histórico segue acessível |
 | RN-CLI-008 | Ao remover auditores de um cliente, verificar se há auditorias em andamento; se sim, retorna warning para confirmação |
 | RN-CLI-009 | Validação de limite de clientes do plano antes de criar (exceto MASTER) |
 | RN-CLI-010 | Tipos de atividade: `restaurante`, `industria`, `supermercado`, `padaria`, `hospital`, `escola`, `hotel`, `outro` (enum `TipoAtividade`) |
@@ -381,3 +382,4 @@
 | 2026-10-27 | RN-CHK-022: resposta do tipo assinatura | Claude |
 | 2026-10-27 | RN-CHK-014, RN-CHK-022, RN-FOT-005: texto e assinatura voltam a aceitar foto quando a pergunta permite | Claude |
 | 2026-10-26 | RN-EML-005: envio do relatório da auditoria por e-mail (automático e manual) com registro das tentativas | Claude |
+| 2026-10-28 | RN-CLI-007/011: inativar/ativar cliente e unidade (substitui a remoção); inativos não recebem novas auditorias | Claude |

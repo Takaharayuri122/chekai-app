@@ -460,8 +460,8 @@ export interface PaginatedResult<T> {
 }
 
 export const clienteService = {
-  async listar(page = 1, limit = 10): Promise<PaginatedResult<Cliente>> {
-    const response = await api.get('/clientes', { params: { page, limit } });
+  async listar(page = 1, limit = 10, status?: 'ativos' | 'inativos'): Promise<PaginatedResult<Cliente>> {
+    const response = await api.get('/clientes', { params: { page, limit, status } });
     return response.data.data;
   },
 
@@ -502,8 +502,9 @@ export const clienteService = {
     return response.data.data;
   },
 
-  async remover(id: string): Promise<void> {
-    await api.delete(`/clientes/${id}`);
+  async definirAtivo(id: string, ativo: boolean): Promise<Cliente> {
+    const response = await api.patch(`/clientes/${id}/ativo`, { ativo });
+    return response.data.data;
   },
 
   async listarUnidades(clienteId: string): Promise<Unidade[]> {
@@ -533,8 +534,9 @@ export const unidadeService = {
     return response.data.data;
   },
 
-  async remover(id: string): Promise<void> {
-    await api.delete(`/unidades/${id}`);
+  async definirAtivo(id: string, ativo: boolean): Promise<Unidade> {
+    const response = await api.patch(`/unidades/${id}/ativo`, { ativo });
+    return response.data.data;
   },
 };
 

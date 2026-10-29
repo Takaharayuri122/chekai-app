@@ -1,4 +1,4 @@
-export const SCHEMA_VERSION = 6;
+export const SCHEMA_VERSION = 7;
 
 export const SCHEMA_V1 = `
   CREATE TABLE IF NOT EXISTS usuarios (
@@ -261,4 +261,12 @@ export const SCHEMA_V5 = `
 export const SCHEMA_V6 = `
   ALTER TABLE relatorios_tecnicos ADD COLUMN modelo_secoes TEXT;
   ALTER TABLE relatorios_tecnicos ADD COLUMN aviso_sync TEXT;
+`;
+
+/**
+ * V7 — Inativação lógica de cliente/unidade: inativos não aparecem no fluxo de nova auditoria.
+ */
+export const SCHEMA_V7 = `
+  ALTER TABLE clientes ADD COLUMN ativo INTEGER NOT NULL DEFAULT 1;
+  ALTER TABLE unidades ADD COLUMN ativo INTEGER NOT NULL DEFAULT 1;
 `;

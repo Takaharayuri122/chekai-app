@@ -73,18 +73,18 @@ export async function pullClientes(): Promise<void> {
     for (const c of clientes) {
       db.runSync(
         `INSERT OR REPLACE INTO clientes
-         (id, remote_id, razao_social, nome_fantasia, cnpj, tipo_atividade, logo_url, sync_status, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, 'synced', ?)`,
-        [c.id, c.id, c.razaoSocial, c.nomeFantasia ?? null, c.cnpj, c.tipoAtividade, c.logoUrl ?? null, now]
+         (id, remote_id, razao_social, nome_fantasia, cnpj, tipo_atividade, logo_url, ativo, sync_status, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'synced', ?)`,
+        [c.id, c.id, c.razaoSocial, c.nomeFantasia ?? null, c.cnpj, c.tipoAtividade, c.logoUrl ?? null, c.ativo === false ? 0 : 1, now]
       );
 
       for (const u of c.unidades ?? []) {
         db.runSync(
           `INSERT OR REPLACE INTO unidades
-           (id, remote_id, nome, endereco, cidade, estado, latitude, longitude, raio_geofencing, cliente_id, sync_status, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'synced', ?)`,
+           (id, remote_id, nome, endereco, cidade, estado, latitude, longitude, raio_geofencing, cliente_id, ativo, sync_status, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'synced', ?)`,
           [u.id, u.id, u.nome, u.endereco, u.cidade ?? null, u.estado ?? null,
-           u.latitude ?? null, u.longitude ?? null, u.raioGeofencing, c.id, now]
+           u.latitude ?? null, u.longitude ?? null, u.raioGeofencing, c.id, u.ativo === false ? 0 : 1, now]
         );
       }
     }

@@ -27,12 +27,22 @@ describe('runMigrations', () => {
   });
 
   it('skips migrations when database is already at current version', () => {
-    mockDb.getFirstSync.mockReturnValue({ user_version: 6 });
+    mockDb.getFirstSync.mockReturnValue({ user_version: 7 });
 
     runMigrations(mockDb as any);
 
     expect(mockDb.withTransactionSync).not.toHaveBeenCalled();
     expect(mockDb.execSync).not.toHaveBeenCalled();
+  });
+
+  it('executes schema v7 (ativo em clientes/unidades) on a v6 database', () => {
+    mockDb.getFirstSync.mockReturnValue({ user_version: 6 });
+
+    runMigrations(mockDb as any);
+
+    expect(mockDb.execSync).toHaveBeenCalledWith('ALTER TABLE clientes ADD COLUMN ativo INTEGER NOT NULL DEFAULT 1;');
+    expect(mockDb.execSync).toHaveBeenCalledWith('ALTER TABLE unidades ADD COLUMN ativo INTEGER NOT NULL DEFAULT 1;');
+    expect(mockDb.execSync).toHaveBeenCalledWith(expect.stringContaining('PRAGMA user_version = 7'));
   });
 
   it('getSchemaVersion returns 0 when PRAGMA returns null', () => {
@@ -95,12 +105,12 @@ describe('runMigrations', () => {
     );
   });
 
-  it('skips v5 when database is already at version 5', () => {
+  it('skips v5 when database is already past version 5', () => {
     mockDb.getFirstSync.mockReturnValue({ user_version: 6 });
 
     runMigrations(mockDb as any);
 
-    expect(mockDb.withTransactionSync).not.toHaveBeenCalled();
+    expect(mockDb.execSync).not.toHaveBeenCalledWith(expect.stringContaining('DROP TABLE IF EXISTS checkins'));
   });
 
   it('executes schema v6 on a v5 database', () => {
