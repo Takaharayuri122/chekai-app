@@ -82,9 +82,7 @@ export class AuditoriaService {
         await this.validacaoLimites.validarLimiteAuditorias(gestorId);
       }
     }
-    if (usuario && usuario.perfil === PerfilUsuario.AUDITOR) {
-      await this.validarVinculoAuditorCliente(dto.unidadeId, usuario.id);
-    }
+    await this.validarUnidadeParaNovaAuditoria(dto.unidadeId, usuario);
     const template = await this.checklistService.buscarTemplatePorId(dto.templateId, usuario);
     const auditoria = this.auditoriaRepository.create({
       consultorId,
@@ -680,7 +678,13 @@ export class AuditoriaService {
       .execute();
   }
 
-  private async validarVinculoAuditorCliente(unidadeId: string, auditorId: string): Promise<void> {
+  /**
+   * Garante que a unidade e o cliente estão ativos e, para auditor, que ele está vinculado ao cliente.
+   */
+  private async validarUnidadeParaNovaAuditoria(
+    unidadeId: string,
+    usuario?: { id: string; perfil: PerfilUsuario },
+  ): Promise<void> {
     const unidade = await this.unidadeRepository.findOne({
       where: { id: unidadeId },
       relations: ['cliente', 'cliente.auditores'],
@@ -688,9 +692,17 @@ export class AuditoriaService {
     if (!unidade || !unidade.cliente) {
       throw new NotFoundException('Unidade não encontrada');
     }
-    const isVinculado = (unidade.cliente.auditores || []).some((a) => a.id === auditorId);
-    if (!isVinculado) {
-      throw new ForbiddenException('Você não está vinculado a este cliente');
+    if (!unidade.cliente.ativo) {
+      throw new BadRequestException('Este cliente está inativo e não pode receber novas auditorias');
+    }
+    if (!unidade.ativo) {
+      throw new BadRequestException('Esta unidade está inativa e não pode receber novas auditorias');
+    }
+    if (usuario?.perfil === PerfilUsuario.AUDITOR) {
+      const isVinculado = (unidade.cliente.auditores || []).some((a) => a.id === usuario.id);
+      if (!isVinculado) {
+        throw new ForbiddenException('Você não está vinculado a este cliente');
+      }
     }
   }
 }

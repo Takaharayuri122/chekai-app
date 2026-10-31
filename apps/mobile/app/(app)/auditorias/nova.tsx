@@ -18,7 +18,8 @@ function carregarClientes(): ClienteRow[] {
     `SELECT c.id, c.razao_social, c.nome_fantasia,
             COUNT(u.id) AS totalUnidades
      FROM clientes c
-     LEFT JOIN unidades u ON u.cliente_id = c.id
+     LEFT JOIN unidades u ON u.cliente_id = c.id AND u.ativo = 1
+     WHERE c.ativo = 1
      GROUP BY c.id
      ORDER BY c.razao_social`
   );

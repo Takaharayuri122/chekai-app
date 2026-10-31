@@ -4,6 +4,7 @@ import {
   Post,
   Put,
   Delete,
+  Patch,
   Body,
   Param,
   Query,
@@ -22,12 +23,14 @@ import {
   ApiBearerAuth,
   ApiConsumes,
   ApiBody,
+  ApiQuery,
 } from '@nestjs/swagger';
 import { ParseFilePipe, MaxFileSizeValidator, FileTypeValidator } from '@nestjs/common';
 import { ClienteService } from './cliente.service';
 import { CriarClienteDto } from './dto/criar-cliente.dto';
 import { CriarUnidadeDto } from './dto/criar-unidade.dto';
 import { CriarUnidadeParaClienteDto } from './dto/criar-unidade-para-cliente.dto';
+import { DefinirAtivoDto } from './dto/definir-ativo.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../core/guards/roles.guard';
 import { Roles } from '../../core/decorators/roles.decorator';
@@ -67,12 +70,15 @@ export class ClienteController {
   @Get()
   @ApiOperation({ summary: 'Lista todos os clientes' })
   @ApiResponse({ status: 200, description: 'Lista de clientes' })
+  @ApiQuery({ name: 'status', required: false, enum: ['ativos', 'inativos'] })
   async listarClientes(
     @Query('page') page = 1,
     @Query('limit') limit = 10,
+    @Query('status') status: string | undefined,
     @CurrentUser() usuario: { id: string; perfil: PerfilUsuario },
   ): Promise<PaginatedResult<Cliente>> {
-    return this.clienteService.listarClientes({ page, limit }, usuario);
+    const filtroStatus = status === 'ativos' || status === 'inativos' ? status : undefined;
+    return this.clienteService.listarClientes({ page, limit, status: filtroStatus }, usuario);
   }
 
   @Get(':id')
@@ -173,14 +179,17 @@ export class ClienteController {
     return this.clienteService.atualizarCliente(id, dto, usuario);
   }
 
-  @Delete(':id')
-  @ApiOperation({ summary: 'Remove um cliente' })
-  @ApiResponse({ status: 200, description: 'Cliente removido' })
-  async removerCliente(
+  @Patch(':id/ativo')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(PerfilUsuario.MASTER, PerfilUsuario.GESTOR)
+  @ApiOperation({ summary: 'Inativa ou reativa um cliente (lógico)' })
+  @ApiResponse({ status: 200, description: 'Status do cliente atualizado' })
+  async definirAtivoCliente(
     @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: DefinirAtivoDto,
     @CurrentUser() usuario: { id: string; perfil: PerfilUsuario },
-  ): Promise<void> {
-    return this.clienteService.removerCliente(id, usuario);
+  ): Promise<Cliente> {
+    return this.clienteService.definirAtivoCliente(id, dto.ativo, usuario);
   }
 
   @Post(':id/unidades')
@@ -256,14 +265,17 @@ export class UnidadeController {
     return this.clienteService.atualizarUnidade(id, dto, usuario);
   }
 
-  @Delete(':id')
-  @ApiOperation({ summary: 'Remove uma unidade' })
-  @ApiResponse({ status: 200, description: 'Unidade removida' })
-  async removerUnidade(
+  @Patch(':id/ativo')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(PerfilUsuario.MASTER, PerfilUsuario.GESTOR)
+  @ApiOperation({ summary: 'Inativa ou reativa uma unidade (lógico)' })
+  @ApiResponse({ status: 200, description: 'Status da unidade atualizado' })
+  async definirAtivoUnidade(
     @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: DefinirAtivoDto,
     @CurrentUser() usuario: { id: string; perfil: PerfilUsuario },
-  ): Promise<void> {
-    return this.clienteService.removerUnidade(id, usuario);
+  ): Promise<Unidade> {
+    return this.clienteService.definirAtivoUnidade(id, dto.ativo, usuario);
   }
 }
 

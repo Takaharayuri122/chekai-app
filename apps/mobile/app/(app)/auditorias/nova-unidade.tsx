@@ -17,7 +17,7 @@ function carregarUnidades(clienteId: string): UnidadeRow[] {
   return db.getAllSync<UnidadeRow>(
     `SELECT id, nome, cidade, estado
      FROM unidades
-     WHERE cliente_id = ?
+     WHERE cliente_id = ? AND ativo = 1
      ORDER BY nome`,
     [clienteId]
   );

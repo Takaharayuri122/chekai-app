@@ -8,6 +8,8 @@ import {
   Loader2,
   Edit,
   Trash2,
+  Ban,
+  CircleCheck,
   ImagePlus,
   Check,
   ChevronDown,
@@ -49,9 +51,35 @@ interface UnidadePendente extends CriarUnidadeInline {
 interface FiltrosCliente {
   nome: string;
   tipoAtividade: string;
+  status: string;
 }
 
-const FILTROS_INICIAIS: FiltrosCliente = { nome: '', tipoAtividade: '' };
+const FILTROS_INICIAIS: FiltrosCliente = { nome: '', tipoAtividade: '', status: 'ativos' };
+
+const OPCOES_STATUS = [
+  { value: 'ativos', label: 'Ativos' },
+  { value: 'inativos', label: 'Inativos' },
+];
+
+function filtrarClientes(clientes: Cliente[], filtros: FiltrosCliente): Cliente[] {
+  return clientes.filter((c) => {
+    if (filtros.nome) {
+      const nome = (c.nomeFantasia || c.razaoSocial).toLowerCase();
+      if (!nome.includes(filtros.nome.toLowerCase())) return false;
+    }
+    if (filtros.tipoAtividade && c.tipoAtividade !== filtros.tipoAtividade) return false;
+    if (filtros.status && c.ativo !== (filtros.status === 'ativos')) return false;
+    return true;
+  });
+}
+
+function SeloInativo() {
+  return (
+    <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full font-semibold px-2 py-0.5 text-[11px] bg-destructive/10 text-destructive">
+      Inativo
+    </span>
+  );
+}
 
 const INLINE_UNIDADE_INICIAL = {
   nome: '',
@@ -221,8 +249,11 @@ export default function ClientesPage() {
   const [editingCliente, setEditingCliente] = useState<Cliente | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
+  const [filtrosAtuais, setFiltrosAtuais] = useState<FiltrosCliente>(FILTROS_INICIAIS);
+  const [alteracaoStatus, setAlteracaoStatus] = useState<
+    { tipo: 'cliente' | 'unidade'; id: string; nome: string; ativo: boolean } | null
+  >(null);
+  const [alterandoStatus, setAlterandoStatus] = useState(false);
 
   const [auditores, setAuditores] = useState<Usuario[]>([]);
   const [showAvisoTrocaAuditor, setShowAvisoTrocaAuditor] = useState(false);
@@ -284,12 +315,12 @@ export default function ClientesPage() {
     carregarAuditores();
   }, []);
 
-  const carregarClientes = async () => {
+  const carregarClientes = async (filtros: FiltrosCliente = filtrosAtuais) => {
     setLoading(true);
     try {
       const response = await clienteService.listar(1, 100);
       setTodosClientes(response.items || []);
-      setClientesFiltrados(response.items || []);
+      setClientesFiltrados(filtrarClientes(response.items || [], filtros));
     } catch {
       // interceptor
     } finally {
@@ -298,15 +329,13 @@ export default function ClientesPage() {
   };
 
   const handlePesquisar = (filtros: FiltrosCliente) => {
-    const filtrados = todosClientes.filter((c) => {
-      if (filtros.nome) {
-        const nome = (c.nomeFantasia || c.razaoSocial).toLowerCase();
-        if (!nome.includes(filtros.nome.toLowerCase())) return false;
-      }
-      if (filtros.tipoAtividade && c.tipoAtividade !== filtros.tipoAtividade) return false;
-      return true;
-    });
-    setClientesFiltrados(filtrados);
+    setFiltrosAtuais(filtros);
+    setClientesFiltrados(filtrarClientes(todosClientes, filtros));
+  };
+
+  const handleLimparFiltros = () => {
+    setFiltrosAtuais(FILTROS_INICIAIS);
+    carregarClientes(FILTROS_INICIAIS);
   };
 
   const handleNovoCliente = () => {
@@ -536,18 +565,25 @@ export default function ClientesPage() {
     setAvisoTrocaInfo(null);
   };
 
-  const handleDeleteConfirm = async () => {
-    if (!showDeleteConfirm) return;
-    setIsDeleting(true);
+  const handleConfirmarAlteracaoStatus = async () => {
+    if (!alteracaoStatus) return;
+    const { tipo, id, ativo } = alteracaoStatus;
+    setAlterandoStatus(true);
     try {
-      await clienteService.remover(showDeleteConfirm);
-      toastService.success('Cliente removido com sucesso!');
+      if (tipo === 'cliente') {
+        await clienteService.definirAtivo(id, ativo);
+        toastService.success(ativo ? 'Cliente ativado com sucesso!' : 'Cliente inativado com sucesso!');
+      } else {
+        await unidadeService.definirAtivo(id, ativo);
+        toastService.success(ativo ? 'Unidade ativada com sucesso!' : 'Unidade inativada com sucesso!');
+        if (editingCliente) setEditingCliente(await clienteService.buscarPorId(editingCliente.id));
+      }
       await carregarClientes();
-      setShowDeleteConfirm(null);
+      setAlteracaoStatus(null);
     } catch {
       // interceptor
     } finally {
-      setIsDeleting(false);
+      setAlterandoStatus(false);
     }
   };
 
@@ -606,8 +642,9 @@ export default function ClientesPage() {
             <Building2 className="w-5 h-5 text-primary" />
           </div>
           <div className="min-w-0">
-            <div className="font-medium text-foreground truncate">
-              {c.nomeFantasia || c.razaoSocial}
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="font-medium text-foreground truncate">{c.nomeFantasia || c.razaoSocial}</span>
+              {!c.ativo && <SeloInativo />}
             </div>
             <div className="text-xs text-muted-foreground">{formatarCNPJ(c.cnpj)}</div>
           </div>
@@ -646,11 +683,17 @@ export default function ClientesPage() {
   const acoes: AcaoTabela<Cliente>[] = [
     { label: 'Editar', icon: Edit, onClick: handleEditarCliente },
     {
-      label: 'Remover',
-      icon: Trash2,
-      onClick: (c) => setShowDeleteConfirm(c.id),
+      label: 'Inativar',
+      icon: Ban,
+      onClick: (c) => setAlteracaoStatus({ tipo: 'cliente', id: c.id, nome: c.nomeFantasia || c.razaoSocial, ativo: false }),
       className: 'text-destructive',
-      isVisivel: () => isGestor() || isMaster(),
+      isVisivel: (c) => c.ativo && (isGestor() || isMaster()),
+    },
+    {
+      label: 'Ativar',
+      icon: CircleCheck,
+      onClick: (c) => setAlteracaoStatus({ tipo: 'cliente', id: c.id, nome: c.nomeFantasia || c.razaoSocial, ativo: true }),
+      isVisivel: (c) => !c.ativo && (isGestor() || isMaster()),
     },
   ];
 
@@ -963,7 +1006,10 @@ export default function ClientesPage() {
                               <div className="flex items-center gap-3">
                                 <MapPin className="w-4 h-4 text-info shrink-0" />
                                 <div className="flex-1 min-w-0">
-                                  <p className="font-medium text-sm truncate">{unidade.nome}</p>
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <p className="font-medium text-sm truncate">{unidade.nome}</p>
+                                    {!unidade.ativo && <SeloInativo />}
+                                  </div>
                                   <p className="text-xs text-muted-foreground truncate">
                                     {unidade.endereco} — {unidade.cidade}, {unidade.estado}
                                   </p>
@@ -975,6 +1021,18 @@ export default function ClientesPage() {
                                 >
                                   <Edit className="w-3.5 h-3.5" />
                                 </button>
+                                {(isGestor() || isMaster()) && (
+                                  <button
+                                    type="button"
+                                    title={unidade.ativo ? 'Inativar unidade' : 'Ativar unidade'}
+                                    aria-label={unidade.ativo ? 'Inativar unidade' : 'Ativar unidade'}
+                                    onClick={() => setAlteracaoStatus({ tipo: 'unidade', id: unidade.id, nome: unidade.nome, ativo: !unidade.ativo })}
+                                    className={`inline-flex items-center justify-center gap-1 whitespace-nowrap rounded-md font-medium disabled:pointer-events-none disabled:opacity-50 h-7 px-2 text-xs hover:bg-muted ${unidade.ativo ? 'text-destructive' : 'text-success'}`}
+                                  >
+                                    {unidade.ativo ? <Ban className="w-3.5 h-3.5" /> : <CircleCheck className="w-3.5 h-3.5" />}
+                                    {unidade.ativo ? 'Inativar' : 'Ativar'}
+                                  </button>
+                                )}
                               </div>
                               <div className="ml-7 flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-muted-foreground">
                                 {unidade.responsavel && <span>Responsável: {unidade.responsavel}</span>}
@@ -1351,10 +1409,11 @@ export default function ClientesPage() {
               tipo: 'select',
               opcoes: OPCOES_TIPO_ATIVIDADE,
             },
+            { key: 'status', label: 'Status', tipo: 'select', opcoes: OPCOES_STATUS },
           ]}
           valoresIniciais={FILTROS_INICIAIS}
           onPesquisar={handlePesquisar}
-          onLimpar={() => carregarClientes()}
+          onLimpar={handleLimparFiltros}
         />
 
         <CrudTable
@@ -1463,15 +1522,27 @@ export default function ClientesPage() {
       />
 
       <ConfirmDialog
-        open={showDeleteConfirm !== null}
-        onClose={() => setShowDeleteConfirm(null)}
-        onConfirm={handleDeleteConfirm}
-        title="Remover Cliente"
-        message="Tem certeza que deseja remover este cliente? Todas as unidades vinculadas também serão removidas. Esta ação não pode ser desfeita."
-        confirmLabel="Remover"
+        open={alteracaoStatus !== null}
+        onClose={() => setAlteracaoStatus(null)}
+        onConfirm={handleConfirmarAlteracaoStatus}
+        title={
+          alteracaoStatus
+            ? `${alteracaoStatus.ativo ? 'Ativar' : 'Inativar'} ${alteracaoStatus.tipo === 'cliente' ? 'cliente' : 'unidade'}`
+            : ''
+        }
+        message={
+          !alteracaoStatus
+            ? ''
+            : alteracaoStatus.ativo
+              ? `${alteracaoStatus.nome} voltará a poder receber auditorias.`
+              : alteracaoStatus.tipo === 'cliente'
+                ? `${alteracaoStatus.nome} e todas as suas unidades deixarão de receber novas auditorias. Nenhuma informação será apagada e você pode ativar novamente quando quiser.`
+                : `A unidade ${alteracaoStatus.nome} deixará de receber novas auditorias. Nenhuma informação será apagada e você pode ativar novamente quando quiser.`
+        }
+        confirmLabel={alteracaoStatus?.ativo ? 'Ativar' : 'Inativar'}
         cancelLabel="Cancelar"
-        variant="danger"
-        loading={isDeleting}
+        variant={alteracaoStatus?.ativo ? 'info' : 'danger'}
+        loading={alterandoStatus}
       />
 
       <ConfirmDialog
