@@ -34,8 +34,7 @@ export class AuditoriaItem {
   id: string;
 
   @Column({
-    type: 'varchar',
-    length: 100,
+    type: 'text',
     default: RespostaItem.NAO_AVALIADO,
   })
   resposta: RespostaItem | string;
