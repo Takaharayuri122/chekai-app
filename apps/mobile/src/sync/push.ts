@@ -236,10 +236,19 @@ async function enviarItem(entidade: EntidadeFila, localId: string): Promise<bool
 }
 
 /** Envia um item da fila: sucesso remove; falha é registrada (401 não conta tentativa). Devolve o erro, se houver. */
-async function processarItem(
-  item: ItemFila,
-  onProgress?: PushProgressCallback,
-): Promise<{ erro?: unknown }> {
+type ResultadoItem = { erro?: unknown; ignorado?: boolean };
+
+// Envios em andamento por id de item da fila: impede dois envios simultâneos do mesmo item
+const emAndamento = new Map<string, Promise<ResultadoItem>>();
+
+function processarItem(item: ItemFila, onProgress?: PushProgressCallback): Promise<ResultadoItem> {
+  if (emAndamento.has(item.id)) return Promise.resolve({ ignorado: true });
+  const execucao = executarItem(item, onProgress).finally(() => emAndamento.delete(item.id));
+  emAndamento.set(item.id, execucao);
+  return execucao;
+}
+
+async function executarItem(item: ItemFila, onProgress?: PushProgressCallback): Promise<ResultadoItem> {
   try {
     const enviado = item.entidade === 'auditoria'
       ? (await pushAuditoria(item.localId, onProgress), true)
@@ -267,6 +276,8 @@ export async function pushPending(): Promise<void> {
   console.log(`[pushPending] ${items.length} item(s) na fila`);
 
   for (const item of items) {
+    // outro envio pode ter concluído e removido este item depois do instantâneo
+    if (!filaRepo.estado(item.entidade, item.localId)) continue;
     const { erro } = await processarItem(item);
     if (ehSessaoExpirada(erro)) break; // sessão expirou: não gasta tentativas dos próximos itens
   }
@@ -284,8 +295,13 @@ export async function enviarAuditoriaAgora(
   if (!usuarioId) throw new Error('Sessão não encontrada. Entre novamente.');
   const item = filaRepo.listarParaEnvio(usuarioId)
     .find((i) => i.entidade === 'auditoria' && i.localId === localId);
-  if (!item) throw new Error('Auditoria não encontrada na fila de envio.');
-  const { erro } = await processarItem(item, onProgress);
+  if (!item) {
+    // já enviada por outro envio (sai da fila ao concluir)
+    if (!filaRepo.estado('auditoria', localId)) return;
+    throw new Error('Auditoria não encontrada na fila de envio.');
+  }
+  const andamento = emAndamento.get(item.id);
+  const { erro } = andamento ? await andamento : await processarItem(item, onProgress);
   if (erro) throw erro;
 }
 

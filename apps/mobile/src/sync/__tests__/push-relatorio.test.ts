@@ -5,7 +5,7 @@ import { atualizarRelatorioTecnico } from '../../api/relatorio-tecnico.api';
 import { pullModeloRelatorioTecnico } from '../pull';
 
 jest.mock('../../db/client', () => ({ getDatabase: jest.fn() }));
-const mockFila = { listarParaEnvio: jest.fn(), registrarFalha: jest.fn(), remover: jest.fn() };
+const mockFila = { estado: jest.fn(() => ({ status: 'pendente', ultimoErro: null })), listarParaEnvio: jest.fn(), registrarFalha: jest.fn(), remover: jest.fn() };
 jest.mock('../../db/repositories/fila.repo', () => ({
   FilaRepo: jest.fn(
     () => new Proxy({}, { get: (_alvo, chave: string) => mockFila[chave as keyof typeof mockFila] }),

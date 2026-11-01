@@ -39,6 +39,7 @@ describe('pushPending', () => {
     jest.resetAllMocks();
     (getDatabase as jest.Mock).mockReturnValue(mockDb);
     useAuthStore.getState.mockReturnValue({ user: { id: 'u1' } });
+    fila.estado.mockReturnValue({ status: 'pendente', ultimoErro: null });
     // auditoria existe mas a criação no servidor é controlada por teste
     AuditoriaRepo.prototype.findById.mockReturnValue({
       localId: 'x', clienteId: 'c', unidadeId: 'u', templateId: 't', clienteNome: 'X',
@@ -121,6 +122,44 @@ describe('pushPending', () => {
       await expect(enviarAuditoriaAgora('L1')).rejects.toThrow();
       expect(fila.registrarFalha).not.toHaveBeenCalled();
     });
+  });
+
+  it('não processa o mesmo item em paralelo', async () => {
+    fila.listarParaEnvio.mockReturnValue([item('q1', 'L1')]);
+    let liberar!: () => void;
+    api.createAuditoria.mockImplementation(() => new Promise((res) => {
+      liberar = () => res({ id: 'R1', itens: [] });
+    }));
+    api.finalizarAuditoria.mockResolvedValue({});
+    api.getAuditoria.mockResolvedValue({ pontuacaoTotal: null, pdfUrl: null });
+    const a = pushPending();
+    const b = pushPending();
+    await Promise.resolve();
+    liberar();
+    await Promise.all([a, b]);
+    expect(api.createAuditoria).toHaveBeenCalledTimes(1);
+    expect(fila.remover).toHaveBeenCalledTimes(1);
+  });
+
+  it('envio imediato aguarda o envio em andamento', async () => {
+    fila.listarParaEnvio.mockReturnValue([item('q1', 'L1')]);
+    let rejeitar!: (e: unknown) => void;
+    api.createAuditoria.mockImplementation(() => new Promise((_res, rej) => { rejeitar = rej; }));
+    const emBackground = pushPending();
+    await Promise.resolve();
+    const imediato = enviarAuditoriaAgora('L1');
+    rejeitar(new ApiError('Dados inválidos', 400));
+    await emBackground;
+    await expect(imediato).rejects.toThrow('Dados inválidos');
+    expect(api.createAuditoria).toHaveBeenCalledTimes(1);
+    expect(fila.registrarFalha).toHaveBeenCalledTimes(1);
+  });
+
+  it('pula item que outro envio já removeu da fila', async () => {
+    fila.listarParaEnvio.mockReturnValue([item('q1', 'L1')]);
+    fila.estado.mockReturnValue(null);
+    await pushPending();
+    expect(api.createAuditoria).not.toHaveBeenCalled();
   });
 
   it('ignora itens de check-in por enquanto', async () => {
