@@ -27,7 +27,7 @@ describe('runMigrations', () => {
   });
 
   it('skips migrations when database is already at current version', () => {
-    mockDb.getFirstSync.mockReturnValue({ user_version: 7 });
+    mockDb.getFirstSync.mockReturnValue({ user_version: 8 });
 
     runMigrations(mockDb as any);
 
@@ -106,7 +106,7 @@ describe('runMigrations', () => {
   });
 
   it('skips v5 when database is already past version 5', () => {
-    mockDb.getFirstSync.mockReturnValue({ user_version: 6 });
+    mockDb.getFirstSync.mockReturnValue({ user_version: 8 });
 
     runMigrations(mockDb as any);
 
@@ -126,6 +126,28 @@ describe('runMigrations', () => {
     );
     expect(mockDb.execSync).toHaveBeenCalledWith(
       expect.stringContaining('PRAGMA user_version = 6')
+    );
+  });
+
+  it('executes schema v8 on a v7 database', () => {
+    mockDb.getFirstSync.mockReturnValue({ user_version: 7 });
+
+    runMigrations(mockDb as any);
+
+    expect(mockDb.execSync).toHaveBeenCalledWith(
+      expect.stringContaining('ALTER TABLE sync_queue ADD COLUMN usuario_id TEXT;')
+    );
+    expect(mockDb.execSync).toHaveBeenCalledWith(
+      expect.stringContaining("ALTER TABLE sync_queue ADD COLUMN status TEXT NOT NULL DEFAULT 'pendente';")
+    );
+    expect(mockDb.execSync).toHaveBeenCalledWith(
+      expect.stringContaining('latitude_checkin REAL,')
+    );
+    expect(mockDb.execSync).toHaveBeenCalledWith(
+      expect.stringContaining('envio_status TEXT,')
+    );
+    expect(mockDb.execSync).toHaveBeenCalledWith(
+      expect.stringContaining('PRAGMA user_version = 8')
     );
   });
 });

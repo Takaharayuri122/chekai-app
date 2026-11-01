@@ -1,4 +1,4 @@
-export const SCHEMA_VERSION = 7;
+export const SCHEMA_VERSION = 8;
 
 export const SCHEMA_V1 = `
   CREATE TABLE IF NOT EXISTS usuarios (
@@ -269,4 +269,44 @@ export const SCHEMA_V6 = `
 export const SCHEMA_V7 = `
   ALTER TABLE clientes ADD COLUMN ativo INTEGER NOT NULL DEFAULT 1;
   ALTER TABLE unidades ADD COLUMN ativo INTEGER NOT NULL DEFAULT 1;
+`;
+
+/**
+ * V8 — Fila de sincronização com estados, dona (usuário) e erro; check-in/checkout offline.
+ * `checkins` é recriada (era só cache) com coordenadas anuláveis e colunas de envio offline.
+ */
+export const SCHEMA_V8 = `
+  ALTER TABLE sync_queue ADD COLUMN usuario_id TEXT;
+  ALTER TABLE sync_queue ADD COLUMN status TEXT NOT NULL DEFAULT 'pendente';
+  ALTER TABLE sync_queue ADD COLUMN ultimo_erro TEXT;
+  ALTER TABLE sync_queue ADD COLUMN atualizado_em TEXT;
+  DROP TABLE IF EXISTS checkins;
+  CREATE TABLE checkins (
+    id TEXT PRIMARY KEY,
+    remote_id TEXT,
+    usuario_id TEXT NOT NULL,
+    cliente_id TEXT NOT NULL,
+    cliente_nome TEXT,
+    unidade_id TEXT NOT NULL,
+    unidade_nome TEXT,
+    status TEXT NOT NULL DEFAULT 'aberto',
+    data_checkin TEXT NOT NULL,
+    data_checkout TEXT,
+    latitude_checkin REAL,
+    longitude_checkin REAL,
+    latitude_checkout REAL,
+    longitude_checkout REAL,
+    alerta_3h_emitido_em TEXT,
+    is_atrasado_3h INTEGER NOT NULL DEFAULT 0,
+    sync_status TEXT NOT NULL DEFAULT 'synced',
+    updated_at TEXT NOT NULL,
+    local_id TEXT,
+    checkin_offline INTEGER NOT NULL DEFAULT 0,
+    checkin_sincronizado_em TEXT,
+    checkout_offline INTEGER NOT NULL DEFAULT 0,
+    checkout_sincronizado_em TEXT,
+    envio_status TEXT,
+    envio_erro TEXT
+  );
+  CREATE INDEX IF NOT EXISTS idx_checkins_usuario_status ON checkins(usuario_id, status);
 `;
