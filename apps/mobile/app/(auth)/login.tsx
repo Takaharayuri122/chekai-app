@@ -9,6 +9,7 @@ import { router } from 'expo-router';
 import { AuthService } from '../../src/auth/AuthService';
 import { useAuthStore } from '../../src/store/auth';
 import { SyncService } from '../../src/sync/SyncService';
+import { AJUSTE_TEXTO_INPUT } from '../../src/utils/estilo-input';
 
 type Step = 'email' | 'codigo';
 
@@ -74,7 +75,7 @@ export default function LoginScreen() {
               </Text>
               <TextInput
                 className="border border-gray-300 rounded-xl text-neutral text-base"
-                style={{ paddingVertical: 16, paddingHorizontal: 16, lineHeight: 0, fontFamily: 'Inter_400Regular' }}
+                style={{ paddingVertical: 16, paddingHorizontal: 16, fontFamily: 'Inter_400Regular', ...AJUSTE_TEXTO_INPUT }}
                 placeholder="seu@email.com"
                 placeholderTextColor="#9CA3AF"
                 keyboardType="email-address"
@@ -106,7 +107,7 @@ export default function LoginScreen() {
               </Text>
               <TextInput
                 className="border border-gray-300 rounded-xl text-neutral text-2xl text-center tracking-widest"
-                style={{ padding:16, lineHeight: 0, fontFamily: 'Inter_400Regular' }}
+                style={{ padding: 16, fontFamily: 'Inter_400Regular', ...AJUSTE_TEXTO_INPUT }}
                 placeholder="000000"
                 placeholderTextColor="#9CA3AF"
                 keyboardType="number-pad"

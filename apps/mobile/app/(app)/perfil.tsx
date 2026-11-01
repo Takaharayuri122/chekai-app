@@ -17,13 +17,14 @@ import { AuthService } from '../../src/auth/AuthService';
 import { TokenStorage } from '../../src/auth/TokenStorage';
 import { buscarUsuario, atualizarPerfil } from '../../src/api/usuario.api';
 import { FilaRepo } from '../../src/db/repositories/fila.repo';
+import { AJUSTE_TEXTO_INPUT } from '../../src/utils/estilo-input';
 
 const INPUT_STYLE = {
   paddingVertical: 14,
   paddingHorizontal: 16,
-  lineHeight: 0,
   fontFamily: 'Inter_400Regular',
-} as const;
+  ...AJUSTE_TEXTO_INPUT,
+};
 
 export default function PerfilScreen() {
   const { user, setUser, logout } = useAuthStore();
@@ -164,7 +165,7 @@ export default function PerfilScreen() {
 
           <View className="gap-1.5">
             <Text className="font-sans-medium text-neutral text-sm">E-mail</Text>
-            <View className="border border-gray-200 rounded-xl bg-gray-50" style={INPUT_STYLE}>
+            <View className="border border-gray-200 rounded-xl bg-gray-50" style={{ paddingVertical: INPUT_STYLE.paddingVertical, paddingHorizontal: INPUT_STYLE.paddingHorizontal }}>
               <Text className="font-sans text-gray-500 text-base">{user?.email}</Text>
             </View>
             <Text className="font-sans text-gray-400 text-xs">O e-mail não pode ser alterado.</Text>
