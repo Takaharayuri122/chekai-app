@@ -79,7 +79,7 @@ export class AuditoriaService {
       const existente = await this.auditoriaRepository.findOne({
         where: { consultorId, localId: dto.localId },
       });
-      if (existente) return existente;
+      if (existente) return this.buscarAuditoriaPorId(existente.id, usuario);
     }
     // Valida limite de auditorias
     if (usuario && this.validacaoLimites && usuario.perfil !== PerfilUsuario.MASTER) {

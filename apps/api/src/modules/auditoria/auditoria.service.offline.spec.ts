@@ -45,9 +45,15 @@ describe('AuditoriaService - sincronização offline', () => {
 
   it('devolve a auditoria existente quando o mesmo localId é reenviado', async () => {
     const existente = { id: 'a-9', localId: LOCAL_ID };
+    const completa = { id: 'a-9', itens: [{ id: 'i-1', templateItemId: 'A' }] };
     auditoriaRepository.findOne.mockResolvedValue(existente);
+    (service.buscarAuditoriaPorId as jest.Mock).mockResolvedValue(completa);
     const r = await service.iniciarAuditoria('g-1', { ...base, localId: LOCAL_ID }, gestor);
-    expect(r).toBe(existente);
+    expect(r).toBe(completa);
+    expect(r.itens).toHaveLength(1);
+    expect(service.buscarAuditoriaPorId).toHaveBeenCalledWith('a-9', gestor);
+    expect(auditoriaRepository.create).not.toHaveBeenCalled();
+    expect(itemRepository.save).not.toHaveBeenCalled();
     expect(auditoriaRepository.findOne).toHaveBeenCalledWith({ where: { consultorId: 'g-1', localId: LOCAL_ID } });
     expect(auditoriaRepository.save).not.toHaveBeenCalled();
   });
