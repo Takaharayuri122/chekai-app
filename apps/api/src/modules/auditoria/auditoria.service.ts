@@ -75,6 +75,12 @@ export class AuditoriaService {
     dto: IniciarAuditoriaDto,
     usuario?: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
   ): Promise<Auditoria> {
+    if (dto.localId) {
+      const existente = await this.auditoriaRepository.findOne({
+        where: { consultorId, localId: dto.localId },
+      });
+      if (existente) return existente;
+    }
     // Valida limite de auditorias
     if (usuario && this.validacaoLimites && usuario.perfil !== PerfilUsuario.MASTER) {
       const gestorId = this.validacaoLimites.identificarGestorId(usuario);
@@ -84,25 +90,33 @@ export class AuditoriaService {
     }
     await this.validarUnidadeParaNovaAuditoria(dto.unidadeId, usuario);
     const template = await this.checklistService.buscarTemplatePorId(dto.templateId, usuario);
+    let itensDoTemplate = template.itens.filter((item) => item.ativo);
+    if (dto.templateItemIds) {
+      const porId = new Map(template.itens.map((item) => [item.id, item]));
+      const desconhecidos = dto.templateItemIds.filter((id) => !porId.has(id));
+      if (desconhecidos.length > 0) {
+        throw new BadRequestException('Itens não pertencem ao template informado');
+      }
+      itensDoTemplate = dto.templateItemIds.map((id) => porId.get(id)!);
+    }
     const auditoria = this.auditoriaRepository.create({
       consultorId,
       unidadeId: dto.unidadeId,
       templateId: dto.templateId,
+      localId: dto.localId ?? null,
       status: StatusAuditoria.EM_ANDAMENTO,
-      dataInicio: new Date(),
+      dataInicio: dto.dataInicio ? new Date(dto.dataInicio) : new Date(),
       latitudeInicio: dto.latitude,
       longitudeInicio: dto.longitude,
     });
     const savedAuditoria = await this.auditoriaRepository.save(auditoria);
-    const itens = template.itens
-      .filter((item) => item.ativo)
-      .map((templateItem) =>
-        this.itemRepository.create({
-          auditoriaId: savedAuditoria.id,
-          templateItemId: templateItem.id,
-          resposta: RespostaItem.NAO_AVALIADO,
-        }),
-      );
+    const itens = itensDoTemplate.map((templateItem) =>
+      this.itemRepository.create({
+        auditoriaId: savedAuditoria.id,
+        templateItemId: templateItem.id,
+        resposta: RespostaItem.NAO_AVALIADO,
+      }),
+    );
     await this.itemRepository.save(itens);
     return this.buscarAuditoriaPorId(savedAuditoria.id, usuario);
   }
@@ -426,6 +440,8 @@ export class AuditoriaService {
   ): Promise<Auditoria> {
     const auditoria = await this.buscarAuditoriaPorId(id, usuarioAutenticado);
     if (auditoria.status === StatusAuditoria.FINALIZADA) {
+      // Reenvio da fila offline (dataFim presente): operação idempotente.
+      if (dto.dataFim) return auditoria;
       throw new BadRequestException('Auditoria já finalizada');
     }
     // Validar apenas itens obrigatórios não avaliados
@@ -441,7 +457,7 @@ export class AuditoriaService {
     }
     const { percentual: pontuacaoPercentual } = calcularNotaDaAuditoria(auditoria.itens);
     auditoria.status = StatusAuditoria.FINALIZADA;
-    auditoria.dataFim = new Date();
+    auditoria.dataFim = dto.dataFim ? new Date(dto.dataFim) : new Date();
     if (dto.latitude !== undefined) {
       auditoria.latitudeFim = dto.latitude;
     }
