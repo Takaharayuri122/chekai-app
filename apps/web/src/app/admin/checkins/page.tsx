@@ -33,6 +33,34 @@ function formatarDataHora(data?: string | null): string {
   });
 }
 
+function formatarDiaHora(data?: string | null): string {
+  if (!data) return '-';
+  const d = new Date(data);
+  const dia = d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+  const hora = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  return `${dia} ${hora}`;
+}
+
+function SeloOffline() {
+  return (
+    <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full font-semibold px-2 py-0.5 text-[11px] bg-warning/10 text-warning">
+      Offline
+    </span>
+  );
+}
+
+function MarcacaoOffline({ offline, sincronizadoEm }: { offline?: boolean; sincronizadoEm?: string | null }) {
+  if (!offline) return null;
+  return (
+    <span className="flex flex-col items-start gap-0.5">
+      <SeloOffline />
+      {sincronizadoEm ? (
+        <span className="text-xs text-muted-foreground">Enviado às {formatarDiaHora(sincronizadoEm)}</span>
+      ) : null}
+    </span>
+  );
+}
+
 function formatarFim(dataCheckin: string, dataCheckout?: string | null): string {
   if (!dataCheckout) return '-';
   const inicio = new Date(dataCheckin);
@@ -101,16 +129,22 @@ const colunas: ColunaTabela<CheckinRegistro>[] = [
   {
     label: 'Início',
     render: (c) => (
-      <span className="text-sm text-muted-foreground tabular-nums">
-        {formatarDataHora(c.dataCheckin)}
+      <span className="flex flex-col items-start gap-0.5">
+        <span className="text-sm text-muted-foreground tabular-nums">
+          {formatarDataHora(c.dataCheckin)}
+        </span>
+        <MarcacaoOffline offline={c.checkinOffline} sincronizadoEm={c.checkinSincronizadoEm} />
       </span>
     ),
   },
   {
     label: 'Fim',
     render: (c) => (
-      <span className="text-sm text-muted-foreground tabular-nums">
-        {formatarFim(c.dataCheckin, c.dataCheckout)}
+      <span className="flex flex-col items-start gap-0.5">
+        <span className="text-sm text-muted-foreground tabular-nums">
+          {formatarFim(c.dataCheckin, c.dataCheckout)}
+        </span>
+        <MarcacaoOffline offline={c.checkoutOffline} sincronizadoEm={c.checkoutSincronizadoEm} />
       </span>
     ),
   },
@@ -346,8 +380,14 @@ export default function CheckinsPage() {
                 {detalheCheckin.status === 'aberto' ? 'Aberto' : 'Fechado'}
                 {detalheCheckin.encerradoAutomaticamente ? ' · encerrado automaticamente' : ''}
               </div>
-              <div><strong>Início:</strong> {formatarDataHora(detalheCheckin.dataCheckin)}</div>
-              <div><strong>Fim:</strong> {formatarDataHora(detalheCheckin.dataCheckout)}</div>
+              <div className="space-y-1">
+                <div><strong>Início:</strong> {formatarDataHora(detalheCheckin.dataCheckin)}</div>
+                <MarcacaoOffline offline={detalheCheckin.checkinOffline} sincronizadoEm={detalheCheckin.checkinSincronizadoEm} />
+              </div>
+              <div className="space-y-1">
+                <div><strong>Fim:</strong> {formatarDataHora(detalheCheckin.dataCheckout)}</div>
+                <MarcacaoOffline offline={detalheCheckin.checkoutOffline} sincronizadoEm={detalheCheckin.checkoutSincronizadoEm} />
+              </div>
               <div className="md:col-span-2">
                 <strong>Duração:</strong> {formatarDuracao(detalheCheckin.dataCheckin, detalheCheckin.dataCheckout)}
               </div>
@@ -355,7 +395,13 @@ export default function CheckinsPage() {
                 <strong>Comentário:</strong> {detalheCheckin.comentario || '-'}
               </div>
             </div>
-            <CheckinMapa pontos={pontosMapa} />
+            {pontosMapa.length > 0 ? <CheckinMapa pontos={pontosMapa} /> : null}
+            {numeroCoord(detalheCheckin.latitudeCheckin) === null && (
+              <p className="text-sm text-muted-foreground">Check-in sem localização.</p>
+            )}
+            {detalheCheckin.dataCheckout && numeroCoord(detalheCheckin.latitudeCheckout) === null && (
+              <p className="text-sm text-muted-foreground">Checkout sem localização.</p>
+            )}
           </div>
         )}
       </FormModal>
