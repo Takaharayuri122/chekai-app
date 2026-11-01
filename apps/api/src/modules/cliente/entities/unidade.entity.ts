@@ -59,6 +59,9 @@ export class Unidade {
   @Column({ default: true })
   ativo: boolean;
 
+  @Column({ name: 'inativado_em', type: 'timestamp', nullable: true })
+  inativadoEm: Date | null;
+
   @ManyToOne(() => Cliente, (cliente) => cliente.unidades)
   @JoinColumn({ name: 'cliente_id' })
   cliente: Cliente;

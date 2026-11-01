@@ -5,6 +5,7 @@ import { Auditoria } from './entities/auditoria.entity';
 import { AuditoriaItem } from './entities/auditoria-item.entity';
 import { Foto } from './entities/foto.entity';
 import { AuditoriaEnvioRelatorio } from './entities/auditoria-envio-relatorio.entity';
+import { ClienteAuditorDesvinculo } from '../cliente/entities/cliente-auditor-desvinculo.entity';
 import { Unidade } from '../cliente/entities/unidade.entity';
 import { AuditoriaService } from './auditoria.service';
 import { AuditoriaController } from './auditoria.controller';
@@ -31,7 +32,7 @@ import { PdfModule } from '../pdf/pdf.module';
 @Module({
   imports: [
     PdfModule,
-    TypeOrmModule.forFeature([Auditoria, AuditoriaItem, Foto, Unidade, AuditoriaEnvioRelatorio, PlanoAcaoTarefa]),
+    TypeOrmModule.forFeature([Auditoria, AuditoriaItem, Foto, Unidade, ClienteAuditorDesvinculo, AuditoriaEnvioRelatorio, PlanoAcaoTarefa]),
     MulterModule.register({
       limits: { fileSize: 10 * 1024 * 1024 }, // 10MB max
     }),

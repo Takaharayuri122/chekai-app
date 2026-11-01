@@ -140,6 +140,7 @@
 | RN-AUD-013 | Resumo executivo: gerado por IA apenas para auditorias finalizadas; agrupado por grupo de itens com pontuação e não conformidades; salvo como JSON na auditoria |
 | RN-AUD-014 | PDF: gerado via Puppeteer; cache — só regenera se auditoria foi atualizada após último `pdfGeradoEm`; armazenado no Supabase Storage |
 | RN-AUD-015 | Execução (web): fotos e observação são registradas por botões e janelas separados. Cada janela só exige o que é dela (foto obrigatória na de fotos, observação obrigatória na de observação), conforme a resposta escolhida; foto marcada como não relevante sempre leva à observação. Sem resposta, cada janela salva se tiver o próprio registro (foto ou observação) |
+| RN-AUD-016 | Auditoria enviada depois (offline): vale o que existia na hora em que o trabalho começou no celular. Limite do plano e assinatura são avaliados na `dataInicio`; cliente/unidade inativados depois do início e auditor desvinculado depois do início são aceitos. Bloqueios anteriores ao início continuam valendo. Só se aplica quando `localId` e `dataInicio` são enviados juntos; o cliente/unidade guarda `inativadoEm` e o desvínculo do auditor é registrado em `cliente_auditor_desvinculos` |
 
 ### Fotos
 
@@ -383,3 +384,4 @@
 | 2026-10-27 | RN-CHK-014, RN-CHK-022, RN-FOT-005: texto e assinatura voltam a aceitar foto quando a pergunta permite | Claude |
 | 2026-10-26 | RN-EML-005: envio do relatório da auditoria por e-mail (automático e manual) com registro das tentativas | Claude |
 | 2026-10-28 | RN-CLI-007/011: inativar/ativar cliente e unidade (substitui a remoção); inativos não recebem novas auditorias | Claude |
+| 2026-11-01 | RN-AUD-016: auditoria offline iniciada antes de bloqueio (limite, assinatura, inativação, desvínculo) é aceita | Claude |

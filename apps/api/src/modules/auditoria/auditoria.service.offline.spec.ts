@@ -1,4 +1,4 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { AuditoriaService } from './auditoria.service';
 import { StatusAuditoria } from './entities/auditoria.entity';
 import { LegislacaoVinculoService } from '../legislacao/legislacao-vinculo.service';
@@ -13,6 +13,9 @@ describe('AuditoriaService - sincronização offline', () => {
   let auditoriaRepository: { create: jest.Mock; save: jest.Mock; findOne: jest.Mock };
   let itemRepository: { create: jest.Mock; save: jest.Mock };
   let checklistService: { buscarTemplatePorId: jest.Mock };
+  let unidadeRepository: { findOne: jest.Mock };
+  let desvinculoRepository: { findOne: jest.Mock };
+  let validacaoLimites: { identificarGestorId: jest.Mock; validarLimiteAuditorias: jest.Mock };
 
   beforeEach(() => {
     auditoriaRepository = {
@@ -30,15 +33,25 @@ describe('AuditoriaService - sincronização offline', () => {
         ],
       }),
     };
+    unidadeRepository = {
+      findOne: jest.fn().mockResolvedValue({ id: 'u-1', ativo: true, cliente: { id: 'c-1', ativo: true, auditores: [] } }),
+    };
+    desvinculoRepository = { findOne: jest.fn().mockResolvedValue(null) };
+    validacaoLimites = {
+      identificarGestorId: jest.fn().mockReturnValue('g-1'),
+      validarLimiteAuditorias: jest.fn().mockResolvedValue(undefined),
+    };
     service = new AuditoriaService(
       auditoriaRepository as never,
       itemRepository as never,
       {} as never,
-      { findOne: jest.fn().mockResolvedValue({ id: 'u-1', ativo: true, cliente: { id: 'c-1', ativo: true, auditores: [] } }) } as never,
+      unidadeRepository as never,
       checklistService as never,
       {} as never,
       {} as never,
       new LegislacaoVinculoService(null as never, null as never, null as never),
+      validacaoLimites,
+      desvinculoRepository as never,
     );
     jest.spyOn(service, 'buscarAuditoriaPorId').mockImplementation(async (id: string) => ({ id }) as never);
   });
@@ -81,6 +94,72 @@ describe('AuditoriaService - sincronização offline', () => {
       service.iniciarAuditoria('g-1', { ...base, templateItemIds: ['A', 'X'] }, gestor),
     ).rejects.toThrow(BadRequestException);
     expect(auditoriaRepository.save).not.toHaveBeenCalled();
+  });
+
+  describe('bloqueios posteriores ao início offline', () => {
+    const inicio = '2026-11-01T09:00:00.000Z';
+    const offline = { ...base, localId: LOCAL_ID, dataInicio: inicio };
+    const auditor = { id: 'au-1', perfil: PerfilUsuario.AUDITOR, gestorId: 'g-1' };
+    const unidadeCom = (cliente: object, unidade: object = {}) =>
+      unidadeRepository.findOne.mockResolvedValue({ id: 'u-1', ativo: true, ...unidade, cliente: { id: 'c-1', ativo: true, auditores: [], ...cliente } });
+
+    it('passa dataInicio como momento aos limites só no fluxo offline', async () => {
+      await service.iniciarAuditoria('g-1', offline, gestor);
+      expect(validacaoLimites.validarLimiteAuditorias).toHaveBeenCalledWith('g-1', new Date(inicio));
+      await service.iniciarAuditoria('g-1', base, gestor);
+      expect(validacaoLimites.validarLimiteAuditorias).toHaveBeenLastCalledWith('g-1', undefined);
+      await service.iniciarAuditoria('g-1', { ...base, dataInicio: inicio }, gestor);
+      expect(validacaoLimites.validarLimiteAuditorias).toHaveBeenLastCalledWith('g-1', undefined);
+    });
+
+    it('aceita unidade inativada depois do início offline', async () => {
+      unidadeCom({}, { ativo: false, inativadoEm: new Date('2026-11-01T10:00:00.000Z') });
+      await expect(service.iniciarAuditoria('g-1', offline, gestor)).resolves.toBeDefined();
+    });
+
+    it('recusa unidade inativada antes do início', async () => {
+      unidadeCom({}, { ativo: false, inativadoEm: new Date('2026-11-01T08:00:00.000Z') });
+      await expect(service.iniciarAuditoria('g-1', offline, gestor)).rejects.toThrow(
+        'Esta unidade está inativa e não pode receber novas auditorias',
+      );
+    });
+
+    it('recusa unidade inativa sem data de inativação mesmo no fluxo offline', async () => {
+      unidadeCom({}, { ativo: false, inativadoEm: null });
+      await expect(service.iniciarAuditoria('g-1', offline, gestor)).rejects.toThrow(BadRequestException);
+    });
+
+    it('aceita cliente inativado depois do início offline', async () => {
+      unidadeCom({ ativo: false, inativadoEm: new Date('2026-11-01T10:00:00.000Z') });
+      await expect(service.iniciarAuditoria('g-1', offline, gestor)).resolves.toBeDefined();
+    });
+
+    it('recusa cliente inativado antes do início', async () => {
+      unidadeCom({ ativo: false, inativadoEm: new Date('2026-11-01T08:00:00.000Z') });
+      await expect(service.iniciarAuditoria('g-1', offline, gestor)).rejects.toThrow(
+        'Este cliente está inativo e não pode receber novas auditorias',
+      );
+    });
+
+    it('sem momento, cliente inativo continua recusado', async () => {
+      unidadeCom({ ativo: false, inativadoEm: new Date('2026-11-01T10:00:00.000Z') });
+      await expect(service.iniciarAuditoria('g-1', base, gestor)).rejects.toThrow(BadRequestException);
+    });
+
+    it('aceita auditor desvinculado depois do início offline', async () => {
+      desvinculoRepository.findOne.mockResolvedValue({ desvinculadoEm: new Date('2026-11-01T10:00:00.000Z') });
+      await expect(service.iniciarAuditoria('au-1', offline, auditor)).resolves.toBeDefined();
+    });
+
+    it('recusa auditor desvinculado antes do início ou sem desvínculo registrado', async () => {
+      desvinculoRepository.findOne.mockResolvedValue(null);
+      await expect(service.iniciarAuditoria('au-1', offline, auditor)).rejects.toThrow(ForbiddenException);
+    });
+
+    it('sem momento, auditor não vinculado continua recusado', async () => {
+      desvinculoRepository.findOne.mockResolvedValue({ desvinculadoEm: new Date('2026-11-01T10:00:00.000Z') });
+      await expect(service.iniciarAuditoria('au-1', base, auditor)).rejects.toThrow(ForbiddenException);
+    });
   });
 
   describe('finalizarAuditoria', () => {

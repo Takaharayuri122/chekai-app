@@ -9,13 +9,14 @@ import {
   Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { MoreThan, Repository } from 'typeorm';
 import { Auditoria, StatusAuditoria } from './entities/auditoria.entity';
 import { AuditoriaItem, RespostaItem } from './entities/auditoria-item.entity';
 import { TemplateItem, TipoRespostaCustomizada } from '../checklist/entities/template-item.entity';
 import { Legislacao } from '../legislacao/entities/legislacao.entity';
 import { Foto } from './entities/foto.entity';
 import { Unidade } from '../cliente/entities/unidade.entity';
+import { ClienteAuditorDesvinculo } from '../cliente/entities/cliente-auditor-desvinculo.entity';
 import { LegislacaoService } from '../legislacao/legislacao.service';
 import { LegislacaoVinculoService } from '../legislacao/legislacao-vinculo.service';
 import { validarLegislacaoIds } from '../legislacao/lib/validar-legislacao-ids';
@@ -65,6 +66,9 @@ export class AuditoriaService {
     @Inject(forwardRef(() => 'ValidacaoLimitesService'))
     @Optional()
     private readonly validacaoLimites?: any,
+    @InjectRepository(ClienteAuditorDesvinculo)
+    @Optional()
+    private readonly desvinculoRepository?: Repository<ClienteAuditorDesvinculo>,
   ) {}
 
   /**
@@ -81,14 +85,16 @@ export class AuditoriaService {
       });
       if (existente) return this.buscarAuditoriaPorId(existente.id, usuario);
     }
+    // Fluxo offline: bloqueios criados depois do início no celular não valem para este trabalho
+    const momento = dto.localId && dto.dataInicio ? new Date(dto.dataInicio) : undefined;
     // Valida limite de auditorias
     if (usuario && this.validacaoLimites && usuario.perfil !== PerfilUsuario.MASTER) {
       const gestorId = this.validacaoLimites.identificarGestorId(usuario);
       if (gestorId) {
-        await this.validacaoLimites.validarLimiteAuditorias(gestorId);
+        await this.validacaoLimites.validarLimiteAuditorias(gestorId, momento);
       }
     }
-    await this.validarUnidadeParaNovaAuditoria(dto.unidadeId, usuario);
+    await this.validarUnidadeParaNovaAuditoria(dto.unidadeId, usuario, momento);
     const template = await this.checklistService.buscarTemplatePorId(dto.templateId, usuario);
     let itensDoTemplate = template.itens.filter((item) => item.ativo);
     if (dto.templateItemIds) {
@@ -700,6 +706,7 @@ export class AuditoriaService {
   private async validarUnidadeParaNovaAuditoria(
     unidadeId: string,
     usuario?: { id: string; perfil: PerfilUsuario },
+    momento?: Date,
   ): Promise<void> {
     const unidade = await this.unidadeRepository.findOne({
       where: { id: unidadeId },
@@ -708,18 +715,30 @@ export class AuditoriaService {
     if (!unidade || !unidade.cliente) {
       throw new NotFoundException('Unidade não encontrada');
     }
-    if (!unidade.cliente.ativo) {
+    if (!unidade.cliente.ativo && !this.inativadoDepoisDe(unidade.cliente.inativadoEm, momento)) {
       throw new BadRequestException('Este cliente está inativo e não pode receber novas auditorias');
     }
-    if (!unidade.ativo) {
+    if (!unidade.ativo && !this.inativadoDepoisDe(unidade.inativadoEm, momento)) {
       throw new BadRequestException('Esta unidade está inativa e não pode receber novas auditorias');
     }
     if (usuario?.perfil === PerfilUsuario.AUDITOR) {
       const isVinculado = (unidade.cliente.auditores || []).some((a) => a.id === usuario.id);
-      if (!isVinculado) {
+      if (!isVinculado && !(await this.desvinculadoDepoisDe(unidade.cliente.id, usuario.id, momento))) {
         throw new ForbiddenException('Você não está vinculado a este cliente');
       }
     }
+  }
+
+  private inativadoDepoisDe(inativadoEm: Date | null | undefined, momento?: Date): boolean {
+    return !!momento && !!inativadoEm && new Date(inativadoEm).getTime() > momento.getTime();
+  }
+
+  private async desvinculadoDepoisDe(clienteId: string, auditorId: string, momento?: Date): Promise<boolean> {
+    if (!momento || !this.desvinculoRepository) return false;
+    const desvinculo = await this.desvinculoRepository.findOne({
+      where: { clienteId, auditorId, desvinculadoEm: MoreThan(momento) },
+    });
+    return !!desvinculo;
   }
 }
 

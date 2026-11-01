@@ -127,6 +127,24 @@ export class AssinaturaService {
   }
 
   /**
+   * Busca a assinatura que estava vigente em um instante passado (ativa ou já expirada).
+   * Usada para aceitar trabalho iniciado offline antes do vencimento.
+   */
+  async buscarAssinaturaVigenteEm(gestorId: string, momento: Date): Promise<Assinatura | null> {
+    return this.assinaturaRepository
+      .createQueryBuilder('assinatura')
+      .innerJoinAndSelect('assinatura.plano', 'plano')
+      .where('assinatura.gestorId = :gestorId', { gestorId })
+      .andWhere('assinatura.status IN (:...status)', {
+        status: [StatusAssinatura.ATIVA, StatusAssinatura.EXPIRADA],
+      })
+      .andWhere('assinatura.dataInicio <= :momento', { momento })
+      .andWhere('(assinatura.dataFim IS NULL OR assinatura.dataFim >= :momento)', { momento })
+      .orderBy('assinatura.criadoEm', 'DESC')
+      .getOne();
+  }
+
+  /**
    * Lista o histórico de assinaturas de um gestor.
    */
   async listarHistorico(gestorId: string): Promise<Assinatura[]> {
