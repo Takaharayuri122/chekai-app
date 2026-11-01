@@ -13,7 +13,7 @@ import {
 } from '../api/relatorio-tecnico.api';
 import { ApiError } from '../api/client';
 import { pullModeloRelatorioTecnico } from './pull';
-import { FilaRepo, type EntidadeFila } from '../db/repositories/fila.repo';
+import { FilaRepo, type EntidadeFila, type ItemFila } from '../db/repositories/fila.repo';
 import { useAuthStore } from '../store/auth';
 import { ehFalhaDefinitiva, ehSessaoExpirada } from './erros';
 
@@ -235,6 +235,30 @@ async function enviarItem(entidade: EntidadeFila, localId: string): Promise<bool
   }
 }
 
+/** Envia um item da fila: sucesso remove; falha é registrada (401 não conta tentativa). Devolve o erro, se houver. */
+async function processarItem(
+  item: ItemFila,
+  onProgress?: PushProgressCallback,
+): Promise<{ erro?: unknown }> {
+  try {
+    const enviado = item.entidade === 'auditoria'
+      ? (await pushAuditoria(item.localId, onProgress), true)
+      : await enviarItem(item.entidade, item.localId);
+    if (enviado) {
+      filaRepo.remover(item.id);
+      console.log(`[pushPending] Sucesso (${item.entidade}): ${item.localId}`);
+    }
+    return {};
+  } catch (e) {
+    console.error(`[pushPending] Erro ao enviar item ${item.id}:`, e);
+    if (!ehSessaoExpirada(e)) {
+      const mensagem = e instanceof Error ? e.message : 'Erro desconhecido no envio.';
+      filaRepo.registrarFalha(item.id, mensagem, ehFalhaDefinitiva(e));
+    }
+    return { erro: e };
+  }
+}
+
 export async function pushPending(): Promise<void> {
   const usuarioId = usuarioLogadoId();
   if (!usuarioId) return;
@@ -243,18 +267,26 @@ export async function pushPending(): Promise<void> {
   console.log(`[pushPending] ${items.length} item(s) na fila`);
 
   for (const item of items) {
-    try {
-      const enviado = await enviarItem(item.entidade, item.localId);
-      if (!enviado) continue;
-      filaRepo.remover(item.id);
-      console.log(`[pushPending] Sucesso (${item.entidade}): ${item.localId}`);
-    } catch (e) {
-      console.error(`[pushPending] Erro ao enviar item ${item.id}:`, e);
-      if (ehSessaoExpirada(e)) break; // sessão expirou: não gasta tentativas dos próximos itens
-      const mensagem = e instanceof Error ? e.message : 'Erro desconhecido no envio.';
-      filaRepo.registrarFalha(item.id, mensagem, ehFalhaDefinitiva(e));
-    }
+    const { erro } = await processarItem(item);
+    if (ehSessaoExpirada(erro)) break; // sessão expirou: não gasta tentativas dos próximos itens
   }
+}
+
+/**
+ * Envia agora uma auditoria já enfileirada, pelo mesmo caminho da fila. Em caso de
+ * falha o item continua na fila com o erro registrado e o erro é relançado à tela.
+ */
+export async function enviarAuditoriaAgora(
+  localId: string,
+  onProgress?: PushProgressCallback,
+): Promise<void> {
+  const usuarioId = usuarioLogadoId();
+  if (!usuarioId) throw new Error('Sessão não encontrada. Entre novamente.');
+  const item = filaRepo.listarParaEnvio(usuarioId)
+    .find((i) => i.entidade === 'auditoria' && i.localId === localId);
+  if (!item) throw new Error('Auditoria não encontrada na fila de envio.');
+  const { erro } = await processarItem(item, onProgress);
+  if (erro) throw erro;
 }
 
 export function enqueuePush(localId: string): void {

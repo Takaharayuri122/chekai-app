@@ -1,4 +1,4 @@
-import { pushPending, pushAuditoria } from '../push';
+import { pushPending, pushAuditoria, enviarAuditoriaAgora } from '../push';
 import { getDatabase } from '../../db/client';
 
 jest.mock('../../db/client');
@@ -93,6 +93,34 @@ describe('pushPending', () => {
     await pushPending();
     expect(fila.registrarFalha).not.toHaveBeenCalled();
     expect(api.createAuditoria).toHaveBeenCalledTimes(1);
+  });
+
+  describe('envio imediato', () => {
+    beforeEach(() => {
+      fila.listarParaEnvio.mockReturnValue([item('q1', 'L1')]);
+    });
+
+    it('falha no envio imediato mantém a auditoria na fila com o erro', async () => {
+      api.createAuditoria.mockRejectedValue(new ApiError('Dados inválidos', 400));
+      await expect(enviarAuditoriaAgora('L1')).rejects.toThrow('Dados inválidos');
+      expect(fila.registrarFalha).toHaveBeenCalledWith('q1', 'Dados inválidos', true);
+      expect(fila.remover).not.toHaveBeenCalled();
+    });
+
+    it('sucesso no envio imediato remove da fila', async () => {
+      api.createAuditoria.mockResolvedValue({ id: 'R1', itens: [] });
+      api.finalizarAuditoria.mockResolvedValue({});
+      api.getAuditoria.mockResolvedValue({ pontuacaoTotal: null, pdfUrl: null });
+      await enviarAuditoriaAgora('L1');
+      expect(fila.remover).toHaveBeenCalledWith('q1');
+      expect(fila.registrarFalha).not.toHaveBeenCalled();
+    });
+
+    it('401 no envio imediato deixa pendente sem contar tentativa', async () => {
+      api.createAuditoria.mockRejectedValue(new ApiError('Sessão expirada', 401));
+      await expect(enviarAuditoriaAgora('L1')).rejects.toThrow();
+      expect(fila.registrarFalha).not.toHaveBeenCalled();
+    });
   });
 
   it('ignora itens de check-in por enquanto', async () => {
