@@ -47,6 +47,7 @@
 | RN-AUTH-007 | Usuário que não está ATIVO é rejeitado no `JwtStrategy` |
 | RN-AUTH-008 | Login legado com senha existe mas está deprecated; prioridade é OTP |
 | RN-AUTH-009 | `FRONTEND_URL` deve existir em todos os ambientes; sem fallback — falhar claro se ausente |
+| RN-AUTH-010 | Login fixo para a conta de revisão das lojas: só vale para o usuário com `login_fixo_habilitado = true` **e** com `LOGIN_FIXO_CODIGO` (6 dígitos) definido na API. Nesse caso o pedido de código não envia e-mail e o código fixo substitui o OTP. Qualquer outro usuário segue o OTP normal. Manter a flag desligada fora do período de revisão (a API não limita tentativas) |
 
 ---
 
@@ -387,3 +388,4 @@
 | 2026-10-28 | RN-CLI-007/011: inativar/ativar cliente e unidade (substitui a remoção); inativos não recebem novas auditorias | Claude |
 | 2026-11-01 | RN-AUD-016: auditoria offline iniciada antes de bloqueio (limite, assinatura, inativação, desvínculo) é aceita | Claude |
 | 2026-11-01 | RN-CKI-007/012: localização opcional e check-in/checkout offline com horário do celular | Claude |
+| 2026-11-01 | RN-AUTH-010: login fixo da conta de revisão das lojas (flag por usuário + `LOGIN_FIXO_CODIGO`) | Claude |

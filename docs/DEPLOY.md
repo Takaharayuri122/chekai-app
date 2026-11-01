@@ -34,6 +34,7 @@ O Vercel deixou de ser o alvo de produção do frontend. O projeto antigo na Ver
 | `JWT_EXPIRES_IN` | Expiração do token | `7d` |
 | `CORS_ORIGIN` | URL canônica do frontend | `https://chekai.com.br` |
 | `FRONTEND_URL` | URL do frontend (e-mails de convite; obrigatória) | `https://chekai.com.br` |
+| `LOGIN_FIXO_CODIGO` | Opcional. Código fixo de 6 dígitos da conta de revisão das lojas (RN-AUTH-010); só vale para usuário com `login_fixo_habilitado = true` | `482916` (use outro) |
 | `SUPABASE_URL` | URL do projeto Supabase | `https://[PROJECT].supabase.co` |
 | `SUPABASE_SERVICE_ROLE_KEY` | Service Role Key do Supabase | `eyJhbGc...` |
 | `OPENAI_API_KEY` | Chave da API OpenAI | `sk-...` |

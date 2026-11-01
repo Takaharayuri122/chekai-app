@@ -36,6 +36,21 @@ export class AuthService {
   }
 
   /**
+   * Código do login fixo (usuário de revisão das lojas). Só vale com 6 dígitos em LOGIN_FIXO_CODIGO.
+   */
+  private codigoLoginFixo(): string | null {
+    const codigo = this.configService.get<string>('LOGIN_FIXO_CODIGO');
+    return codigo && /^\d{6}$/.test(codigo) ? codigo : null;
+  }
+
+  /**
+   * Login fixo exige a flag no próprio usuário e o código configurado na API.
+   */
+  private usaLoginFixo(usuario: { loginFixoHabilitado?: boolean }): boolean {
+    return usuario.loginFixoHabilitado === true && this.codigoLoginFixo() !== null;
+  }
+
+  /**
    * Solicita um código OTP para login.
    */
   async solicitarOtp(dto: SolicitarOtpDto): Promise<{ message: string }> {
@@ -48,6 +63,9 @@ export class AuthService {
     }
     if (usuario.status === StatusUsuario.INATIVO) {
       throw new UnauthorizedException('Usuário inativo');
+    }
+    if (this.usaLoginFixo(usuario)) {
+      return { message: 'Código OTP enviado por e-mail' };
     }
     const codigoOTP = this.gerarCodigoOTP();
     const dataExpiracao = new Date();
@@ -69,7 +87,11 @@ export class AuthService {
       throw new UnauthorizedException('Usuário inativo ou não confirmado');
     }
     const isMockOtp = this.isDevelopment() && dto.codigo === this.OTP_MOCK;
-    if (!isMockOtp) {
+    if (this.usaLoginFixo(usuario)) {
+      if (dto.codigo !== this.codigoLoginFixo()) {
+        throw new UnauthorizedException('Código OTP inválido');
+      }
+    } else if (!isMockOtp) {
       if (!usuario.otpCode || !usuario.otpExpiresAt) {
         throw new BadRequestException('Código OTP não solicitado ou expirado');
       }
