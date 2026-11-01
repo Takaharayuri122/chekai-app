@@ -4,6 +4,7 @@ import { Camera, ImagePlus, X, Sparkles } from 'lucide-react-native';
 import { FotoRepo, type Foto } from '../../db/repositories/foto.repo';
 import { FotoPreviewModal } from './FotoPreviewModal';
 import { MAX_FOTOS_POR_ITEM } from '../../utils/foto-picker';
+import { temInternet } from '../../utils/conexao';
 import {
   analisarImagemChecklist,
   CreditoInsuficienteError,
@@ -55,6 +56,7 @@ export function FotoGrid({
   const { width } = useWindowDimensions();
   const [previewIndice, setPreviewIndice] = useState<number | null>(null);
   const [analisandoId, setAnalisandoId] = useState<string | null>(null);
+  const [semInternet, setSemInternet] = useState(false);
   const contextoRef = useRef(analiseContexto);
   contextoRef.current = analiseContexto;
   const onAtualizadaRef = useRef(onAnaliseAtualizada);
@@ -71,6 +73,12 @@ export function FotoGrid({
         if (cancelado) return;
         if (!foto.filePath || foto.analiseIa || tentadasRef.current.has(foto.id)) continue;
         if (erroCreditoRef.current) return;
+        if (!(await temInternet())) {
+          if (!cancelado) setSemInternet(true);
+          return;
+        }
+        if (cancelado) return;
+        if (!cancelado) setSemInternet(false);
         tentadasRef.current.add(foto.id);
         setAnalisandoId(foto.id);
         try {
@@ -217,6 +225,12 @@ export function FotoGrid({
             );
           })}
         </View>
+      )}
+
+      {semInternet && fotos.some((f) => !f.analiseIa) && (
+        <Text className="text-xs text-gray-400 mt-2">
+          Análise das fotos disponível apenas com internet.
+        </Text>
       )}
 
       {!onAdd && fotos.length === 0 && !obrigatoria && (

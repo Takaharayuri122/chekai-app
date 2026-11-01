@@ -16,6 +16,7 @@ import { FotoGrid } from './FotoGrid';
 import { ItemCamposNc } from './ItemCamposNc';
 import { FotoRepo } from '../../db/repositories/foto.repo';
 import { getSugestaoIa, CreditoInsuficienteError } from '../../api/ia.api';
+import { temInternet } from '../../utils/conexao';
 import { abrirFotoPicker } from '../../utils/foto-picker';
 import type { AuditoriaItemCompleto } from '../../db/repositories/auditoria-item.repo';
 import type { Foto } from '../../db/repositories/foto.repo';
@@ -58,6 +59,7 @@ export function SwipeCard({ item, indice, total, onSalvarEAvancar, isActive }: P
   const [planoAcao, setPlanoAcao] = useState(item.planoAcaoFinal ?? '');
   const [fotos, setFotos] = useState<Foto[]>(() => fotoRepo.findByItem(item.id));
   const [loadingIa, setLoadingIa] = useState(false);
+  const [iaIndisponivel, setIaIndisponivel] = useState(false);
   const [descricaoIa, setDescricaoIa] = useState(item.descricaoIa ?? undefined);
   const [planoIa, setPlanoIa] = useState(item.planoAcaoSugerido ?? undefined);
   const [referenciaLegal, setReferenciaLegal] = useState(item.referenciaLegal ?? undefined);
@@ -69,8 +71,18 @@ export function SwipeCard({ item, indice, total, onSalvarEAvancar, isActive }: P
   useEffect(() => {
     if (resposta === 'nao_conforme' && !descricaoNc && !loadingIa && !descricaoIa) {
       setLoadingIa(true);
-      getSugestaoIa(item.descricao)
-        .then(({ descricao, planoAcao: pa, referenciaLegal: ref }) => {
+      temInternet()
+        .then((online) => {
+          if (!online) {
+            setIaIndisponivel(true);
+            return null;
+          }
+          setIaIndisponivel(false);
+          return getSugestaoIa(item.descricao);
+        })
+        .then((sugestao) => {
+          if (!sugestao) return;
+          const { descricao, planoAcao: pa, referenciaLegal: ref } = sugestao;
           setDescricaoIa(descricao);
           setPlanoIa(pa);
           if (ref) setReferenciaLegal(ref);
@@ -290,6 +302,7 @@ export function SwipeCard({ item, indice, total, onSalvarEAvancar, isActive }: P
                 descricaoIa={descricaoIa}
                 planoAcaoIa={planoIa}
                 loadingIa={loadingIa}
+                iaIndisponivel={iaIndisponivel}
                 descricao={descricaoNc}
                 planoAcao={planoAcao}
                 onChange={(d, p) => { setDescricaoNc(d); setPlanoAcao(p); }}

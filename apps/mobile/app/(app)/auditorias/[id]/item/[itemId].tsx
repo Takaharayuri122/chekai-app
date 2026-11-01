@@ -11,6 +11,7 @@ import { ItemRespostaButtons } from '../../../../../src/components/auditoria/Ite
 import { ItemCamposNc } from '../../../../../src/components/auditoria/ItemCamposNc';
 import { FotoGrid } from '../../../../../src/components/auditoria/FotoGrid';
 import { getSugestaoIa, CreditoInsuficienteError } from '../../../../../src/api/ia.api';
+import { temInternet } from '../../../../../src/utils/conexao';
 import { abrirFotoPicker } from '../../../../../src/utils/foto-picker';
 
 const fotoRepo = new FotoRepo();
@@ -29,6 +30,7 @@ export default function ItemScreen() {
   const [pontuacao, setPontuacao] = useState(item?.pontuacao ?? 0);
   const [fotos, setFotos] = useState(() => itemId ? fotoRepo.findByItem(itemId) : []);
   const [loadingIa, setLoadingIa] = useState(false);
+  const [iaIndisponivel, setIaIndisponivel] = useState(false);
   const [descricaoIa, setDescricaoIa] = useState(item?.descricaoIa ?? undefined);
   const [planoIa, setPlanoIa] = useState(item?.planoAcaoSugerido ?? undefined);
   const [referenciaLegal, setReferenciaLegal] = useState(item?.referenciaLegal ?? undefined);
@@ -43,8 +45,18 @@ export default function ItemScreen() {
     if (pts !== undefined) setPontuacao(pts);
     if (v === 'nao_conforme' && !descricaoNc && !loadingIa) {
       setLoadingIa(true);
-      getSugestaoIa(item?.descricao ?? '')
-        .then(({ descricao, planoAcao: pa, referenciaLegal: ref }) => {
+      temInternet()
+        .then((online) => {
+          if (!online) {
+            setIaIndisponivel(true);
+            return null;
+          }
+          setIaIndisponivel(false);
+          return getSugestaoIa(item?.descricao ?? '');
+        })
+        .then((sugestao) => {
+          if (!sugestao) return;
+          const { descricao, planoAcao: pa, referenciaLegal: ref } = sugestao;
           setDescricaoIa(descricao);
           setPlanoIa(pa);
           if (ref) setReferenciaLegal(ref);
@@ -156,6 +168,7 @@ export default function ItemScreen() {
             descricaoIa={descricaoIa}
             planoAcaoIa={planoIa}
             loadingIa={loadingIa}
+            iaIndisponivel={iaIndisponivel}
             descricao={descricaoNc}
             planoAcao={planoAcao}
             onChange={isReadonly ? () => {} : (d, p) => { setDescricaoNc(d); setPlanoAcao(p); }}

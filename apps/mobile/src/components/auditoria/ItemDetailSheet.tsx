@@ -8,6 +8,7 @@ import { ItemCamposNc } from './ItemCamposNc';
 import { FotoGrid } from './FotoGrid';
 import { FotoRepo } from '../../db/repositories/foto.repo';
 import { getSugestaoIa, CreditoInsuficienteError } from '../../api/ia.api';
+import { temInternet } from '../../utils/conexao';
 import { abrirFotoPicker } from '../../utils/foto-picker';
 import type { AuditoriaItemCompleto } from '../../db/repositories/auditoria-item.repo';
 import type { Foto } from '../../db/repositories/foto.repo';
@@ -35,6 +36,7 @@ export function ItemDetailSheet({ visible, item, resposta, onSalvar, onFechar }:
   const [planoAcao, setPlanoAcao] = useState(item.planoAcaoFinal ?? '');
   const [fotos, setFotos] = useState<Foto[]>(() => fotoRepo.findByItem(item.id));
   const [loadingIa, setLoadingIa] = useState(false);
+  const [iaIndisponivel, setIaIndisponivel] = useState(false);
   const [descricaoIa, setDescricaoIa] = useState(item.descricaoIa ?? undefined);
   const [planoIa, setPlanoIa] = useState(item.planoAcaoSugerido ?? undefined);
   const [referenciaLegal, setReferenciaLegal] = useState(item.referenciaLegal ?? undefined);
@@ -43,10 +45,20 @@ export function ItemDetailSheet({ visible, item, resposta, onSalvar, onFechar }:
   const isNc = resposta === 'nao_conforme';
 
   const triggerIa = useCallback(() => {
-    if (loadingIa || descricaoNc) return;
+    if (loadingIa || iaIndisponivel || descricaoNc) return;
     setLoadingIa(true);
-    getSugestaoIa(item.descricao)
-      .then(({ descricao, planoAcao: pa, referenciaLegal: ref }) => {
+    temInternet()
+      .then((online) => {
+        if (!online) {
+          setIaIndisponivel(true);
+          return null;
+        }
+        setIaIndisponivel(false);
+        return getSugestaoIa(item.descricao);
+      })
+      .then((sugestao) => {
+        if (!sugestao) return;
+        const { descricao, planoAcao: pa, referenciaLegal: ref } = sugestao;
         setDescricaoIa(descricao);
         setPlanoIa(pa);
         if (ref) setReferenciaLegal(ref);
@@ -59,9 +71,9 @@ export function ItemDetailSheet({ visible, item, resposta, onSalvar, onFechar }:
         }
       })
       .finally(() => setLoadingIa(false));
-  }, [item.id, item.descricao, descricaoNc, planoAcao, loadingIa]);
+  }, [item.id, item.descricao, descricaoNc, planoAcao, loadingIa, iaIndisponivel]);
 
-  if (isNc && !descricaoNc && !loadingIa && !descricaoIa) {
+  if (isNc && !descricaoNc && !loadingIa && !iaIndisponivel && !descricaoIa) {
     triggerIa();
   }
 
@@ -129,6 +141,7 @@ export function ItemDetailSheet({ visible, item, resposta, onSalvar, onFechar }:
               descricaoIa={descricaoIa}
               planoAcaoIa={planoIa}
               loadingIa={loadingIa}
+              iaIndisponivel={iaIndisponivel}
               descricao={descricaoNc}
               planoAcao={planoAcao}
               onChange={(d, p) => { setDescricaoNc(d); setPlanoAcao(p); }}
