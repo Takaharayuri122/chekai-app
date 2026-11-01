@@ -34,7 +34,7 @@ export function useGeolocalizacao(): UseGeolocalizacao {
         setErro('Permissão de localização negada. Ajuste nas configurações do aparelho.');
         return null;
       }
-      const novas = await obterLocalizacaoRapida();
+      const novas = await obterLocalizacaoRapida(4000, 60000);
       if (!novas) {
         setErro('Não foi possível capturar a localização. Tente novamente.');
         return null;
