@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Building2 } from 'lucide-react-native';
 import { getDatabase } from '../../../src/db/client';
 import { jaSincronizouAlgumaVez } from '../../../src/sync/pull';
+import { AJUSTE_TEXTO_INPUT } from '../../../src/utils/estilo-input';
 
 interface ClienteRow {
   id: string;
@@ -79,7 +80,7 @@ export default function NovaAuditoriaScreen() {
       <View className="px-4 py-3 bg-white border-b border-gray-100">
         <TextInput
           className="bg-gray-100 rounded-xl px-4 py-2.5 text-base text-neutral"
-          style={{ paddingVertical: 16, paddingHorizontal: 16, lineHeight: 0, fontFamily: 'Inter_400Regular' }}
+          style={{ paddingVertical: 16, paddingHorizontal: 16, fontFamily: 'Inter_400Regular', ...AJUSTE_TEXTO_INPUT }}
           placeholder="Buscar cliente..."
           placeholderTextColor="#9CA3AF"
           value={busca}
