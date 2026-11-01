@@ -34,6 +34,8 @@ export async function pushAuditoria(
   if (!auditoria) throw new Error(`Auditoria ${localId} não encontrada.`);
   console.log(`[pushAuditoria] Iniciando push — local=${localId}, cliente=${auditoria.clienteNome}`);
 
+  const itens = itemRepo.findByAuditoria(localId);
+
   onProgress?.('criando');
   const { id: remoteId, itens: remoteItens } = await createAuditoria({
     localId: auditoria.localId,
@@ -41,14 +43,16 @@ export async function pushAuditoria(
     unidadeId: auditoria.unidadeId,
     templateId: auditoria.templateId!,
     dataInicio: auditoria.dataInicio!,
+    templateItemIds: itens.map(i => i.templateItemId),
     latitudeInicio: auditoria.latitudeInicio ?? undefined,
     longitudeInicio: auditoria.longitudeInicio ?? undefined,
   });
+  // Grava o vínculo antes de enviar itens: uma nova tentativa reaproveita o mesmo registro
+  auditoriaRepo.setRemoteId(localId, remoteId);
   console.log(`[pushAuditoria] Criada no servidor — remoteId=${remoteId}, ${remoteItens.length} itens remotos`);
 
   const remoteItemMap = new Map(remoteItens.map(i => [i.templateItemId, i.id]));
 
-  const itens = itemRepo.findByAuditoria(localId);
   let itensEnviados = 0;
   let fotosSucesso = 0;
   let fotosErro = 0;
@@ -84,6 +88,10 @@ export async function pushAuditoria(
     const fotos = fotoRepo.findByItem(item.id);
     for (const foto of fotos) {
       if (!foto.filePath) continue;
+      if (foto.syncStatus === 'synced' || foto.remoteId) {
+        fotosEnviadas++;
+        continue;
+      }
       try {
         const { id: fotoRemoteId, url } = await uploadFoto(remoteId, remoteItemId, foto.filePath);
         fotoRepo.markSynced(foto.id, fotoRemoteId, url);
@@ -108,8 +116,13 @@ export async function pushAuditoria(
   }
   console.log(`[pushAuditoria] Itens: ${itensEnviados}/${itens.length}, Fotos: ${fotosSucesso} ok / ${fotosErro} erro`);
 
+  if (fotosErro > 0) {
+    throw new Error(`${fotosErro} foto(s) não foram enviadas; a auditoria não foi finalizada.`);
+  }
+
   onProgress?.('finalizando');
   await finalizarAuditoria(remoteId, {
+    dataFim: auditoria.dataFim ?? undefined,
     latitude: auditoria.latitudeFim ?? undefined,
     longitude: auditoria.longitudeFim ?? undefined,
     observacoesGerais: auditoria.observacoesGerais ?? undefined,

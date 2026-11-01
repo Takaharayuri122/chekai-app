@@ -1,4 +1,4 @@
-import { apiGet, apiPost, apiPut } from './client';
+import { apiGet, apiPost, apiPut, ApiError } from './client';
 import * as FileSystem from 'expo-file-system';
 import * as SecureStore from 'expo-secure-store';
 import { API_URL } from './config';
@@ -9,6 +9,7 @@ export interface CreateAuditoriaPayload {
   unidadeId: string;
   templateId: string;
   dataInicio: string;
+  templateItemIds?: string[];
   latitudeInicio?: number;
   longitudeInicio?: number;
 }
@@ -30,6 +31,7 @@ export interface FinalizarPayload {
   latitude?: number;
   longitude?: number;
   observacoesGerais?: string;
+  dataFim?: string;
 }
 
 export interface AuditoriaApi {
@@ -43,11 +45,20 @@ export async function createAuditoria(
   payload: CreateAuditoriaPayload,
 ): Promise<{ id: string; itens: Array<{ id: string; templateItemId: string }> }> {
   const body: {
+    localId: string;
     unidadeId: string;
     templateId: string;
+    dataInicio: string;
+    templateItemIds?: string[];
     latitude?: number;
     longitude?: number;
-  } = { unidadeId: payload.unidadeId, templateId: payload.templateId };
+  } = {
+    localId: payload.localId,
+    unidadeId: payload.unidadeId,
+    templateId: payload.templateId,
+    dataInicio: payload.dataInicio,
+  };
+  if (payload.templateItemIds?.length) body.templateItemIds = payload.templateItemIds;
   if (payload.latitudeInicio != null) body.latitude = payload.latitudeInicio;
   if (payload.longitudeInicio != null) body.longitude = payload.longitudeInicio;
   return apiPost<{ id: string; itens: Array<{ id: string; templateItemId: string }> }>(
@@ -89,7 +100,7 @@ export async function uploadFoto(
     }
   );
   if (result.status >= 400) {
-    throw new Error('Falha no upload da foto.');
+    throw new ApiError('Falha no upload da foto.', result.status);
   }
   const json = JSON.parse(result.body) as { data: { id: string; url: string } };
   return json.data;
