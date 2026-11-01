@@ -1,7 +1,10 @@
 import { MapPin, Clock, TriangleAlert } from 'lucide-react-native';
 import { View, Text } from 'react-native';
 import { useCheckinStore } from '../../store/checkin';
+import { FilaRepo } from '../../db/repositories/fila.repo';
 import { formatarHora, textoEnvio } from './formatar-hora';
+
+const filaRepo = new FilaRepo();
 
 function formatarDesde(dataIso: string): string {
   const data = new Date(dataIso);
@@ -50,7 +53,9 @@ export function CheckinCard() {
       </View>
       {checkinAberto.envioStatus ? (
         <Text className="text-xs text-gray-500 mt-1">
-          {textoEnvio(checkinAberto.envioStatus, checkinAberto.checkinSincronizadoEm)}
+          {checkinAberto.envioStatus === 'pendente' && filaRepo.estado('checkin', checkinAberto.id)?.status === 'falhou'
+            ? 'Falha no envio — veja em Marcações recentes'
+            : textoEnvio(checkinAberto.envioStatus, checkinAberto.checkinSincronizadoEm)}
         </Text>
       ) : null}
       {isAtrasado3h && (

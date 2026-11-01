@@ -93,6 +93,21 @@ describe('pushCheckin', () => {
     expect(payload).toMatchObject({ localId: 'L1', offline: true });
   });
 
+  it('envia checkout registrado durante o envio do check-in', async () => {
+    mockRepo.findPorId
+      .mockReturnValueOnce(base)
+      .mockReturnValueOnce({
+        ...base, remoteId: 'R1', status: 'fechado', dataCheckout: '2026-11-01T15:00:00.000Z',
+        checkoutOffline: true,
+      });
+    await pushCheckin('L1');
+    expect(iniciarCheckin).toHaveBeenCalledTimes(1);
+    expect(finalizarCheckin).toHaveBeenCalledWith('R1', expect.objectContaining({
+      dataCheckout: '2026-11-01T15:00:00.000Z', offline: true,
+    }));
+    expect(mockRepo.marcarEnviado).toHaveBeenLastCalledWith('L1', 'checkout', 'R1', expect.any(String));
+  });
+
   it('marcação descartada (inexistente) não envia nada', async () => {
     mockRepo.findPorId.mockReturnValue(null);
     await pushCheckin('L1');

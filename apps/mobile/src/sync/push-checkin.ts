@@ -15,7 +15,7 @@ const repo = new CheckinRepo();
  * fica visível com o motivo (`recusado`) e o erro é relançado para a fila parar de insistir.
  */
 export async function pushCheckin(localId: string): Promise<void> {
-  const registro = repo.findPorId(localId);
+  let registro = repo.findPorId(localId);
   if (!registro) return; // descartada pelo usuário
 
   try {
@@ -35,6 +35,9 @@ export async function pushCheckin(localId: string): Promise<void> {
       const criado = await iniciarCheckin(payload);
       remoteId = criado.id;
       repo.marcarEnviado(localId, 'checkin', remoteId, new Date().toISOString());
+      // um checkout pode ter sido registrado enquanto o check-in era enviado
+      registro = repo.findPorId(localId);
+      if (!registro) return;
     }
 
     const checkoutPendente = registro.checkoutOffline

@@ -2,10 +2,13 @@ import { useCallback, useEffect, useState } from 'react';
 import { View, Text, Pressable, Alert } from 'react-native';
 import { useAuthStore } from '../../store/auth';
 import { useCheckinStore } from '../../store/checkin';
+import { FilaRepo } from '../../db/repositories/fila.repo';
+import { tentarEnviarDeNovo } from '../../sync/SyncService';
 import { CheckinRepo, type CheckinRegistro } from '../../db/repositories/checkin.repo';
 import { formatarHora, textoEnvio } from './formatar-hora';
 
 const repo = new CheckinRepo();
+const filaRepo = new FilaRepo();
 const INTERVALO_ATUALIZACAO_MS = 5000;
 
 function textoStatus(m: CheckinRegistro): string | null {
@@ -73,6 +76,20 @@ export function CheckinOfflineLista() {
               </Text>
               <Pressable onPress={() => confirmarDescarte(m)} hitSlop={8} className="mt-2 self-start">
                 <Text className="text-xs font-sans-semibold text-red-700">Descartar</Text>
+              </Pressable>
+            </View>
+          ) : m.envioStatus === 'pendente' && filaRepo.estado('checkin', m.id)?.status === 'falhou' ? (
+            <View className="mt-2 rounded-xl bg-amber-50 p-3">
+              <Text className="text-xs font-sans-semibold text-amber-700">Falha no envio</Text>
+              {filaRepo.estado('checkin', m.id)?.ultimoErro ? (
+                <Text className="text-xs text-amber-700">{filaRepo.estado('checkin', m.id)?.ultimoErro}</Text>
+              ) : null}
+              <Pressable
+                onPress={() => { void tentarEnviarDeNovo('checkin', m.id).finally(recarregar); }}
+                hitSlop={8}
+                className="mt-2 self-start"
+              >
+                <Text className="text-xs font-sans-semibold text-amber-700">Tentar de novo</Text>
               </Pressable>
             </View>
           ) : (
