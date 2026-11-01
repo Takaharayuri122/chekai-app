@@ -85,7 +85,7 @@ describe('AuditoriaService - sincronização offline', () => {
       const aud = auditoriaBase(StatusAuditoria.EM_ANDAMENTO);
       (service.buscarAuditoriaPorId as jest.Mock).mockResolvedValue(aud);
       auditoriaRepository.save.mockImplementation(async (v) => v);
-      await service.finalizarAuditoria('a-1', { dataFim }, gestor).catch(() => undefined);
+      await service.finalizarAuditoria('a-1', { dataFim }, gestor);
       expect((aud as unknown as { dataFim: Date }).dataFim.getTime()).toBe(new Date(dataFim).getTime());
     });
 
