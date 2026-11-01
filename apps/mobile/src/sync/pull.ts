@@ -63,6 +63,15 @@ function setLastSyncedAt(db: SQLite.SQLiteDatabase, entity: string, timestamp: s
   );
 }
 
+/** Verdadeiro quando os clientes já foram baixados ao menos uma vez neste aparelho. */
+export function jaSincronizouAlgumaVez(): boolean {
+  const row = getDatabase().getFirstSync<{ last_synced_at: string }>(
+    `SELECT last_synced_at FROM sync_meta WHERE entity = ?`,
+    ['clientes']
+  );
+  return !!row;
+}
+
 export async function pullClientes(): Promise<void> {
   const db = getDatabase();
   const clientes = await buscarTodasPaginas<Cliente>('/clientes');

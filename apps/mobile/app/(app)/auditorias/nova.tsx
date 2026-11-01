@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Building2 } from 'lucide-react-native';
 import { getDatabase } from '../../../src/db/client';
+import { jaSincronizouAlgumaVez } from '../../../src/sync/pull';
 
 interface ClienteRow {
   id: string;
@@ -29,6 +30,14 @@ export default function NovaAuditoriaScreen() {
   const [busca, setBusca] = useState('');
   const [loadError, setLoadError] = useState<string | null>(null);
 
+  const sincronizou = useMemo(() => {
+    try {
+      return jaSincronizouAlgumaVez();
+    } catch {
+      return true;
+    }
+  }, []);
+
   const clientes = useMemo(() => {
     try {
       return carregarClientes();
@@ -51,6 +60,16 @@ export default function NovaAuditoriaScreen() {
     return (
       <View className="flex-1 items-center justify-center px-8">
         <Text className="text-red-600 text-center">{loadError}</Text>
+      </View>
+    );
+  }
+
+  if (!sincronizou) {
+    return (
+      <View className="flex-1 items-center justify-center px-8">
+        <Text className="text-base text-gray-400 text-center">
+          Conecte-se à internet uma vez para baixar clientes e checklists. Depois disso, as auditorias funcionam sem internet.
+        </Text>
       </View>
     );
   }
