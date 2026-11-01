@@ -77,6 +77,10 @@ export class Usuario {
   @Column({ name: 'logo_url', type: 'text', nullable: true })
   logoUrl: string | null;
 
+  /** Habilita o login com código fixo (LOGIN_FIXO_CODIGO) — usado só pela conta de revisão das lojas. */
+  @Column({ name: 'login_fixo_habilitado', type: 'boolean', default: false })
+  loginFixoHabilitado: boolean;
+
   @Column({ name: 'otp_code', type: 'varchar', length: 6, nullable: true })
   otpCode: string | null;
 
