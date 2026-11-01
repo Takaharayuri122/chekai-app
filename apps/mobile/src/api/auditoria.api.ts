@@ -41,9 +41,16 @@ export interface AuditoriaApi {
   pdfUrl: string | null;
 }
 
+/** Resposta de `POST /auditorias`: no reenvio idempotente (mesmo localId) traz o status atual. */
+export interface AuditoriaCriada {
+  id: string;
+  status?: string;
+  itens: Array<{ id: string; templateItemId: string }>;
+}
+
 export async function createAuditoria(
   payload: CreateAuditoriaPayload,
-): Promise<{ id: string; itens: Array<{ id: string; templateItemId: string }> }> {
+): Promise<AuditoriaCriada> {
   const body: {
     localId: string;
     unidadeId: string;
@@ -61,7 +68,7 @@ export async function createAuditoria(
   if (payload.templateItemIds?.length) body.templateItemIds = payload.templateItemIds;
   if (payload.latitudeInicio != null) body.latitude = payload.latitudeInicio;
   if (payload.longitudeInicio != null) body.longitude = payload.longitudeInicio;
-  return apiPost<{ id: string; itens: Array<{ id: string; templateItemId: string }> }>(
+  return apiPost<AuditoriaCriada>(
     '/auditorias',
     body,
   );

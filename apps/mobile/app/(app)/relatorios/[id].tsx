@@ -171,6 +171,15 @@ export default function RelatorioTecnicoFormScreen() {
     ]);
   };
 
+  /** Falhou o envio: o relatório segue na fila; se nem isso deu (sem sessão), mostra o porquê. */
+  const manterNaFila = (relatorioId: string): void => {
+    try {
+      enqueueRelatorioPush(relatorioId);
+    } catch (eFila) {
+      setErro(eFila instanceof Error ? eFila.message : 'Não foi possível guardar o relatório para envio.');
+    }
+  };
+
   const salvarRascunho = async (): Promise<void> => {
     if (!id) return;
     setSalvando(true);
@@ -186,8 +195,8 @@ export default function RelatorioTecnicoFormScreen() {
       carregar();
       Alert.alert('Salvo', online ? 'Rascunho sincronizado.' : 'Rascunho salvo. Será enviado quando houver conexão.');
     } catch (e) {
-      enqueueRelatorioPush(id);
       setErro(e instanceof Error ? e.message : 'Erro ao salvar.');
+      manterNaFila(id);
     } finally {
       setSalvando(false);
     }
@@ -224,8 +233,8 @@ export default function RelatorioTecnicoFormScreen() {
         [{ text: 'OK', onPress: () => router.replace('/(app)/relatorios') }],
       );
     } catch (e) {
-      enqueueRelatorioPush(id);
       setErro(e instanceof Error ? e.message : 'Erro ao finalizar.');
+      manterNaFila(id);
     } finally {
       setSalvando(false);
     }

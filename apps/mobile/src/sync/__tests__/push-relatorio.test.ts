@@ -1,11 +1,11 @@
 import { pushPending } from '../push';
 import { getDatabase } from '../../db/client';
 import { ApiError } from '../../api/client';
-import { atualizarRelatorioTecnico } from '../../api/relatorio-tecnico.api';
+import { atualizarRelatorioTecnico, uploadRelatorioFoto } from '../../api/relatorio-tecnico.api';
 import { pullModeloRelatorioTecnico } from '../pull';
 
 jest.mock('../../db/client', () => ({ getDatabase: jest.fn() }));
-const mockFila = { estado: jest.fn(() => ({ status: 'pendente', ultimoErro: null })), listarParaEnvio: jest.fn(), registrarFalha: jest.fn(), remover: jest.fn() };
+const mockFila = { estado: jest.fn(() => ({ status: 'pendente', ultimoErro: null })), listarParaEnvio: jest.fn(), registrarFalha: jest.fn(), remover: jest.fn(), primeiraFalhaEm: jest.fn(() => null) };
 jest.mock('../../db/repositories/fila.repo', () => ({
   FilaRepo: jest.fn(
     () => new Proxy({}, { get: (_alvo, chave: string) => mockFila[chave as keyof typeof mockFila] }),
@@ -33,8 +33,11 @@ jest.mock('../../utils/uuid', () => ({ gerarUUID: () => 'uuid-1' }));
 jest.mock('../../db/repositories/auditoria.repo', () => ({ AuditoriaRepo: jest.fn() }));
 jest.mock('../../db/repositories/auditoria-item.repo', () => ({ AuditoriaItemRepo: jest.fn() }));
 jest.mock('../../db/repositories/foto.repo', () => ({ FotoRepo: jest.fn() }));
+const mockRelatorioFotoRepo = { findPendentes: jest.fn(() => [] as unknown[]), markSynced: jest.fn() };
 jest.mock('../../db/repositories/relatorio-foto.repo', () => ({
-  RelatorioFotoRepo: jest.fn(() => ({ findPendentes: jest.fn().mockReturnValue([]) })),
+  RelatorioFotoRepo: jest.fn(
+    () => new Proxy({}, { get: (_alvo, chave: string) => mockRelatorioFotoRepo[chave as keyof typeof mockRelatorioFotoRepo] }),
+  ),
 }));
 const mockRelatorioRepo = {
   findById: jest.fn(),
@@ -103,5 +106,36 @@ describe('pushRelatorioTecnico com modelo desatualizado', () => {
     expect(mockRelatorioRepo.voltarParaRascunho).not.toHaveBeenCalled();
     expect(mockFila.registrarFalha).toHaveBeenCalledWith('q1', 'Erro interno', false);
     expect(mockFila.remover).not.toHaveBeenCalled();
+  });
+});
+
+describe('pushRelatorioTecnico com foto que falha', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (atualizarRelatorioTecnico as jest.Mock).mockReset();
+    mockFila.listarParaEnvio.mockReturnValue([
+      { id: 'q1', entidade: 'relatorio_tecnico', localId: 'local-1', retries: 0 },
+    ]);
+    mockRelatorioRepo.findById.mockReturnValue(relatorioFinalizado);
+    mockRelatorioFotoRepo.findPendentes.mockReturnValue([
+      { id: 'f1', filePath: 'file:///f1.jpg' },
+      { id: 'f2', filePath: 'file:///f2.jpg' },
+    ]);
+  });
+
+  afterEach(() => mockRelatorioFotoRepo.findPendentes.mockReturnValue([]));
+
+  it('não finaliza o relatório e mantém o item na fila', async () => {
+    (uploadRelatorioFoto as jest.Mock)
+      .mockResolvedValueOnce({ id: 'rf1', url: 'u1' })
+      .mockRejectedValueOnce(new Error('Network request failed'));
+
+    await pushPending();
+
+    expect(mockRelatorioFotoRepo.markSynced).toHaveBeenCalledWith('f1', 'rf1', 'u1');
+    expect(atualizarRelatorioTecnico).not.toHaveBeenCalled();
+    expect(mockRelatorioRepo.markSynced).not.toHaveBeenCalled();
+    expect(mockFila.remover).not.toHaveBeenCalled();
+    expect(mockFila.registrarFalha).toHaveBeenCalledWith('q1', expect.stringContaining('foto'), false);
   });
 });

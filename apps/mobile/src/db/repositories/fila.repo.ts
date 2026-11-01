@@ -9,6 +9,7 @@ export interface ItemFila {
   entidade: EntidadeFila;
   localId: string;
   retries: number;
+  criadoEm: string;
 }
 
 const MAX_TENTATIVAS = 5;
@@ -44,9 +45,9 @@ export class FilaRepo {
   }
 
   listarParaEnvio(usuarioId: string): ItemFila[] {
-    const rows = this.db.getAllSync<{ id: string; entity: string; payload: string; retries: number }>(
-      `SELECT id, entity, payload, retries FROM sync_queue
-       WHERE status = 'pendente' AND (usuario_id = ? OR usuario_id IS NULL)
+    const rows = this.db.getAllSync<{ id: string; entity: string; payload: string; retries: number; created_at: string }>(
+      `SELECT id, entity, payload, retries, created_at FROM sync_queue
+       WHERE status = 'pendente' AND usuario_id = ?
        ORDER BY created_at ASC`,
       [usuarioId],
     );
@@ -55,7 +56,23 @@ export class FilaRepo {
       entidade: r.entity as EntidadeFila,
       localId: (JSON.parse(r.payload) as { localId: string }).localId,
       retries: r.retries,
+      criadoEm: r.created_at,
     }));
+  }
+
+  /** Linhas gravadas antes de a fila ter dona (V8) passam a ser da usuária logada. */
+  atribuirSemDona(usuarioId: string): void {
+    this.db.runSync('UPDATE sync_queue SET usuario_id = ? WHERE usuario_id IS NULL', [usuarioId]);
+  }
+
+  /** Criação do item mais antigo da entidade que falhou de vez (ou null se nenhum falhou). */
+  primeiraFalhaEm(usuarioId: string, entidade: EntidadeFila): string | null {
+    const row = this.db.getFirstSync<{ criado_em: string | null }>(
+      `SELECT MIN(created_at) AS criado_em FROM sync_queue
+       WHERE status = 'falhou' AND usuario_id = ? AND entity = ?`,
+      [usuarioId, entidade],
+    );
+    return row?.criado_em ?? null;
   }
 
   registrarFalha(id: string, erro: string, definitiva: boolean): void {
@@ -92,7 +109,7 @@ export class FilaRepo {
 
   contarPendentes(usuarioId: string, entidade?: EntidadeFila): number {
     const params: string[] = [usuarioId];
-    let sql = 'SELECT COUNT(*) AS total FROM sync_queue WHERE (usuario_id = ? OR usuario_id IS NULL)';
+    let sql = 'SELECT COUNT(*) AS total FROM sync_queue WHERE usuario_id = ?';
     if (entidade) {
       sql += ' AND entity = ?';
       params.push(entidade);

@@ -1,4 +1,4 @@
-import { pushPending, pushAuditoria, enviarAuditoriaAgora } from '../push';
+import { pushPending, pushAuditoria, enviarAuditoriaAgora, enqueuePush, enqueueRelatorioPush } from '../push';
 import { getDatabase } from '../../db/client';
 
 jest.mock('../../db/client');
@@ -163,6 +163,60 @@ describe('pushPending', () => {
     expect(api.createAuditoria).not.toHaveBeenCalled();
   });
 
+  describe('ordem dos check-ins', () => {
+    const itemEm = (id: string, localId: string, entidade: string, criadoEm: string) =>
+      ({ ...item(id, localId, entidade), criadoEm });
+
+    beforeEach(() => {
+      api.createAuditoria.mockResolvedValue({ id: 'R1', itens: [] });
+      api.finalizarAuditoria.mockResolvedValue({});
+      api.getAuditoria.mockResolvedValue({ pontuacaoTotal: null, pdfUrl: null });
+      fila.listarParaEnvio.mockReturnValue([
+        itemEm('q1', 'C1', 'checkin', '2026-11-01T09:00:00.000Z'),
+        itemEm('q2', 'L1', 'auditoria', '2026-11-01T09:30:00.000Z'),
+        itemEm('q3', 'C2', 'checkin', '2026-11-01T10:00:00.000Z'),
+      ]);
+    });
+
+    it('check-in com falha temporária: os check-ins seguintes esperam; outras entidades seguem', async () => {
+      const { pushCheckin } = require('../push-checkin');
+      pushCheckin.mockRejectedValueOnce(new Error('Network request failed'));
+      await pushPending();
+      expect(pushCheckin).toHaveBeenCalledTimes(1);
+      expect(pushCheckin).toHaveBeenCalledWith('C1');
+      expect(fila.remover).toHaveBeenCalledWith('q2');
+      expect(fila.registrarFalha).toHaveBeenCalledTimes(1);
+    });
+
+    it('check-in recusado: os check-ins seguintes esperam', async () => {
+      const { pushCheckin } = require('../push-checkin');
+      pushCheckin.mockRejectedValueOnce(new ApiError('Você já possui um checkin em aberto.', 409));
+      await pushPending();
+      expect(pushCheckin).toHaveBeenCalledTimes(1);
+      expect(fila.registrarFalha).toHaveBeenCalledWith('q1', expect.any(String), true);
+      expect(fila.remover).toHaveBeenCalledWith('q2');
+    });
+
+    it('check-in anterior já com falha definitiva: os posteriores esperam', async () => {
+      const { pushCheckin } = require('../push-checkin');
+      fila.listarParaEnvio.mockReturnValue([
+        itemEm('q2', 'L1', 'auditoria', '2026-11-01T09:30:00.000Z'),
+        itemEm('q3', 'C2', 'checkin', '2026-11-01T10:00:00.000Z'),
+      ]);
+      fila.primeiraFalhaEm.mockReturnValue('2026-11-01T09:00:00.000Z');
+      await pushPending();
+      expect(fila.primeiraFalhaEm).toHaveBeenCalledWith('u1', 'checkin');
+      expect(pushCheckin).not.toHaveBeenCalled();
+      expect(fila.remover).toHaveBeenCalledWith('q2');
+    });
+
+    it('sem falhas, todos os check-ins são enviados na ordem', async () => {
+      const { pushCheckin } = require('../push-checkin');
+      await pushPending();
+      expect(pushCheckin.mock.calls).toEqual([['C1'], ['C2']]);
+    });
+  });
+
   it('despacha itens de check-in para pushCheckin e remove da fila', async () => {
     const { pushCheckin } = require('../push-checkin');
     fila.listarParaEnvio.mockReturnValue([item('q1', 'C1', 'checkin')]);
@@ -245,11 +299,49 @@ describe('pushAuditoria retomável', () => {
     expect(AuditoriaRepo.prototype.markSynced).toHaveBeenCalledWith('L1', 'R1');
   });
 
+  it('já finalizada no servidor (resposta da finalização perdida): conclui sem reenviar itens', async () => {
+    api.createAuditoria.mockResolvedValue({ id: 'R1', status: 'finalizada', itens: [{ id: 'ri1', templateItemId: 'ti1' }] });
+    api.getAuditoria.mockResolvedValue({ pontuacaoTotal: '87.5', pdfUrl: 'https://pdf' });
+    await pushAuditoria('L1');
+    expect(api.submitItem).not.toHaveBeenCalled();
+    expect(api.uploadFoto).not.toHaveBeenCalled();
+    expect(api.finalizarAuditoria).not.toHaveBeenCalled();
+    expect(AuditoriaRepo.prototype.markSynced).toHaveBeenCalledWith('L1', 'R1');
+    expect(AuditoriaRepo.prototype.updatePontuacao).toHaveBeenCalledWith('L1', 87.5);
+    expect(AuditoriaRepo.prototype.updatePdfUrl).toHaveBeenCalledWith('L1', 'https://pdf');
+  });
+
   it('nunca chama a IA', async () => {
     FotoRepo.prototype.findByItem.mockReturnValue([foto({ analiseIa: 'texto' })]);
     await pushAuditoria('L1');
     const fns = Object.values(ia).filter(v => jest.isMockFunction(v)) as jest.Mock[];
     expect(fns.length).toBeGreaterThan(0);
     fns.forEach(fn => expect(fn).not.toHaveBeenCalled());
+  });
+});
+
+describe('enfileirar sem sessão', () => {
+  const { FilaRepo } = require('../../db/repositories/fila.repo');
+  const { useAuthStore } = require('../../store/auth');
+
+  beforeEach(() => {
+    jest.resetAllMocks();
+    useAuthStore.getState.mockReturnValue({ user: null });
+  });
+
+  it('enqueuePush lança em vez de fingir que enfileirou', () => {
+    expect(() => enqueuePush('L1')).toThrow('Sessão não encontrada');
+    expect(FilaRepo.prototype.enfileirar).not.toHaveBeenCalled();
+  });
+
+  it('enqueueRelatorioPush lança em vez de fingir que enfileirou', () => {
+    expect(() => enqueueRelatorioPush('R1')).toThrow('Sessão não encontrada');
+    expect(FilaRepo.prototype.enfileirar).not.toHaveBeenCalled();
+  });
+
+  it('com sessão enfileira para a usuária logada', () => {
+    useAuthStore.getState.mockReturnValue({ user: { id: 'u1' } });
+    enqueuePush('L1');
+    expect(FilaRepo.prototype.enfileirar).toHaveBeenCalledWith('auditoria', 'L1', 'u1');
   });
 });

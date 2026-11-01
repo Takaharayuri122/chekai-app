@@ -31,17 +31,18 @@ describe('FilaRepo', () => {
     expect(mockDb.runSync).not.toHaveBeenCalledWith(expect.stringContaining('INSERT'), expect.anything());
   });
 
-  it('listarParaEnvio filtra por usuária (ou NULL) e pendente, ordenado por created_at', () => {
+  it('listarParaEnvio filtra por usuária e pendente, ordenado por created_at', () => {
     mockDb.getAllSync.mockReturnValue([
-      { id: 'q1', entity: 'checkin', payload: '{"localId":"L1"}', retries: 2 },
+      { id: 'q1', entity: 'checkin', payload: '{"localId":"L1"}', retries: 2, created_at: 'T1' },
     ]);
     const itens = repo.listarParaEnvio('u1');
     const [sql, params] = mockDb.getAllSync.mock.calls[0];
     expect(sql).toContain("status = 'pendente'");
-    expect(sql).toContain('usuario_id = ? OR usuario_id IS NULL');
+    expect(sql).toContain('usuario_id = ?');
+    expect(sql).not.toContain('IS NULL');
     expect(sql).toContain('ORDER BY created_at');
     expect(params).toEqual(['u1']);
-    expect(itens).toEqual([{ id: 'q1', entidade: 'checkin', localId: 'L1', retries: 2 }]);
+    expect(itens).toEqual([{ id: 'q1', entidade: 'checkin', localId: 'L1', retries: 2, criadoEm: 'T1' }]);
   });
 
   it('registrarFalha incrementa retries e marca falhou na definitiva ou na 5a falha', () => {

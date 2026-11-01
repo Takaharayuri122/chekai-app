@@ -40,7 +40,7 @@ export async function pushAuditoria(
   const itens = itemRepo.findByAuditoria(localId);
 
   onProgress?.('criando');
-  const { id: remoteId, itens: remoteItens } = await createAuditoria({
+  const { id: remoteId, status: statusRemoto, itens: remoteItens } = await createAuditoria({
     localId: auditoria.localId,
     clienteId: auditoria.clienteId,
     unidadeId: auditoria.unidadeId,
@@ -53,6 +53,15 @@ export async function pushAuditoria(
   // Grava o vínculo antes de enviar itens: uma nova tentativa reaproveita o mesmo registro
   auditoriaRepo.setRemoteId(localId, remoteId);
   console.log(`[pushAuditoria] Criada no servidor — remoteId=${remoteId}, ${remoteItens.length} itens remotos`);
+
+  // Já finalizada no servidor (a resposta da finalização se perdeu): a etapa conta como concluída
+  if (statusRemoto === 'finalizada') {
+    console.log(`[pushAuditoria] ${remoteId} já finalizada no servidor; nada a reenviar`);
+    auditoriaRepo.markSynced(localId, remoteId);
+    await atualizarResultadoOficial(localId, remoteId);
+    onProgress?.('concluido');
+    return;
+  }
 
   const remoteItemMap = new Map(remoteItens.map(i => [i.templateItemId, i.id]));
 
@@ -132,7 +141,14 @@ export async function pushAuditoria(
   });
 
   auditoriaRepo.markSynced(localId, remoteId);
+  await atualizarResultadoOficial(localId, remoteId);
 
+  onProgress?.('concluido');
+  console.log(`[pushAuditoria] Concluído em ${Date.now() - inicio}ms — remoteId=${remoteId}`);
+}
+
+/** Traz a pontuação oficial e o PDF calculados pelo servidor (falha aqui não desfaz o envio). */
+async function atualizarResultadoOficial(localId: string, remoteId: string): Promise<void> {
   try {
     const oficial = await getAuditoria(remoteId);
     const pontuacaoOficial = oficial.pontuacaoTotal != null ? Number(oficial.pontuacaoTotal) : null;
@@ -145,9 +161,6 @@ export async function pushAuditoria(
   } catch (e) {
     console.warn(`[pushAuditoria] Não foi possível obter pontuação oficial de ${remoteId}:`, e);
   }
-
-  onProgress?.('concluido');
-  console.log(`[pushAuditoria] Concluído em ${Date.now() - inicio}ms — remoteId=${remoteId}`);
 }
 
 /**
@@ -177,14 +190,20 @@ export async function pushRelatorioTecnico(localId: string): Promise<void> {
   }
 
   const fotosPendentes = relatorioFotoRepo.findPendentes(localId);
+  let fotosErro = 0;
   for (const foto of fotosPendentes) {
     if (!foto.filePath) continue;
     try {
       const { id: fotoRemoteId, url } = await uploadRelatorioFoto(remoteId, foto.filePath);
       relatorioFotoRepo.markSynced(foto.id, fotoRemoteId, url);
     } catch (e) {
+      fotosErro++;
       console.warn(`[pushRelatorioTecnico] Falha upload foto ${foto.id}:`, e);
     }
+  }
+  // Mesma regra da auditoria: sem todas as fotos o relatório não é salvo/finalizado e volta à fila
+  if (fotosErro > 0) {
+    throw new Error(`${fotosErro} foto(s) não foram enviadas; o relatório será enviado de novo.`);
   }
 
   const payload: AtualizarRelatorioTecnicoPayload = {
@@ -217,6 +236,8 @@ export async function pushRelatorioTecnico(localId: string): Promise<void> {
   relatorioRepo.markSynced(localId, remoteId);
   console.log(`[pushRelatorioTecnico] Concluído — remoteId=${remoteId}`);
 }
+
+const SEM_SESSAO = 'Sessão não encontrada. Entre novamente.';
 
 function usuarioLogadoId(): string | null {
   return useAuthStore.getState().user?.id ?? null;
@@ -279,11 +300,21 @@ export async function pushPending(): Promise<void> {
   const items = filaRepo.listarParaEnvio(usuarioId);
   console.log(`[pushPending] ${items.length} item(s) na fila`);
 
+  // Check-ins vão na ordem: se um falha (ou um anterior já falhou de vez), os seguintes
+  // esperam — senão o próximo check-in chegaria antes e o servidor recusaria com 409
+  const checkinFalhouEm = filaRepo.primeiraFalhaEm(usuarioId, 'checkin');
+  let checkinFalhouNesteEnvio = false;
+
   for (const item of items) {
+    if (item.entidade === 'checkin') {
+      const depoisDeFalha = checkinFalhouEm != null && item.criadoEm >= checkinFalhouEm;
+      if (checkinFalhouNesteEnvio || depoisDeFalha) continue;
+    }
     // outro envio pode ter concluído e removido este item depois do instantâneo
     if (!filaRepo.estado(item.entidade, item.localId)) continue;
     const { erro } = await processarItem(item);
     if (ehSessaoExpirada(erro)) break; // sessão expirou: não gasta tentativas dos próximos itens
+    if (erro && item.entidade === 'checkin') checkinFalhouNesteEnvio = true;
   }
 }
 
@@ -296,7 +327,7 @@ export async function enviarAuditoriaAgora(
   onProgress?: PushProgressCallback,
 ): Promise<void> {
   const usuarioId = usuarioLogadoId();
-  if (!usuarioId) throw new Error('Sessão não encontrada. Entre novamente.');
+  if (!usuarioId) throw new Error(SEM_SESSAO);
   const item = filaRepo.listarParaEnvio(usuarioId)
     .find((i) => i.entidade === 'auditoria' && i.localId === localId);
   if (!item) {
@@ -311,7 +342,7 @@ export async function enviarAuditoriaAgora(
 
 export function enqueuePush(localId: string): void {
   const usuarioId = usuarioLogadoId();
-  if (!usuarioId) return;
+  if (!usuarioId) throw new Error(SEM_SESSAO);
   filaRepo.enfileirar('auditoria', localId, usuarioId);
   console.log(`[enqueuePush] Auditoria ${localId} adicionada à fila`);
 }
@@ -325,7 +356,7 @@ export function getPendingCount(): number {
 /** Enfileira um relatório técnico para envio quando houver conexão (sem duplicar). */
 export function enqueueRelatorioPush(localId: string): void {
   const usuarioId = usuarioLogadoId();
-  if (!usuarioId) return;
+  if (!usuarioId) throw new Error(SEM_SESSAO);
   filaRepo.enfileirar('relatorio_tecnico', localId, usuarioId);
   console.log(`[enqueueRelatorioPush] Relatório técnico ${localId} adicionado à fila`);
 }
