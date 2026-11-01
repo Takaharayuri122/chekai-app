@@ -9,6 +9,7 @@ import { AuditoriaItemRepo } from '../../../src/db/repositories/auditoria-item.r
 import { pullTemplates } from '../../../src/sync/pull';
 import { SyncService } from '../../../src/sync/SyncService';
 import { gerarUUID } from '../../../src/utils/uuid';
+import { obterLocalizacaoRapida } from '../../../src/utils/localizacao';
 
 interface TemplateRow {
   id: string;
@@ -79,9 +80,9 @@ export default function NovaTemplateScreen() {
       try {
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status === 'granted') {
-          const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-          latitude = loc.coords.latitude;
-          longitude = loc.coords.longitude;
+          const loc = await obterLocalizacaoRapida();
+          latitude = loc?.latitude;
+          longitude = loc?.longitude;
         }
       } catch {
         console.warn('[NovaAuditoria] GPS indisponível');

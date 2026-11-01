@@ -1,7 +1,7 @@
 import * as ImagePicker from 'expo-image-picker';
-import * as Location from 'expo-location';
 import { ActionSheetIOS, Alert, Platform } from 'react-native';
 import { comprimirImagem } from './compressao-imagem';
+import { obterLocalizacaoRapida } from './localizacao';
 import type { LatLng } from '../db/repositories/foto.repo';
 
 const MAX_FOTOS_POR_ITEM = 5;
@@ -12,31 +12,24 @@ interface FotoCapturada {
   coords: LatLng | undefined;
 }
 
-async function obterLocalizacao(): Promise<LatLng | undefined> {
-  try {
-    const { status } = await Location.getForegroundPermissionsAsync();
-    if (status !== 'granted') return undefined;
-    const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
-    return { latitude: loc.coords.latitude, longitude: loc.coords.longitude };
-  } catch {
-    return undefined;
-  }
-}
-
 async function processarAssets(
   assets: ImagePicker.ImagePickerAsset[],
   maxRestante: number,
 ): Promise<FotoCapturada[]> {
   const selecionados = assets.slice(0, maxRestante);
-  const coords = await obterLocalizacao();
-  const resultados: FotoCapturada[] = [];
+  // A foto é salva sempre; a localização só é anexada se chegar dentro do limite.
+  const [coords, comprimidas] = await Promise.all([
+    obterLocalizacaoRapida(),
+    (async () => {
+      const salvas: { uri: string; tamanhoBytes: number }[] = [];
+      for (const asset of selecionados) {
+        salvas.push(await comprimirImagem(asset.uri));
+      }
+      return salvas;
+    })(),
+  ]);
 
-  for (const asset of selecionados) {
-    const { uri, tamanhoBytes } = await comprimirImagem(asset.uri);
-    resultados.push({ uri, tamanhoBytes, coords });
-  }
-
-  return resultados;
+  return comprimidas.map(({ uri, tamanhoBytes }) => ({ uri, tamanhoBytes, coords }));
 }
 
 async function abrirCamera(maxRestante: number): Promise<FotoCapturada[]> {
