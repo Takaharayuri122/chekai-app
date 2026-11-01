@@ -24,12 +24,14 @@ import {
   PaginatedResult,
   createPaginatedResult,
 } from '../../shared/types/pagination.interface';
+import { lerHorarioOffline } from '../../shared/offline/horario-offline';
 
 export const LIMITE_ALERTA_CHECKIN_ABERTO_MS = 3 * 60 * 60 * 1000;
 export const LIMITE_CHECKOUT_AUTOMATICO_MS = 12 * 60 * 60 * 1000;
 export const COMENTARIO_CHECKOUT_AUTOMATICO = 'Encerrado automaticamente após 12 horas.';
-/** Tolerância para o relógio do celular estar adiantado em relação ao servidor. */
-export const TOLERANCIA_FUTURO_OFFLINE_MS = 5 * 60 * 1000;
+export { TOLERANCIA_FUTURO_OFFLINE_MS } from '../../shared/offline/horario-offline';
+/** Diferença aceita entre um checkout reenviado sem internet e o checkout já registrado online. */
+export const TOLERANCIA_CHECKOUT_REPETIDO_MS = 5 * 60 * 1000;
 
 interface UsuarioAutenticado {
   id: string;
@@ -94,7 +96,8 @@ export class CheckinService {
     dto: IniciarCheckinDto,
   ): Promise<Checkin> {
     const offline = dto.offline === true;
-    if (offline && dto.localId) {
+    // online ou offline: o mesmo localId nunca cria outro check-in (ex.: resposta perdida e reenvio)
+    if (dto.localId) {
       const existente = await this.checkinRepository.findOne({
         where: { usuarioId: usuario.id, localId: dto.localId },
         relations: ['cliente', 'unidade'],
@@ -104,7 +107,7 @@ export class CheckinService {
       }
     }
     const dataCheckin = offline && dto.dataCheckin
-      ? this.lerHorarioDoCelular(dto.dataCheckin)
+      ? lerHorarioOffline(dto.dataCheckin)
       : new Date();
     await this.marcarAlertaSeNecessario(usuario.id);
     const checkinAberto = await this.checkinRepository.findOne({
@@ -131,7 +134,7 @@ export class CheckinService {
       alerta3hEmitidoEm: null,
       comentario: null,
       encerradoAutomaticamente: false,
-      localId: offline ? dto.localId ?? null : null,
+      localId: dto.localId ?? null,
       checkinOffline: offline,
       checkinSincronizadoEm: offline ? new Date() : null,
     });
@@ -175,7 +178,7 @@ export class CheckinService {
     dto: FinalizarCheckinDto,
   ): Promise<Checkin> {
     const dataCheckout = dto.dataCheckout
-      ? this.lerHorarioDoCelular(dto.dataCheckout)
+      ? lerHorarioOffline(dto.dataCheckout)
       : new Date();
     if (checkin.status === StatusCheckin.FECHADO) {
       return this.resolverCheckoutOfflineEmFechado(checkin, dto, dataCheckout);
@@ -197,6 +200,14 @@ export class CheckinService {
   ): Promise<Checkin> {
     const fechadoEm = checkin.dataCheckout?.getTime();
     if (checkin.checkoutOffline && fechadoEm === dataCheckout.getTime()) {
+      return checkin;
+    }
+    // checkout online aplicado, resposta perdida e reenviado pela fila: é o mesmo checkout
+    const checkoutOnlineRepetido = !checkin.checkoutOffline
+      && !checkin.encerradoAutomaticamente
+      && fechadoEm !== undefined
+      && Math.abs(dataCheckout.getTime() - fechadoEm) <= TOLERANCIA_CHECKOUT_REPETIDO_MS;
+    if (checkoutOnlineRepetido) {
       return checkin;
     }
     if (!checkin.encerradoAutomaticamente) {
@@ -225,16 +236,6 @@ export class CheckinService {
     checkin.encerradoAutomaticamente = false;
     checkin.checkoutOffline = true;
     checkin.checkoutSincronizadoEm = new Date();
-  }
-
-  private lerHorarioDoCelular(valor: string): Date {
-    const horario = new Date(valor);
-    if (horario.getTime() > Date.now() + TOLERANCIA_FUTURO_OFFLINE_MS) {
-      throw new BadRequestException(
-        'O horário informado está no futuro. Verifique o relógio do celular.',
-      );
-    }
-    return horario;
   }
 
   async buscarCheckinAbertoDoUsuario(usuarioId: string): Promise<CheckinComAlerta> {

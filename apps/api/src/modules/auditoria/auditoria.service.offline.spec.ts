@@ -7,6 +7,9 @@ import { PerfilUsuario } from '../usuario/entities/usuario.entity';
 const gestor = { id: 'g-1', perfil: PerfilUsuario.GESTOR };
 const LOCAL_ID = '11111111-1111-4111-8111-111111111111';
 const base = { unidadeId: 'u-1', templateId: 't-1' };
+// Relógio fixo: as datas dos cenários ficam dentro da janela aceita para registros sem internet
+const AGORA = new Date('2026-11-01T16:00:00.000Z').getTime();
+const DIA = 24 * 60 * 60 * 1000;
 
 describe('AuditoriaService - sincronização offline', () => {
   let service: AuditoriaService;
@@ -17,7 +20,10 @@ describe('AuditoriaService - sincronização offline', () => {
   let desvinculoRepository: { findOne: jest.Mock };
   let validacaoLimites: { identificarGestorId: jest.Mock; validarLimiteAuditorias: jest.Mock };
 
+  afterEach(() => jest.restoreAllMocks());
+
   beforeEach(() => {
+    jest.spyOn(Date, 'now').mockReturnValue(AGORA);
     auditoriaRepository = {
       create: jest.fn((v) => v),
       save: jest.fn(async (v) => ({ ...v, id: 'a-1' })),
@@ -87,6 +93,44 @@ describe('AuditoriaService - sincronização offline', () => {
   it('cria itens a partir de templateItemIds do celular', async () => {
     await service.iniciarAuditoria('g-1', { ...base, templateItemIds: ['A', 'B'] }, gestor);
     expect(itemRepository.save.mock.calls[0][0].map((i: { templateItemId: string }) => i.templateItemId)).toEqual(['A', 'B']);
+  });
+
+  it('ignora templateItemIds repetidos (um item por pergunta)', async () => {
+    await service.iniciarAuditoria('g-1', { ...base, templateItemIds: ['A', 'C', 'A'] }, gestor);
+    expect(itemRepository.save.mock.calls[0][0].map((i: { templateItemId: string }) => i.templateItemId)).toEqual(['A', 'C']);
+  });
+
+  describe('janela de registros sem internet (14 dias)', () => {
+    const mensagem = 'O horário informado está fora do período aceito para registros sem internet (até 14 dias).';
+    const comInicio = (ms: number) => ({ ...base, localId: LOCAL_ID, dataInicio: new Date(ms).toISOString() });
+
+    it('aceita início de 13 dias atrás', async () => {
+      await expect(service.iniciarAuditoria('g-1', comInicio(AGORA - 13 * DIA), gestor)).resolves.toBeDefined();
+    });
+
+    it('recusa início de mais de 14 dias atrás, antes de qualquer bloqueio', async () => {
+      await expect(service.iniciarAuditoria('g-1', comInicio(AGORA - 15 * DIA), gestor)).rejects.toThrow(
+        new BadRequestException(mensagem),
+      );
+      expect(validacaoLimites.validarLimiteAuditorias).not.toHaveBeenCalled();
+      expect(auditoriaRepository.save).not.toHaveBeenCalled();
+    });
+
+    it('aceita início até 5 min no futuro (relógio adiantado)', async () => {
+      await expect(service.iniciarAuditoria('g-1', comInicio(AGORA + 4 * 60 * 1000), gestor)).resolves.toBeDefined();
+    });
+
+    it('recusa início mais de 5 min no futuro', async () => {
+      await expect(service.iniciarAuditoria('g-1', comInicio(AGORA + 10 * 60 * 1000), gestor)).rejects.toThrow(
+        BadRequestException,
+      );
+      expect(auditoriaRepository.save).not.toHaveBeenCalled();
+    });
+
+    it('reenvio de auditoria já criada é aceito mesmo fora da janela', async () => {
+      auditoriaRepository.findOne.mockResolvedValue({ id: 'a-9', localId: LOCAL_ID });
+      await expect(service.iniciarAuditoria('g-1', comInicio(AGORA - 30 * DIA), gestor)).resolves.toBeDefined();
+    });
   });
 
   it('ignora templateItemIds de outro template', async () => {

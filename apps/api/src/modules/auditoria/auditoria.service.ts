@@ -42,6 +42,7 @@ import {
   createPaginatedResult,
 } from '../../shared/types/pagination.interface';
 import { IaService } from '../ia/ia.service';
+import { lerHorarioOffline } from '../../shared/offline/horario-offline';
 
 /**
  * Serviço responsável pela gestão de auditorias.
@@ -85,8 +86,10 @@ export class AuditoriaService {
       });
       if (existente) return this.buscarAuditoriaPorId(existente.id, usuario);
     }
+    // Horário do celular: limitado à janela de registros sem internet (senão contornaria os bloqueios)
+    const dataInicio = dto.dataInicio ? lerHorarioOffline(dto.dataInicio) : undefined;
     // Fluxo offline: bloqueios criados depois do início no celular não valem para este trabalho
-    const momento = dto.localId && dto.dataInicio ? new Date(dto.dataInicio) : undefined;
+    const momento = dto.localId ? dataInicio : undefined;
     // Valida limite de auditorias
     if (usuario && this.validacaoLimites && usuario.perfil !== PerfilUsuario.MASTER) {
       const gestorId = this.validacaoLimites.identificarGestorId(usuario);
@@ -99,11 +102,13 @@ export class AuditoriaService {
     let itensDoTemplate = template.itens.filter((item) => item.ativo);
     if (dto.templateItemIds) {
       const porId = new Map(template.itens.map((item) => [item.id, item]));
-      const desconhecidos = dto.templateItemIds.filter((id) => !porId.has(id));
+      // um item por pergunta: ids repetidos no envio não duplicam itens
+      const templateItemIds = [...new Set(dto.templateItemIds)];
+      const desconhecidos = templateItemIds.filter((id) => !porId.has(id));
       if (desconhecidos.length > 0) {
         throw new BadRequestException('Itens não pertencem ao template informado');
       }
-      itensDoTemplate = dto.templateItemIds.map((id) => porId.get(id)!);
+      itensDoTemplate = templateItemIds.map((id) => porId.get(id)!);
     }
     const auditoria = this.auditoriaRepository.create({
       consultorId,
@@ -111,7 +116,7 @@ export class AuditoriaService {
       templateId: dto.templateId,
       localId: dto.localId ?? null,
       status: StatusAuditoria.EM_ANDAMENTO,
-      dataInicio: dto.dataInicio ? new Date(dto.dataInicio) : new Date(),
+      dataInicio: dataInicio ?? new Date(),
       latitudeInicio: dto.latitude,
       longitudeInicio: dto.longitude,
     });

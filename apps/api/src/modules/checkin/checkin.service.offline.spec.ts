@@ -123,6 +123,94 @@ describe('CheckinService - marcação offline', () => {
     );
   });
 
+  describe('janela de registros sem internet (14 dias)', () => {
+    const DIA = 24 * HORA;
+    const mensagem = 'O horário informado está fora do período aceito para registros sem internet (até 14 dias).';
+
+    it('aceita check-in de 13 dias atrás', async () => {
+      const dataCheckin = new Date(Date.now() - 13 * DIA).toISOString();
+      await expect(
+        service.iniciarCheckin(auditor, { ...base, dataCheckin, offline: true }),
+      ).resolves.toBeDefined();
+    });
+
+    it('recusa check-in de mais de 14 dias atrás', async () => {
+      const dataCheckin = new Date(Date.now() - 15 * DIA).toISOString();
+      await expect(
+        service.iniciarCheckin(auditor, { ...base, dataCheckin, offline: true }),
+      ).rejects.toThrow(new BadRequestException(mensagem));
+      expect(checkinRepository.save).not.toHaveBeenCalled();
+    });
+
+    it('aceita check-in até 5 min no futuro', async () => {
+      const dataCheckin = new Date(Date.now() + 4 * MIN).toISOString();
+      await expect(
+        service.iniciarCheckin(auditor, { ...base, dataCheckin, offline: true }),
+      ).resolves.toBeDefined();
+    });
+
+    it('recusa checkout de mais de 14 dias atrás', async () => {
+      (checkinRepository.findOne as jest.Mock).mockResolvedValue(
+        criarCheckin({ dataCheckin: new Date(Date.now() - 16 * DIA) }),
+      );
+      await expect(
+        service.finalizarCheckin('checkin-1', auditor, {
+          dataCheckout: new Date(Date.now() - 15 * DIA).toISOString(), offline: true,
+        }),
+      ).rejects.toThrow(new BadRequestException(mensagem));
+      expect(checkinRepository.save).not.toHaveBeenCalled();
+    });
+
+    it('aceita checkout de 13 dias atrás', async () => {
+      (checkinRepository.findOne as jest.Mock).mockResolvedValue(
+        criarCheckin({ dataCheckin: new Date(Date.now() - 13 * DIA - 2 * HORA) }),
+      );
+      const resultado = await service.finalizarCheckin('checkin-1', auditor, {
+        dataCheckout: new Date(Date.now() - 13 * DIA).toISOString(), offline: true,
+      });
+      expect(resultado.status).toBe(StatusCheckin.FECHADO);
+    });
+
+    it('recusa checkout mais de 5 min no futuro', async () => {
+      (checkinRepository.findOne as jest.Mock).mockResolvedValue(criarCheckin());
+      await expect(
+        service.finalizarCheckin('checkin-1', auditor, {
+          dataCheckout: new Date(Date.now() + 10 * MIN).toISOString(), offline: true,
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('localId em check-in online', () => {
+    it('guarda o localId também no check-in online', async () => {
+      await service.iniciarCheckin(auditor, { ...base, localId: LOCAL_ID });
+      const criado = (checkinRepository.create as jest.Mock).mock.calls[0][0];
+      expect(criado.localId).toBe(LOCAL_ID);
+      expect(criado.checkinOffline).toBe(false);
+    });
+
+    it('reenvio online com o mesmo localId devolve o registro existente (resposta perdida)', async () => {
+      const existente = criarCheckin({ id: 'ja-existe', localId: LOCAL_ID });
+      (checkinRepository.findOne as jest.Mock).mockImplementation(async ({ where }) =>
+        where.localId === LOCAL_ID ? existente : null,
+      );
+      const resultado = await service.iniciarCheckin(auditor, { ...base, localId: LOCAL_ID });
+      expect(resultado).toBe(existente);
+      expect(checkinRepository.create).not.toHaveBeenCalled();
+    });
+
+    it('envio offline acha o check-in criado online com o mesmo localId', async () => {
+      const existente = criarCheckin({ id: 'ja-existe', localId: LOCAL_ID });
+      (checkinRepository.findOne as jest.Mock).mockImplementation(async ({ where }) =>
+        where.localId === LOCAL_ID ? existente : null,
+      );
+      const resultado = await service.iniciarCheckin(auditor, {
+        ...base, localId: LOCAL_ID, dataCheckin: new Date().toISOString(), offline: true,
+      });
+      expect(resultado).toBe(existente);
+    });
+  });
+
   it('check-in sem localização é aceito', async () => {
     await service.iniciarCheckin(auditor, { ...base });
     const criado = (checkinRepository.create as jest.Mock).mock.calls[0][0];
@@ -237,6 +325,37 @@ describe('CheckinService - marcação offline', () => {
           dataCheckout: new Date(Date.now() - 90 * MIN).toISOString(), offline: true,
         }),
       ).rejects.toThrow(new ConflictException('Este check-in já foi encerrado.'));
+    });
+
+    it('checkout online já aplicado e reenviado offline (até 5 min de diferença) devolve sem erro', async () => {
+      const fechadoOnline = criarCheckin({
+        status: StatusCheckin.FECHADO,
+        dataCheckout: new Date(Date.now() - 10 * MIN),
+        encerradoAutomaticamente: false,
+        checkoutOffline: false,
+      });
+      (checkinRepository.findOne as jest.Mock).mockResolvedValue(fechadoOnline);
+      const resultado = await service.finalizarCheckin('checkin-1', auditor, {
+        dataCheckout: new Date(Date.now() - 12 * MIN).toISOString(), offline: true,
+      });
+      expect(resultado).toBe(fechadoOnline);
+      expect(checkinRepository.save).not.toHaveBeenCalled();
+    });
+
+    it('checkout online encerrado e reenvio offline com mais de 5 min de diferença → 409', async () => {
+      (checkinRepository.findOne as jest.Mock).mockResolvedValue(
+        criarCheckin({
+          status: StatusCheckin.FECHADO,
+          dataCheckout: new Date(Date.now() - 10 * MIN),
+          encerradoAutomaticamente: false,
+          checkoutOffline: false,
+        }),
+      );
+      await expect(
+        service.finalizarCheckin('checkin-1', auditor, {
+          dataCheckout: new Date(Date.now() - 16 * MIN).toISOString(), offline: true,
+        }),
+      ).rejects.toThrow(ConflictException);
     });
 
     it('repetido (mesmo dataCheckout) devolve sem erro', async () => {
