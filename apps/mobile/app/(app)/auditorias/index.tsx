@@ -5,10 +5,14 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Plus, FileText, RotateCcw } from 'lucide-react-native';
 import { AuditoriaRepo, type AuditoriaListItem } from '../../../src/db/repositories/auditoria.repo';
 import { AuditoriaStatusBadge } from '../../../src/components/auditoria/AuditoriaStatusBadge';
-import { SyncService } from '../../../src/sync/SyncService';
+import { SyncService, tentarEnviarDeNovo } from '../../../src/sync/SyncService';
+import { FilaRepo, type StatusFila } from '../../../src/db/repositories/fila.repo';
 import { reabrirAuditoria } from '../../../src/api/auditoria.api';
 
 const repo = new AuditoriaRepo();
+const filaRepo = new FilaRepo();
+
+type EstadoEnvio = { status: StatusFila; ultimoErro: string | null };
 
 type Filtro = 'todas' | 'em_andamento' | 'concluida';
 
@@ -16,6 +20,7 @@ export default function AuditoriasListScreen() {
   const [auditorias, setAuditorias] = useState<AuditoriaListItem[]>([]);
   const [filtro, setFiltro] = useState<Filtro>('todas');
   const [refreshing, setRefreshing] = useState(false);
+  const [estados, setEstados] = useState<Record<string, EstadoEnvio>>({});
   const [reabrindoId, setReabrindoId] = useState<string | null>(null);
 
   const load = useCallback(() => {
@@ -24,6 +29,12 @@ export default function AuditoriasListScreen() {
     if (items.length > 0) {
       console.log(`[AuditoriasScreen] Primeira: id=${items[0].id}, status=${items[0].status}, sync=${items[0].syncStatus}`);
     }
+    const mapa: Record<string, EstadoEnvio> = {};
+    for (const a of items) {
+      const e = filaRepo.estado('auditoria', a.id);
+      if (e) mapa[a.id] = e;
+    }
+    setEstados(mapa);
     setAuditorias(items);
   }, []);
 
@@ -41,11 +52,32 @@ export default function AuditoriasListScreen() {
     filtro === 'todas' ? true : a.status === filtro
   );
 
-  const effectiveStatus = (a: AuditoriaListItem): string =>
+  const effectiveStatus = (a: AuditoriaListItem): string => {
+    const envio = estados[a.id];
+    if (envio?.status === 'falhou') return 'falha_envio';
+    if (envio?.status === 'pendente') return 'aguardando_envio';
+    return statusLocal(a);
+  };
+
+  const statusLocal = (a: AuditoriaListItem): string =>
     a.syncStatus === 'pending' && a.status === 'concluida' ? 'pending_sync' : a.status;
 
   const isFinalizadaSincronizada = (a: AuditoriaListItem): boolean =>
     a.status === 'concluida' && a.syncStatus === 'synced';
+
+  const mostrarFalhaEnvio = useCallback((a: AuditoriaListItem, ultimoErro: string | null) => {
+    Alert.alert(
+      'Falha no envio',
+      ultimoErro ?? 'Não foi possível enviar esta auditoria.',
+      [
+        { text: 'Fechar', style: 'cancel' },
+        {
+          text: 'Tentar de novo',
+          onPress: () => { void tentarEnviarDeNovo('auditoria', a.id).finally(load); },
+        },
+      ],
+    );
+  }, [load]);
 
   const executarReabertura = useCallback(async (a: AuditoriaListItem) => {
     if (!a.remoteId) {
@@ -116,6 +148,11 @@ export default function AuditoriasListScreen() {
         renderItem={({ item: a }) => (
           <TouchableOpacity
             onPress={() => {
+              const envio = estados[a.id];
+              if (envio?.status === 'falhou') {
+                mostrarFalhaEnvio(a, envio.ultimoErro);
+                return;
+              }
               const isSynced = a.status === 'concluida' && a.syncStatus === 'synced';
               router.push({
                 pathname: '/(app)/auditorias/[id]/checklist',

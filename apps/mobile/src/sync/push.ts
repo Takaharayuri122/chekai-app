@@ -1,4 +1,3 @@
-import { getDatabase } from '../db/client';
 import { AuditoriaRepo } from '../db/repositories/auditoria.repo';
 import { AuditoriaItemRepo } from '../db/repositories/auditoria-item.repo';
 import { FotoRepo } from '../db/repositories/foto.repo';
@@ -12,15 +11,18 @@ import {
   iniciarRelatorioTecnico, atualizarRelatorioTecnico, uploadRelatorioFoto,
   type AtualizarRelatorioTecnicoPayload,
 } from '../api/relatorio-tecnico.api';
-import { gerarUUID } from '../utils/uuid';
 import { ApiError } from '../api/client';
 import { pullModeloRelatorioTecnico } from './pull';
+import { FilaRepo, type EntidadeFila } from '../db/repositories/fila.repo';
+import { useAuthStore } from '../store/auth';
+import { ehFalhaDefinitiva, ehSessaoExpirada } from './erros';
 
 const auditoriaRepo = new AuditoriaRepo();
 const itemRepo = new AuditoriaItemRepo();
 const fotoRepo = new FotoRepo();
 const relatorioRepo = new RelatorioTecnicoRepo();
 const relatorioFotoRepo = new RelatorioFotoRepo();
+const filaRepo = new FilaRepo();
 
 export type PushEtapa = 'criando' | 'itens' | 'fotos' | 'finalizando' | 'concluido';
 export type PushProgressCallback = (etapa: PushEtapa, detalhe?: string) => void;
@@ -215,83 +217,69 @@ export async function pushRelatorioTecnico(localId: string): Promise<void> {
   console.log(`[pushRelatorioTecnico] Concluído — remoteId=${remoteId}`);
 }
 
+function usuarioLogadoId(): string | null {
+  return useAuthStore.getState().user?.id ?? null;
+}
+
+/** Ponto único de despacho por entidade da fila. `checkin` entra aqui na Task 12. */
+async function enviarItem(entidade: EntidadeFila, localId: string): Promise<boolean> {
+  switch (entidade) {
+    case 'auditoria':
+      await pushAuditoria(localId);
+      return true;
+    case 'relatorio_tecnico':
+      await pushRelatorioTecnico(localId);
+      return true;
+    default:
+      return false; // ainda sem envio (check-in)
+  }
+}
+
 export async function pushPending(): Promise<void> {
-  const db = getDatabase();
-  const items = db.getAllSync<{ id: string; entity: string; payload: string; retries: number }>(
-    `SELECT id, entity, payload, retries FROM sync_queue
-     WHERE entity IN ('auditoria', 'relatorio_tecnico') ORDER BY created_at`
-  );
+  const usuarioId = usuarioLogadoId();
+  if (!usuarioId) return;
+
+  const items = filaRepo.listarParaEnvio(usuarioId);
   console.log(`[pushPending] ${items.length} item(s) na fila`);
 
   for (const item of items) {
     try {
-      const { localId } = JSON.parse(item.payload) as { localId: string };
-      if (item.entity === 'relatorio_tecnico') {
-        await pushRelatorioTecnico(localId);
-      } else {
-        await pushAuditoria(localId);
-      }
-      db.runSync('DELETE FROM sync_queue WHERE id = ?', [item.id]);
-      console.log(`[pushPending] Sucesso (${item.entity}): ${localId}`);
+      const enviado = await enviarItem(item.entidade, item.localId);
+      if (!enviado) continue;
+      filaRepo.remover(item.id);
+      console.log(`[pushPending] Sucesso (${item.entidade}): ${item.localId}`);
     } catch (e) {
-      db.runSync(
-        'UPDATE sync_queue SET retries = retries + 1 WHERE id = ?',
-        [item.id]
-      );
       console.error(`[pushPending] Erro ao enviar item ${item.id}:`, e);
+      if (ehSessaoExpirada(e)) break; // sessão expirou: não gasta tentativas dos próximos itens
+      const mensagem = e instanceof Error ? e.message : 'Erro desconhecido no envio.';
+      filaRepo.registrarFalha(item.id, mensagem, ehFalhaDefinitiva(e));
     }
   }
 }
 
 export function enqueuePush(localId: string): void {
-  const db = getDatabase();
-  db.runSync(
-    `INSERT INTO sync_queue (id, entity, operation, payload, retries, created_at)
-     VALUES (?, 'auditoria', 'push', ?, 0, datetime('now'))`,
-    [gerarUUID(), JSON.stringify({ localId })]
-  );
+  const usuarioId = usuarioLogadoId();
+  if (!usuarioId) return;
+  filaRepo.enfileirar('auditoria', localId, usuarioId);
   console.log(`[enqueuePush] Auditoria ${localId} adicionada à fila`);
 }
 
-/**
- * Retorna a quantidade real de auditorias aguardando envio na fila SQLite `sync_queue`.
- */
+/** Quantidade de auditorias aguardando envio (ou com falha) da usuária logada. */
 export function getPendingCount(): number {
-  const db = getDatabase();
-  const row = db.getFirstSync<{ total: number }>(
-    `SELECT COUNT(*) AS total FROM sync_queue WHERE entity = 'auditoria'`
-  );
-  return row?.total ?? 0;
+  const usuarioId = usuarioLogadoId();
+  return usuarioId ? filaRepo.contarPendentes(usuarioId, 'auditoria') : 0;
 }
 
-/**
- * Enfileira um relatório técnico para envio quando houver conexão (offline-first).
- * Evita duplicar entradas para o mesmo `localId` ainda pendente na fila.
- */
+/** Enfileira um relatório técnico para envio quando houver conexão (sem duplicar). */
 export function enqueueRelatorioPush(localId: string): void {
-  const db = getDatabase();
-  const jaNaFila = db.getFirstSync<{ total: number }>(
-    `SELECT COUNT(*) AS total FROM sync_queue WHERE entity = 'relatorio_tecnico' AND payload = ?`,
-    [JSON.stringify({ localId })]
-  );
-  if ((jaNaFila?.total ?? 0) > 0) {
-    return;
-  }
-  db.runSync(
-    `INSERT INTO sync_queue (id, entity, operation, payload, retries, created_at)
-     VALUES (?, 'relatorio_tecnico', 'push', ?, 0, datetime('now'))`,
-    [gerarUUID(), JSON.stringify({ localId })]
-  );
+  const usuarioId = usuarioLogadoId();
+  if (!usuarioId) return;
+  filaRepo.enfileirar('relatorio_tecnico', localId, usuarioId);
   console.log(`[enqueueRelatorioPush] Relatório técnico ${localId} adicionado à fila`);
 }
 
-/**
- * Quantidade de relatórios técnicos aguardando envio na fila SQLite `sync_queue`.
- */
+/** Quantidade de relatórios técnicos aguardando envio (ou com falha) da usuária logada. */
 export function getPendingRelatoriosCount(): number {
-  const db = getDatabase();
-  const row = db.getFirstSync<{ total: number }>(
-    `SELECT COUNT(*) AS total FROM sync_queue WHERE entity = 'relatorio_tecnico'`
-  );
-  return row?.total ?? 0;
+  const usuarioId = usuarioLogadoId();
+  return usuarioId ? filaRepo.contarPendentes(usuarioId, 'relatorio_tecnico') : 0;
 }

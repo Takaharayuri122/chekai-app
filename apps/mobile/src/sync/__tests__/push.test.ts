@@ -2,7 +2,16 @@ import { pushPending, pushAuditoria } from '../push';
 import { getDatabase } from '../../db/client';
 
 jest.mock('../../db/client');
-jest.mock('../../api/client');
+jest.mock('../../api/client', () => {
+  class ApiError extends Error {
+    constructor(message: string, readonly status: number) {
+      super(message);
+    }
+  }
+  return { ApiError };
+});
+jest.mock('../../db/repositories/fila.repo');
+jest.mock('../../store/auth', () => ({ useAuthStore: { getState: jest.fn() } }));
 jest.mock('../../api/auditoria.api');
 jest.mock('../../db/repositories/auditoria.repo');
 jest.mock('../../db/repositories/auditoria-item.repo');
@@ -16,32 +25,81 @@ const mockDb = {
 (getDatabase as jest.Mock).mockReturnValue(mockDb);
 
 describe('pushPending', () => {
-  beforeEach(() => jest.clearAllMocks());
+  const { FilaRepo } = require('../../db/repositories/fila.repo');
+  const { AuditoriaRepo } = require('../../db/repositories/auditoria.repo');
+  const { useAuthStore } = require('../../store/auth');
+  const { ApiError } = require('../../api/client');
+  const api = require('../../api/auditoria.api');
+  const fila = FilaRepo.prototype;
 
-  it('does nothing when sync_queue is empty', async () => {
-    mockDb.getAllSync.mockReturnValue([]);
-    await pushPending();
-    expect(mockDb.runSync).not.toHaveBeenCalled();
+  const item = (id: string, localId: string, entidade = 'auditoria') =>
+    ({ id, entidade, localId, retries: 0 });
+
+  beforeEach(() => {
+    jest.resetAllMocks();
+    (getDatabase as jest.Mock).mockReturnValue(mockDb);
+    useAuthStore.getState.mockReturnValue({ user: { id: 'u1' } });
+    // auditoria existe mas a criação no servidor é controlada por teste
+    AuditoriaRepo.prototype.findById.mockReturnValue({
+      localId: 'x', clienteId: 'c', unidadeId: 'u', templateId: 't', clienteNome: 'X',
+      dataInicio: '2026-11-01T10:00:00.000Z',
+    });
+    const { AuditoriaItemRepo } = require('../../db/repositories/auditoria-item.repo');
+    AuditoriaItemRepo.prototype.findByAuditoria.mockReturnValue([]);
   });
 
-  it('increments retries on failure', async () => {
-    mockDb.getAllSync.mockReturnValue([
-      { id: 'q1', entity: 'auditoria', operation: 'push',
-        payload: JSON.stringify({ localId: 'local-1' }), retries: 0 },
-    ]);
-
-    // AuditoriaRepo.findById returns null → will throw
-    const { AuditoriaRepo } = require('../../db/repositories/auditoria.repo');
-    AuditoriaRepo.mockImplementation(() => ({
-      findById: jest.fn().mockReturnValue(null),
-    }));
-
+  it('não faz nada quando a fila está vazia', async () => {
+    fila.listarParaEnvio.mockReturnValue([]);
     await pushPending();
+    expect(fila.registrarFalha).not.toHaveBeenCalled();
+    expect(fila.remover).not.toHaveBeenCalled();
+  });
 
-    expect(mockDb.runSync).toHaveBeenCalledWith(
-      expect.stringContaining('UPDATE sync_queue SET retries'),
-      expect.arrayContaining(['q1'])
-    );
+  it('não faz nada sem usuária logada', async () => {
+    useAuthStore.getState.mockReturnValue({ user: null });
+    await pushPending();
+    expect(fila.listarParaEnvio).not.toHaveBeenCalled();
+  });
+
+  it('só lê itens da usuária logada', async () => {
+    fila.listarParaEnvio.mockReturnValue([]);
+    await pushPending();
+    expect(fila.listarParaEnvio).toHaveBeenCalledWith('u1');
+  });
+
+  it('registra falha temporária com a mensagem e mantém o item', async () => {
+    fila.listarParaEnvio.mockReturnValue([item('q1', 'L1')]);
+    api.createAuditoria.mockRejectedValue(new Error('Network request failed'));
+    await pushPending();
+    expect(fila.registrarFalha).toHaveBeenCalledWith('q1', 'Network request failed', false);
+    expect(fila.remover).not.toHaveBeenCalled();
+  });
+
+  it('falha definitiva na primeira auditoria não impede a segunda', async () => {
+    fila.listarParaEnvio.mockReturnValue([item('q1', 'L1'), item('q2', 'L2')]);
+    api.createAuditoria
+      .mockRejectedValueOnce(new ApiError('Dados inválidos', 400))
+      .mockResolvedValueOnce({ id: 'R2', itens: [] });
+    api.finalizarAuditoria.mockResolvedValue({});
+    api.getAuditoria.mockResolvedValue({ pontuacaoTotal: null, pdfUrl: null });
+    await pushPending();
+    expect(fila.registrarFalha).toHaveBeenCalledWith('q1', 'Dados inválidos', true);
+    expect(fila.remover).toHaveBeenCalledWith('q2');
+  });
+
+  it('401 interrompe sem incrementar tentativas', async () => {
+    fila.listarParaEnvio.mockReturnValue([item('q1', 'L1'), item('q2', 'L2')]);
+    api.createAuditoria.mockRejectedValue(new ApiError('Sessão expirada', 401));
+    await pushPending();
+    expect(fila.registrarFalha).not.toHaveBeenCalled();
+    expect(api.createAuditoria).toHaveBeenCalledTimes(1);
+  });
+
+  it('ignora itens de check-in por enquanto', async () => {
+    fila.listarParaEnvio.mockReturnValue([item('q1', 'C1', 'checkin')]);
+    await pushPending();
+    expect(fila.registrarFalha).not.toHaveBeenCalled();
+    expect(fila.remover).not.toHaveBeenCalled();
   });
 });
 

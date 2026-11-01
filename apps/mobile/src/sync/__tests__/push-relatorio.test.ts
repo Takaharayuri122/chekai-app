@@ -5,6 +5,15 @@ import { atualizarRelatorioTecnico } from '../../api/relatorio-tecnico.api';
 import { pullModeloRelatorioTecnico } from '../pull';
 
 jest.mock('../../db/client', () => ({ getDatabase: jest.fn() }));
+const mockFila = { listarParaEnvio: jest.fn(), registrarFalha: jest.fn(), remover: jest.fn() };
+jest.mock('../../db/repositories/fila.repo', () => ({
+  FilaRepo: jest.fn(
+    () => new Proxy({}, { get: (_alvo, chave: string) => mockFila[chave as keyof typeof mockFila] }),
+  ),
+}));
+jest.mock('../../store/auth', () => ({
+  useAuthStore: { getState: () => ({ user: { id: 'u1' } }) },
+}));
 jest.mock('../../api/client', () => {
   class ApiError extends Error {
     constructor(message: string, readonly status: number) {
@@ -64,8 +73,8 @@ describe('pushRelatorioTecnico com modelo desatualizado', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (atualizarRelatorioTecnico as jest.Mock).mockReset();
-    mockDb.getAllSync.mockReturnValue([
-      { id: 'q1', entity: 'relatorio_tecnico', payload: JSON.stringify({ localId: 'local-1' }), retries: 0 },
+    mockFila.listarParaEnvio.mockReturnValue([
+      { id: 'q1', entidade: 'relatorio_tecnico', localId: 'local-1', retries: 0 },
     ]);
     mockRelatorioRepo.findById.mockReturnValue(relatorioFinalizado);
   });
@@ -83,7 +92,7 @@ describe('pushRelatorioTecnico com modelo desatualizado', () => {
     const segundaChamada = (atualizarRelatorioTecnico as jest.Mock).mock.calls[1][1];
     expect(segundaChamada.status).toBeUndefined();
     expect(mockRelatorioRepo.markSynced).toHaveBeenCalledWith('local-1', 'remote-1');
-    expect(mockDb.runSync).toHaveBeenCalledWith('DELETE FROM sync_queue WHERE id = ?', ['q1']);
+    expect(mockFila.remover).toHaveBeenCalledWith('q1');
   });
 
   it('outros erros mantêm o item na fila', async () => {
@@ -92,9 +101,7 @@ describe('pushRelatorioTecnico com modelo desatualizado', () => {
     await pushPending();
 
     expect(mockRelatorioRepo.voltarParaRascunho).not.toHaveBeenCalled();
-    expect(mockDb.runSync).toHaveBeenCalledWith(
-      expect.stringContaining('UPDATE sync_queue SET retries'),
-      ['q1'],
-    );
+    expect(mockFila.registrarFalha).toHaveBeenCalledWith('q1', 'Erro interno', false);
+    expect(mockFila.remover).not.toHaveBeenCalled();
   });
 });

@@ -1,12 +1,14 @@
 import { View, Text } from 'react-native';
 
-type Status = 'rascunho' | 'em_andamento' | 'concluida' | 'pending_sync';
+type Status = 'rascunho' | 'em_andamento' | 'concluida' | 'pending_sync' | 'aguardando_envio' | 'falha_envio';
 
 const CONFIG: Record<Status, { label: string; bg: string; text: string }> = {
   rascunho:     { label: 'Rascunho',      bg: 'bg-gray-100',   text: 'text-gray-600' },
   em_andamento: { label: 'Em andamento',  bg: 'bg-amber-100',  text: 'text-amber-700' },
   concluida:    { label: 'Concluída',     bg: 'bg-green-100',  text: 'text-green-700' },
   pending_sync: { label: 'Pendente sync', bg: 'bg-orange-100', text: 'text-orange-700' },
+  aguardando_envio: { label: 'Aguardando envio', bg: 'bg-orange-100', text: 'text-orange-700' },
+  falha_envio:  { label: 'Falha no envio', bg: 'bg-red-100',    text: 'text-red-700' },
 };
 
 export function AuditoriaStatusBadge({ status }: { status: string }) {

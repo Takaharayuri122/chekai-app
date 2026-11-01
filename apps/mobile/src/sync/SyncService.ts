@@ -2,6 +2,7 @@
 import NetInfo from '@react-native-community/netinfo';
 import { pullAll } from './pull';
 import { pushPending } from './push';
+import { FilaRepo, type EntidadeFila } from '../db/repositories/fila.repo';
 
 let _syncInProgress = false;
 let _autoSyncUnsubscribe: (() => void) | null = null;
@@ -65,3 +66,9 @@ export const SyncService = {
     return _autoSyncUnsubscribe;
   },
 };
+
+/** Recoloca o item na fila zerando tentativas e dispara a sincronização. */
+export async function tentarEnviarDeNovo(entidade: EntidadeFila, localId: string): Promise<void> {
+  new FilaRepo().tentarDeNovo(entidade, localId);
+  await SyncService.sync();
+}
