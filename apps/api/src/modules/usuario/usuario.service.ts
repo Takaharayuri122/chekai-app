@@ -176,7 +176,7 @@ export class UsuarioService {
   async buscarPorEmail(email: string): Promise<Usuario | null> {
     return this.usuarioRepository.findOne({
       where: { email },
-      select: ['id', 'nome', 'email', 'senhaHash', 'perfil', 'status', 'gestorId', 'tenantId', 'podeGerenciarLegislacoes', 'otpCode', 'otpExpiresAt'],
+      select: ['id', 'nome', 'email', 'senhaHash', 'perfil', 'status', 'gestorId', 'tenantId', 'podeGerenciarLegislacoes', 'otpCode', 'otpExpiresAt', 'loginFixoHabilitado'],
     });
   }
 
