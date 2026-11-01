@@ -9,13 +9,17 @@ export interface CheckinRegistro {
   status: 'aberto' | 'fechado';
   dataCheckin: string;
   dataCheckout?: string | null;
-  latitudeCheckin: number;
-  longitudeCheckin: number;
+  latitudeCheckin: number | null;
+  longitudeCheckin: number | null;
   latitudeCheckout?: number | null;
   longitudeCheckout?: number | null;
   alerta3hEmitidoEm?: string | null;
   comentario?: string | null;
   encerradoAutomaticamente?: boolean;
+  checkinOffline?: boolean;
+  checkinSincronizadoEm?: string | null;
+  checkoutOffline?: boolean;
+  checkoutSincronizadoEm?: string | null;
   usuario?: {
     id: string;
     nome: string;
@@ -42,6 +46,7 @@ export interface ItemRelatorioHorasCheckin {
   id: string;
   nome: string;
   quantidade: number;
+  quantidadeOffline: number;
   minutosFechados: number;
   minutosAbertos: number;
   minutosTotal: number;

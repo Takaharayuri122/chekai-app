@@ -8,6 +8,7 @@ import { RelatorioTecnicoRepo, type RelatorioTecnicoStatus } from '../db/reposit
 import { RelatorioFotoRepo } from '../db/repositories/relatorio-foto.repo';
 import { CheckinRepo } from '../db/repositories/checkin.repo';
 import { buscarCheckinAberto } from '../api/checkin.api';
+import { lerCoordenada } from '../utils/coordenada';
 import { useAuthStore } from '../store/auth';
 import { salvarModeloCache } from '../store/modelo-relatorio';
 import { buscarModeloRelatorioTecnico } from '../api/relatorio-tecnico.api';
@@ -61,6 +62,15 @@ function setLastSyncedAt(db: SQLite.SQLiteDatabase, entity: string, timestamp: s
     `INSERT OR REPLACE INTO sync_meta (entity, last_synced_at) VALUES (?, ?)`,
     [entity, timestamp]
   );
+}
+
+/** Verdadeiro quando os clientes já foram baixados ao menos uma vez neste aparelho. */
+export function jaSincronizouAlgumaVez(): boolean {
+  const row = getDatabase().getFirstSync<{ last_synced_at: string }>(
+    `SELECT last_synced_at FROM sync_meta WHERE entity = ?`,
+    ['clientes']
+  );
+  return !!row;
 }
 
 export async function pullClientes(): Promise<void> {
@@ -320,18 +330,25 @@ export async function pullAuditorias(): Promise<void> {
         candidatosDetalhe.push({ localId, remoteId: a.id });
       }
 
+      // aguardando envio: as respostas do aparelho valem; as cópias do servidor não entram
+      if (isAuditoriaPendente(db, localId)) continue;
       for (const item of a.itens ?? []) {
         if (!templateItensLocais.has(item.templateItemId)) {
           continue;
         }
+        // um item por pergunta: a auditoria feita no aparelho já tem o seu (UUID local)
         db.runSync(
           `INSERT OR IGNORE INTO auditoria_itens
            (id, auditoria_id, template_item_id, resposta, observacao,
             descricao_nao_conformidade, plano_acao_final, pontuacao, sync_status, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'synced', ?)`,
+           SELECT ?, ?, ?, ?, ?, ?, ?, ?, 'synced', ?
+           WHERE NOT EXISTS (
+             SELECT 1 FROM auditoria_itens WHERE auditoria_id = ? AND template_item_id = ?
+           )`,
           [item.id, localId, item.templateItemId, item.resposta,
            item.observacao ?? null, item.descricaoNaoConformidade ?? null,
-           item.planoAcaoFinal ?? null, item.pontuacao, now]
+           item.planoAcaoFinal ?? null, item.pontuacao, now,
+           localId, item.templateItemId]
         );
       }
     }
@@ -378,10 +395,15 @@ export async function pullAuditorias(): Promise<void> {
  */
 export async function pullAuditoriaDetalhe(params: { localId: string; remoteId: string }): Promise<void> {
   const db = getDatabase();
+  // aguardando envio: nada do servidor sobrescreve o trabalho do aparelho
+  if (isAuditoriaPendente(db, params.localId)) return;
   const detalhe = await getAuditoriaDetalhe(params.remoteId);
+  if (isAuditoriaPendente(db, params.localId)) return;
   const now = new Date().toISOString();
   const templateId = detalhe.templateId ?? detalhe.template?.id ?? null;
   let itensHidratados = 0;
+  // id do item do servidor → id do item local da mesma pergunta (as fotos vão para ele)
+  const itemLocalPorRemoto = new Map<string, string>();
 
   db.withTransactionSync(() => {
     if (templateId) {
@@ -397,6 +419,13 @@ export async function pullAuditoriaDetalhe(params: { localId: string; remoteId: 
         [templateItemId]
       );
       if (!templateItemExiste) continue;
+      // auditoria feita no aparelho: a pergunta já tem item local (UUID); atualiza esse
+      const itemLocal = db.getFirstSync<{ id: string }>(
+        `SELECT id FROM auditoria_itens WHERE auditoria_id = ? AND template_item_id = ?`,
+        [params.localId, templateItemId]
+      );
+      const itemId = itemLocal?.id ?? item.id;
+      itemLocalPorRemoto.set(item.id, itemId);
       db.runSync(
         `INSERT INTO auditoria_itens
            (id, remote_id, auditoria_id, template_item_id, resposta, observacao,
@@ -418,7 +447,7 @@ export async function pullAuditoriaDetalhe(params: { localId: string; remoteId: 
            sync_status = 'synced',
            updated_at = excluded.updated_at
          WHERE auditoria_itens.sync_status != 'pending'`,
-        [item.id, item.id, params.localId, templateItemId, item.resposta ?? 'nao_avaliado',
+        [itemId, item.id, params.localId, templateItemId, item.resposta ?? 'nao_avaliado',
          item.observacao ?? null, item.descricaoNaoConformidade ?? null,
          item.descricaoIa ?? null, item.complementoDescricao ?? null,
          item.planoAcaoSugerido ?? null, item.planoAcaoFinal ?? null,
@@ -431,11 +460,13 @@ export async function pullAuditoriaDetalhe(params: { localId: string; remoteId: 
   const fotoRepo = new FotoRepo();
   let fotosHidratadas = 0;
   for (const item of detalhe.itens ?? []) {
+    const itemLocalId = itemLocalPorRemoto.get(item.id);
+    if (!itemLocalId) continue;
     for (const foto of item.fotos ?? []) {
       if (!foto.url) continue;
       fotoRepo.upsertRemota({
         id: foto.id,
-        auditoriaItemId: item.id,
+        auditoriaItemId: itemLocalId,
         url: foto.url,
         analiseIa: foto.analiseIa ?? null,
         tamanhoBytes: foto.tamanhoBytes ?? null,
@@ -595,8 +626,8 @@ function mapearStatusRelatorio(status: string | undefined): RelatorioTecnicoStat
 
 /**
  * Atualiza o cache local (somente leitura) do check-in aberto do usuário a partir
- * de `GET /checkins/me/aberto`. O fluxo de check-in/checkout permanece online-only
- * (RN-CKI-001/002/003); este pull apenas mantém o estado exibível offline.
+ * de `GET /checkins/me/aberto`. Marcações feitas no aparelho
+ * (fila de envio) nunca são sobrescritas por este pull.
  */
 export async function pullCheckinAberto(): Promise<void> {
   const usuarioId = useAuthStore.getState().user?.id;
@@ -604,6 +635,10 @@ export async function pullCheckinAberto(): Promise<void> {
     return;
   }
   const repo = new CheckinRepo();
+  // marcação feita no aparelho ainda não enviada: o servidor não conhece, não sobrescrever
+  if (repo.temEnvioPendente(usuarioId)) {
+    return;
+  }
   const estado = await buscarCheckinAberto();
   const checkin = estado.checkin;
   if (!checkin) {
@@ -619,8 +654,8 @@ export async function pullCheckinAberto(): Promise<void> {
     unidadeId: checkin.unidadeId,
     unidadeNome: checkin.unidade?.nome ?? null,
     dataCheckin: checkin.dataCheckin,
-    latitudeCheckin: Number(checkin.latitudeCheckin),
-    longitudeCheckin: Number(checkin.longitudeCheckin),
+    latitudeCheckin: lerCoordenada(checkin.latitudeCheckin),
+    longitudeCheckin: lerCoordenada(checkin.longitudeCheckin),
     isAtrasado3h: estado.isAtrasado3h,
   });
 }

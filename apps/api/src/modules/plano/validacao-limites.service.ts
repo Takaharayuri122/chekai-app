@@ -59,8 +59,9 @@ export class ValidacaoLimitesService {
 
   /**
    * Conta auditorias do gestor (incluindo as criadas por auditores vinculados).
+   * Com `antesDe`, conta só as iniciadas antes desse instante.
    */
-  async contarAuditorias(gestorId: string): Promise<number> {
+  async contarAuditorias(gestorId: string, antesDe?: Date): Promise<number> {
     const usuarios = await this.usuarioRepository.find({
       where: [
         { id: gestorId },
@@ -72,10 +73,13 @@ export class ValidacaoLimitesService {
     if (usuarioIds.length === 0) {
       return 0;
     }
-    return this.auditoriaRepository
+    const query = this.auditoriaRepository
       .createQueryBuilder('auditoria')
-      .where('auditoria.consultorId IN (:...ids)', { ids: usuarioIds })
-      .getCount();
+      .where('auditoria.consultorId IN (:...ids)', { ids: usuarioIds });
+    if (antesDe) {
+      query.andWhere('auditoria.dataInicio < :momento', { momento: antesDe });
+    }
+    return query.getCount();
   }
 
   /**
@@ -105,13 +109,16 @@ export class ValidacaoLimitesService {
 
   /**
    * Valida limite de auditorias antes de criar.
+   * Com `momento` (auditoria iniciada offline), avalia assinatura e uso como estavam nesse instante.
    */
-  async validarLimiteAuditorias(gestorId: string): Promise<void> {
-    const assinatura = await this.assinaturaService.buscarAssinaturaAtivaComValidacao(gestorId);
+  async validarLimiteAuditorias(gestorId: string, momento?: Date): Promise<void> {
+    const assinatura = momento
+      ? await this.assinaturaService.buscarAssinaturaVigenteEm(gestorId, momento)
+      : await this.assinaturaService.buscarAssinaturaAtivaComValidacao(gestorId);
     if (!assinatura) {
       throw new BadRequestException('Gestor não possui assinatura ativa');
     }
-    const usado = await this.contarAuditorias(gestorId);
+    const usado = await this.contarAuditorias(gestorId, momento);
     if (usado >= assinatura.plano.limiteAuditorias) {
       throw new BadRequestException(
         `Limite de auditorias excedido. Limite: ${assinatura.plano.limiteAuditorias}, Usado: ${usado}`,

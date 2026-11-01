@@ -4,18 +4,24 @@ interface Props {
   descricaoIa?: string;
   planoAcaoIa?: string;
   loadingIa: boolean;
+  iaIndisponivel?: boolean;
   descricao: string;
   planoAcao: string;
   onChange: (descricao: string, planoAcao: string) => void;
   readonly?: boolean;
 }
 
-export function ItemCamposNc({ descricaoIa, planoAcaoIa, loadingIa, descricao, planoAcao, onChange, readonly }: Props) {
+export function ItemCamposNc({ descricaoIa, planoAcaoIa, loadingIa, iaIndisponivel, descricao, planoAcao, onChange, readonly }: Props) {
   return (
     <View className="bg-orange-50 border border-orange-200 rounded-xl p-4 gap-3">
       <View className="flex-row items-center gap-2">
         <Text className="text-sm font-semibold text-orange-800">⚠ Não Conformidade</Text>
         {loadingIa && <ActivityIndicator size="small" color="#f59e0b" />}
+        {!loadingIa && iaIndisponivel && (
+          <Text className="text-[11px] text-gray-500 flex-1">
+            Sugestão automática disponível apenas com internet.
+          </Text>
+        )}
       </View>
 
       <View>

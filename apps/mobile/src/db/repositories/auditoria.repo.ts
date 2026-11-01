@@ -190,6 +190,14 @@ export class AuditoriaRepo {
     );
   }
 
+  /** Grava o id remoto sem alterar o status de sincronização (envio retomável). */
+  setRemoteId(id: string, remoteId: string): void {
+    this.db.runSync(
+      `UPDATE auditorias SET remote_id = ?, updated_at = ? WHERE id = ?`,
+      [remoteId, new Date().toISOString(), id]
+    );
+  }
+
   markSynced(id: string, remoteId: string): void {
     this.db.runSync(
       `UPDATE auditorias SET remote_id = ?, sync_status = ?, updated_at = ? WHERE id = ?`,

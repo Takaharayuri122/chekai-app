@@ -31,6 +31,7 @@ module.exports = {
       modulePaths: ['<rootDir>/../../node_modules'],
       moduleNameMapper: {
         '^expo-sqlite$': '<rootDir>/__mocks__/expo-sqlite.js',
+        '^expo-crypto$': '<rootDir>/__mocks__/expo-crypto.js',
       },
       transform: {
         '\\.[jt]sx?$': [
@@ -73,6 +74,8 @@ module.exports = {
         '^@meta-app/shared$': '<rootDir>/../../packages/shared/src/types/index.ts',
         '^expo-secure-store$': '<rootDir>/__mocks__/expo-secure-store.js',
         '^expo-file-system$': '<rootDir>/__mocks__/expo-file-system.js',
+        '^expo-crypto$': '<rootDir>/__mocks__/expo-crypto.js',
+        '^expo-constants$': '<rootDir>/__mocks__/expo-constants.js',
       },
       transform: {
         '\\.[jt]sx?$': [

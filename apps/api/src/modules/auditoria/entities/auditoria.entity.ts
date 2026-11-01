@@ -38,6 +38,10 @@ export class Auditoria {
   })
   status: StatusAuditoria;
 
+  /** Id gerado no celular; garante criação idempotente ao reenviar a fila offline. */
+  @Column({ name: 'local_id', type: 'uuid', nullable: true })
+  localId: string | null;
+
   @Column({ type: 'timestamp', nullable: true })
   dataInicio: Date;
 

@@ -64,6 +64,9 @@ export class Cliente {
   @Column({ default: true })
   ativo: boolean;
 
+  @Column({ name: 'inativado_em', type: 'timestamp', nullable: true })
+  inativadoEm: Date | null;
+
   @ManyToOne(() => Usuario, { nullable: true })
   @JoinColumn({ name: 'gestor_id' })
   gestor: Usuario;

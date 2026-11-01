@@ -3,6 +3,7 @@ import { router } from 'expo-router';
 import { Package, ChevronRight } from 'lucide-react-native';
 import { useAuthStore } from '../../src/store/auth';
 import { CheckinCard } from '../../src/components/checkin/CheckinCard';
+import { CheckinOfflineLista } from '../../src/components/checkin/CheckinOfflineLista';
 
 export default function DashboardScreen() {
   const user = useAuthStore((s) => s.user);
@@ -14,6 +15,9 @@ export default function DashboardScreen() {
         <Text className="font-sans text-gray-500 mt-2">Dashboard — em breve</Text>
         <View className="w-full mt-8">
           <CheckinCard />
+          <View className="mt-3">
+            <CheckinOfflineLista />
+          </View>
         </View>
         {podeVerPlanos && (
           <Pressable

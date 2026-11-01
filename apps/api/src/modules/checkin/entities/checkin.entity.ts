@@ -55,11 +55,12 @@ export class Checkin {
   @Column({ name: 'data_checkout', type: 'timestamp', nullable: true })
   dataCheckout: Date | null;
 
-  @Column({ name: 'latitude_checkin', type: 'decimal', precision: 10, scale: 8 })
-  latitudeCheckin: number;
+  /** Nulo quando o GPS não respondeu na hora do check-in. */
+  @Column({ name: 'latitude_checkin', type: 'decimal', precision: 10, scale: 8, nullable: true })
+  latitudeCheckin: number | null;
 
-  @Column({ name: 'longitude_checkin', type: 'decimal', precision: 11, scale: 8 })
-  longitudeCheckin: number;
+  @Column({ name: 'longitude_checkin', type: 'decimal', precision: 11, scale: 8, nullable: true })
+  longitudeCheckin: number | null;
 
   @Column({ name: 'latitude_checkout', type: 'decimal', precision: 10, scale: 8, nullable: true })
   latitudeCheckout: number | null;
@@ -75,6 +76,22 @@ export class Checkin {
 
   @Column({ name: 'encerrado_automaticamente', type: 'boolean', default: false })
   encerradoAutomaticamente: boolean;
+
+  /** Id gerado no celular; garante criação idempotente ao reenviar a fila offline. */
+  @Column({ name: 'local_id', type: 'uuid', nullable: true })
+  localId: string | null;
+
+  @Column({ name: 'checkin_offline', type: 'boolean', default: false })
+  checkinOffline: boolean;
+
+  @Column({ name: 'checkin_sincronizado_em', type: 'timestamp', nullable: true })
+  checkinSincronizadoEm: Date | null;
+
+  @Column({ name: 'checkout_offline', type: 'boolean', default: false })
+  checkoutOffline: boolean;
+
+  @Column({ name: 'checkout_sincronizado_em', type: 'timestamp', nullable: true })
+  checkoutSincronizadoEm: Date | null;
 
   @CreateDateColumn()
   criadoEm: Date;

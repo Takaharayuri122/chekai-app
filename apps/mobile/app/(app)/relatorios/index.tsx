@@ -1,16 +1,29 @@
-import { View, Text, FlatList, TouchableOpacity, RefreshControl } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, RefreshControl, Alert } from 'react-native';
 import { router } from 'expo-router';
 import { useState, useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { Plus, FileText } from 'lucide-react-native';
 import { RelatorioTecnicoRepo, type RelatorioTecnicoListItem } from '../../../src/db/repositories/relatorio-tecnico.repo';
-import { SyncService } from '../../../src/sync/SyncService';
+import { SyncService, tentarEnviarDeNovo } from '../../../src/sync/SyncService';
+import { FilaRepo, type StatusFila } from '../../../src/db/repositories/fila.repo';
 
 const repo = new RelatorioTecnicoRepo();
+const filaRepo = new FilaRepo();
+
+type EstadoEnvio = { status: StatusFila; ultimoErro: string | null };
 
 type Filtro = 'todos' | 'rascunho' | 'finalizado';
 
-function rotuloStatus(item: RelatorioTecnicoListItem): { texto: string; classe: string } {
+function rotuloStatus(
+  item: RelatorioTecnicoListItem,
+  envio?: EstadoEnvio,
+): { texto: string; classe: string } {
+  if (envio?.status === 'falhou') {
+    return { texto: 'Falha no envio', classe: 'bg-red-100 text-red-700' };
+  }
+  if (envio?.status === 'pendente') {
+    return { texto: 'Aguardando envio', classe: 'bg-orange-100 text-orange-700' };
+  }
   if (item.syncStatus === 'pending') {
     return { texto: 'Não sincronizado', classe: 'bg-amber-100 text-amber-700' };
   }
@@ -23,10 +36,18 @@ function rotuloStatus(item: RelatorioTecnicoListItem): { texto: string; classe: 
 export default function RelatoriosListScreen() {
   const [relatorios, setRelatorios] = useState<RelatorioTecnicoListItem[]>([]);
   const [filtro, setFiltro] = useState<Filtro>('todos');
+  const [estados, setEstados] = useState<Record<string, EstadoEnvio>>({});
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(() => {
-    setRelatorios(repo.findAll());
+    const items = repo.findAll();
+    const mapa: Record<string, EstadoEnvio> = {};
+    for (const r of items) {
+      const e = filaRepo.estado('relatorio_tecnico', r.id);
+      if (e) mapa[r.id] = e;
+    }
+    setEstados(mapa);
+    setRelatorios(items);
   }, []);
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
@@ -42,6 +63,20 @@ export default function RelatoriosListScreen() {
   const filtrados = relatorios.filter((r) =>
     filtro === 'todos' ? true : r.status === filtro,
   );
+
+  const mostrarFalhaEnvio = (r: RelatorioTecnicoListItem, ultimoErro: string | null) => {
+    Alert.alert(
+      'Falha no envio',
+      ultimoErro ?? 'Não foi possível enviar este relatório.',
+      [
+        { text: 'Fechar', style: 'cancel' },
+        {
+          text: 'Tentar de novo',
+          onPress: () => { void tentarEnviarDeNovo('relatorio_tecnico', r.id).finally(load); },
+        },
+      ],
+    );
+  };
 
   return (
     <View className="flex-1 bg-base-200">
@@ -78,10 +113,17 @@ export default function RelatoriosListScreen() {
           </View>
         }
         renderItem={({ item: r }) => {
-          const badge = rotuloStatus(r);
+          const envio = estados[r.id];
+          const badge = rotuloStatus(r, envio);
           return (
             <TouchableOpacity
-              onPress={() => router.push({ pathname: '/(app)/relatorios/[id]', params: { id: r.id } })}
+              onPress={() => {
+                if (envio?.status === 'falhou') {
+                  mostrarFalhaEnvio(r, envio.ultimoErro);
+                  return;
+                }
+                router.push({ pathname: '/(app)/relatorios/[id]', params: { id: r.id } });
+              }}
               className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100"
             >
               <View className="flex-row justify-between items-start mb-1">

@@ -1,4 +1,3 @@
-import { getDatabase } from '../db/client';
 import { AuditoriaRepo } from '../db/repositories/auditoria.repo';
 import { AuditoriaItemRepo } from '../db/repositories/auditoria-item.repo';
 import { FotoRepo } from '../db/repositories/foto.repo';
@@ -12,15 +11,19 @@ import {
   iniciarRelatorioTecnico, atualizarRelatorioTecnico, uploadRelatorioFoto,
   type AtualizarRelatorioTecnicoPayload,
 } from '../api/relatorio-tecnico.api';
-import { gerarUUID } from '../utils/uuid';
 import { ApiError } from '../api/client';
 import { pullModeloRelatorioTecnico } from './pull';
+import { FilaRepo, type EntidadeFila, type ItemFila } from '../db/repositories/fila.repo';
+import { useAuthStore } from '../store/auth';
+import { pushCheckin } from './push-checkin';
+import { ehFalhaDefinitiva, ehSessaoExpirada } from './erros';
 
 const auditoriaRepo = new AuditoriaRepo();
 const itemRepo = new AuditoriaItemRepo();
 const fotoRepo = new FotoRepo();
 const relatorioRepo = new RelatorioTecnicoRepo();
 const relatorioFotoRepo = new RelatorioFotoRepo();
+const filaRepo = new FilaRepo();
 
 export type PushEtapa = 'criando' | 'itens' | 'fotos' | 'finalizando' | 'concluido';
 export type PushProgressCallback = (etapa: PushEtapa, detalhe?: string) => void;
@@ -34,21 +37,34 @@ export async function pushAuditoria(
   if (!auditoria) throw new Error(`Auditoria ${localId} não encontrada.`);
   console.log(`[pushAuditoria] Iniciando push — local=${localId}, cliente=${auditoria.clienteNome}`);
 
+  const itens = itemRepo.findByAuditoria(localId);
+
   onProgress?.('criando');
-  const { id: remoteId, itens: remoteItens } = await createAuditoria({
+  const { id: remoteId, status: statusRemoto, itens: remoteItens } = await createAuditoria({
     localId: auditoria.localId,
     clienteId: auditoria.clienteId,
     unidadeId: auditoria.unidadeId,
     templateId: auditoria.templateId!,
     dataInicio: auditoria.dataInicio!,
+    templateItemIds: itens.map(i => i.templateItemId),
     latitudeInicio: auditoria.latitudeInicio ?? undefined,
     longitudeInicio: auditoria.longitudeInicio ?? undefined,
   });
+  // Grava o vínculo antes de enviar itens: uma nova tentativa reaproveita o mesmo registro
+  auditoriaRepo.setRemoteId(localId, remoteId);
   console.log(`[pushAuditoria] Criada no servidor — remoteId=${remoteId}, ${remoteItens.length} itens remotos`);
+
+  // Já finalizada no servidor (a resposta da finalização se perdeu): a etapa conta como concluída
+  if (statusRemoto === 'finalizada') {
+    console.log(`[pushAuditoria] ${remoteId} já finalizada no servidor; nada a reenviar`);
+    auditoriaRepo.markSynced(localId, remoteId);
+    await atualizarResultadoOficial(localId, remoteId);
+    onProgress?.('concluido');
+    return;
+  }
 
   const remoteItemMap = new Map(remoteItens.map(i => [i.templateItemId, i.id]));
 
-  const itens = itemRepo.findByAuditoria(localId);
   let itensEnviados = 0;
   let fotosSucesso = 0;
   let fotosErro = 0;
@@ -84,6 +100,10 @@ export async function pushAuditoria(
     const fotos = fotoRepo.findByItem(item.id);
     for (const foto of fotos) {
       if (!foto.filePath) continue;
+      if (foto.syncStatus === 'synced' || foto.remoteId) {
+        fotosEnviadas++;
+        continue;
+      }
       try {
         const { id: fotoRemoteId, url } = await uploadFoto(remoteId, remoteItemId, foto.filePath);
         fotoRepo.markSynced(foto.id, fotoRemoteId, url);
@@ -108,15 +128,27 @@ export async function pushAuditoria(
   }
   console.log(`[pushAuditoria] Itens: ${itensEnviados}/${itens.length}, Fotos: ${fotosSucesso} ok / ${fotosErro} erro`);
 
+  if (fotosErro > 0) {
+    throw new Error(`${fotosErro} foto(s) não foram enviadas; a auditoria não foi finalizada.`);
+  }
+
   onProgress?.('finalizando');
   await finalizarAuditoria(remoteId, {
+    dataFim: auditoria.dataFim ?? undefined,
     latitude: auditoria.latitudeFim ?? undefined,
     longitude: auditoria.longitudeFim ?? undefined,
     observacoesGerais: auditoria.observacoesGerais ?? undefined,
   });
 
   auditoriaRepo.markSynced(localId, remoteId);
+  await atualizarResultadoOficial(localId, remoteId);
 
+  onProgress?.('concluido');
+  console.log(`[pushAuditoria] Concluído em ${Date.now() - inicio}ms — remoteId=${remoteId}`);
+}
+
+/** Traz a pontuação oficial e o PDF calculados pelo servidor (falha aqui não desfaz o envio). */
+async function atualizarResultadoOficial(localId: string, remoteId: string): Promise<void> {
   try {
     const oficial = await getAuditoria(remoteId);
     const pontuacaoOficial = oficial.pontuacaoTotal != null ? Number(oficial.pontuacaoTotal) : null;
@@ -129,9 +161,6 @@ export async function pushAuditoria(
   } catch (e) {
     console.warn(`[pushAuditoria] Não foi possível obter pontuação oficial de ${remoteId}:`, e);
   }
-
-  onProgress?.('concluido');
-  console.log(`[pushAuditoria] Concluído em ${Date.now() - inicio}ms — remoteId=${remoteId}`);
 }
 
 /**
@@ -161,14 +190,20 @@ export async function pushRelatorioTecnico(localId: string): Promise<void> {
   }
 
   const fotosPendentes = relatorioFotoRepo.findPendentes(localId);
+  let fotosErro = 0;
   for (const foto of fotosPendentes) {
     if (!foto.filePath) continue;
     try {
       const { id: fotoRemoteId, url } = await uploadRelatorioFoto(remoteId, foto.filePath);
       relatorioFotoRepo.markSynced(foto.id, fotoRemoteId, url);
     } catch (e) {
+      fotosErro++;
       console.warn(`[pushRelatorioTecnico] Falha upload foto ${foto.id}:`, e);
     }
+  }
+  // Mesma regra da auditoria: sem todas as fotos o relatório não é salvo/finalizado e volta à fila
+  if (fotosErro > 0) {
+    throw new Error(`${fotosErro} foto(s) não foram enviadas; o relatório será enviado de novo.`);
   }
 
   const payload: AtualizarRelatorioTecnicoPayload = {
@@ -202,83 +237,132 @@ export async function pushRelatorioTecnico(localId: string): Promise<void> {
   console.log(`[pushRelatorioTecnico] Concluído — remoteId=${remoteId}`);
 }
 
+const SEM_SESSAO = 'Sessão não encontrada. Entre novamente.';
+
+function usuarioLogadoId(): string | null {
+  return useAuthStore.getState().user?.id ?? null;
+}
+
+/** Ponto único de despacho por entidade da fila. */
+async function enviarItem(entidade: EntidadeFila, localId: string): Promise<boolean> {
+  switch (entidade) {
+    case 'auditoria':
+      await pushAuditoria(localId);
+      return true;
+    case 'relatorio_tecnico':
+      await pushRelatorioTecnico(localId);
+      return true;
+    case 'checkin':
+      await pushCheckin(localId);
+      return true;
+    default:
+      return false;
+  }
+}
+
+/** Envia um item da fila: sucesso remove; falha é registrada (401 não conta tentativa). Devolve o erro, se houver. */
+type ResultadoItem = { erro?: unknown; ignorado?: boolean };
+
+// Envios em andamento por id de item da fila: impede dois envios simultâneos do mesmo item
+const emAndamento = new Map<string, Promise<ResultadoItem>>();
+
+function processarItem(item: ItemFila, onProgress?: PushProgressCallback): Promise<ResultadoItem> {
+  if (emAndamento.has(item.id)) return Promise.resolve({ ignorado: true });
+  const execucao = executarItem(item, onProgress).finally(() => emAndamento.delete(item.id));
+  emAndamento.set(item.id, execucao);
+  return execucao;
+}
+
+async function executarItem(item: ItemFila, onProgress?: PushProgressCallback): Promise<ResultadoItem> {
+  try {
+    const enviado = item.entidade === 'auditoria'
+      ? (await pushAuditoria(item.localId, onProgress), true)
+      : await enviarItem(item.entidade, item.localId);
+    if (enviado) {
+      filaRepo.remover(item.id);
+      console.log(`[pushPending] Sucesso (${item.entidade}): ${item.localId}`);
+    }
+    return {};
+  } catch (e) {
+    console.error(`[pushPending] Erro ao enviar item ${item.id}:`, e);
+    if (!ehSessaoExpirada(e)) {
+      const mensagem = e instanceof Error ? e.message : 'Erro desconhecido no envio.';
+      filaRepo.registrarFalha(item.id, mensagem, ehFalhaDefinitiva(e));
+    }
+    return { erro: e };
+  }
+}
+
 export async function pushPending(): Promise<void> {
-  const db = getDatabase();
-  const items = db.getAllSync<{ id: string; entity: string; payload: string; retries: number }>(
-    `SELECT id, entity, payload, retries FROM sync_queue
-     WHERE entity IN ('auditoria', 'relatorio_tecnico') ORDER BY created_at`
-  );
+  const usuarioId = usuarioLogadoId();
+  if (!usuarioId) return;
+
+  const items = filaRepo.listarParaEnvio(usuarioId);
   console.log(`[pushPending] ${items.length} item(s) na fila`);
 
+  // Check-ins vão na ordem: se um falha (ou um anterior já falhou de vez), os seguintes
+  // esperam — senão o próximo check-in chegaria antes e o servidor recusaria com 409
+  const checkinFalhouEm = filaRepo.primeiraFalhaEm(usuarioId, 'checkin');
+  let checkinFalhouNesteEnvio = false;
+
   for (const item of items) {
-    try {
-      const { localId } = JSON.parse(item.payload) as { localId: string };
-      if (item.entity === 'relatorio_tecnico') {
-        await pushRelatorioTecnico(localId);
-      } else {
-        await pushAuditoria(localId);
-      }
-      db.runSync('DELETE FROM sync_queue WHERE id = ?', [item.id]);
-      console.log(`[pushPending] Sucesso (${item.entity}): ${localId}`);
-    } catch (e) {
-      db.runSync(
-        'UPDATE sync_queue SET retries = retries + 1 WHERE id = ?',
-        [item.id]
-      );
-      console.error(`[pushPending] Erro ao enviar item ${item.id}:`, e);
+    if (item.entidade === 'checkin') {
+      const depoisDeFalha = checkinFalhouEm != null && item.criadoEm >= checkinFalhouEm;
+      if (checkinFalhouNesteEnvio || depoisDeFalha) continue;
     }
+    // outro envio pode ter concluído e removido este item depois do instantâneo
+    if (!filaRepo.estado(item.entidade, item.localId)) continue;
+    const { erro } = await processarItem(item);
+    if (ehSessaoExpirada(erro)) break; // sessão expirou: não gasta tentativas dos próximos itens
+    if (erro && item.entidade === 'checkin') checkinFalhouNesteEnvio = true;
   }
+}
+
+/**
+ * Envia agora uma auditoria já enfileirada, pelo mesmo caminho da fila. Em caso de
+ * falha o item continua na fila com o erro registrado e o erro é relançado à tela.
+ */
+export async function enviarAuditoriaAgora(
+  localId: string,
+  onProgress?: PushProgressCallback,
+): Promise<void> {
+  const usuarioId = usuarioLogadoId();
+  if (!usuarioId) throw new Error(SEM_SESSAO);
+  const item = filaRepo.listarParaEnvio(usuarioId)
+    .find((i) => i.entidade === 'auditoria' && i.localId === localId);
+  if (!item) {
+    // já enviada por outro envio (sai da fila ao concluir)
+    if (!filaRepo.estado('auditoria', localId)) return;
+    throw new Error('Auditoria não encontrada na fila de envio.');
+  }
+  const andamento = emAndamento.get(item.id);
+  const { erro } = andamento ? await andamento : await processarItem(item, onProgress);
+  if (erro) throw erro;
 }
 
 export function enqueuePush(localId: string): void {
-  const db = getDatabase();
-  db.runSync(
-    `INSERT INTO sync_queue (id, entity, operation, payload, retries, created_at)
-     VALUES (?, 'auditoria', 'push', ?, 0, datetime('now'))`,
-    [gerarUUID(), JSON.stringify({ localId })]
-  );
+  const usuarioId = usuarioLogadoId();
+  if (!usuarioId) throw new Error(SEM_SESSAO);
+  filaRepo.enfileirar('auditoria', localId, usuarioId);
   console.log(`[enqueuePush] Auditoria ${localId} adicionada à fila`);
 }
 
-/**
- * Retorna a quantidade real de auditorias aguardando envio na fila SQLite `sync_queue`.
- */
+/** Quantidade de auditorias aguardando envio (ou com falha) da usuária logada. */
 export function getPendingCount(): number {
-  const db = getDatabase();
-  const row = db.getFirstSync<{ total: number }>(
-    `SELECT COUNT(*) AS total FROM sync_queue WHERE entity = 'auditoria'`
-  );
-  return row?.total ?? 0;
+  const usuarioId = usuarioLogadoId();
+  return usuarioId ? filaRepo.contarPendentes(usuarioId, 'auditoria') : 0;
 }
 
-/**
- * Enfileira um relatório técnico para envio quando houver conexão (offline-first).
- * Evita duplicar entradas para o mesmo `localId` ainda pendente na fila.
- */
+/** Enfileira um relatório técnico para envio quando houver conexão (sem duplicar). */
 export function enqueueRelatorioPush(localId: string): void {
-  const db = getDatabase();
-  const jaNaFila = db.getFirstSync<{ total: number }>(
-    `SELECT COUNT(*) AS total FROM sync_queue WHERE entity = 'relatorio_tecnico' AND payload = ?`,
-    [JSON.stringify({ localId })]
-  );
-  if ((jaNaFila?.total ?? 0) > 0) {
-    return;
-  }
-  db.runSync(
-    `INSERT INTO sync_queue (id, entity, operation, payload, retries, created_at)
-     VALUES (?, 'relatorio_tecnico', 'push', ?, 0, datetime('now'))`,
-    [gerarUUID(), JSON.stringify({ localId })]
-  );
+  const usuarioId = usuarioLogadoId();
+  if (!usuarioId) throw new Error(SEM_SESSAO);
+  filaRepo.enfileirar('relatorio_tecnico', localId, usuarioId);
   console.log(`[enqueueRelatorioPush] Relatório técnico ${localId} adicionado à fila`);
 }
 
-/**
- * Quantidade de relatórios técnicos aguardando envio na fila SQLite `sync_queue`.
- */
+/** Quantidade de relatórios técnicos aguardando envio (ou com falha) da usuária logada. */
 export function getPendingRelatoriosCount(): number {
-  const db = getDatabase();
-  const row = db.getFirstSync<{ total: number }>(
-    `SELECT COUNT(*) AS total FROM sync_queue WHERE entity = 'relatorio_tecnico'`
-  );
-  return row?.total ?? 0;
+  const usuarioId = usuarioLogadoId();
+  return usuarioId ? filaRepo.contarPendentes(usuarioId, 'relatorio_tecnico') : 0;
 }

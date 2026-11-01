@@ -9,7 +9,7 @@ import {
 } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuditoriaStore } from '../../../../src/store/auditoria';
-import { pushAuditoria, enqueuePush, type PushEtapa } from '../../../../src/sync/push';
+import { enviarAuditoriaAgora, enqueuePush, type PushEtapa } from '../../../../src/sync/push';
 import { SyncService } from '../../../../src/sync/SyncService';
 import { getDatabase } from '../../../../src/db/client';
 
@@ -124,16 +124,17 @@ export default function ResumoScreen() {
           [assinatura.trim(), new Date().toISOString(), id!],
         );
       }
+      // Sempre enfileira antes: se o envio falhar, a auditoria segue na fila e volta a ser tentada
+      enqueuePush(id!);
       const isOnline = await SyncService.isOnline();
       if (isOnline) {
-        await pushAuditoria(id!, onProgressSync);
+        await enviarAuditoriaAgora(id!, onProgressSync);
         recarregar();
         setSent(true);
         setEnvioOnline(true);
         setEtapaAtual('concluido');
         setDetalheSync(null);
       } else {
-        enqueuePush(id!);
         setSent(true);
         setEnvioOnline(false);
       }

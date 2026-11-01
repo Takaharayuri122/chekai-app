@@ -16,6 +16,7 @@ import { useAuthStore } from '../../src/store/auth';
 import { AuthService } from '../../src/auth/AuthService';
 import { TokenStorage } from '../../src/auth/TokenStorage';
 import { buscarUsuario, atualizarPerfil } from '../../src/api/usuario.api';
+import { FilaRepo } from '../../src/db/repositories/fila.repo';
 
 const INPUT_STYLE = {
   paddingVertical: 14,
@@ -90,13 +91,29 @@ export default function PerfilScreen() {
     }
   }
 
-  async function handleLogout() {
+  async function executarLogout() {
     try {
       await AuthService.logout();
     } finally {
       logout();
       router.replace('/(auth)/login');
     }
+  }
+
+  function handleLogout() {
+    const pendentes = user?.id ? new FilaRepo().contarPendentes(user.id) : 0;
+    if (pendentes > 0) {
+      Alert.alert(
+        'Envios pendentes',
+        `Há ${pendentes} ${pendentes === 1 ? 'envio pendente' : 'envios pendentes'} neste aparelho. Eles ficam guardados e serão enviados quando você entrar de novo.`,
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          { text: 'Sair mesmo assim', style: 'destructive', onPress: () => void executarLogout() },
+        ],
+      );
+      return;
+    }
+    return executarLogout();
   }
 
   return (

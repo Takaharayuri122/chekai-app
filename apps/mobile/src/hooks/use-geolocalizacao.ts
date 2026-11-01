@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 import * as Location from 'expo-location';
+import { obterLocalizacaoRapida } from '../utils/localizacao';
 
 export interface Coordenadas {
   latitude: number;
@@ -33,13 +34,11 @@ export function useGeolocalizacao(): UseGeolocalizacao {
         setErro('Permissão de localização negada. Ajuste nas configurações do aparelho.');
         return null;
       }
-      const posicao = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-      });
-      const novas: Coordenadas = {
-        latitude: posicao.coords.latitude,
-        longitude: posicao.coords.longitude,
-      };
+      const novas = await obterLocalizacaoRapida(4000, 60000);
+      if (!novas) {
+        setErro('Não foi possível capturar a localização. Tente novamente.');
+        return null;
+      }
       setCoordenadas(novas);
       return novas;
     } catch {

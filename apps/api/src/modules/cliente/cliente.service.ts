@@ -12,6 +12,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, In, Repository } from 'typeorm';
 import { Cliente } from './entities/cliente.entity';
 import { Unidade } from './entities/unidade.entity';
+import { ClienteAuditorDesvinculo } from './entities/cliente-auditor-desvinculo.entity';
 import { CriarClienteDto } from './dto/criar-cliente.dto';
 import { CriarUnidadeDto } from './dto/criar-unidade.dto';
 import { Usuario, PerfilUsuario } from '../usuario/entities/usuario.entity';
@@ -38,6 +39,8 @@ export class ClienteService {
     private readonly auditoriaRepository: Repository<Auditoria>,
     @InjectRepository(Usuario)
     private readonly usuarioRepository: Repository<Usuario>,
+    @InjectRepository(ClienteAuditorDesvinculo)
+    private readonly desvinculoRepository: Repository<ClienteAuditorDesvinculo>,
     private readonly dataSource: DataSource,
     @Inject(forwardRef(() => 'ValidacaoLimitesService'))
     @Optional()
@@ -154,11 +157,12 @@ export class ClienteService {
     usuarioAutenticado?: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
   ): Promise<{ cliente: Cliente; warning?: { temAuditoriasAbertas: boolean; quantidade: number } }> {
     const cliente = await this.buscarClientePorId(id, usuarioAutenticado);
+    let removidos: string[] = [];
     if (dto.auditorIds !== undefined) {
       const novosAuditores = await this.buscarEValidarAuditores(dto.auditorIds, usuarioAutenticado);
       const idsAtuais = (cliente.auditores || []).map((a) => a.id);
       const idsNovos = novosAuditores.map((a) => a.id);
-      const removidos = idsAtuais.filter((aid) => !idsNovos.includes(aid));
+      removidos = idsAtuais.filter((aid) => !idsNovos.includes(aid));
       if (removidos.length > 0 && !dto.confirmado) {
         const verificacao = await this.verificarAuditoriasAbertasDosAuditores(id, removidos);
         if (verificacao.temAuditoriasAbertas) {
@@ -170,6 +174,11 @@ export class ClienteService {
     const { confirmado, unidades, auditorIds, ...dadosAtualizar } = dto;
     Object.assign(cliente, dadosAtualizar);
     const clienteSalvo = await this.clienteRepository.save(cliente);
+    if (removidos.length > 0) {
+      await this.desvinculoRepository.save(
+        removidos.map((auditorId) => this.desvinculoRepository.create({ clienteId: id, auditorId })),
+      );
+    }
     return { cliente: clienteSalvo };
   }
 
@@ -183,6 +192,7 @@ export class ClienteService {
   ): Promise<Cliente> {
     const cliente = await this.buscarClientePorId(id, usuarioAutenticado);
     cliente.ativo = ativo;
+    cliente.inativadoEm = ativo ? null : new Date();
     return this.clienteRepository.save(cliente);
   }
 
@@ -283,6 +293,7 @@ export class ClienteService {
   ): Promise<Unidade> {
     const unidade = await this.buscarUnidadePorId(id, usuarioAutenticado);
     unidade.ativo = ativo;
+    unidade.inativadoEm = ativo ? null : new Date();
     return this.unidadeRepository.save(unidade);
   }
 

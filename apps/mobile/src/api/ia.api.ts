@@ -1,8 +1,11 @@
 import * as FileSystem from 'expo-file-system';
 import * as SecureStore from 'expo-secure-store';
 import { API_URL } from './config';
+import { comTempoLimite, TempoLimiteError } from '../utils/tempo-limite';
 
 const IA_TIMEOUT_MS = 45000;
+/** Limite para chamadas de IA com sinal fraco (falha silenciosa na UI). */
+export const IA_TEMPO_LIMITE_MS = 20000;
 
 /**
  * Erro específico para bloqueio de IA por saldo de créditos insuficiente (RN-CRD-003).
@@ -171,13 +174,30 @@ export async function analisarImagemChecklist(
   const parameters: Record<string, string> = { perguntaChecklist };
   if (categoria) parameters.categoria = categoria;
   if (tipoEstabelecimento) parameters.tipoEstabelecimento = tipoEstabelecimento;
-  const result = await FileSystem.uploadAsync(`${API_URL}/ia/analisar-checklist`, filePath, {
+  const tarefa = FileSystem.createUploadTask(`${API_URL}/ia/analisar-checklist`, filePath, {
     httpMethod: 'POST',
     uploadType: FileSystem.FileSystemUploadType.MULTIPART,
     fieldName: 'imagem',
     parameters,
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   });
+  let estourou = false;
+  const timer = setTimeout(() => {
+    estourou = true;
+    tarefa.cancelAsync().catch(() => undefined);
+  }, IA_TEMPO_LIMITE_MS);
+  let result: Awaited<ReturnType<typeof tarefa.uploadAsync>>;
+  try {
+    result = await tarefa.uploadAsync();
+  } catch (e) {
+    if (estourou) throw new TempoLimiteError(IA_TEMPO_LIMITE_MS);
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
+  if (!result) {
+    throw new TempoLimiteError(IA_TEMPO_LIMITE_MS);
+  }
   if (result.status >= 400) {
     tratarErro(result.status, result.body);
   }
@@ -217,7 +237,10 @@ export async function getSugestaoIa(
   contexto: string,
   tipoEstabelecimento?: string,
 ): Promise<SugestaoNaoConformidade> {
-  const resultado = await gerarTextoNaoConformidade(contexto, tipoEstabelecimento);
+  const resultado = await comTempoLimite(
+    gerarTextoNaoConformidade(contexto, tipoEstabelecimento),
+    IA_TEMPO_LIMITE_MS,
+  );
   return {
     descricao: resultado.descricaoTecnica,
     planoAcao: formatarPlanoAcao(resultado.planoAcao),

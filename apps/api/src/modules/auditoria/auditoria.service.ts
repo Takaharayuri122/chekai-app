@@ -9,13 +9,14 @@ import {
   Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { MoreThan, Repository } from 'typeorm';
 import { Auditoria, StatusAuditoria } from './entities/auditoria.entity';
 import { AuditoriaItem, RespostaItem } from './entities/auditoria-item.entity';
 import { TemplateItem, TipoRespostaCustomizada } from '../checklist/entities/template-item.entity';
 import { Legislacao } from '../legislacao/entities/legislacao.entity';
 import { Foto } from './entities/foto.entity';
 import { Unidade } from '../cliente/entities/unidade.entity';
+import { ClienteAuditorDesvinculo } from '../cliente/entities/cliente-auditor-desvinculo.entity';
 import { LegislacaoService } from '../legislacao/legislacao.service';
 import { LegislacaoVinculoService } from '../legislacao/legislacao-vinculo.service';
 import { validarLegislacaoIds } from '../legislacao/lib/validar-legislacao-ids';
@@ -41,6 +42,7 @@ import {
   createPaginatedResult,
 } from '../../shared/types/pagination.interface';
 import { IaService } from '../ia/ia.service';
+import { lerHorarioOffline } from '../../shared/offline/horario-offline';
 
 /**
  * Serviço responsável pela gestão de auditorias.
@@ -65,6 +67,9 @@ export class AuditoriaService {
     @Inject(forwardRef(() => 'ValidacaoLimitesService'))
     @Optional()
     private readonly validacaoLimites?: any,
+    @InjectRepository(ClienteAuditorDesvinculo)
+    @Optional()
+    private readonly desvinculoRepository?: Repository<ClienteAuditorDesvinculo>,
   ) {}
 
   /**
@@ -75,34 +80,54 @@ export class AuditoriaService {
     dto: IniciarAuditoriaDto,
     usuario?: { id: string; perfil: PerfilUsuario; gestorId?: string | null },
   ): Promise<Auditoria> {
+    if (dto.localId) {
+      const existente = await this.auditoriaRepository.findOne({
+        where: { consultorId, localId: dto.localId },
+      });
+      if (existente) return this.buscarAuditoriaPorId(existente.id, usuario);
+    }
+    // Horário do celular: limitado à janela de registros sem internet (senão contornaria os bloqueios)
+    const dataInicio = dto.dataInicio ? lerHorarioOffline(dto.dataInicio) : undefined;
+    // Fluxo offline: bloqueios criados depois do início no celular não valem para este trabalho
+    const momento = dto.localId ? dataInicio : undefined;
     // Valida limite de auditorias
     if (usuario && this.validacaoLimites && usuario.perfil !== PerfilUsuario.MASTER) {
       const gestorId = this.validacaoLimites.identificarGestorId(usuario);
       if (gestorId) {
-        await this.validacaoLimites.validarLimiteAuditorias(gestorId);
+        await this.validacaoLimites.validarLimiteAuditorias(gestorId, momento);
       }
     }
-    await this.validarUnidadeParaNovaAuditoria(dto.unidadeId, usuario);
+    await this.validarUnidadeParaNovaAuditoria(dto.unidadeId, usuario, momento);
     const template = await this.checklistService.buscarTemplatePorId(dto.templateId, usuario);
+    let itensDoTemplate = template.itens.filter((item) => item.ativo);
+    if (dto.templateItemIds) {
+      const porId = new Map(template.itens.map((item) => [item.id, item]));
+      // um item por pergunta: ids repetidos no envio não duplicam itens
+      const templateItemIds = [...new Set(dto.templateItemIds)];
+      const desconhecidos = templateItemIds.filter((id) => !porId.has(id));
+      if (desconhecidos.length > 0) {
+        throw new BadRequestException('Itens não pertencem ao template informado');
+      }
+      itensDoTemplate = templateItemIds.map((id) => porId.get(id)!);
+    }
     const auditoria = this.auditoriaRepository.create({
       consultorId,
       unidadeId: dto.unidadeId,
       templateId: dto.templateId,
+      localId: dto.localId ?? null,
       status: StatusAuditoria.EM_ANDAMENTO,
-      dataInicio: new Date(),
+      dataInicio: dataInicio ?? new Date(),
       latitudeInicio: dto.latitude,
       longitudeInicio: dto.longitude,
     });
     const savedAuditoria = await this.auditoriaRepository.save(auditoria);
-    const itens = template.itens
-      .filter((item) => item.ativo)
-      .map((templateItem) =>
-        this.itemRepository.create({
-          auditoriaId: savedAuditoria.id,
-          templateItemId: templateItem.id,
-          resposta: RespostaItem.NAO_AVALIADO,
-        }),
-      );
+    const itens = itensDoTemplate.map((templateItem) =>
+      this.itemRepository.create({
+        auditoriaId: savedAuditoria.id,
+        templateItemId: templateItem.id,
+        resposta: RespostaItem.NAO_AVALIADO,
+      }),
+    );
     await this.itemRepository.save(itens);
     return this.buscarAuditoriaPorId(savedAuditoria.id, usuario);
   }
@@ -426,6 +451,8 @@ export class AuditoriaService {
   ): Promise<Auditoria> {
     const auditoria = await this.buscarAuditoriaPorId(id, usuarioAutenticado);
     if (auditoria.status === StatusAuditoria.FINALIZADA) {
+      // Reenvio da fila offline (dataFim presente): operação idempotente.
+      if (dto.dataFim) return auditoria;
       throw new BadRequestException('Auditoria já finalizada');
     }
     // Validar apenas itens obrigatórios não avaliados
@@ -441,7 +468,7 @@ export class AuditoriaService {
     }
     const { percentual: pontuacaoPercentual } = calcularNotaDaAuditoria(auditoria.itens);
     auditoria.status = StatusAuditoria.FINALIZADA;
-    auditoria.dataFim = new Date();
+    auditoria.dataFim = dto.dataFim ? new Date(dto.dataFim) : new Date();
     if (dto.latitude !== undefined) {
       auditoria.latitudeFim = dto.latitude;
     }
@@ -684,6 +711,7 @@ export class AuditoriaService {
   private async validarUnidadeParaNovaAuditoria(
     unidadeId: string,
     usuario?: { id: string; perfil: PerfilUsuario },
+    momento?: Date,
   ): Promise<void> {
     const unidade = await this.unidadeRepository.findOne({
       where: { id: unidadeId },
@@ -692,18 +720,30 @@ export class AuditoriaService {
     if (!unidade || !unidade.cliente) {
       throw new NotFoundException('Unidade não encontrada');
     }
-    if (!unidade.cliente.ativo) {
+    if (!unidade.cliente.ativo && !this.inativadoDepoisDe(unidade.cliente.inativadoEm, momento)) {
       throw new BadRequestException('Este cliente está inativo e não pode receber novas auditorias');
     }
-    if (!unidade.ativo) {
+    if (!unidade.ativo && !this.inativadoDepoisDe(unidade.inativadoEm, momento)) {
       throw new BadRequestException('Esta unidade está inativa e não pode receber novas auditorias');
     }
     if (usuario?.perfil === PerfilUsuario.AUDITOR) {
       const isVinculado = (unidade.cliente.auditores || []).some((a) => a.id === usuario.id);
-      if (!isVinculado) {
+      if (!isVinculado && !(await this.desvinculadoDepoisDe(unidade.cliente.id, usuario.id, momento))) {
         throw new ForbiddenException('Você não está vinculado a este cliente');
       }
     }
+  }
+
+  private inativadoDepoisDe(inativadoEm: Date | null | undefined, momento?: Date): boolean {
+    return !!momento && !!inativadoEm && new Date(inativadoEm).getTime() > momento.getTime();
+  }
+
+  private async desvinculadoDepoisDe(clienteId: string, auditorId: string, momento?: Date): Promise<boolean> {
+    if (!momento || !this.desvinculoRepository) return false;
+    const desvinculo = await this.desvinculoRepository.findOne({
+      where: { clienteId, auditorId, desvinculadoEm: MoreThan(momento) },
+    });
+    return !!desvinculo;
   }
 }
 

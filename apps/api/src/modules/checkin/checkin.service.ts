@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -23,10 +24,14 @@ import {
   PaginatedResult,
   createPaginatedResult,
 } from '../../shared/types/pagination.interface';
+import { lerHorarioOffline } from '../../shared/offline/horario-offline';
 
 export const LIMITE_ALERTA_CHECKIN_ABERTO_MS = 3 * 60 * 60 * 1000;
 export const LIMITE_CHECKOUT_AUTOMATICO_MS = 12 * 60 * 60 * 1000;
 export const COMENTARIO_CHECKOUT_AUTOMATICO = 'Encerrado automaticamente após 12 horas.';
+export { TOLERANCIA_FUTURO_OFFLINE_MS } from '../../shared/offline/horario-offline';
+/** Diferença aceita entre um checkout reenviado sem internet e o checkout já registrado online. */
+export const TOLERANCIA_CHECKOUT_REPETIDO_MS = 5 * 60 * 1000;
 
 interface UsuarioAutenticado {
   id: string;
@@ -59,6 +64,7 @@ export interface ItemRelatorioHorasCheckin {
   id: string;
   nome: string;
   quantidade: number;
+  quantidadeOffline: number;
   minutosFechados: number;
   minutosAbertos: number;
   minutosTotal: number;
@@ -89,25 +95,48 @@ export class CheckinService {
     usuario: UsuarioAutenticado,
     dto: IniciarCheckinDto,
   ): Promise<Checkin> {
+    const offline = dto.offline === true;
+    // online ou offline: o mesmo localId nunca cria outro check-in (ex.: resposta perdida e reenvio)
+    if (dto.localId) {
+      const existente = await this.checkinRepository.findOne({
+        where: { usuarioId: usuario.id, localId: dto.localId },
+        relations: ['cliente', 'unidade'],
+      });
+      if (existente) {
+        return existente;
+      }
+    }
+    const dataCheckin = offline && dto.dataCheckin
+      ? lerHorarioOffline(dto.dataCheckin)
+      : new Date();
     await this.marcarAlertaSeNecessario(usuario.id);
     const checkinAberto = await this.checkinRepository.findOne({
       where: { usuarioId: usuario.id, status: StatusCheckin.ABERTO },
     });
     if (checkinAberto) {
-      throw new BadRequestException('Você já possui um checkin em aberto. Finalize-o antes de iniciar outro.');
+      const mensagem = 'Você já possui um checkin em aberto. Finalize-o antes de iniciar outro.';
+      throw offline ? new ConflictException(mensagem) : new BadRequestException(mensagem);
     }
-    await this.validarUnidadeDoCheckin(dto.unidadeId, dto.clienteId, usuario);
+    await this.validarUnidadeDoCheckin(
+      dto.unidadeId,
+      dto.clienteId,
+      usuario,
+      offline ? dataCheckin : undefined,
+    );
     const novoCheckin = this.checkinRepository.create({
       usuarioId: usuario.id,
       clienteId: dto.clienteId,
       unidadeId: dto.unidadeId,
       status: StatusCheckin.ABERTO,
-      dataCheckin: new Date(),
-      latitudeCheckin: dto.latitude,
-      longitudeCheckin: dto.longitude,
+      dataCheckin,
+      latitudeCheckin: dto.latitude ?? null,
+      longitudeCheckin: dto.longitude ?? null,
       alerta3hEmitidoEm: null,
       comentario: null,
       encerradoAutomaticamente: false,
+      localId: dto.localId ?? null,
+      checkinOffline: offline,
+      checkinSincronizadoEm: offline ? new Date() : null,
     });
     await this.checkinRepository.save(novoCheckin);
     return this.checkinRepository.findOneOrFail({
@@ -131,14 +160,82 @@ export class CheckinService {
     if (checkin.usuarioId !== usuario.id) {
       throw new ForbiddenException('Você não pode finalizar um checkin de outro usuário');
     }
+    if (dto.offline === true) {
+      return this.finalizarCheckinOffline(checkin, dto);
+    }
     if (checkin.status !== StatusCheckin.ABERTO) {
       throw new BadRequestException('Este checkin já foi finalizado');
     }
     checkin.status = StatusCheckin.FECHADO;
     checkin.dataCheckout = new Date();
-    checkin.latitudeCheckout = dto.latitude;
-    checkin.longitudeCheckout = dto.longitude;
+    checkin.latitudeCheckout = dto.latitude ?? null;
+    checkin.longitudeCheckout = dto.longitude ?? null;
     return this.checkinRepository.save(checkin);
+  }
+
+  private async finalizarCheckinOffline(
+    checkin: Checkin,
+    dto: FinalizarCheckinDto,
+  ): Promise<Checkin> {
+    const dataCheckout = dto.dataCheckout
+      ? lerHorarioOffline(dto.dataCheckout)
+      : new Date();
+    if (checkin.status === StatusCheckin.FECHADO) {
+      return this.resolverCheckoutOfflineEmFechado(checkin, dto, dataCheckout);
+    }
+    if (dataCheckout.getTime() < checkin.dataCheckin.getTime()) {
+      throw new BadRequestException('A data de checkout não pode ser anterior à data de checkin.');
+    }
+    if (dataCheckout.getTime() > checkin.dataCheckin.getTime() + LIMITE_CHECKOUT_AUTOMATICO_MS) {
+      return this.aplicarCheckoutAutomatico(checkin);
+    }
+    this.aplicarCheckoutOffline(checkin, dto, dataCheckout);
+    return this.checkinRepository.save(checkin);
+  }
+
+  private async resolverCheckoutOfflineEmFechado(
+    checkin: Checkin,
+    dto: FinalizarCheckinDto,
+    dataCheckout: Date,
+  ): Promise<Checkin> {
+    const fechadoEm = checkin.dataCheckout?.getTime();
+    if (checkin.checkoutOffline && fechadoEm === dataCheckout.getTime()) {
+      return checkin;
+    }
+    // checkout online aplicado, resposta perdida e reenviado pela fila: é o mesmo checkout
+    const checkoutOnlineRepetido = !checkin.checkoutOffline
+      && !checkin.encerradoAutomaticamente
+      && fechadoEm !== undefined
+      && Math.abs(dataCheckout.getTime() - fechadoEm) <= TOLERANCIA_CHECKOUT_REPETIDO_MS;
+    if (checkoutOnlineRepetido) {
+      return checkin;
+    }
+    if (!checkin.encerradoAutomaticamente) {
+      throw new ConflictException('Este check-in já foi encerrado.');
+    }
+    if (fechadoEm !== undefined && dataCheckout.getTime() >= fechadoEm) {
+      return checkin;
+    }
+    if (dataCheckout.getTime() < checkin.dataCheckin.getTime()) {
+      throw new BadRequestException('A data de checkout não pode ser anterior à data de checkin.');
+    }
+    this.aplicarCheckoutOffline(checkin, dto, dataCheckout);
+    checkin.comentario = this.removerComentarioAutomatico(checkin.comentario);
+    return this.checkinRepository.save(checkin);
+  }
+
+  private aplicarCheckoutOffline(
+    checkin: Checkin,
+    dto: FinalizarCheckinDto,
+    dataCheckout: Date,
+  ): void {
+    checkin.status = StatusCheckin.FECHADO;
+    checkin.dataCheckout = dataCheckout;
+    checkin.latitudeCheckout = dto.latitude ?? null;
+    checkin.longitudeCheckout = dto.longitude ?? null;
+    checkin.encerradoAutomaticamente = false;
+    checkin.checkoutOffline = true;
+    checkin.checkoutSincronizadoEm = new Date();
   }
 
   async buscarCheckinAbertoDoUsuario(usuarioId: string): Promise<CheckinComAlerta> {
@@ -284,6 +381,7 @@ export class CheckinService {
         id: chave,
         nome,
         quantidade: 0,
+        quantidadeOffline: 0,
         minutosFechados: 0,
         minutosAbertos: 0,
         minutosTotal: 0,
@@ -294,6 +392,9 @@ export class CheckinService {
         0,
       );
       item.quantidade += 1;
+      if (checkin.checkinOffline || checkin.checkoutOffline) {
+        item.quantidadeOffline += 1;
+      }
       if (checkin.status === StatusCheckin.FECHADO && checkin.dataCheckout) {
         item.minutosFechados += minutos;
       } else {
@@ -380,12 +481,24 @@ export class CheckinService {
     unidadeId: string,
     clienteId: string,
     usuario: UsuarioAutenticado,
+    momento?: Date,
   ): Promise<Unidade> {
     const unidade = await this.unidadeRepository.findOne({
       where: { id: unidadeId },
       relations: ['cliente'],
     });
-    if (!unidade || !unidade.ativo) {
+    if (!unidade) {
+      throw new NotFoundException('Unidade não encontrada');
+    }
+    if (!unidade.ativo && !this.inativadoDepoisDe(unidade.inativadoEm, momento)) {
+      throw new NotFoundException('Unidade não encontrada');
+    }
+    if (
+      momento
+      && unidade.cliente
+      && !unidade.cliente.ativo
+      && !this.inativadoDepoisDe(unidade.cliente.inativadoEm, momento)
+    ) {
       throw new NotFoundException('Unidade não encontrada');
     }
     if (unidade.clienteId !== clienteId) {
@@ -428,6 +541,22 @@ export class CheckinService {
     checkin.encerradoAutomaticamente = true;
     checkin.comentario = this.montarComentarioAutomatico(checkin.comentario);
     return this.checkinRepository.save(checkin);
+  }
+
+  private inativadoDepoisDe(inativadoEm: Date | null | undefined, momento?: Date): boolean {
+    return !!momento && !!inativadoEm && new Date(inativadoEm).getTime() > momento.getTime();
+  }
+
+  private removerComentarioAutomatico(atual: string | null): string | null {
+    if (!atual) {
+      return atual;
+    }
+    const restante = atual
+      .split('\n')
+      .filter((linha) => linha.trim() !== COMENTARIO_CHECKOUT_AUTOMATICO)
+      .join('\n')
+      .trim();
+    return restante || null;
   }
 
   private montarComentarioAutomatico(atual: string | null): string {

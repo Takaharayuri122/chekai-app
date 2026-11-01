@@ -2,6 +2,7 @@ import {
   ArrayMaxSize,
   IsArray,
   IsEnum,
+  IsISO8601,
   IsNotEmpty,
   IsNumber,
   IsOptional,
@@ -34,6 +35,22 @@ export class IniciarAuditoriaDto {
   @IsNumber()
   @IsOptional()
   longitude?: number;
+
+  @ApiPropertyOptional({ description: 'Id local (UUID) gerado no celular, para criação idempotente' })
+  @IsUUID()
+  @IsOptional()
+  localId?: string;
+
+  @ApiPropertyOptional({ description: 'Data/hora de início registrada no celular (ISO 8601)' })
+  @IsISO8601()
+  @IsOptional()
+  dataInicio?: string;
+
+  @ApiPropertyOptional({ description: 'Itens do template respondidos no celular', type: [String] })
+  @IsArray()
+  @IsUUID('all', { each: true })
+  @IsOptional()
+  templateItemIds?: string[];
 }
 
 /**
@@ -87,6 +104,11 @@ export class ResponderItemDto {
  * DTO para finalizar a auditoria.
  */
 export class FinalizarAuditoriaDto {
+  @ApiPropertyOptional({ description: 'Data/hora de fim registrada no celular (ISO 8601)' })
+  @IsISO8601()
+  @IsOptional()
+  dataFim?: string;
+
   @ApiPropertyOptional({ description: 'Latitude do fim da auditoria' })
   @IsNumber()
   @IsOptional()

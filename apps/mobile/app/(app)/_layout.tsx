@@ -7,16 +7,20 @@ import { Home, ClipboardList, FileText, User } from 'lucide-react-native';
 import { OfflineBanner } from '../../src/components/OfflineBanner';
 import { CheckinFab } from '../../src/components/checkin/CheckinFab';
 import { SyncService } from '../../src/sync/SyncService';
+import { FilaRepo } from '../../src/db/repositories/fila.repo';
 
 export default function AppLayout() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const hasHydrated = useAuthStore((s) => s._hasHydrated);
+  const usuarioId = useAuthStore((s) => s.user?.id);
 
   useEffect(() => {
     if (!isAuthenticated) return;
+    // itens da fila gravados antes de ela ter dona passam a ser da usuária logada
+    if (usuarioId) new FilaRepo().atribuirSemDona(usuarioId);
     const cancelarAutoSync = SyncService.initAutoSync();
     return cancelarAutoSync;
-  }, [isAuthenticated]);
+  }, [isAuthenticated, usuarioId]);
 
   // Aguardar hidratação do store antes de redirecionar
   // (evita race condition no primeiro acesso)

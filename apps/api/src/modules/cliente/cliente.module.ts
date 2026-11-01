@@ -2,6 +2,7 @@ import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Cliente } from './entities/cliente.entity';
 import { Unidade } from './entities/unidade.entity';
+import { ClienteAuditorDesvinculo } from './entities/cliente-auditor-desvinculo.entity';
 import { Auditoria } from '../auditoria/entities/auditoria.entity';
 import { Usuario } from '../usuario/entities/usuario.entity';
 import { ClienteService } from './cliente.service';
@@ -13,7 +14,7 @@ import { PlanoModule } from '../plano/plano.module';
  */
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Cliente, Unidade, Auditoria, Usuario]),
+    TypeOrmModule.forFeature([Cliente, Unidade, Auditoria, Usuario, ClienteAuditorDesvinculo]),
     forwardRef(() => PlanoModule),
   ],
   controllers: [ClienteController, UnidadeController],

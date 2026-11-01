@@ -50,16 +50,17 @@ function formatarMinutos(minutos: number): string {
 }
 
 function exportarCsv(relatorio: RelatorioHorasCheckin): void {
-  const cabecalho = 'Nome,Check-ins,Minutos fechados,Minutos em andamento,Total minutos,Total formatado';
+  const cabecalho = 'Nome,Check-ins,Offline,Minutos fechados,Minutos em andamento,Total minutos,Total formatado';
   const linhas = relatorio.itens.map((item) => [
     `"${item.nome.replace(/"/g, '""')}"`,
     item.quantidade,
+    item.quantidadeOffline,
     item.minutosFechados,
     item.minutosAbertos,
     item.minutosTotal,
     formatarMinutos(item.minutosTotal),
   ].join(','));
-  const csv = `\uFEFF${cabecalho}\n${linhas.join('\n')}\nTotal geral,,,,${relatorio.totalGeralMinutos},${formatarMinutos(relatorio.totalGeralMinutos)}\n`;
+  const csv = `\uFEFF${cabecalho}\n${linhas.join('\n')}\nTotal geral,,,,,${relatorio.totalGeralMinutos},${formatarMinutos(relatorio.totalGeralMinutos)}\n`;
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
@@ -167,6 +168,10 @@ export default function RelatorioHorasCheckinPage() {
     {
       label: 'Check-ins',
       render: (item) => <span className="tabular-nums">{item.quantidade}</span>,
+    },
+    {
+      label: 'Offline',
+      render: (item) => <span className="tabular-nums">{item.quantidadeOffline}</span>,
     },
     {
       label: 'Fechadas',

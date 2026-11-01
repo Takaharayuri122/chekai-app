@@ -12,6 +12,7 @@ export function montarHtmlRelatorioHoras(relatorio: RelatorioHorasCheckin): stri
     <tr>
       <td>${item.nome}</td>
       <td>${item.quantidade}</td>
+      <td>${item.quantidadeOffline}</td>
       <td>${formatarMinutos(item.minutosFechados)}</td>
       <td>${formatarMinutos(item.minutosAbertos)}</td>
       <td>${formatarMinutos(item.minutosTotal)}</td>
@@ -40,17 +41,18 @@ export function montarHtmlRelatorioHoras(relatorio: RelatorioHorasCheckin): stri
       <tr>
         <th>${relatorio.agruparPor === 'usuario' ? 'Usuário' : 'Cliente'}</th>
         <th>Check-ins</th>
+        <th>Offline</th>
         <th>Horas fechadas</th>
         <th>Em andamento</th>
         <th>Total</th>
       </tr>
     </thead>
     <tbody>
-      ${linhas || '<tr><td colspan="5">Nenhum check-in no período.</td></tr>'}
+      ${linhas || '<tr><td colspan="6">Nenhum check-in no período.</td></tr>'}
     </tbody>
     <tfoot>
       <tr>
-        <td colspan="4">Total geral</td>
+        <td colspan="5">Total geral</td>
         <td>${formatarMinutos(relatorio.totalGeralMinutos)}</td>
       </tr>
     </tfoot>
