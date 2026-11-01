@@ -18,7 +18,7 @@ function isRotaSemCheckin(pathname: string): boolean {
 /**
  * Botão flutuante global de check-in/checkout. Oculto nas áreas de auditoria e
  * relatórios técnicos (que já possuem seu próprio FAB), evitando controle duplicado.
- * O check-in/checkout é online-only; o alerta de 3h (RN-CKI-005) é indicado por um
+ * O check-in/checkout funciona sem internet (fila de envio); o alerta de 3h (RN-CKI-005) é indicado por um
  * badge sobre o botão.
  */
 export function CheckinFab() {
@@ -44,13 +44,9 @@ export function CheckinFab() {
 
   const executarCheckout = useCallback(async (): Promise<void> => {
     if (!user) return;
-    const coordenadas = await capturarLocalizacao();
-    if (!coordenadas) {
-      Alert.alert('Localização necessária', 'Não foi possível capturar a geolocalização para o checkout.');
-      return;
-    }
+    const coordenadas = await capturarLocalizacao(); // sem localização, o checkout segue sem coordenadas
     try {
-      await finalizar(user.id, coordenadas.latitude, coordenadas.longitude);
+      await finalizar(user.id, coordenadas);
     } catch (e) {
       Alert.alert('Erro no checkout', e instanceof Error ? e.message : 'Tente novamente.');
     }
@@ -68,7 +64,8 @@ export function CheckinFab() {
   }, [executarCheckout]);
 
   const confirmarCheckin = useCallback(async (payload: {
-    clienteId: string; unidadeId: string; latitude: number; longitude: number;
+    clienteId: string; unidadeId: string; clienteNome: string; unidadeNome: string;
+    latitude?: number; longitude?: number;
   }): Promise<void> => {
     if (!user) return;
     try {

@@ -9,8 +9,10 @@ import { useGeolocalizacao } from '../../hooks/use-geolocalizacao';
 interface PayloadIniciarCheckin {
   clienteId: string;
   unidadeId: string;
-  latitude: number;
-  longitude: number;
+  clienteNome: string;
+  unidadeNome: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 interface CheckinModalProps {
@@ -49,19 +51,21 @@ function carregarUnidadesLocais(clienteId: string): UnidadeOpcao[] {
 
 /**
  * Modal de início de check-in: seleção de cliente e unidade (a partir do cache
- * local) e captura de geolocalização nativa (RN-CKI-007). A confirmação dispara o
- * check-in online; validações de unidade/gestor/"1 aberto" ocorrem no servidor.
+ * local) e tentativa de geolocalização nativa (RN-CKI-007, 4 s). Sem localização o check-in
+ * continua permitido. A confirmação registra a marcação (online ou offline);
+ * validações de unidade/gestor/"1 aberto" ocorrem no servidor.
  */
 export function CheckinModal({ visivel, carregando, onFechar, onConfirmar }: CheckinModalProps) {
   const [clientes, setClientes] = useState<ClienteOpcao[]>([]);
   const [clienteId, setClienteId] = useState<string>('');
   const [unidadeId, setUnidadeId] = useState<string>('');
-  const { coordenadas, erro, carregando: capturando, capturarLocalizacao, limpar } = useGeolocalizacao();
+  const { coordenadas, carregando: capturando, capturarLocalizacao, limpar } = useGeolocalizacao();
 
   useEffect(() => {
     if (!visivel) return;
     setClientes(carregarClientesLocais());
-  }, [visivel]);
+    void capturarLocalizacao(); // tenta por até 4 s; sem resposta, o check-in segue sem localização
+  }, [visivel, capturarLocalizacao]);
 
   const unidades = useMemo(
     () => (clienteId ? carregarUnidadesLocais(clienteId) : []),
@@ -76,17 +80,18 @@ export function CheckinModal({ visivel, carregando, onFechar, onConfirmar }: Che
   };
 
   const confirmar = async (): Promise<void> => {
-    if (!clienteId || !unidadeId || !coordenadas) return;
+    if (!clienteId || !unidadeId) return;
     await onConfirmar({
       clienteId,
       unidadeId,
-      latitude: coordenadas.latitude,
-      longitude: coordenadas.longitude,
+      clienteNome: clientes.find((c) => c.id === clienteId)?.nome ?? '',
+      unidadeNome: unidades.find((u) => u.id === unidadeId)?.nome ?? '',
+      ...(coordenadas ? { latitude: coordenadas.latitude, longitude: coordenadas.longitude } : {}),
     });
     fechar();
   };
 
-  const podeConfirmar = Boolean(clienteId && unidadeId && coordenadas && !carregando && !capturando);
+  const podeConfirmar = Boolean(clienteId && unidadeId && !carregando && !capturando);
 
   return (
     <Modal visible={visivel} transparent animationType="slide" onRequestClose={fechar}>
@@ -185,7 +190,11 @@ export function CheckinModal({ visivel, carregando, onFechar, onConfirmar }: Che
                   </Text>
                 </Pressable>
               </View>
-              {erro ? <Text className="mt-2 text-xs text-red-500">{erro}</Text> : null}
+              {!coordenadas && !capturando ? (
+                <Text className="mt-2 text-xs text-amber-700">
+                  Sem localização — a marcação será registrada assim mesmo.
+                </Text>
+              ) : null}
             </View>
           </ScrollView>
 

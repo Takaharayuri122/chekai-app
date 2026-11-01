@@ -15,6 +15,7 @@ import { ApiError } from '../api/client';
 import { pullModeloRelatorioTecnico } from './pull';
 import { FilaRepo, type EntidadeFila, type ItemFila } from '../db/repositories/fila.repo';
 import { useAuthStore } from '../store/auth';
+import { pushCheckin } from './push-checkin';
 import { ehFalhaDefinitiva, ehSessaoExpirada } from './erros';
 
 const auditoriaRepo = new AuditoriaRepo();
@@ -221,7 +222,7 @@ function usuarioLogadoId(): string | null {
   return useAuthStore.getState().user?.id ?? null;
 }
 
-/** Ponto único de despacho por entidade da fila. `checkin` entra aqui na Task 12. */
+/** Ponto único de despacho por entidade da fila. */
 async function enviarItem(entidade: EntidadeFila, localId: string): Promise<boolean> {
   switch (entidade) {
     case 'auditoria':
@@ -230,8 +231,11 @@ async function enviarItem(entidade: EntidadeFila, localId: string): Promise<bool
     case 'relatorio_tecnico':
       await pushRelatorioTecnico(localId);
       return true;
+    case 'checkin':
+      await pushCheckin(localId);
+      return true;
     default:
-      return false; // ainda sem envio (check-in)
+      return false;
   }
 }
 

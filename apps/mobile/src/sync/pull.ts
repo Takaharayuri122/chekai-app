@@ -604,8 +604,8 @@ function mapearStatusRelatorio(status: string | undefined): RelatorioTecnicoStat
 
 /**
  * Atualiza o cache local (somente leitura) do check-in aberto do usuário a partir
- * de `GET /checkins/me/aberto`. O fluxo de check-in/checkout permanece online-only
- * (RN-CKI-001/002/003); este pull apenas mantém o estado exibível offline.
+ * de `GET /checkins/me/aberto`. Marcações feitas no aparelho
+ * (fila de envio) nunca são sobrescritas por este pull.
  */
 export async function pullCheckinAberto(): Promise<void> {
   const usuarioId = useAuthStore.getState().user?.id;
@@ -613,6 +613,10 @@ export async function pullCheckinAberto(): Promise<void> {
     return;
   }
   const repo = new CheckinRepo();
+  // marcação feita no aparelho ainda não enviada: o servidor não conhece, não sobrescrever
+  if (repo.temEnvioPendente(usuarioId)) {
+    return;
+  }
   const estado = await buscarCheckinAberto();
   const checkin = estado.checkin;
   if (!checkin) {

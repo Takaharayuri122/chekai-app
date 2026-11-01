@@ -17,6 +17,7 @@ jest.mock('../../db/repositories/auditoria.repo');
 jest.mock('../../db/repositories/auditoria-item.repo');
 jest.mock('../../db/repositories/foto.repo');
 jest.mock('../../api/ia.api');
+jest.mock('../push-checkin', () => ({ pushCheckin: jest.fn() }));
 
 const mockDb = {
   getAllSync: jest.fn(),
@@ -162,11 +163,13 @@ describe('pushPending', () => {
     expect(api.createAuditoria).not.toHaveBeenCalled();
   });
 
-  it('ignora itens de check-in por enquanto', async () => {
+  it('despacha itens de check-in para pushCheckin e remove da fila', async () => {
+    const { pushCheckin } = require('../push-checkin');
     fila.listarParaEnvio.mockReturnValue([item('q1', 'C1', 'checkin')]);
     await pushPending();
+    expect(pushCheckin).toHaveBeenCalledWith('C1');
+    expect(fila.remover).toHaveBeenCalledWith('q1');
     expect(fila.registrarFalha).not.toHaveBeenCalled();
-    expect(fila.remover).not.toHaveBeenCalled();
   });
 });
 

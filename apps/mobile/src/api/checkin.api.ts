@@ -40,13 +40,21 @@ export interface AlertaCheckinAberto {
 export interface IniciarCheckinPayload {
   clienteId: string;
   unidadeId: string;
-  latitude: number;
-  longitude: number;
+  latitude?: number;
+  longitude?: number;
+  /** UUID do aparelho: o servidor trata o reenvio da mesma marcação como idempotente. */
+  localId?: string;
+  /** Hora do telefone (ISO); omitida no check-in online (vale a hora do servidor). */
+  dataCheckin?: string;
+  offline?: boolean;
 }
 
 export interface FinalizarCheckinPayload {
-  latitude: number;
-  longitude: number;
+  latitude?: number;
+  longitude?: number;
+  /** Hora do telefone (ISO) de um checkout feito offline. */
+  dataCheckout?: string;
+  offline?: boolean;
 }
 
 export interface OpcaoFiltroCheckin {
@@ -79,7 +87,7 @@ export interface ListarCheckinsFiltros {
 }
 
 /**
- * Inicia um check-in (online-only). A regra de "apenas 1 aberto" (RN-CKI-001), a
+ * Inicia um check-in (online ou reenvio de uma marcação offline). A regra de "apenas 1 aberto" (RN-CKI-001), a
  * validação da unidade (RN-CKI-002) e do vínculo do gestor (RN-CKI-003) são aplicadas
  * no servidor; em caso de violação a API retorna erro com mensagem.
  */

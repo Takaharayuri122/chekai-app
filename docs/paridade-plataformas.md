@@ -93,8 +93,8 @@
 
 | Feature | API | Web | Mobile | Observações |
 |---------|-----|-----|--------|-------------|
-| Iniciar check-in | ok | ok | ok | FAB global + modal (cliente/unidade + GPS nativo); online-only |
-| Finalizar checkout | ok | ok | ok | Confirmação + GPS nativo; online-only |
+| Iniciar check-in | ok | ok | ok | FAB global + modal (cliente/unidade + GPS nativo); mobile funciona sem internet: hora do telefone, fila de envio e estado "Aguardando envio"/"Enviado às HH:mm"; sem GPS segue sem localização |
+| Finalizar checkout | ok | ok | ok | Confirmação + GPS nativo; mobile registra offline e envia depois; recusa do servidor (409) fica visível com o motivo e pode ser descartada |
 | Alerta 3h aberto | ok | ok | ok | Web: Notification API + toast fallback; mobile: badge/card |
 | Checkout automático 12h | ok | ok | ok | API encerra com coords do check-in e comentário padrão |
 | Edição GESTOR/MASTER | ok | ok | n/a | Datas/horas e comentário; web only |
@@ -133,8 +133,8 @@
 | Feature | API | Web | Mobile | Observações |
 |---------|-----|-----|--------|-------------|
 | Pull (servidor → local) | n/a | n/a | ok | Clientes, templates, auditorias |
-| Push (local → servidor) | n/a | n/a | ok | Auditorias com itens e fotos |
-| Fila de sync offline | n/a | n/a | ok | SQLite sync_queue |
+| Push (local → servidor) | n/a | n/a | ok | Auditorias com itens e fotos, relatórios técnicos e marcações de check-in/checkout |
+| Fila de sync offline | n/a | n/a | ok | SQLite sync_queue (auditoria, relatório técnico, check-in); itens recusados ficam visíveis até serem descartados |
 | Conflict resolution | n/a | n/a | parcial | sync_status != 'pending' protege dados locais |
 
 ---
