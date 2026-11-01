@@ -185,11 +185,12 @@
 | RN-CKI-004 | Checkout pelo próprio usuário (FAB); GESTOR/MASTER podem encerrar ou editar check-ins no isolamento do cliente (`gestorId`) |
 | RN-CKI-005 | Alerta após 3 horas de check-in aberto; flag `alerta3hEmitidoEm` para não repetir; no web também via Notification API (toast se a permissão for negada) |
 | RN-CKI-006 | Listagem administrativa (tela de check-ins): AUDITOR não tem acesso; GESTOR vê apenas check-ins de seus clientes |
-| RN-CKI-007 | Check-in registra geolocalização de entrada e saída (latitude/longitude) |
+| RN-CKI-007 | Check-in registra geolocalização de entrada e saída (latitude/longitude); a localização é opcional quando o GPS do celular não responde (fica vazia) |
 | RN-CKI-008 | Filtros na listagem: por auditor, cliente, período (dataInicio/dataFim) |
 | RN-CKI-009 | Check-in aberto há mais de 12h é encerrado automaticamente; `dataCheckout = dataCheckin + 12h`; lat/lng de checkout = lat/lng do check-in; comentário `Encerrado automaticamente após 12 horas.` |
 | RN-CKI-010 | GESTOR/MASTER podem alterar `dataCheckin`, `dataCheckout` e `comentario` de check-ins do seu isolamento. `dataCheckout` não pode ser anterior a `dataCheckin`. Preencher checkout em registro aberto fecha o status. Não reabrir check-in já fechado |
 | RN-CKI-011 | Relatório de horas (GESTOR/MASTER) agrupa por cliente ou usuário no período, com o mesmo isolamento da listagem. Totais = soma dos fechados + tempo decorrido dos abertos (em andamento) |
+| RN-CKI-012 | Marcação offline (app iOS): check-in e checkout feitos sem internet valem pelo horário do relógio do celular (`dataCheckin`/`dataCheckout`, recusado se mais de 5 min no futuro), ficam marcados como offline (`checkinOffline`/`checkoutOffline`) e guardam o horário da sincronização. `localId` torna o envio idempotente (repetir devolve o mesmo registro). Check-in offline com outro aberto → 409. Unidade/cliente inativados depois da marcação são aceitos (inativação sem `inativadoEm` continua recusando). Checkout offline anterior ao encerramento automático (RN-CKI-009) substitui o automático (remove o comentário automático); posterior mantém o automático. Check-in já encerrado de outra forma → 409 `Este check-in já foi encerrado.`; repetir o mesmo checkout offline devolve o registro. O relatório de horas informa `quantidadeOffline` |
 
 ---
 
@@ -385,3 +386,4 @@
 | 2026-10-26 | RN-EML-005: envio do relatório da auditoria por e-mail (automático e manual) com registro das tentativas | Claude |
 | 2026-10-28 | RN-CLI-007/011: inativar/ativar cliente e unidade (substitui a remoção); inativos não recebem novas auditorias | Claude |
 | 2026-11-01 | RN-AUD-016: auditoria offline iniciada antes de bloqueio (limite, assinatura, inativação, desvínculo) é aceita | Claude |
+| 2026-11-01 | RN-CKI-007/012: localização opcional e check-in/checkout offline com horário do celular | Claude |

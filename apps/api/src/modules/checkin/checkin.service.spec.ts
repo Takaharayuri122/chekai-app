@@ -13,6 +13,7 @@ type RepoMock<T extends object> = Partial<Record<keyof Repository<T>, jest.Mock>
 function criarCheckin(parcial: Partial<Checkin> = {}): Checkin {
   return {
     id: 'checkin-1',
+    localId: null,
     usuarioId: 'usuario-1',
     clienteId: 'cliente-1',
     unidadeId: 'unidade-1',
@@ -26,6 +27,10 @@ function criarCheckin(parcial: Partial<Checkin> = {}): Checkin {
     alerta3hEmitidoEm: null,
     comentario: null,
     encerradoAutomaticamente: false,
+    checkinOffline: false,
+    checkinSincronizadoEm: null,
+    checkoutOffline: false,
+    checkoutSincronizadoEm: null,
     criadoEm: new Date(),
     atualizadoEm: new Date(),
     usuario: { id: 'usuario-1', nome: 'Auditor Um' } as never,

@@ -1,12 +1,30 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsLatitude, IsLongitude } from 'class-validator';
+import { ApiPropertyOptional } from '@nestjs/swagger';
+import {
+  IsBoolean,
+  IsISO8601,
+  IsLatitude,
+  IsLongitude,
+  IsOptional,
+} from 'class-validator';
 
 export class FinalizarCheckinDto {
-  @ApiProperty({ description: 'Latitude atual no checkout' })
+  @ApiPropertyOptional({ description: 'Latitude atual no checkout (ausente quando o GPS não responde)' })
+  @IsOptional()
   @IsLatitude()
-  latitude: number;
+  latitude?: number;
 
-  @ApiProperty({ description: 'Longitude atual no checkout' })
+  @ApiPropertyOptional({ description: 'Longitude atual no checkout (ausente quando o GPS não responde)' })
+  @IsOptional()
   @IsLongitude()
-  longitude: number;
+  longitude?: number;
+
+  @ApiPropertyOptional({ description: 'Horário do checkout no relógio do celular (ISO 8601); só vale com offline=true' })
+  @IsOptional()
+  @IsISO8601()
+  dataCheckout?: string;
+
+  @ApiPropertyOptional({ description: 'Marcação feita sem internet e enviada depois' })
+  @IsOptional()
+  @IsBoolean()
+  offline?: boolean;
 }

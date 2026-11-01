@@ -13,6 +13,7 @@ describe('montarHtmlRelatorioHoras', () => {
         id: 'cliente-1',
         nome: 'Padaria Central',
         quantidade: 2,
+        quantidadeOffline: 0,
         minutosFechados: 60,
         minutosAbertos: 30,
         minutosTotal: 90,
