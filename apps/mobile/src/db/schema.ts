@@ -1,4 +1,4 @@
-export const SCHEMA_VERSION = 8;
+export const SCHEMA_VERSION = 9;
 
 export const SCHEMA_V1 = `
   CREATE TABLE IF NOT EXISTS usuarios (
@@ -309,4 +309,41 @@ export const SCHEMA_V8 = `
     envio_erro TEXT
   );
   CREATE INDEX IF NOT EXISTS idx_checkins_usuario_status ON checkins(usuario_id, status);
+`;
+
+/**
+ * V9 — Um item por pergunta em cada auditoria. O pull inseria a cópia do servidor
+ * (id do servidor) ao lado do item criado no aparelho (UUID local) para a mesma
+ * pergunta. Remove as duplicatas mantendo, nesta ordem: o item com resposta real,
+ * o item com foto local, o mais antigo (o do aparelho). Fotos locais do item removido
+ * passam para o mantido; fotos só remotas da cópia saem (o servidor já as tem). Depois,
+ * o índice único impede novas duplicatas.
+ */
+export const SCHEMA_V9 = `
+  CREATE TEMP TABLE _itens_ordem AS
+    SELECT ai.id, ai.auditoria_id, ai.template_item_id,
+      ROW_NUMBER() OVER (
+        PARTITION BY ai.auditoria_id, ai.template_item_id
+        ORDER BY
+          CASE WHEN ai.resposta != 'nao_avaliado' THEN 0 ELSE 1 END,
+          CASE WHEN EXISTS (
+            SELECT 1 FROM fotos f WHERE f.auditoria_item_id = ai.id AND f.file_path IS NOT NULL
+          ) THEN 0 ELSE 1 END,
+          ai.rowid
+      ) AS ordem
+    FROM auditoria_itens ai;
+  UPDATE fotos SET auditoria_item_id = (
+      SELECT mantido.id FROM _itens_ordem mantido
+      JOIN _itens_ordem removido
+        ON removido.auditoria_id = mantido.auditoria_id
+       AND removido.template_item_id = mantido.template_item_id
+      WHERE removido.id = fotos.auditoria_item_id AND mantido.ordem = 1
+    )
+    WHERE file_path IS NOT NULL
+      AND auditoria_item_id IN (SELECT id FROM _itens_ordem WHERE ordem > 1);
+  DELETE FROM fotos WHERE auditoria_item_id IN (SELECT id FROM _itens_ordem WHERE ordem > 1);
+  DELETE FROM auditoria_itens WHERE id IN (SELECT id FROM _itens_ordem WHERE ordem > 1);
+  DROP TABLE temp._itens_ordem;
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_auditoria_itens_pergunta
+    ON auditoria_itens(auditoria_id, template_item_id);
 `;

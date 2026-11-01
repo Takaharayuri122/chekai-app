@@ -27,7 +27,7 @@ describe('runMigrations', () => {
   });
 
   it('skips migrations when database is already at current version', () => {
-    mockDb.getFirstSync.mockReturnValue({ user_version: 8 });
+    mockDb.getFirstSync.mockReturnValue({ user_version: 9 });
 
     runMigrations(mockDb as any);
 
@@ -106,7 +106,7 @@ describe('runMigrations', () => {
   });
 
   it('skips v5 when database is already past version 5', () => {
-    mockDb.getFirstSync.mockReturnValue({ user_version: 8 });
+    mockDb.getFirstSync.mockReturnValue({ user_version: 9 });
 
     runMigrations(mockDb as any);
 
