@@ -9,6 +9,7 @@ import { FilaRepo } from '../db/repositories/fila.repo';
 import { ApiError } from '../api/client';
 import { temInternet } from '../utils/conexao';
 import { gerarUUID } from '../utils/uuid';
+import { lerCoordenada } from '../utils/coordenada';
 
 const repo = new CheckinRepo();
 const filaRepo = new FilaRepo();
@@ -47,8 +48,8 @@ function persistir(checkin: CheckinApi, isAtrasado3h: boolean, usuarioId: string
     unidadeId: checkin.unidadeId,
     unidadeNome: checkin.unidade?.nome ?? null,
     dataCheckin: checkin.dataCheckin,
-    latitudeCheckin: Number(checkin.latitudeCheckin),
-    longitudeCheckin: Number(checkin.longitudeCheckin),
+    latitudeCheckin: lerCoordenada(checkin.latitudeCheckin),
+    longitudeCheckin: lerCoordenada(checkin.longitudeCheckin),
     isAtrasado3h,
   });
   return repo.findAberto(usuarioId);
@@ -114,6 +115,8 @@ export const useCheckinStore = create<CheckinState>((set) => ({
     set({ isLoading: true });
     // o mesmo localId vale online e offline: reenviar a marcação nunca duplica no servidor
     const localId = gerarUUID();
+    // hora do toque: a tentativa online pode demorar até cair para a fila
+    const dataCheckin = new Date().toISOString();
     const { clienteNome, unidadeNome, ...payload } = input;
     try {
       if (await temInternet()) {
@@ -133,7 +136,7 @@ export const useCheckinStore = create<CheckinState>((set) => ({
         clienteNome: clienteNome ?? null,
         unidadeId: payload.unidadeId,
         unidadeNome: unidadeNome ?? null,
-        dataCheckin: new Date().toISOString(),
+        dataCheckin,
         latitude: payload.latitude ?? null,
         longitude: payload.longitude ?? null,
       });
@@ -150,6 +153,8 @@ export const useCheckinStore = create<CheckinState>((set) => ({
       return;
     }
     set({ isLoading: true });
+    // hora do toque: a tentativa online pode demorar até cair para a fila
+    const dataCheckout = new Date().toISOString();
     try {
       // Check-in ainda não enviado: só dá para registrar o checkout localmente (a fila envia na ordem)
       if (atual.remoteId && (await temInternet())) {
@@ -162,7 +167,7 @@ export const useCheckinStore = create<CheckinState>((set) => ({
           if (!ehErroDeRede(e)) throw e;
         }
       }
-      repo.registrarCheckoutOffline(atual.id, new Date().toISOString(), coords);
+      repo.registrarCheckoutOffline(atual.id, dataCheckout, coords);
       filaRepo.enfileirar('checkin', atual.id, usuarioId);
       set({ checkinAberto: repo.findAberto(usuarioId), isAtrasado3h: false, mensagemAlerta: null });
     } finally {

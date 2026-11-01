@@ -8,6 +8,7 @@ import { RelatorioTecnicoRepo, type RelatorioTecnicoStatus } from '../db/reposit
 import { RelatorioFotoRepo } from '../db/repositories/relatorio-foto.repo';
 import { CheckinRepo } from '../db/repositories/checkin.repo';
 import { buscarCheckinAberto } from '../api/checkin.api';
+import { lerCoordenada } from '../utils/coordenada';
 import { useAuthStore } from '../store/auth';
 import { salvarModeloCache } from '../store/modelo-relatorio';
 import { buscarModeloRelatorioTecnico } from '../api/relatorio-tecnico.api';
@@ -653,8 +654,8 @@ export async function pullCheckinAberto(): Promise<void> {
     unidadeId: checkin.unidadeId,
     unidadeNome: checkin.unidade?.nome ?? null,
     dataCheckin: checkin.dataCheckin,
-    latitudeCheckin: Number(checkin.latitudeCheckin),
-    longitudeCheckin: Number(checkin.longitudeCheckin),
+    latitudeCheckin: lerCoordenada(checkin.latitudeCheckin),
+    longitudeCheckin: lerCoordenada(checkin.longitudeCheckin),
     isAtrasado3h: estado.isAtrasado3h,
   });
 }

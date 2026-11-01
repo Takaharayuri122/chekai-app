@@ -41,8 +41,8 @@ export interface SalvarCheckinAbertoInput {
   unidadeId: string;
   unidadeNome: string | null;
   dataCheckin: string;
-  latitudeCheckin: number;
-  longitudeCheckin: number;
+  latitudeCheckin: number | null;
+  longitudeCheckin: number | null;
   isAtrasado3h: boolean;
 }
 

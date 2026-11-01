@@ -20,6 +20,8 @@ export default function ItemScreen() {
   const { id, itemId, readonly: readonlyParam } = useLocalSearchParams<{ id: string; itemId: string; readonly?: string }>();
   const { itens, auditoria, salvarResposta } = useAuditoriaStore();
   const isReadonly = readonlyParam === '1' || (auditoria?.status === 'concluida' && auditoria?.syncStatus === 'synced');
+  // IA só "na hora", durante a auditoria: finalizada (mesmo aguardando envio) não analisa nem sugere
+  const iaPermitida = !isReadonly && auditoria?.status !== 'concluida';
 
   const item = itens.find(i => i.id === itemId);
 
@@ -43,7 +45,7 @@ export default function ItemScreen() {
   const handleSelectResposta = (v: string, pts?: number) => {
     setResposta(v);
     if (pts !== undefined) setPontuacao(pts);
-    if (v === 'nao_conforme' && !descricaoNc && !loadingIa) {
+    if (v === 'nao_conforme' && iaPermitida && !descricaoNc && !loadingIa) {
       setLoadingIa(true);
       temInternet()
         .then((online) => {
@@ -184,7 +186,7 @@ export default function ItemScreen() {
             onRemove={isReadonly ? undefined : handleRemoveFoto}
             obrigatoria={!isReadonly && item.fotoObrigatoria}
             carregando={carregandoFoto}
-            analiseContexto={isReadonly ? undefined : { perguntaChecklist: item.descricao, categoria: item.categoria ?? undefined }}
+            analiseContexto={iaPermitida ? { perguntaChecklist: item.descricao, categoria: item.categoria ?? undefined } : undefined}
             onAnaliseAtualizada={() => setFotos(fotoRepo.findByItem(itemId!))}
           />
         </View>

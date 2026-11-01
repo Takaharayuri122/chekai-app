@@ -10,8 +10,9 @@ export interface CheckinApi {
   status: StatusCheckinApi;
   dataCheckin: string;
   dataCheckout?: string | null;
-  latitudeCheckin: number;
-  longitudeCheckin: number;
+  /** Decimal do banco: pode vir como texto; null quando o GPS não respondeu. */
+  latitudeCheckin: number | string | null;
+  longitudeCheckin: number | string | null;
   latitudeCheckout?: number | null;
   longitudeCheckout?: number | null;
   alerta3hEmitidoEm?: string | null;

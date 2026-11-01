@@ -1,5 +1,5 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
-import { pullAuditorias, pullAuditoriaDetalhe } from '../pull';
+import { pullAuditorias, pullAuditoriaDetalhe, pullCheckinAberto } from '../pull';
 import { getDatabase } from '../../db/client';
 import { runMigrations } from '../../db/migrations';
 import { abrirBancoEmMemoria, prepararAteV8, type BancoEmMemoria } from '../../db/__tests__/sqlite-memoria';
@@ -14,6 +14,7 @@ jest.mock('../../store/modelo-relatorio', () => ({ salvarModeloCache: jest.fn() 
 
 const { apiGet } = require('../../api/client');
 const { getAuditoriaDetalhe } = require('../../api/auditoria.api');
+const { buscarCheckinAberto } = require('../../api/checkin.api');
 
 const AGORA = '2026-11-01T10:00:00.000Z';
 
@@ -157,3 +158,29 @@ describe.each([
   });
 });
 
+describe('pullCheckinAberto', () => {
+  let banco: BancoEmMemoria;
+
+  beforeEach(() => {
+    banco = abrirBancoEmMemoria();
+    runMigrations(banco.db);
+    (getDatabase as jest.Mock).mockReturnValue(banco.db);
+  });
+
+  afterEach(() => banco.fechar());
+
+  it('check-in do servidor sem localização fica sem localização no cache (não 0,0)', async () => {
+    buscarCheckinAberto.mockResolvedValue({
+      isAtrasado3h: false,
+      checkin: {
+        id: 'r1', usuarioId: 'u1', clienteId: 'c1', unidadeId: 'un1', status: 'aberto',
+        dataCheckin: AGORA, latitudeCheckin: null, longitudeCheckin: null,
+      },
+    });
+
+    await pullCheckinAberto();
+
+    expect(banco.db.getFirstSync(`SELECT latitude_checkin, longitude_checkin FROM checkins WHERE remote_id = 'r1'`))
+      .toEqual({ latitude_checkin: null, longitude_checkin: null });
+  });
+});
